@@ -74,6 +74,19 @@ header { height:70px; background:#fff; border-bottom:1px solid var(--line); disp
 .patientStrip label { background:white; padding:11px 14px; }
 .patientStrip span { display:block; color:#8d9aac; font-size:7px; font-weight:800; letter-spacing:.8px; margin-bottom:5px; }
 .patientStrip input { width:100%; border:0; outline:0; color:#2b3d55; font-size:10px; font-weight:600; }
+.draftBanner { margin:-7px 0 14px; display:flex; align-items:center; gap:7px; color:#358266; font-size:8px; }
+.draftBanner>span { width:16px; height:16px; display:grid; place-items:center; border-radius:50%; background:#e4f7ef; }
+.draftBanner button { margin-left:auto; border:0; background:transparent; color:#7e8b9c; font-size:8px; }
+.scenarioBar { display:flex; align-items:center; gap:18px; padding:12px 14px; margin-bottom:17px; overflow:auto; }
+.scenarioBar>div:first-child { min-width:110px; }
+.scenarioBar strong,.scenarioBar>div:first-child span { display:block; }
+.scenarioBar strong { font-size:10px; margin-bottom:4px; }
+.scenarioBar>div:first-child span { color:#8b98a8; font-size:8px; }
+.scenarioButtons { display:flex; gap:7px; }
+.scenarioButtons button { border:1px solid var(--line); background:white; color:#637188; border-radius:7px; padding:8px 10px; font-size:8px; white-space:nowrap; }
+.scenarioButtons button i { font-style:normal; color:#7e90a8; margin-right:6px; }
+.scenarioButtons button:hover,.scenarioButtons button.selected { color:var(--blue); border-color:#9fc3f8; background:#edf5ff; box-shadow:inset 0 0 0 1px #c8ddfb; }
+.scenarioButtons button.selected i { color:var(--blue); }
 .builderGrid { display:grid; grid-template-columns:245px minmax(380px,1fr) 260px; gap:17px; align-items:start; }
 .phrasePanel { max-height:660px; }
 .phraseSearch { margin:0 14px 12px; border:1px solid var(--line); background:#f7f9fc; padding:8px 10px; border-radius:6px; color:#99a5b5; }
@@ -84,6 +97,7 @@ header { height:70px; background:#fff; border-bottom:1px solid var(--line); disp
 .phrases small { color:var(--blue); text-transform:uppercase; font-size:7px; font-weight:800; display:block; margin-bottom:5px; }
 .phrases strong { color:#41516a; font-size:9px; line-height:1.4; }
 .phrases button>span { position:absolute; right:13px; top:18px; color:var(--blue); font-size:15px; }
+.noPhrases { padding:25px 14px; color:#8996a7; text-align:center; font-size:9px; }
 .editorStack,.checks { display:grid; gap:15px; }
 .editorCard { overflow:hidden; }
 .editorHead { height:64px; display:flex; justify-content:space-between; align-items:center; padding:0 17px; border-bottom:1px solid var(--line); }
@@ -107,4 +121,4 @@ header { height:70px; background:#fff; border-bottom:1px solid var(--line); disp
 .quality>p i { display:inline-grid; place-items:center; width:16px; height:16px; margin-right:7px; border-radius:50%; background:#e5f8f1; color:#15946d; font-style:normal; font-size:8px; }
 .quality>button { width:calc(100% - 28px); margin:8px 14px 0; border:0; background:#18a779; color:white; padding:10px; border-radius:7px; font-size:9px; font-weight:800; }
 @media (max-width:1180px) { .builderGrid { grid-template-columns:210px 1fr; } .checks { grid-column:1 / -1; grid-template-columns:1fr 1fr; } }
-@media (max-width:760px) { .reportTop { align-items:flex-start; flex-direction:column; } .reportActions { width:100%; overflow:auto; } .patientStrip { grid-template-columns:1fr 1fr; } .builderGrid { grid-template-columns:1fr; } .phrasePanel { max-height:none; } .checks { grid-column:auto; grid-template-columns:1fr; } .editorCard textarea { min-height:280px; } }
+@media (max-width:760px) { .reportTop { align-items:flex-start; flex-direction:column; } .reportActions { width:100%; overflow:auto; } .patientStrip { grid-template-columns:1fr 1fr; } .scenarioBar { align-items:flex-start; flex-direction:column; } .builderGrid { grid-template-columns:1fr; } .phrasePanel { max-height:none; } .checks { grid-column:auto; grid-template-columns:1fr; } .editorCard textarea { min-height:280px; } }
