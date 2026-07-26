@@ -39,7 +39,8 @@ test("renders development preview metadata", async () => {
 test("renders the full service catalog and same-system staff link", async () => {
   const response = await renderHome();
   const html = await response.text();
-  assert.match(html, /Повний каталог:\s*38 послуг/);
+  const visibleText = html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
+  assert.match(visibleText, /Повний каталог:\s*38\s*послуг/);
   assert.match(html, /href=["']\/staff["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });
