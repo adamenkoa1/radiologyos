@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createRoot } from "react-dom/client";
 import "./styles.css";
 
@@ -28,6 +28,15 @@ const phraseBank = [
   { group: "Пазухи", title: "Кіста верхньощелепної пазухи", text: "У верхньощелепній пазусі визначається ретенційна кіста розміром ___ мм." },
 ];
 
+const scenarios = [
+  { id: "normal", label: "Норма", icon: "✓", conclusion: "МСКТ-ознак органічної патології головного мозку не виявлено.", extra: "" },
+  { id: "trauma", label: "Травма", icon: "✦", conclusion: "КТ-ознаки травматичних змін головного мозку та кісток черепа потребують уточнення за описом.", extra: "КТ-ознак гострого внутрішньочерепного крововиливу не виявлено. Кісткових травматичних змін не виявлено." },
+  { id: "stroke", label: "Інсульт", icon: "≈", conclusion: "Переконливих КТ-ознак гострого порушення мозкового кровообігу на момент дослідження не виявлено.", extra: "Зон патологічно зниженої щільності, втрати кортико-медулярної диференціації або гіперденсних артерій не виявлено." },
+  { id: "atrophy", label: "Атрофія", icon: "◉", conclusion: "КТ-ознаки помірних дифузних атрофічних змін головного мозку.", extra: "Визначається помірне дифузне розширення конвекситальних підпавутинних просторів та шлуночкової системи." },
+  { id: "hemorrhage", label: "Крововилив", icon: "!", conclusion: "КТ-ознаки гострого внутрішньочерепного крововиливу. Потребує негайного клінічного повідомлення.", extra: "Визначається гіперденсна ділянка гострого крововиливу: локалізація ___, розміри ___ мм, щільність ___ HU, перифокальний набряк ___, мас-ефект ___." },
+  { id: "hydro", label: "Гідроцефалія", icon: "◇", conclusion: "КТ-ознаки розширення шлуночкової системи головного мозку.", extra: "Шлуночкова система розширена: індекс Еванса ___, перивентрикулярний набряк ___, ознаки оклюзії лікворних шляхів ___." },
+];
+
 function App() {
   const [active, setActive] = useState("Огляд");
   const [query, setQuery] = useState("");
@@ -36,7 +45,24 @@ function App() {
   const [conclusion, setConclusion] = useState("МСКТ-ознак органічної патології головного мозку не виявлено.");
   const [patientName, setPatientName] = useState("Мельник Андрій");
   const [urgent, setUrgent] = useState(false);
+  const [scenario, setScenario] = useState("normal");
+  const [phraseQuery, setPhraseQuery] = useState("");
+  const [draftRestored, setDraftRestored] = useState(false);
+  const visiblePhrases = useMemo(() => phraseBank.filter((phrase) => `${phrase.group} ${phrase.title} ${phrase.text}`.toLowerCase().includes(phraseQuery.toLowerCase())), [phraseQuery]);
   const filtered = studies.filter((study) => `${study.patient} ${study.exam}`.toLowerCase().includes(query.toLowerCase()));
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("radiologyos-ct-brain-draft");
+    if (!saved) return;
+    try {
+      const draft = JSON.parse(saved);
+      setDescription(draft.description || normalDescription);
+      setConclusion(draft.conclusion || "");
+      setPatientName(draft.patientName || "");
+      setScenario(draft.scenario || "normal");
+      setDraftRestored(true);
+    } catch {}
+  }, []);
   function notify(message) {
     setNotice(message);
     window.setTimeout(() => setNotice(""), 2600);
@@ -51,6 +77,22 @@ function App() {
     const protocol = `ПАЦІЄНТ: ${patientName}\nДОСЛІДЖЕННЯ: КТ головного мозку\n\nОПИС:\n${description}\n\nВИСНОВОК:\n${conclusion}`;
     navigator.clipboard?.writeText(protocol);
     notify("Протокол скопійовано");
+  }
+
+  function applyScenario(id) {
+    const selected = scenarios.find((item) => item.id === id);
+    if (!selected) return;
+    setScenario(id);
+    setDescription(selected.extra ? `${normalDescription}\n${selected.extra}` : normalDescription);
+    setConclusion(selected.conclusion);
+    setUrgent(id === "hemorrhage");
+    notify(`Сценарій «${selected.label}» застосовано`);
+  }
+
+  function saveDraft() {
+    window.localStorage.setItem("radiologyos-ct-brain-draft", JSON.stringify({ patientName, description, conclusion, scenario }));
+    setDraftRestored(true);
+    notify("Чернетку збережено на цьому пристрої");
   }
 
   return (
@@ -80,8 +122,10 @@ function App() {
           <div className="content reportContent">
             <div className="reportTop">
               <div><p className="eyebrow">КТ • ГОЛОВНИЙ МОЗОК</p><h1>Конструктор протоколу</h1><span>Шаблон: КТ ГМ — Норма</span></div>
-              <div className="reportActions"><button onClick={() => { setDescription(normalDescription); setConclusion("МСКТ-ознак органічної патології головного мозку не виявлено."); notify("Шаблон відновлено"); }}>Скинути</button><button className="saveDraft" onClick={() => notify("Чернетку збережено")}>Зберегти чернетку</button><button className="copy" onClick={copyProtocol}>Копіювати протокол</button></div>
+              <div className="reportActions"><button onClick={() => applyScenario("normal")}>Норма</button><button className="saveDraft" onClick={saveDraft}>Зберегти чернетку</button><button className="copy" onClick={copyProtocol}>Копіювати протокол</button></div>
             </div>
+
+            {draftRestored && <div className="draftBanner"><span>✓</span> Чернетку збережено на цьому пристрої <button onClick={() => { window.localStorage.removeItem("radiologyos-ct-brain-draft"); setDraftRestored(false); notify("Збережену чернетку видалено"); }}>Очистити</button></div>}
 
             <section className="patientStrip">
               <label><span>ПАЦІЄНТ</span><input value={patientName} onChange={(e) => setPatientName(e.target.value)} /></label>
@@ -90,11 +134,16 @@ function App() {
               <label><span>НАПРАВИВ</span><input defaultValue="Неврологічне відділення" /></label>
             </section>
 
+            <section className="scenarioBar panel">
+              <div><strong>Швидкий сценарій</strong><span>Оберіть основу протоколу</span></div>
+              <div className="scenarioButtons">{scenarios.map((item) => <button className={scenario === item.id ? "selected" : ""} key={item.id} onClick={() => applyScenario(item.id)}><i>{item.icon}</i>{item.label}</button>)}</div>
+            </section>
+
             <div className="builderGrid">
               <aside className="phrasePanel panel">
                 <div className="panelTitle"><div><h2>Банк фраз</h2><p>Натисніть, щоб додати до опису</p></div></div>
-                <div className="phraseSearch">⌕ <input placeholder="Пошук фрази..." /></div>
-                <div className="phrases">{phraseBank.map((phrase) => <button key={phrase.title} onClick={() => addPhrase(phrase.text)}><small>{phrase.group}</small><strong>{phrase.title}</strong><span>＋</span></button>)}</div>
+                <div className="phraseSearch">⌕ <input value={phraseQuery} onChange={(e) => setPhraseQuery(e.target.value)} placeholder="Пошук фрази..." /></div>
+                <div className="phrases">{visiblePhrases.map((phrase) => <button key={phrase.title} onClick={() => addPhrase(phrase.text)}><small>{phrase.group}</small><strong>{phrase.title}</strong><span>＋</span></button>)}{!visiblePhrases.length && <p className="noPhrases">Фраз не знайдено</p>}</div>
               </aside>
 
               <section className="editorStack">
