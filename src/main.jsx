@@ -62,6 +62,8 @@ function App() {
   const [draftRestored, setDraftRestored] = useState(false);
   const [builderMode, setBuilderMode] = useState("quick");
   const [blockValues, setBlockValues] = useState(() => Object.fromEntries(anatomyBlocks.map((block) => [block.id, block.options[0]])));
+  const [showPreview, setShowPreview] = useState(false);
+  const [history, setHistory] = useState([]);
   const visiblePhrases = useMemo(() => phraseBank.filter((phrase) => `${phrase.group} ${phrase.title} ${phrase.text}`.toLowerCase().includes(phraseQuery.toLowerCase())), [phraseQuery]);
   const filtered = studies.filter((study) => `${study.patient} ${study.exam}`.toLowerCase().includes(query.toLowerCase()));
   const reviewItems = useMemo(() => {
@@ -85,6 +87,12 @@ function App() {
       setPatientName(draft.patientName || "");
       setScenario(draft.scenario || "normal");
       setDraftRestored(true);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    try {
+      setHistory(JSON.parse(window.localStorage.getItem("radiologyos-protocol-history") || "[]"));
     } catch {}
   }, []);
   function notify(message) {
@@ -124,6 +132,32 @@ function App() {
     setBlockValues(next);
     const generated = anatomyBlocks.map((block) => `${block.label}: ${next[block.id]}.`).join("\n");
     setDescription(generated);
+  }
+
+  function finalizeProtocol() {
+    if (reviewItems.some((item) => item.tone === "error")) {
+      notify("Спочатку усуньте суперечності");
+      return;
+    }
+    const record = { id: crypto.randomUUID(), patient: patientName, date: "26.07.2026", status: "Підписано", conclusion };
+    const next = [record, ...history].slice(0, 5);
+    setHistory(next);
+    window.localStorage.setItem("radiologyos-protocol-history", JSON.stringify(next));
+    window.localStorage.removeItem("radiologyos-ct-brain-draft");
+    setDraftRestored(false);
+    setShowPreview(true);
+    notify("Протокол підписано та збережено");
+  }
+
+  function downloadProtocol() {
+    const html = `<!doctype html><html><meta charset="utf-8"><body><h2>КТ головного мозку</h2><p><b>Пацієнт:</b> ${patientName}</p><p><b>Дата:</b> 26.07.2026</p><h3>Опис</h3><p>${description.replace(/\n/g, "<br>")}</p><h3>Висновок</h3><p><b>${conclusion}</b></p><p>Лікар-рентгенолог: Дмитро Адаменко</p></body></html>`;
+    const url = URL.createObjectURL(new Blob([html], { type: "application/msword;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `КТ_ГМ_${patientName.replace(/\s+/g, "_")}.doc`;
+    link.click();
+    URL.revokeObjectURL(url);
+    notify("Документ підготовлено");
   }
 
   return (
@@ -205,7 +239,11 @@ function App() {
                 <section className="quality panel">
                   <div className="panelTitle"><div><h2>Перевірка протоколу</h2><p>Логіка, повнота та узгодженість</p></div><span className="reviewCount">{reviewItems.filter((item) => item.tone !== "ok").length}</span></div>
                   <div className="reviewList">{reviewItems.map((item) => <p className={item.tone} key={item.text}><i>{item.tone === "ok" ? "✓" : "!"}</i>{item.text}</p>)}</div>
-                  <button disabled={reviewItems.some((item) => item.tone === "error")} onClick={() => notify(reviewItems.some((item) => item.tone === "warn") ? "Перевірте незаповнені поля" : "Протокол завершено")}>Завершити протокол</button>
+                  <button disabled={reviewItems.some((item) => item.tone === "error")} onClick={() => reviewItems.some((item) => item.tone === "warn") ? notify("Перевірте незаповнені поля") : setShowPreview(true)}>Перегляд і підпис</button>
+                </section>
+                <section className="history panel">
+                  <div className="panelTitle"><div><h2>Останні протоколи</h2><p>Збережені на цьому пристрої</p></div><span>{history.length}</span></div>
+                  {history.length ? history.slice(0, 3).map((item) => <div className="historyItem" key={item.id}><i>✓</i><div><strong>{item.patient}</strong><small>{item.date} • КТ головного мозку</small></div><em>{item.status}</em></div>) : <div className="historyEmpty">Підписаних протоколів ще немає</div>}
                 </section>
               </aside>
             </div>
@@ -252,6 +290,20 @@ function App() {
         )}
       </section>
       {notice && <div className="toast">{notice}</div>}
+      {showPreview && <div className="previewOverlay" role="dialog" aria-modal="true">
+        <section className="protocolPreview">
+          <div className="previewToolbar"><div><small>ПОПЕРЕДНІЙ ПЕРЕГЛЯД</small><strong>КТ головного мозку</strong></div><div><button onClick={() => setShowPreview(false)}>Закрити</button><button onClick={downloadProtocol}>Завантажити DOC</button><button onClick={() => window.print()}>Друк / PDF</button></div></div>
+          <article className="paper">
+            <header><div><strong>Чернігівський військовий госпіталь</strong><span>Відділення променевої діагностики</span></div><b>RadiologyOS</b></header>
+            <h1>МСКТ головного мозку</h1>
+            <div className="paperMeta"><p><span>Пацієнт</span><strong>{patientName}</strong></p><p><span>Дата дослідження</span><strong>26.07.2026</strong></p><p><span>Лікар</span><strong>Дмитро Адаменко</strong></p></div>
+            <section><h2>Опис дослідження</h2><p>{description}</p></section>
+            <section><h2>Висновок</h2><p><strong>{conclusion}</strong></p></section>
+            <footer><div><span>Лікар-рентгенолог</span><strong>Дмитро Адаменко</strong></div><div className="signature">Електронний підпис</div></footer>
+          </article>
+          <div className="signBar"><span>Після підписання протокол буде додано до історії</span><button onClick={finalizeProtocol}>✓ Підписати та завершити</button></div>
+        </section>
+      </div>}
     </main>
   );
 }
