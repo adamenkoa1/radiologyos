@@ -2,38 +2,33 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
+import { groupedServices, SERVICES } from "../lib/catalog";
+import { todayInKyiv } from "../lib/booking-rules";
 
-const services = [
-  { icon: "CT", title: "КТ головного мозку", text: "Головний мозок і кістки черепа без контрастування.", price: "1 400 грн" },
-  { icon: "CT", title: "КТ органів грудної клітки", text: "Легені, плевра, середостіння та грудна стінка без контрастування.", price: "1 500 грн" },
-  { icon: "CT", title: "КТ черевної порожнини", text: "Органи живота та заочеревинного простору без контрастування.", price: "1 900 грн" },
-  { icon: "CT", title: "КТ одного відділу хребта", text: "Шийний, грудний або попереково-крижовий відділ.", price: "1 500 грн" },
-  { icon: "XR", title: "Цифрова рентгенографія однієї ділянки", text: "Два стандартні знімки суглоба, кістки або відділу хребта.", price: "500 грн" },
-  { icon: "FL", title: "Цифрова флюорографія", text: "Органи грудної клітки, 1 знімок у прямій проєкції та висновок.", price: "300 грн" },
-  { icon: "CT+", title: "КТ головного мозку з контрастуванням", text: "Контрастне дослідження за медичними показаннями.", price: "3 200 грн" },
-  { icon: "CT+", title: "КТ грудної клітки з контрастуванням", text: "Контрастна оцінка легень, середостіння та грудної стінки.", price: "3 400 грн" },
-  { icon: "CTA", title: "КТ-ангіографія однієї ділянки", text: "Контрастне дослідження судин ділянки, визначеної лікарем.", price: "3 600 грн" },
-];
-
-const times = ["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00"];
+const featuredServices = SERVICES.filter(service => service.featured);
+const serviceGroups = groupedServices();
+const money = new Intl.NumberFormat("uk-UA");
 
 export default function Home() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [bookingCode, setBookingCode] = useState("");
   const [bookingError, setBookingError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
-  const [availableTimes, setAvailableTimes] = useState(times);
+  const [serviceCode, setServiceCode] = useState("");
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
+  const [slotDetails, setSlotDetails] = useState("");
 
   useEffect(() => {
-    if (!selectedDate) return;
+    if (!selectedDate || !serviceCode) return;
     let active = true;
     async function loadSlots() {
       setSlotsLoading(true);
       try {
-        const response = await fetch(`/api/availability?date=${encodeURIComponent(selectedDate)}`, { cache:"no-store" });
-        const data = await response.json() as {times?:string[]};
+        const response = await fetch(`/api/availability?date=${encodeURIComponent(selectedDate)}&serviceCode=${encodeURIComponent(serviceCode)}`, { cache:"no-store" });
+        const data = await response.json() as {times?:string[];durationMinutes?:number;equipment?:string};
         if (active) setAvailableTimes(response.ok ? data.times || [] : []);
+        if (active) setSlotDetails(response.ok && data.equipment ? `${data.equipment} · ${data.durationMinutes} хв` : "");
       } catch {
         if (active) setAvailableTimes([]);
       } finally {
@@ -42,7 +37,7 @@ export default function Home() {
     }
     void loadSlots();
     return () => { active = false; };
-  }, [selectedDate]);
+  }, [selectedDate, serviceCode]);
 
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,7 +57,9 @@ export default function Home() {
       setStatus("success");
       form.reset();
       setSelectedDate("");
-      setAvailableTimes(times);
+      setServiceCode("");
+      setAvailableTimes([]);
+      setSlotDetails("");
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : "Не вдалося надіслати заявку");
       setStatus("error");
@@ -77,7 +74,7 @@ export default function Home() {
           <span><b>Променева діагностика</b><small>Чернігівський військовий госпіталь</small></span>
         </a>
         <nav aria-label="Головна навігація">
-          <a href="#services">Послуги</a><a href="#patients">Пацієнтам</a><a href="/cabinet">Статус заявки</a><a className="staffLogin" href="https://radiologyos-app.adamenko-artem96.chatgpt.site">Вхід для персоналу</a>
+          <a href="#services">Послуги</a><a href="#patients">Пацієнтам</a><a href="/cabinet">Статус заявки</a><a className="staffLogin" href="/staff">Вхід для персоналу</a>
         </nav>
         <a className="button compact" href="#booking">Записатися</a>
       </header>
@@ -106,14 +103,15 @@ export default function Home() {
       <section className="section" id="services">
         <div className="sectionHead"><div><p className="eyebrow">Послуги</p><h2>Оберіть дослідження</h2></div><p>Остаточну програму дослідження визначає лікар з урахуванням направлення та клінічної ситуації.</p></div>
         <div className="serviceGrid">
-          {services.map((service) => (
-            <article className="serviceCard" key={service.title}>
-              <span className="serviceIcon">{service.icon}</span>
-              <h3>{service.title}</h3><p>{service.text}</p>
-              <div>{service.price ? <b>{service.price}</b> : <span>За чинним тарифом</span>}<a href="#booking">Записатися →</a></div>
+          {featuredServices.map((service) => (
+            <article className="serviceCard" key={service.code}>
+              <span className="serviceIcon">{service.equipmentId === "ct" ? "CT" : service.equipmentId === "xray" ? "XR" : "FL"}</span>
+              <h3>{service.title}</h3><p>{service.description}</p>
+              <div><b>{money.format(service.price)} грн</b><a href="#booking" onClick={()=>setServiceCode(service.code)}>Записатися →</a></div>
             </article>
           ))}
         </div>
+        <p className="catalogCount">Повний каталог: {SERVICES.length} послуг із внутрішніми кодами та кодами eHealth там, де відповідність визначена.</p>
         <p className="tariffNote">Ціни на сайті мають інформаційний характер. Перед підтвердженням запису адміністратор уточнить вартість відповідно до чинного офіційного тарифу.</p>
       </section>
 
@@ -144,10 +142,13 @@ export default function Home() {
           <div className="formGrid">
             <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" /></label>
             <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" /></label>
-            <label className="wide"><span>Дослідження *</span><select name="service" required defaultValue=""><option value="" disabled>Оберіть послугу</option>{services.map(s => <option key={s.title}>{s.title}</option>)}</select></label>
-            <label><span>Бажана дата *</span><input name="date" type="date" required min={new Date().toISOString().split("T")[0]} onChange={event=>setSelectedDate(event.target.value)} /></label>
-            <label><span>Вільний час *</span><select name="time" required defaultValue="" disabled={!selectedDate||slotsLoading}><option value="" disabled>{slotsLoading?"Перевіряємо…":availableTimes.length?"Оберіть час":"Вільного часу немає"}</option>{availableTimes.map(t => <option key={t}>{t}</option>)}</select></label>
-            <label className="wide"><span>Статус направлення</span><select name="referral"><option>Є направлення</option><option>Немає направлення</option><option>Уточню у адміністратора</option></select></label>
+            <label><span>Категорія пацієнта *</span><select name="patientCategory" required defaultValue=""><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
+            <label><span>Тип направлення *</span><select name="referralType" required defaultValue=""><option value="" disabled>Оберіть тип</option><option value="military_referral">Направлення військової частини/закладу</option><option value="eh_referral">Електронне направлення</option><option value="paper_referral">Паперове направлення</option><option value="none">Немає направлення</option><option value="other">Інше</option></select></label>
+            <label className="wide"><span>Дослідження *</span><select name="serviceCode" required value={serviceCode} onChange={event=>setServiceCode(event.target.value)}><option value="" disabled>Оберіть послугу</option>{Object.entries(serviceGroups).map(([group,items])=><optgroup label={group} key={group}>{items.map(service=><option value={service.code} key={service.code}>{service.code} · {service.title} · {money.format(service.price)} грн</option>)}</optgroup>)}</select></label>
+            <label><span>Бажана дата *</span><input name="date" type="date" required min={todayInKyiv()} onChange={event=>setSelectedDate(event.target.value)} /></label>
+            <label><span>Вільний час *</span><select name="time" required defaultValue="" disabled={!selectedDate||!serviceCode||slotsLoading}><option value="" disabled>{slotsLoading?"Перевіряємо…":availableTimes.length?"Оберіть час":"Вільного часу немає"}</option>{availableTimes.map(t => <option key={t}>{t}</option>)}</select>{slotDetails&&<small className="slotDetails">{slotDetails}</small>}</label>
+            <label><span>Номер направлення</span><input name="referralNumber" maxLength={80} placeholder="За наявності" /></label>
+            <label><span>Як дізналися про нас</span><select name="marketingSource" defaultValue=""><option value="">Не вказано</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="recommendation">Рекомендація</option><option value="hospital">Направив медичний заклад</option><option value="other">Інше</option></select></label>
             <label className="wide"><span>Коментар</span><textarea name="comment" rows={3} maxLength={700} placeholder="За потреби вкажіть важливі деталі" /></label>
           </div>
           <label className="consent"><input type="checkbox" required name="consent" value="yes" /><span>Погоджуюся на обробку контактних даних для організації запису та ознайомився(-лася) з <Link href="/privacy">політикою конфіденційності</Link>.</span></label>
@@ -164,7 +165,7 @@ export default function Home() {
         <div><small>Графік</small><b>Пн–Сб<br />08:00–17:00</b></div>
       </section>
 
-      <footer><p>© {new Date().getFullYear()} Відділення променевої діагностики</p><div className="footerLinks"><Link href="/cabinet">Статус заявки</Link><Link href="/privacy">Конфіденційність</Link><a href="https://radiologyos-app.adamenko-artem96.chatgpt.site">RadiologyOS для персоналу</a></div><p>Онлайн-запис не призначений для невідкладних станів.</p></footer>
+      <footer><p>© {new Date().getFullYear()} Відділення променевої діагностики</p><div className="footerLinks"><Link href="/cabinet">Статус заявки</Link><Link href="/privacy">Конфіденційність</Link><Link href="/staff">RadiologyOS для персоналу</Link></div><p>Онлайн-запис не призначений для невідкладних станів.</p></footer>
     </main>
   );
 }
