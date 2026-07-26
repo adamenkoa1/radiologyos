@@ -49,6 +49,13 @@ const anatomyBlocks = [
   { id: "orbits", label: "Орбіти і м’які тканини", options: ["Без помітних змін", "Зміни — уточнити"] },
 ];
 
+const ctWorklist = [
+  { id: "CT-260726-018", time: "09:10", patient: "Мельник Андрій", age: "40 років", question: "Виключити гостре порушення мозкового кровообігу", priority: "Терміново", status: "Очікує опису", tone: "urgent", previous: ["КТ ГМ • 12.04.2025 • Без гострої патології"] },
+  { id: "CT-260726-019", time: "10:25", patient: "Бондаренко Сергій", age: "52 роки", question: "Головний біль після травми", priority: "Негайно", status: "Нове", tone: "critical", previous: [] },
+  { id: "CT-260726-020", time: "11:00", patient: "Шевченко Максим", age: "34 роки", question: "Контроль після лікування", priority: "Планово", status: "Очікує опису", tone: "routine", previous: ["КТ ГМ • 03.07.2026 • Контроль у динаміці", "КТ ГМ • 18.06.2026 • Первинне дослідження"] },
+  { id: "CT-260726-021", time: "11:40", patient: "Ткаченко Віталій", age: "47 років", question: "Запаморочення, короткочасна втрата свідомості", priority: "До 24 год", status: "Заплановано", tone: "soon", previous: [] },
+];
+
 function App() {
   const [active, setActive] = useState("Огляд");
   const [query, setQuery] = useState("");
@@ -64,6 +71,8 @@ function App() {
   const [blockValues, setBlockValues] = useState(() => Object.fromEntries(anatomyBlocks.map((block) => [block.id, block.options[0]])));
   const [showPreview, setShowPreview] = useState(false);
   const [history, setHistory] = useState([]);
+  const [selectedStudy, setSelectedStudy] = useState(ctWorklist[0]);
+  const [worklistFilter, setWorklistFilter] = useState("Усі");
   const visiblePhrases = useMemo(() => phraseBank.filter((phrase) => `${phrase.group} ${phrase.title} ${phrase.text}`.toLowerCase().includes(phraseQuery.toLowerCase())), [phraseQuery]);
   const filtered = studies.filter((study) => `${study.patient} ${study.exam}`.toLowerCase().includes(query.toLowerCase()));
   const reviewItems = useMemo(() => {
@@ -160,6 +169,13 @@ function App() {
     notify("Документ підготовлено");
   }
 
+  function openStudy(study) {
+    setSelectedStudy(study);
+    setPatientName(study.patient);
+    setActive("Протоколи");
+    notify(`${study.patient}: дослідження відкрито`);
+  }
+
   return (
     <main className="shell">
       <aside className="sidebar">
@@ -183,7 +199,38 @@ function App() {
           <div className="headerActions"><button onClick={() => notify("Нових сповіщень немає")}>♢<i /></button><button className="primary" onClick={() => notify("Форма нового дослідження буде підключена на наступному етапі")}>＋ Нове дослідження</button></div>
         </header>
 
-        {active === "Протоколи" ? (
+        {active === "Дослідження" ? (
+          <div className="content clinicalContent">
+            <div className="clinicalHead">
+              <div><p className="eyebrow">CLINICAL WORKSPACE</p><h1>Черга КТ головного мозку</h1><span>Єдиний робочий список лікаря на поточну зміну</span></div>
+              <div className="queueStats"><span><b>4</b> у черзі</span><span className="red"><b>2</b> термінові</span><span><b>1</b> підписано</span></div>
+            </div>
+            <div className="workspaceGrid">
+              <section className="worklist panel">
+                <div className="worklistTools"><div>{["Усі", "Термінові", "Очікують опису"].map((filter) => <button className={worklistFilter === filter ? "selected" : ""} onClick={() => setWorklistFilter(filter)} key={filter}>{filter}</button>)}</div><label>⌕ <input placeholder="Пошук у черзі..." /></label></div>
+                <div className="worklistHead"><span>ЧАС</span><span>ПАЦІЄНТ</span><span>КЛІНІЧНЕ ПИТАННЯ</span><span>ПРІОРИТЕТ</span><span>СТАТУС</span></div>
+                {ctWorklist.filter((study) => worklistFilter === "Усі" || (worklistFilter === "Термінові" ? ["urgent", "critical"].includes(study.tone) : study.status === "Очікує опису")).map((study) => <button className={`worklistRow ${selectedStudy.id === study.id ? "selected" : ""}`} onClick={() => setSelectedStudy(study)} key={study.id}>
+                  <strong>{study.time}</strong><span className="workPatient"><i>{study.patient.split(" ").map((part) => part[0]).join("")}</i><div><b>{study.patient}</b><small>{study.age} • {study.id}</small></div></span><span>{study.question}</span><em className={study.tone}>{study.priority}</em><mark>{study.status}</mark>
+                </button>)}
+              </section>
+              <aside className="studyContext">
+                <section className="panel contextCard">
+                  <div className="contextTop"><i>{selectedStudy.patient.split(" ").map((part) => part[0]).join("")}</i><div><h2>{selectedStudy.patient}</h2><p>{selectedStudy.age} • {selectedStudy.id}</p></div><em className={selectedStudy.tone}>{selectedStudy.priority}</em></div>
+                  <dl><div><dt>Дослідження</dt><dd>КТ головного мозку без контрасту</dd></div><div><dt>Клінічне питання</dt><dd>{selectedStudy.question}</dd></div><div><dt>Направив</dt><dd>Неврологічне відділення</dd></div></dl>
+                  <button className="openStudy" onClick={() => openStudy(selectedStudy)}>Відкрити та описати →</button>
+                </section>
+                <section className="panel timeline">
+                  <div className="panelTitle"><div><h2>Попередні дослідження</h2><p>Історія пацієнта</p></div><span>{selectedStudy.previous.length}</span></div>
+                  {selectedStudy.previous.length ? selectedStudy.previous.map((item) => <button key={item}><i>▣</i><span>{item}</span><b>→</b></button>) : <div className="timelineEmpty">Попередніх досліджень не знайдено</div>}
+                </section>
+                <section className="panel hotkeys">
+                  <div className="panelTitle"><div><h2>Швидкі клавіші</h2></div></div>
+                  <p><kbd>Enter</kbd> Відкрити дослідження</p><p><kbd>N</kbd> Шаблон «Норма»</p><p><kbd>Ctrl S</kbd> Зберегти чернетку</p>
+                </section>
+              </aside>
+            </div>
+          </div>
+        ) : active === "Протоколи" ? (
           <div className="content reportContent">
             <div className="reportTop">
               <div><p className="eyebrow">КТ • ГОЛОВНИЙ МОЗОК</p><h1>Конструктор протоколу</h1><span>Шаблон: КТ ГМ — Норма</span></div>
