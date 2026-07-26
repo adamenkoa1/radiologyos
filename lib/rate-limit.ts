@@ -16,11 +16,6 @@ export async function isRateLimited(
   limit: number,
   windowMinutes: number,
 ) {
-  await db.prepare(`CREATE TABLE IF NOT EXISTS request_limits (
-    key TEXT PRIMARY KEY,
-    attempts INTEGER NOT NULL DEFAULT 0,
-    window_started_at INTEGER NOT NULL
-  )`).run();
   const key = await fingerprint(request, scope);
   const now = Math.floor(Date.now() / 1000);
   const cutoff = now - windowMinutes * 60;
@@ -39,4 +34,3 @@ export async function isRateLimited(
   }
   return (row?.attempts || 0) > limit;
 }
-

@@ -17,7 +17,7 @@ export async function POST(request: Request) {
   const result = await db.prepare(
     `SELECT code, service, desired_date AS desiredDate, desired_time AS desiredTime,
       status, created_at AS createdAt
-     FROM bookings WHERE code = ? AND substr(replace(replace(replace(replace(phone,' ',''),'-',''),'(',''),')',''), -4) = ?
+     FROM bookings WHERE code = ? AND substr(phone_normalized, -4) = ?
      LIMIT 1`
   ).bind(code, phoneLast4).first();
   if (!result) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
@@ -38,18 +38,13 @@ export async function PATCH(request: Request) {
   }
   const booking = await db.prepare(
     `SELECT id, status FROM bookings WHERE code = ?
-     AND substr(replace(replace(replace(replace(phone,' ',''),'-',''),'(',''),')',''), -4) = ? LIMIT 1`
+     AND substr(phone_normalized, -4) = ? LIMIT 1`
   ).bind(code, phoneLast4).first<{id:number;status:string}>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!["new","confirmed","rescheduled"].includes(booking.status)) {
     return Response.json({ error: "Цю заявку вже не можна скасувати онлайн" }, { status: 409 });
   }
   await db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").bind(booking.id).run();
-  await db.prepare(`CREATE TABLE IF NOT EXISTS booking_events (
-    id INTEGER PRIMARY KEY AUTOINCREMENT, booking_id INTEGER NOT NULL,
-    action TEXT NOT NULL, details TEXT NOT NULL DEFAULT '', actor TEXT NOT NULL,
-    created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
-  )`).run();
   await db.prepare(
     "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'cancelled', 'patient_self_service', 'patient')"
   ).bind(booking.id).run();
