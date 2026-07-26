@@ -73,6 +73,8 @@ function App() {
   const [history, setHistory] = useState([]);
   const [selectedStudy, setSelectedStudy] = useState(ctWorklist[0]);
   const [worklistFilter, setWorklistFilter] = useState("Усі");
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiResult, setAiResult] = useState("Оберіть дію — асистент перевірить поточний протокол.");
   const visiblePhrases = useMemo(() => phraseBank.filter((phrase) => `${phrase.group} ${phrase.title} ${phrase.text}`.toLowerCase().includes(phraseQuery.toLowerCase())), [phraseQuery]);
   const filtered = studies.filter((study) => `${study.patient} ${study.exam}`.toLowerCase().includes(query.toLowerCase()));
   const reviewItems = useMemo(() => {
@@ -176,6 +178,18 @@ function App() {
     notify(`${study.patient}: дослідження відкрито`);
   }
 
+  function runAssistant(action) {
+    setAiOpen(true);
+    if (action === "review") {
+      setAiResult(reviewItems[0].tone === "ok" ? "Опис і висновок узгоджені. Критичні незаповнені параметри та суперечності не знайдені." : reviewItems.map((item) => `• ${item.text}`).join("\n"));
+    } else if (action === "conclusion") {
+      setAiResult(`Запропонований висновок:\n${scenarios.find((item) => item.id === scenario)?.conclusion || conclusion}`);
+    } else {
+      const missing = anatomyBlocks.filter((block) => !description.toLowerCase().includes(block.label.toLowerCase().split(" ")[0]));
+      setAiResult(missing.length ? `Перевірте згадування структур:\n${missing.map((item) => `• ${item.label}`).join("\n")}` : "Усі основні анатомічні блоки згадані в описі.");
+    }
+  }
+
   return (
     <main className="shell">
       <aside className="sidebar">
@@ -199,7 +213,26 @@ function App() {
           <div className="headerActions"><button onClick={() => notify("Нових сповіщень немає")}>♢<i /></button><button className="primary" onClick={() => notify("Форма нового дослідження буде підключена на наступному етапі")}>＋ Нове дослідження</button></div>
         </header>
 
-        {active === "Дослідження" ? (
+        {active === "Пацієнти" ? (
+          <div className="content modulePage">
+            <div className="moduleHead"><div><p>РЕЄСТР</p><h1>Пацієнти</h1><span>Історія КТ головного мозку та швидкий доступ до протоколів</span></div><button onClick={() => notify("Форму нового пацієнта відкрито")}>＋ Новий пацієнт</button></div>
+            <section className="modulePanel panel"><div className="moduleTools"><label>⌕ <input placeholder="Пошук за ПІБ або номером..." /></label><div><button className="selected">Усі</button><button>Сьогодні</button><button>Повторні</button></div></div>
+              <div className="patientTable moduleTable"><div className="moduleTableHead"><span>ПАЦІЄНТ</span><span>ОСТАННЄ ДОСЛІДЖЕННЯ</span><span>УСЬОГО КТ</span><span>ОСТАННІЙ ВИСНОВОК</span><span></span></div>
+              {ctWorklist.map((study, index) => <button key={study.id}><span className="workPatient"><i>{study.patient.split(" ").map((p) => p[0]).join("")}</i><div><b>{study.patient}</b><small>{study.age} • ID 00{18 + index}</small></div></span><span>26.07.2026 • КТ ГМ</span><strong>{study.previous.length + 1}</strong><span>{study.previous[0]?.split(" • ").at(-1) || "Первинне дослідження"}</span><em onClick={() => openStudy(study)}>Відкрити →</em></button>)}</div>
+            </section>
+          </div>
+        ) : active === "Розклад" ? (
+          <div className="content modulePage">
+            <div className="moduleHead"><div><p>26 ЛИПНЯ 2026</p><h1>Розклад відділення</h1><span>КТ №1 • поточна зміна 07:00–19:00</span></div><div className="dateNav"><button>←</button><strong>Сьогодні</strong><button>→</button></div></div>
+            <section className="calendar panel"><div className="calendarTimes">{["08:00","09:00","10:00","11:00","12:00","13:00","14:00","15:00"].map((time) => <span key={time}>{time}</span>)}</div><div className="calendarLane"><div className="roomHead"><strong>КТ №1</strong><span>Siemens • 18 досліджень</span></div>{ctWorklist.map((study, i) => <button className={study.tone} style={{ top: `${55 + i * 74}px` }} key={study.id} onClick={() => openStudy(study)}><b>{study.time}</b><span>{study.patient}</span><small>КТ головного мозку</small></button>)}</div><aside className="daySummary"><h2>Підсумок дня</h2><p><span>Заплановано</span><b>18</b></p><p><span>Виконано</span><b>11</b></p><p><span>Очікують</span><b>5</b></p><p><span>Термінові</span><b className="danger">2</b></p><div><strong>61%</strong><span>виконання плану</span></div></aside></section>
+          </div>
+        ) : active === "Звіти" ? (
+          <div className="content modulePage">
+            <div className="moduleHead"><div><p>АНАЛІТИКА</p><h1>Звіт за зміну</h1><span>Ефективність роботи відділення променевої діагностики</span></div><button onClick={() => window.print()}>↓ Експорт звіту</button></div>
+            <section className="reportMetrics"><article><span>Досліджень</span><strong>18</strong><small>+12% до вчора</small></article><article><span>Підписано</span><strong>11</strong><small>61% від черги</small></article><article><span>Середній час опису</span><strong>8:24</strong><small>−1:16 за тиждень</small></article><article><span>Критичні знахідки</span><strong>2</strong><small>повідомлено: 2</small></article></section>
+            <div className="reportGrid"><section className="panel throughput"><div className="panelTitle"><div><h2>Дослідження за годинами</h2><p>Навантаження поточної зміни</p></div></div><div className="bars">{[3,5,7,4,8,6,9,5,3].map((value,index) => <div key={index}><i style={{ height:`${value * 10}px` }} /><span>{8 + index}:00</span></div>)}</div></section><section className="panel kpi"><div className="panelTitle"><div><h2>Контроль якості</h2></div></div><p><span>Протоколи без зауважень</span><b>94%</b></p><p><span>Середній час до підпису</span><b>12 хв</b></p><p><span>Заповнення червоних прапорців</span><b>100%</b></p><p><span>Повторні редагування</span><b>1</b></p></section></div>
+          </div>
+        ) : active === "Дослідження" ? (
           <div className="content clinicalContent">
             <div className="clinicalHead">
               <div><p className="eyebrow">CLINICAL WORKSPACE</p><h1>Черга КТ головного мозку</h1><span>Єдиний робочий список лікаря на поточну зміну</span></div>
@@ -234,7 +267,7 @@ function App() {
           <div className="content reportContent">
             <div className="reportTop">
               <div><p className="eyebrow">КТ • ГОЛОВНИЙ МОЗОК</p><h1>Конструктор протоколу</h1><span>Шаблон: КТ ГМ — Норма</span></div>
-              <div className="reportActions"><button onClick={() => applyScenario("normal")}>Норма</button><button className="saveDraft" onClick={saveDraft}>Зберегти чернетку</button><button className="copy" onClick={copyProtocol}>Копіювати протокол</button></div>
+              <div className="reportActions"><button onClick={() => applyScenario("normal")}>Норма</button><button onClick={() => runAssistant("review")}>✦ AI Review</button><button className="saveDraft" onClick={saveDraft}>Зберегти чернетку</button><button className="copy" onClick={copyProtocol}>Копіювати протокол</button></div>
             </div>
 
             <div className="modeSwitch">
@@ -294,6 +327,7 @@ function App() {
                 </section>
               </aside>
             </div>
+            {aiOpen && <aside className="aiDrawer"><div className="aiHead"><div><span>✦</span><div><strong>AI Assistant</strong><small>КТ головного мозку</small></div></div><button onClick={() => setAiOpen(false)}>×</button></div><div className="aiActions"><button onClick={() => runAssistant("review")}>Перевірити протокол</button><button onClick={() => runAssistant("conclusion")}>Запропонувати висновок</button><button onClick={() => runAssistant("missing")}>Знайти пропущені структури</button></div><div className="aiAnswer"><small>РЕЗУЛЬТАТ ПЕРЕВІРКИ</small><p>{aiResult}</p></div><div className="aiNotice">AI-підказка не замінює рішення лікаря. Фінальний текст завжди перевіряє та підписує лікар-рентгенолог.</div></aside>}
           </div>
         ) : (
         <div className="content">
