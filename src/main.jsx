@@ -37,6 +37,18 @@ const scenarios = [
   { id: "hydro", label: "Гідроцефалія", icon: "◇", conclusion: "КТ-ознаки розширення шлуночкової системи головного мозку.", extra: "Шлуночкова система розширена: індекс Еванса ___, перивентрикулярний набряк ___, ознаки оклюзії лікворних шляхів ___." },
 ];
 
+const anatomyBlocks = [
+  { id: "method", label: "Методика", options: ["Стандартне нативне дослідження", "Дослідження з контрастуванням"] },
+  { id: "parenchyma", label: "Речовина мозку", options: ["Без вогнищевих змін", "Атрофічні зміни", "Вогнищеві зміни — уточнити"] },
+  { id: "ventricles", label: "Шлуночкова система", options: ["Не розширена", "Помірно розширена", "Асиметрична"] },
+  { id: "midline", label: "Серединні структури", options: ["Не зміщені", "Зміщення — вказати напрямок і мм"] },
+  { id: "csf", label: "Лікворні простори", options: ["Не розширені", "Помірно розширені", "Локально деформовані"] },
+  { id: "brainstem", label: "Мозочок і стовбур", options: ["Без помітних змін", "Зміни — уточнити"] },
+  { id: "skull", label: "Кістки черепа", options: ["Без травматичних змін", "Перелом — уточнити локалізацію"] },
+  { id: "sinuses", label: "Пазухи та соскоподібні клітини", options: ["Пневматизація не порушена", "Запальні зміни", "Ретенційна кіста"] },
+  { id: "orbits", label: "Орбіти і м’які тканини", options: ["Без помітних змін", "Зміни — уточнити"] },
+];
+
 function App() {
   const [active, setActive] = useState("Огляд");
   const [query, setQuery] = useState("");
@@ -48,8 +60,20 @@ function App() {
   const [scenario, setScenario] = useState("normal");
   const [phraseQuery, setPhraseQuery] = useState("");
   const [draftRestored, setDraftRestored] = useState(false);
+  const [builderMode, setBuilderMode] = useState("quick");
+  const [blockValues, setBlockValues] = useState(() => Object.fromEntries(anatomyBlocks.map((block) => [block.id, block.options[0]])));
   const visiblePhrases = useMemo(() => phraseBank.filter((phrase) => `${phrase.group} ${phrase.title} ${phrase.text}`.toLowerCase().includes(phraseQuery.toLowerCase())), [phraseQuery]);
   const filtered = studies.filter((study) => `${study.patient} ${study.exam}`.toLowerCase().includes(query.toLowerCase()));
+  const reviewItems = useMemo(() => {
+    const items = [];
+    if (!description.trim()) items.push({ tone: "warn", text: "Опис дослідження не заповнений" });
+    if (!conclusion.trim()) items.push({ tone: "warn", text: "Висновок не заповнений" });
+    if (description.includes("___") || conclusion.includes("___")) items.push({ tone: "warn", text: "Залишилися незаповнені поля ___" });
+    if (scenario === "hemorrhage" && conclusion.toLowerCase().includes("не виявлено")) items.push({ tone: "error", text: "Суперечність: сценарій крововиливу та негативний висновок" });
+    if (urgent && !conclusion.toLowerCase().includes("гостр")) items.push({ tone: "error", text: "Критична знахідка не відображена у висновку" });
+    if (!items.length) items.push({ tone: "ok", text: "Структура протоколу заповнена, суперечностей не знайдено" });
+    return items;
+  }, [description, conclusion, scenario, urgent]);
 
   useEffect(() => {
     const saved = window.localStorage.getItem("radiologyos-ct-brain-draft");
@@ -95,6 +119,13 @@ function App() {
     notify("Чернетку збережено на цьому пристрої");
   }
 
+  function updateBlock(id, value) {
+    const next = { ...blockValues, [id]: value };
+    setBlockValues(next);
+    const generated = anatomyBlocks.map((block) => `${block.label}: ${next[block.id]}.`).join("\n");
+    setDescription(generated);
+  }
+
   return (
     <main className="shell">
       <aside className="sidebar">
@@ -125,6 +156,11 @@ function App() {
               <div className="reportActions"><button onClick={() => applyScenario("normal")}>Норма</button><button className="saveDraft" onClick={saveDraft}>Зберегти чернетку</button><button className="copy" onClick={copyProtocol}>Копіювати протокол</button></div>
             </div>
 
+            <div className="modeSwitch">
+              <button className={builderMode === "quick" ? "selected" : ""} onClick={() => setBuilderMode("quick")}><span>1</span><div><strong>Швидкий шаблон</strong><small>Готовий сценарій та банк фраз</small></div></button>
+              <button className={builderMode === "anatomy" ? "selected" : ""} onClick={() => setBuilderMode("anatomy")}><span>2</span><div><strong>Анатомічні блоки</strong><small>Послідовна перевірка всіх структур</small></div></button>
+            </div>
+
             {draftRestored && <div className="draftBanner"><span>✓</span> Чернетку збережено на цьому пристрої <button onClick={() => { window.localStorage.removeItem("radiologyos-ct-brain-draft"); setDraftRestored(false); notify("Збережену чернетку видалено"); }}>Очистити</button></div>}
 
             <section className="patientStrip">
@@ -134,13 +170,16 @@ function App() {
               <label><span>НАПРАВИВ</span><input defaultValue="Неврологічне відділення" /></label>
             </section>
 
-            <section className="scenarioBar panel">
+            {builderMode === "quick" ? <section className="scenarioBar panel">
               <div><strong>Швидкий сценарій</strong><span>Оберіть основу протоколу</span></div>
               <div className="scenarioButtons">{scenarios.map((item) => <button className={scenario === item.id ? "selected" : ""} key={item.id} onClick={() => applyScenario(item.id)}><i>{item.icon}</i>{item.label}</button>)}</div>
-            </section>
+            </section> : <section className="anatomyBuilder panel">
+              <div className="panelTitle"><div><h2>Складання опису по анатомічних блоках</h2><p>{anatomyBlocks.length} розділів • зміни одразу формують текст опису</p></div><span>{Object.values(blockValues).filter(Boolean).length}/{anatomyBlocks.length}</span></div>
+              <div className="anatomyGrid">{anatomyBlocks.map((block, index) => <label key={block.id}><span><b>{index + 1}</b>{block.label}</span><select value={blockValues[block.id]} onChange={(e) => updateBlock(block.id, e.target.value)}>{block.options.map((option) => <option key={option}>{option}</option>)}</select></label>)}</div>
+            </section>}
 
             <div className="builderGrid">
-              <aside className="phrasePanel panel">
+              <aside className={`phrasePanel panel ${builderMode === "anatomy" ? "compactPhrase" : ""}`}>
                 <div className="panelTitle"><div><h2>Банк фраз</h2><p>Натисніть, щоб додати до опису</p></div></div>
                 <div className="phraseSearch">⌕ <input value={phraseQuery} onChange={(e) => setPhraseQuery(e.target.value)} placeholder="Пошук фрази..." /></div>
                 <div className="phrases">{visiblePhrases.map((phrase) => <button key={phrase.title} onClick={() => addPhrase(phrase.text)}><small>{phrase.group}</small><strong>{phrase.title}</strong><span>＋</span></button>)}{!visiblePhrases.length && <p className="noPhrases">Фраз не знайдено</p>}</div>
@@ -164,9 +203,9 @@ function App() {
                   <div className="flagStatus">{urgent ? "Критичну знахідку необхідно повідомити усно та задокументувати." : "Критичних знахідок не позначено"}</div>
                 </section>
                 <section className="quality panel">
-                  <div className="panelTitle"><div><h2>Контроль якості</h2><p>Перед завершенням</p></div></div>
-                  <p><i>✓</i> Опис заповнений</p><p><i>✓</i> Висновок заповнений</p><p><i>✓</i> Дані пацієнта вказані</p>
-                  <button onClick={() => notify(urgent ? "Перевірте повідомлення про критичну знахідку" : "Протокол завершено")}>Завершити протокол</button>
+                  <div className="panelTitle"><div><h2>Перевірка протоколу</h2><p>Логіка, повнота та узгодженість</p></div><span className="reviewCount">{reviewItems.filter((item) => item.tone !== "ok").length}</span></div>
+                  <div className="reviewList">{reviewItems.map((item) => <p className={item.tone} key={item.text}><i>{item.tone === "ok" ? "✓" : "!"}</i>{item.text}</p>)}</div>
+                  <button disabled={reviewItems.some((item) => item.tone === "error")} onClick={() => notify(reviewItems.some((item) => item.tone === "warn") ? "Перевірте незаповнені поля" : "Протокол завершено")}>Завершити протокол</button>
                 </section>
               </aside>
             </div>
