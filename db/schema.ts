@@ -42,6 +42,7 @@ export const bookings = sqliteTable("bookings", {
   index("bookings_report_date_idx").on(table.desiredDate, table.status),
   index("bookings_performed_report_idx").on(table.performedAt, table.equipmentId),
   index("bookings_staff_report_idx").on(table.assignedRadiologistEmail, table.assignedRadiographerEmail),
+  index("bookings_patient_idx").on(table.phoneNormalized, table.desiredDate),
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {
@@ -108,6 +109,27 @@ export const protocols = sqliteTable("protocols", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
+
+export const patientProfiles = sqliteTable("patient_profiles", {
+  phoneNormalized: text("phone_normalized").primaryKey(),
+  displayName: text("display_name").notNull().default(""),
+  birthYear: integer("birth_year").notNull().default(0),
+  tags: text("tags").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  doNotContact: integer("do_not_contact").notNull().default(0),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const patientCommunications = sqliteTable("patient_communications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  phoneNormalized: text("phone_normalized").notNull(),
+  channel: text("channel").notNull().default("call"),
+  direction: text("direction").notNull().default("outbound"),
+  summary: text("summary").notNull().default(""),
+  actor: text("actor").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
 
 export const reportExports = sqliteTable("report_exports", {
   id: integer("id").primaryKey({ autoIncrement: true }),
