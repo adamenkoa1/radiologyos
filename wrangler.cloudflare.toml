@@ -1,0 +1,31 @@
+# Standalone Cloudflare Workers deployment — runs RadiologyOS on your own
+# Cloudflare account and domain, independent of the OpenAI Sites platform.
+#
+# This file is intentionally NOT named `wrangler.toml` so it does not interfere
+# with the existing dev/build toolchain. Deploy with:
+#   bash scripts/deploy-cloudflare.sh
+# See HOSTING.md for the full walkthrough.
+
+name = "radiologyos"
+main = "dist/server/index.js"
+compatibility_date = "2025-04-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Static client bundle (JS/CSS, self-hosted fonts, favicon). Served directly by
+# Cloudflare; the Worker handles every dynamic / server-rendered route.
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+
+# D1 database. Create it once (see HOSTING.md) and paste its id below.
+[[d1_databases]]
+binding = "DB"
+database_name = "radiologyos"
+database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+migrations_dir = "drizzle"
+
+# Cloudflare Images binding — powers the /_vinext/image optimizer.
+# Optional: delete this block if your plan does not include Images (the rest of
+# the app works without it).
+[images]
+binding = "IMAGES"
