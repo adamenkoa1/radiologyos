@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import StaffWorkspaceShell from "./workspace-shell";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -234,27 +234,34 @@ export default function StaffPage() {
   const canProtocol = staff?.role === "admin" || staff?.role === "radiologist";
   const canFinance = staff?.role === "admin" || staff?.role === "registrar";
 
-  return <main className="staffShell">
-    <header className="staffHead">
-      <div>
-        <p className="eyebrow">RadiologyOS · персонал</p>
-        <h1>Черга онлайн-заявок</h1>
-        {staff && <p className="staffIdentity">{staff.displayName || staff.email} · {roleLabels[staff.role]}</p>}
-      </div>
-      <nav className="staffHeadActions" aria-label="Навігація персоналу">
-        <Link className="button compact secondaryButton" href="/staff/reports">Звіти</Link>
-        <Link className="button compact" href="/">Публічний сайт</Link>
-      </nav>
-    </header>
+  return <StaffWorkspaceShell
+    active="overview"
+    title="Робочий кабінет"
+    description="Записи пацієнтів, виконання досліджень, протоколи та робота обладнання в одному просторі."
+    staffName={staff?.displayName || staff?.email}
+    staffRole={staff ? roleLabels[staff.role] : undefined}
+  >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff">Увійти для роботи</a></section> :
     <>
-      <section className="staffStats">
+      <section className="workspaceQuickGrid" aria-label="Швидкі дії">
+        <a className="workspaceTodayCard" href="#schedule">
+          <span>Сьогодні, {today}</span>
+          <strong>{items.filter(i=>i.desiredDate===today).length}</strong>
+          <b>записів у розкладі</b>
+          <small>{items.filter(i=>i.desiredDate===today&&i.status==="confirmed").length} підтверджено · {items.filter(i=>i.desiredDate===today&&i.status==="new").length} нових</small>
+        </a>
+        <a href="#bookings"><span className="quickGlyph">≡</span><b>Черга заявок</b><small>Перегляд і зміна статусів</small></a>
+        <a href="#bookings"><span className="quickGlyph">◎</span><b>Дослідження</b><small>Виконавці та фактичне виконання</small></a>
+        <a href="/staff/reports"><span className="quickGlyph">▥</span><b>Звіти</b><small>Аналітика та експорт Excel</small></a>
+      </section>
+
+      <section className="staffStats" id="overview">
         <article><span>Усього</span><b>{items.length}</b></article>
         <article><span>Нові</span><b>{items.filter(i=>i.status==="new").length}</b></article>
         <article><span>На сьогодні</span><b>{items.filter(i=>i.desiredDate===today).length}</b></article>
         <article><span>Підтверджені</span><b>{items.filter(i=>i.status==="confirmed").length}</b></article>
       </section>
-      <div className="staffTools">
+      <div className="staffTools" id="schedule">
         <label>Статус <select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Усі заявки</option>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
         <label>Апарат <select value={equipmentFilter} onChange={e=>setEquipmentFilter(e.target.value)}><option value="all">Усе обладнання</option>{equipment.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
         <label>Дата <input type="date" value={dayFilter} onChange={e=>setDayFilter(e.target.value)}/></label>
@@ -265,7 +272,7 @@ export default function StaffPage() {
       {actionError&&<p className="staffError" role="alert">{actionError}</p>}
       {actionSuccess&&<p className="staffSuccess" role="status">{actionSuccess}</p>}
 
-      {staff?.role === "admin" && <section className="staffAdmin">
+      {staff?.role === "admin" && <section className="staffAdmin" id="staff-admin">
         <div>
           <p className="eyebrow">Доступ персоналу</p>
           <h2>Працівники та ролі</h2>
@@ -290,7 +297,7 @@ export default function StaffPage() {
         </div>
       </section>}
 
-      {staff?.role === "admin" && <section className="equipmentAdmin">
+      {staff?.role === "admin" && <section className="equipmentAdmin" id="equipment">
         <div>
           <p className="eyebrow">Розклад обладнання</p>
           <h2>Простої та технічні вікна</h2>
@@ -312,7 +319,7 @@ export default function StaffPage() {
         </div>
       </section>}
 
-      <section className="bookingList">
+      <section className="bookingList" id="bookings">
         {visible.length === 0 && <p className="empty">Заявок у цій категорії немає.</p>}
         {visible.map(item => <article className="bookingRow" key={item.id}>
           <div className="bookingPrimary"><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span><b>{item.name}</b><small>{item.code} · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small></div>
@@ -442,5 +449,5 @@ export default function StaffPage() {
         </article>)}
       </section>
     </>}
-  </main>;
+  </StaffWorkspaceShell>;
 }
