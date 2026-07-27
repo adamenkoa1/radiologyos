@@ -17,3 +17,10 @@ export function canWriteNotes(role: StaffRole) {
   return role === "admin" || role === "registrar" || role === "radiologist" || role === "radiographer";
 }
 
+export function canManageProtocols(role: StaffRole) {
+  return role === "admin" || role === "radiologist";
+}
+
+export function canManageFinance(role: StaffRole) {
+  return role === "admin" || role === "registrar";
+}

@@ -36,3 +36,19 @@ test("domain migration adds equipment scheduling and staff authorization", async
   assert.match(migration, /`phone_normalized`/);
   assert.match(migration, /DROP INDEX IF EXISTS `active_booking_slot`/);
 });
+
+test("operations migration adds protocol, finance and reporting fields", async () => {
+  const migration = await readFile(new URL("../drizzle/0002_operations_reporting.sql", import.meta.url), "utf8");
+  assert.match(migration, /`protocol_status`/);
+  assert.match(migration, /`payment_status`/);
+  assert.match(migration, /`nszu_status`/);
+  assert.match(migration, /CREATE INDEX `bookings_report_date_idx`/);
+});
+
+test("staff reports require authorization and export only aggregate daily CSV", async () => {
+  const route = await readFile(new URL("../app/api/staff/reports/route.ts", import.meta.url), "utf8");
+  assert.match(route, /requireStaff\(request, db\)/);
+  assert.match(route, /format"\) === "csv"/);
+  assert.match(route, /Дані згруповано|byDay|Оплачено, грн/);
+  assert.doesNotMatch(route, /SELECT[^`]*(?:name|phone)/i);
+});

@@ -45,13 +45,16 @@ export async function POST(request: Request) {
     const code = `RD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
     const endTime = addMinutes(desiredTime, service.durationMinutes);
     const referral = referralType === "none" ? "Немає направлення" : referralType;
+    const paymentStatus = patientCategory === "civilian" ? "pending" : "not_required";
+    const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
     const result = await db.prepare(
       `INSERT INTO bookings (
         code, name, phone, phone_normalized, service, service_code, equipment_id,
         duration_minutes, desired_date, desired_time, referral, patient_category,
-        referral_type, referral_number, marketing_source, comment
+        referral_type, referral_number, marketing_source, payment_status,
+        payment_amount, nszu_status, comment
       )
-      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
       WHERE NOT EXISTS (
         SELECT 1 FROM bookings
         WHERE equipment_id = ? AND desired_date = ?
@@ -67,7 +70,8 @@ export async function POST(request: Request) {
     ).bind(
       code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
       service.durationMinutes, desiredDate, desiredTime, referral, patientCategory,
-      referralType, referralNumber, marketingSource, comment,
+      referralType, referralNumber, marketingSource, paymentStatus,
+      service.price, nszuStatus, comment,
       service.equipmentId, desiredDate, endTime, desiredTime,
       service.equipmentId, desiredDate, endTime, desiredTime,
     ).run();
