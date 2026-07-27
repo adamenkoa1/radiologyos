@@ -116,17 +116,24 @@ export default function Home() {
     <main>
       <header className="landing" id="top">
         <div className="landingCard landingHeader">
-          <div>
-            <b>Чернігівський військовий госпіталь</b>
-            <small>Відділення променевої діагностики</small>
-          </div>
-          <details className="landingLogin">
-            <summary>Вхід</summary>
-            <div>
-              <a href="/cabinet">Статус заявки</a>
-              <a href="/staff">Кабінет персоналу</a>
+          <div className="landingHeaderTop">
+            <div className="landingHeaderTitle">
+              <b>Чернігівський військовий госпіталь</b>
+              <small>Відділення променевої діагностики</small>
             </div>
-          </details>
+            <details className="landingLogin">
+              <summary>Вхід</summary>
+              <div>
+                <a href="/cabinet">Статус заявки</a>
+                <a href="/staff">Кабінет персоналу</a>
+              </div>
+            </details>
+          </div>
+          <ul className="modalityChips" aria-label="Дослідження відділення">
+            <li><span aria-hidden="true">ФЛГ</span>Флюорографія</li>
+            <li><span aria-hidden="true">РГ</span>Рентгенографія</li>
+            <li><span aria-hidden="true">КТ</span>Комп’ютерна томографія</li>
+          </ul>
         </div>
 
         <button type="button" className="landingCard categoryCard military" onClick={()=>goToCategory("military","booking")}>
