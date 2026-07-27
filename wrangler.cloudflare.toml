@@ -11,6 +11,14 @@ main = "dist/server/index.js"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Custom domains. The radiologyos.tech zone is already on Cloudflare (its
+# nameservers point to Cloudflare), so `wrangler deploy` provisions these
+# domains and their TLS certificates automatically — no manual DNS needed.
+routes = [
+  { pattern = "radiologyos.tech", custom_domain = true },
+  { pattern = "www.radiologyos.tech", custom_domain = true },
+]
+
 # Static client bundle (JS/CSS, self-hosted fonts, favicon). Served directly by
 # Cloudflare; the Worker handles every dynamic / server-rendered route.
 [assets]

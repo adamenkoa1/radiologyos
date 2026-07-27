@@ -41,12 +41,15 @@ bash scripts/deploy-cloudflare.sh
 
 ## 4. Власний домен
 
-У панелі Cloudflare: **Workers & Pages → radiologyos → Settings → Domains & Routes
-→ Add** — прив'яжіть ваш домен або піддомен (напр. `booking.ваш-домен.ua`). DNS
-підхопиться автоматично, якщо домен уже в Cloudflare.
+Домен **`radiologyos.tech`** уже прописаний у `wrangler.cloudflare.toml`
+(апекс + `www`) як `custom_domain`. Оскільки його nameservers уже вказують на
+Cloudflare, `wrangler deploy` **сам створить ці домени та TLS-сертифікати** —
+жодних ручних дій у DNS не потрібно. Через кілька хвилин після деплою сайт буде
+на `https://radiologyos.tech`.
 
-Далі впишіть цей домен у `lib/site.ts` (`SITE_URL`) — він використовується для
-метаданих, `sitemap.xml` і `robots.txt` — і задеплойте ще раз.
+`SITE_URL` у `lib/site.ts` уже налаштовано на `https://radiologyos.tech`
+(використовується для метаданих, `sitemap.xml` і `robots.txt`). Якщо колись
+зміните домен — оновіть його тут і в `routes` конфіга.
 
 ## 5. Перший вхід персоналу
 
