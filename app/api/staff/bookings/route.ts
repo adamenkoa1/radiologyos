@@ -1,6 +1,12 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../../lib/booking-rules";
-import { canManageBookings, canWriteNotes, requireStaff } from "../../../../lib/staff-auth";
+import {
+  canManageBookings,
+  canManageFinance,
+  canManageProtocols,
+  canWriteNotes,
+  requireStaff,
+} from "../../../../lib/staff-auth";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -19,6 +25,10 @@ export async function GET(request: Request) {
         desired_date AS desiredDate, desired_time AS desiredTime, referral,
         patient_category AS patientCategory, referral_type AS referralType,
         referral_number AS referralNumber, marketing_source AS marketingSource,
+        protocol_number AS protocolNumber, protocol_status AS protocolStatus,
+        protocol_updated_at AS protocolUpdatedAt, payment_status AS paymentStatus,
+        payment_amount AS paymentAmount, payment_method AS paymentMethod,
+        nszu_status AS nszuStatus, nszu_reference AS nszuReference,
         comment, status, created_at AS createdAt
        FROM bookings ORDER BY created_at DESC LIMIT 500`
     ).all(),
@@ -31,8 +41,12 @@ export async function GET(request: Request) {
        FROM booking_staff_notes`
     ).all(),
   ]);
+  const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
+    ...booking,
+    listedPrice: serviceByCode(String(booking.serviceCode))?.price || Number(booking.paymentAmount) || 0,
+  }));
   return Response.json({
-    bookings: result.results,
+    bookings,
     events: events.results,
     notes: notes.results,
     staff: member,
@@ -44,7 +58,20 @@ export async function PATCH(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  const body = await request.json() as { id?: number; status?: string; desiredDate?: string; desiredTime?: string; note?: string };
+  const body = await request.json() as {
+    id?: number;
+    status?: string;
+    desiredDate?: string;
+    desiredTime?: string;
+    note?: string;
+    protocolNumber?: string;
+    protocolStatus?: string;
+    paymentStatus?: string;
+    paymentAmount?: number;
+    paymentMethod?: string;
+    nszuStatus?: string;
+    nszuReference?: string;
+  };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
 
   if (typeof body.note === "string") {
@@ -59,6 +86,72 @@ export async function PATCH(request: Request) {
       "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_note', 'updated', ?)"
     ).bind(body.id, member.email).run();
     return Response.json({ ok: true });
+  }
+
+  if (typeof body.protocolStatus === "string" || typeof body.protocolNumber === "string") {
+    if (!canManageProtocols(member.role)) {
+      return Response.json({ error: "Протоколи може змінювати лише лікар або адміністратор" }, { status: 403 });
+    }
+    const protocolStatuses = new Set(["not_started", "in_progress", "ready", "issued"]);
+    const protocolStatus = String(body.protocolStatus || "");
+    const protocolNumber = String(body.protocolNumber || "").trim().slice(0, 80);
+    if (!protocolStatuses.has(protocolStatus)) {
+      return Response.json({ error: "Некоректний статус протоколу" }, { status: 400 });
+    }
+    if ((protocolStatus === "ready" || protocolStatus === "issued") && !protocolNumber) {
+      return Response.json({ error: "Для готового або виданого протоколу вкажіть його номер" }, { status: 400 });
+    }
+    const updated = await db.prepare(
+      `UPDATE bookings SET protocol_number = ?, protocol_status = ?,
+       protocol_updated_at = CURRENT_TIMESTAMP WHERE id = ?`
+    ).bind(protocolNumber, protocolStatus, body.id).run();
+    if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'protocol_updated', ?, ?)"
+    ).bind(body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
+    return Response.json({ ok: true, protocolNumber, protocolStatus });
+  }
+
+  if (
+    typeof body.paymentStatus === "string" ||
+    typeof body.paymentAmount === "number" ||
+    typeof body.paymentMethod === "string" ||
+    typeof body.nszuStatus === "string" ||
+    typeof body.nszuReference === "string"
+  ) {
+    if (!canManageFinance(member.role)) {
+      return Response.json({ error: "Розрахунки та НСЗУ може змінювати лише реєстратор або адміністратор" }, { status: 403 });
+    }
+    const paymentStatuses = new Set(["not_set", "pending", "paid", "not_required", "refunded"]);
+    const paymentMethods = new Set(["", "cash", "card", "bank_transfer", "privat_link", "other"]);
+    const nszuStatuses = new Set(["not_applicable", "pending", "confirmed", "rejected"]);
+    const paymentStatus = String(body.paymentStatus || "");
+    const paymentMethod = String(body.paymentMethod || "");
+    const nszuStatus = String(body.nszuStatus || "");
+    const nszuReference = String(body.nszuReference || "").trim().slice(0, 80);
+    const paymentAmount = Number(body.paymentAmount);
+    if (
+      !paymentStatuses.has(paymentStatus) ||
+      !paymentMethods.has(paymentMethod) ||
+      !nszuStatuses.has(nszuStatus) ||
+      !Number.isInteger(paymentAmount) ||
+      paymentAmount < 0 ||
+      paymentAmount > 100000
+    ) {
+      return Response.json({ error: "Некоректні дані оплати або НСЗУ" }, { status: 400 });
+    }
+    if (paymentStatus === "paid" && paymentAmount === 0) {
+      return Response.json({ error: "Для оплаченої послуги вкажіть суму" }, { status: 400 });
+    }
+    const updated = await db.prepare(
+      `UPDATE bookings SET payment_status = ?, payment_amount = ?, payment_method = ?,
+       nszu_status = ?, nszu_reference = ? WHERE id = ?`
+    ).bind(paymentStatus, paymentAmount, paymentMethod, nszuStatus, nszuReference, body.id).run();
+    if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'finance_updated', ?, ?)"
+    ).bind(body.id, `${paymentStatus} · ${paymentAmount} грн · ${nszuStatus}`, member.email).run();
+    return Response.json({ ok: true, paymentStatus, paymentAmount, paymentMethod, nszuStatus, nszuReference });
   }
 
   if (!canManageBookings(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });

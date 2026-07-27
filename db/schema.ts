@@ -18,11 +18,20 @@ export const bookings = sqliteTable("bookings", {
   referralType: text("referral_type").notNull().default("other"),
   referralNumber: text("referral_number").notNull().default(""),
   marketingSource: text("marketing_source").notNull().default(""),
+  protocolNumber: text("protocol_number").notNull().default(""),
+  protocolStatus: text("protocol_status").notNull().default("not_started"),
+  protocolUpdatedAt: text("protocol_updated_at").notNull().default(""),
+  paymentStatus: text("payment_status").notNull().default("not_set"),
+  paymentAmount: integer("payment_amount").notNull().default(0),
+  paymentMethod: text("payment_method").notNull().default(""),
+  nszuStatus: text("nszu_status").notNull().default("not_applicable"),
+  nszuReference: text("nszu_reference").notNull().default(""),
   comment: text("comment").notNull().default(""),
   status: text("status").notNull().default("new"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   index("bookings_equipment_schedule_idx").on(table.equipmentId, table.desiredDate, table.desiredTime),
+  index("bookings_report_date_idx").on(table.desiredDate, table.status),
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {

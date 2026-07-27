@@ -10,7 +10,10 @@ type Booking = {
   serviceCode:string; equipmentId:string; durationMinutes:number;
   desiredDate:string; desiredTime:string; referral:string;
   patientCategory:string; referralType:string; referralNumber:string;
-  marketingSource:string; comment:string; status:string; createdAt:string;
+  marketingSource:string; protocolNumber:string; protocolStatus:string; protocolUpdatedAt:string;
+  paymentStatus:string; paymentAmount:number; paymentMethod:string;
+  nszuStatus:string; nszuReference:string; listedPrice:number;
+  comment:string; status:string; createdAt:string;
 };
 type BookingEvent = { id:number; bookingId:number; action:string; details:string; actor:string; createdAt:string };
 type StaffNote = { bookingId:number; note:string; updatedBy:string; updatedAt:string };
@@ -34,6 +37,26 @@ const categoryLabels: Record<string,string> = { civilian:"Цивільний м�
 const referralLabels: Record<string,string> = {
   eh_referral:"е-Направлення", military_referral:"Направлення військової частини",
   paper_referral:"Паперове направлення", none:"Без направлення", other:"Інше",
+};
+const protocolLabels: Record<string,string> = {
+  not_started:"Не розпочато", in_progress:"В роботі", ready:"Готовий", issued:"Видано",
+};
+const paymentLabels: Record<string,string> = {
+  not_set:"Не визначено", pending:"Очікує оплати", paid:"Оплачено",
+  not_required:"Оплата не потрібна", refunded:"Повернено",
+};
+const paymentMethodLabels: Record<string,string> = {
+  "":"Не вказано", cash:"Готівка", card:"Картка",
+  bank_transfer:"Банківський переказ", privat_link:"Посилання ПриватБанк", other:"Інше",
+};
+const nszuLabels: Record<string,string> = {
+  not_applicable:"Не застосовується", pending:"Очікує перевірки",
+  confirmed:"Підтверджено", rejected:"Відхилено",
+};
+const eventLabels: Record<string,string> = {
+  created:"Заявку створено", rescheduled:"Перенесено", staff_note:"Оновлено нотатку",
+  status_changed:"Змінено статус", protocol_updated:"Оновлено протокол",
+  finance_updated:"Оновлено оплату / НСЗУ",
 };
 
 function todayInKyiv() {
@@ -130,6 +153,18 @@ export default function StaffPage() {
     setActionSuccess("Внутрішню нотатку збережено.");
   }
 
+  async function saveOperations(id:number,payload:Partial<Booking>,successMessage:string) {
+    setActionError(""); setActionSuccess("");
+    const response = await fetch("/api/staff/bookings", {
+      method:"PATCH", headers:{"content-type":"application/json"},
+      body:JSON.stringify({id,...payload}),
+    });
+    const data = await response.json() as Partial<Booking> & { error?:string };
+    if (!response.ok) { setActionError(data.error || "Не вдалося зберегти зміни"); return; }
+    setItems(current => current.map(item => item.id === id ? {...item,...payload,...data} : item));
+    setActionSuccess(successMessage);
+  }
+
   async function addEquipmentBlock(form:HTMLFormElement) {
     setActionError(""); setActionSuccess("");
     const data = new FormData(form);
@@ -187,6 +222,8 @@ export default function StaffPage() {
   [items,filter,equipmentFilter,dayFilter,query]);
   const today = todayInKyiv();
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
+  const canProtocol = staff?.role === "admin" || staff?.role === "radiologist";
+  const canFinance = staff?.role === "admin" || staff?.role === "registrar";
 
   return <main className="staffShell">
     <header className="staffHead">
@@ -195,7 +232,10 @@ export default function StaffPage() {
         <h1>Черга онлайн-заявок</h1>
         {staff && <p className="staffIdentity">{staff.displayName || staff.email} · {roleLabels[staff.role]}</p>}
       </div>
-      <Link className="button compact" href="/">Публічний сайт</Link>
+      <nav className="staffHeadActions" aria-label="Навігація персоналу">
+        <Link className="button compact secondaryButton" href="/staff/reports">Звіти</Link>
+        <Link className="button compact" href="/">Публічний сайт</Link>
+      </nav>
     </header>
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff">Увійти для роботи</a></section> :
     <>
@@ -282,10 +322,61 @@ export default function StaffPage() {
             <button type="submit">Зберегти нотатку</button>
             {notes.find(note=>note.bookingId===item.id)&&<span>Оновлено: {new Date(notes.find(note=>note.bookingId===item.id)!.updatedAt).toLocaleString("uk-UA")}</span>}
           </form>
+          <details className="bookingOperations">
+            <summary>
+              Протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus} ·
+              Оплата: {paymentLabels[item.paymentStatus] || item.paymentStatus}
+            </summary>
+            <div className="operationsGrid">
+              <section>
+                <h3>Протокол дослідження</h3>
+                {canProtocol ? <form onSubmit={event=>{
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  void saveOperations(item.id,{
+                    protocolNumber:String(data.get("protocolNumber")),
+                    protocolStatus:String(data.get("protocolStatus")),
+                  },"Дані протоколу збережено.");
+                }}>
+                  <label><span>Номер протоколу</span><input name="protocolNumber" maxLength={80} defaultValue={item.protocolNumber} placeholder="Наприклад, КТ-2026-001"/></label>
+                  <label><span>Статус</span><select name="protocolStatus" defaultValue={item.protocolStatus}>{Object.entries(protocolLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <button type="submit">Зберегти протокол</button>
+                </form> : <dl className="operationReadOnly">
+                  <div><dt>Номер</dt><dd>{item.protocolNumber || "Не присвоєно"}</dd></div>
+                  <div><dt>Статус</dt><dd>{protocolLabels[item.protocolStatus] || item.protocolStatus}</dd></div>
+                </dl>}
+              </section>
+              <section>
+                <h3>Оплата та НСЗУ</h3>
+                {canFinance ? <form onSubmit={event=>{
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  void saveOperations(item.id,{
+                    paymentStatus:String(data.get("paymentStatus")),
+                    paymentAmount:Number(data.get("paymentAmount")),
+                    paymentMethod:String(data.get("paymentMethod")),
+                    nszuStatus:String(data.get("nszuStatus")),
+                    nszuReference:String(data.get("nszuReference")),
+                  },"Дані оплати та НСЗУ збережено.");
+                }}>
+                  <label><span>Статус оплати</span><select name="paymentStatus" defaultValue={item.paymentStatus}>{Object.entries(paymentLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Сума, грн</span><input name="paymentAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paymentAmount || item.listedPrice}/></label>
+                  <label><span>Спосіб</span><select name="paymentMethod" defaultValue={item.paymentMethod}>{Object.entries(paymentMethodLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Статус НСЗУ</span><select name="nszuStatus" defaultValue={item.nszuStatus}>{Object.entries(nszuLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Номер підтвердження НСЗУ</span><input name="nszuReference" maxLength={80} defaultValue={item.nszuReference}/></label>
+                  <button type="submit">Зберегти оплату / НСЗУ</button>
+                </form> : <dl className="operationReadOnly">
+                  <div><dt>Оплата</dt><dd>{paymentLabels[item.paymentStatus] || item.paymentStatus} · {item.paymentAmount || item.listedPrice} грн</dd></div>
+                  <div><dt>НСЗУ</dt><dd>{nszuLabels[item.nszuStatus] || item.nszuStatus}</dd></div>
+                </dl>}
+              </section>
+            </div>
+            <p className="operationsNote">Це внутрішній облік. Фактичне списання коштів або перевірка в ЕСОЗ/НСЗУ відбуваються лише після підключення офіційного провайдера.</p>
+          </details>
           <details className="bookingHistory">
             <summary>Історія змін ({events.filter(event=>event.bookingId===item.id).length})</summary>
             {events.filter(event=>event.bookingId===item.id).length===0?<p>Змін ще не зафіксовано.</p>:
-              <ol>{events.filter(event=>event.bookingId===item.id).map(event=><li key={event.id}><b>{event.action==="created"?"Заявку створено":event.action==="rescheduled"?"Перенесено":event.action==="staff_note"?"Оновлено нотатку":"Змінено статус"}</b><span>{event.details}</span><small>{new Date(event.createdAt).toLocaleString("uk-UA")} · {event.actor==="patient"?"пацієнт":event.actor}</small></li>)}</ol>}
+              <ol>{events.filter(event=>event.bookingId===item.id).map(event=><li key={event.id}><b>{eventLabels[event.action] || event.action}</b><span>{event.details}</span><small>{new Date(event.createdAt).toLocaleString("uk-UA")} · {event.actor==="patient"?"пацієнт":event.actor}</small></li>)}</ol>}
           </details>
         </article>)}
       </section>
