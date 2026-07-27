@@ -125,7 +125,7 @@ export default function Home() {
               <summary>Вхід</summary>
               <div>
                 <a href="/cabinet">Статус заявки</a>
-                <a href="/staff">Кабінет персоналу</a>
+                <a href="/staff/login">Кабінет персоналу</a>
               </div>
             </details>
           </div>

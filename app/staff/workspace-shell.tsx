@@ -68,6 +68,11 @@ export default function StaffWorkspaceShell({
   const current = now ? formatDateTime(now) : {date:"—",time:"—"};
   const identity = staffName || "Робочий профіль";
 
+  async function logout() {
+    await fetch("/api/staff/logout", { method:"POST" }).catch(()=>{});
+    window.location.assign("/staff/login");
+  }
+
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}`}>
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff" aria-label="RadiologyOS — головна">
@@ -119,6 +124,7 @@ export default function StaffWorkspaceShell({
             <Link href="/staff">Робочий кабінет</Link>
             <Link href="/staff/reports">Звіти відділення</Link>
             <Link href="/">Публічний сайт</Link>
+            <button type="button" className="workspaceLogout" onClick={()=>void logout()}>Вийти</button>
           </div>
         </details>
       </header>

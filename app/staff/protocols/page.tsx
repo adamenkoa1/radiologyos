@@ -237,7 +237,7 @@ export default function ProtocolsPage() {
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
-    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff%2Fprotocols">Увійти для роботи</a></section> :
+    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fprotocols">Увійти для роботи</a></section> :
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Черга протоколів">
         <div className="protocolQueueTools">

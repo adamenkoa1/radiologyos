@@ -16,6 +16,19 @@
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-sans); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; letter-spacing:-.006em; }
 a { color:inherit; text-decoration:none; }
+/* Staff login */
+.loginShell{min-height:100vh;display:grid;place-items:center;padding:24px;background:var(--paper)}
+.loginCard{width:100%;max-width:420px;display:flex;flex-direction:column;background:#fff;border:1px solid #dce4e3;border-radius:16px;padding:clamp(26px,4vw,40px);box-shadow:0 24px 60px rgba(18,61,58,.1)}
+.loginMark{width:52px;height:52px;display:grid;place-items:center;border-radius:14px;background:var(--green);color:#fff;font-family:var(--font-serif);font-size:26px;font-weight:700}
+.loginCard h1{font-family:var(--font-serif);font-size:30px;font-weight:600;margin:18px 0 4px}
+.loginCard>p{margin:0 0 22px;color:#66756f;font-size:13px;line-height:1.5}
+.loginCard label{display:block;margin-bottom:14px}.loginCard label>span{display:block;margin-bottom:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#41544f}
+.loginCard input{width:100%;padding:12px 13px;border:1px solid #d5ddd9;border-radius:8px;font:inherit;color:var(--ink)}.loginCard input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.loginError{margin:0 0 14px!important;padding:11px 13px;background:#fff0eb;color:#a23c1d;border-radius:8px;font-size:13px}
+.loginCard button{min-height:48px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:14px;cursor:pointer;transition:.15s}.loginCard button:hover:not(:disabled){background:#0a4b42}.loginCard button:disabled{opacity:.6}
+.loginBack{margin-top:18px;text-align:center;color:#66756f;font-size:12px;font-weight:600}.loginBack:hover{color:var(--green)}
+.workspaceLogout{width:100%;text-align:left;display:block;padding:11px 12px;border:0;border-top:1px solid #eef2f0;margin-top:4px;background:transparent;color:#a23c1d;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border-radius:5px}.workspaceLogout:hover{background:#fdeeea}
+
 /* Home landing cards */
 .landing{max-width:1140px;margin:0 auto;padding:clamp(18px,4vw,44px) clamp(14px,4vw,28px) 0;display:flex;flex-direction:column;gap:14px}
 .landingCard{border-radius:24px;padding:clamp(22px,3vw,32px);display:flex;align-items:center;gap:20px;transition:transform .15s,box-shadow .15s}

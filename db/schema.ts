@@ -72,8 +72,16 @@ export const staffMembers = sqliteTable("staff_members", {
   displayName: text("display_name").notNull().default(""),
   role: text("role").notNull(),
   active: integer("active").notNull().default(1),
+  passwordHash: text("password_hash").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const staffSessions = sqliteTable("staff_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  email: text("email").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, table => [index("staff_sessions_expiry_idx").on(table.expiresAt)]);
 
 export const equipment = sqliteTable("equipment", {
   id: text("id").primaryKey(),

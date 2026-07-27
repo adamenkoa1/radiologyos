@@ -214,12 +214,15 @@ export default function StaffPage() {
         displayName:String(data.get("displayName")),
         role:String(data.get("role")),
         active:String(data.get("active")) !== "false",
+        password:String(data.get("password") || ""),
       }),
     });
-    const result = await response.json() as { error?:string };
+    const result = await response.json() as { error?:string; needsPassword?:boolean };
     if (!response.ok) { setActionError(result.error || "Не вдалося зберегти доступ"); return; }
     form.reset();
-    setActionSuccess("Доступ працівника збережено.");
+    setActionSuccess(result.needsPassword
+      ? "Працівника додано. Задайте йому пароль, щоб він міг увійти."
+      : "Доступ працівника збережено.");
     await load();
   }
 
@@ -242,7 +245,7 @@ export default function StaffPage() {
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
-    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff">Увійти для роботи</a></section> :
+    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff">Увійти для роботи</a></section> :
     <>
       <section className="workspaceQuickGrid" aria-label="Швидкі дії">
         <a className="workspaceTodayCard" href="#schedule">
@@ -283,6 +286,7 @@ export default function StaffPage() {
           <label><span>Робочий email</span><input name="email" type="email" required placeholder="name@example.com"/></label>
           <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
           <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span>Пароль для входу</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Мінімум 8 символів"/></label>
           <input name="active" type="hidden" value="true"/>
           <button type="submit">Додати працівника</button>
         </form>
@@ -293,6 +297,7 @@ export default function StaffPage() {
             <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
             <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>
+            <label><span>Новий пароль</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Залиште порожнім, щоб не змінювати"/></label>
             <button type="submit">Зберегти</button>
           </form>)}
         </div>

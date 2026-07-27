@@ -146,7 +146,7 @@ export default function ReportsPage() {
     {error && !data ? <section className="accessDenied">
       <b>Захищений розділ</b>
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
-      <a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff%2Freports">Увійти для роботи</a>
+      <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Freports">Увійти для роботи</a>
     </section> : <>
       <section className="reportBuilder">
         <div className="reportBuilderHead">

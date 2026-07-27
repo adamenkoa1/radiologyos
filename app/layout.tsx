@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chernihiv-radiology-booking.adamenko-artem96.chatgpt.site"),
+  metadataBase: new URL(SITE_URL),
   title: "Променева діагностика — Чернігівський військовий госпіталь",
   description: "КТ, цифрова рентгенографія та флюорографія у Чернігові. Онлайн-запис на дослідження.",
   other: {
