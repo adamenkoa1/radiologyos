@@ -29,7 +29,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "radiologyos"
-database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
+database_id = "dc9997c2-7157-42e8-b7f0-2d05654b261c"
 migrations_dir = "drizzle"
 
 # Cloudflare Images binding — powers the /_vinext/image optimizer. Left OUT
