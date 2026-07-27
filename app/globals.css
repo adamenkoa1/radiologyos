@@ -16,6 +16,29 @@
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-sans); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; letter-spacing:-.006em; }
 a { color:inherit; text-decoration:none; }
+/* Home landing cards */
+.landing{max-width:1140px;margin:0 auto;padding:clamp(18px,4vw,44px) clamp(14px,4vw,28px) 0;display:flex;flex-direction:column;gap:14px}
+.landingCard{border-radius:24px;padding:clamp(22px,3vw,32px);display:flex;align-items:center;gap:20px;transition:transform .15s,box-shadow .15s}
+.landingHeader{background:var(--green);color:#fff;justify-content:space-between;align-items:flex-start}
+.landingHeader>div>b{display:block;font-family:var(--font-serif);font-size:clamp(21px,3vw,30px);font-weight:600;line-height:1.14}
+.landingHeader>div>small{display:block;margin-top:6px;color:#bcdad3;font-size:13px}
+.landingLogin{position:relative;flex:0 0 auto}
+.landingLogin>summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;gap:7px;padding:9px 16px;border:1px solid rgba(255,255,255,.32);border-radius:999px;color:#fff;font-size:13px;font-weight:700}
+.landingLogin>summary::-webkit-details-marker{display:none}.landingLogin>summary::after{content:"▾";font-size:10px;opacity:.8}
+.landingLogin>div{position:absolute;right:0;top:48px;z-index:6;min-width:210px;padding:8px;background:#fff;border-radius:14px;box-shadow:0 18px 45px rgba(18,61,58,.22)}
+.landingLogin>div a{display:block;padding:11px 12px;border-radius:9px;color:var(--ink);font-size:13px;font-weight:600}.landingLogin>div a:hover{background:#eef4f2;color:var(--green)}
+.categoryCard{width:100%;text-align:left;border:0;cursor:pointer;min-height:134px;font:inherit;color:inherit}
+.categoryCard.military{background:var(--green);color:#fff}.categoryCard.civilian{background:var(--sand);color:var(--ink)}
+.categoryCard:hover{transform:translateY(-2px);box-shadow:0 16px 40px rgba(20,45,43,.16)}
+.categoryIcon{width:62px;height:62px;flex:0 0 62px;border-radius:18px;display:grid;place-items:center;background:rgba(255,255,255,.16)}
+.categoryCard.civilian .categoryIcon{background:rgba(13,91,80,.12)}
+.categoryIcon svg{width:29px;height:29px;fill:currentColor}
+.categoryCopy{flex:1;min-width:0}.categoryCopy b{display:block;font-family:var(--font-serif);font-size:clamp(23px,3.2vw,34px);font-weight:600;line-height:1.08}.categoryCopy small{display:block;margin-top:9px;font-size:15px;line-height:1.4;opacity:.82}
+.categoryChevron{flex:0 0 auto;font-size:30px;line-height:1;opacity:.5}
+.infoCard{background:var(--green);color:#fff;justify-content:space-between;min-height:72px}
+.infoText{display:flex;align-items:baseline;gap:18px;min-width:0}.infoText b{font-size:15px}.infoText>span{font-size:16px;color:#dbeee8}
+@media(max-width:600px){.landingCard{border-radius:18px;gap:15px;padding:22px}.categoryIcon{width:52px;height:52px;flex:0 0 52px;border-radius:14px}.categoryIcon svg{width:25px;height:25px}.infoText{flex-direction:column;gap:2px}}
+
 .topbar { height:82px; padding:0 clamp(20px,5vw,76px); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #d9d6cd; background:rgba(245,243,237,.94); position:sticky; top:0; z-index:20; backdrop-filter:blur(14px); }
 .brand { display:flex; align-items:center; gap:12px; }
 .brandMark { width:38px; height:38px; border-radius:50%; background:var(--green); color:white; display:grid; place-items:center; font-family:var(--font-serif); font-size:22px; }

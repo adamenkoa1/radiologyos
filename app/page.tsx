@@ -77,6 +77,12 @@ export default function Home() {
     return () => { active = false; };
   }, [selectedDate, serviceCode]);
 
+  function goToCategory(category:string, target:string) {
+    setPatientCategory(category);
+    if (typeof window === "undefined") return;
+    document.getElementById(target)?.scrollIntoView({ behavior:"smooth", block:"start" });
+  }
+
   async function submitBooking(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setStatus("sending");
@@ -108,37 +114,42 @@ export default function Home() {
 
   return (
     <main>
-      <header className="topbar">
-        <a className="brand" href="#top" aria-label="На головну">
-          <span className="brandMark">R</span>
-          <span><b>Променева діагностика</b><small>Чернігівський військовий госпіталь</small></span>
-        </a>
-        <nav aria-label="Головна навігація">
-          <a href="#services">Послуги</a><a href="#patients">Пацієнтам</a><a href="/cabinet">Статус заявки</a><a className="staffLogin" href="/staff">Вхід для персоналу</a>
-        </nav>
-        <a className="button compact" href="#booking">Записатися</a>
-      </header>
+      <header className="landing" id="top">
+        <div className="landingCard landingHeader">
+          <div>
+            <b>Чернігівський військовий госпіталь</b>
+            <small>Відділення променевої діагностики</small>
+          </div>
+          <details className="landingLogin">
+            <summary>Вхід</summary>
+            <div>
+              <a href="/cabinet">Статус заявки</a>
+              <a href="/staff">Кабінет персоналу</a>
+            </div>
+          </details>
+        </div>
 
-      <section className="hero" id="top">
-        <div className="heroCopy">
-          <p className="eyebrow"><span /> Відділення променевої діагностики</p>
-          <h1>Точне дослідження.<br /><em>Зрозумілий маршрут.</em></h1>
-          <p className="lead">КТ, цифрова рентгенографія та флюорографія у Чернігові. Оберіть послугу й залиште заявку на зручний час.</p>
-          <div className="heroActions">
-            <a className="button" href="#booking">Записатися онлайн <span>→</span></a>
-            <a className="textLink" href="tel:+380972808899">+380 97 280 88 99</a>
-          </div>
-          <div className="facts">
-            <div><b>08:00–17:00</b><span>Пн–Сб</span></div>
-            <div><b>КТ • Рентген • ФЛГ</b><span>Цифрові дослідження</span></div>
-            <div><b>вул. Полуботка, 40</b><span>м. Чернігів</span></div>
-          </div>
-        </div>
-        <div className="heroVisual" aria-hidden="true">
-          <div className="scanOrb"><span /><i /></div>
-          <p>Діагностика, якій<br />можна довіряти</p>
-        </div>
-      </section>
+        <button type="button" className="landingCard categoryCard military" onClick={()=>goToCategory("military","booking")}>
+          <span className="categoryIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 8.6-8 11-4.6-2.4-8-6-8-11V5l8-3z"/></svg></span>
+          <span className="categoryCopy"><b>Військовослужбовцям</b><small>Безоплатні дослідження за направленням</small></span>
+          <span className="categoryChevron" aria-hidden="true">›</span>
+        </button>
+
+        <button type="button" className="landingCard categoryCard civilian" onClick={()=>goToCategory("civilian","services")}>
+          <span className="categoryIcon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 3h4v7h7v4h-7v7h-4v-7H3v-4h7z"/></svg></span>
+          <span className="categoryCopy"><b>Цивільним особам</b><small>Платні дослідження — повний прайс і запис</small></span>
+          <span className="categoryChevron" aria-hidden="true">›</span>
+        </button>
+
+        <a className="landingCard infoCard" href="tel:+380972808899">
+          <span className="infoText"><b>Телефон</b><span>+380 97 280 88 99</span></span>
+          <span className="categoryChevron" aria-hidden="true">›</span>
+        </a>
+        <a className="landingCard infoCard" href="https://maps.google.com/?q=Чернігів,+вул.+Полуботка,+40" target="_blank" rel="noopener noreferrer">
+          <span className="infoText"><b>Адреса</b><span>м. Чернігів, вул. Полуботка, 40</span></span>
+          <span className="categoryChevron" aria-hidden="true">›</span>
+        </a>
+      </header>
 
       <section className="section" id="services">
         <div className="sectionHead"><div><p className="eyebrow">Послуги</p><h2>Оберіть дослідження</h2></div><p>Остаточну програму дослідження визначає лікар з урахуванням направлення та клінічної ситуації.</p></div>
@@ -153,12 +164,6 @@ export default function Home() {
         </div>
         <p className="catalogCount">Повний каталог: {SERVICES.length} послуг із внутрішніми кодами та кодами eHealth там, де відповідність визначена.</p>
         <p className="tariffNote">Ціни на сайті мають інформаційний характер. Перед підтвердженням запису адміністратор уточнить вартість відповідно до чинного офіційного тарифу.</p>
-      </section>
-
-      <section className="patientBand" id="patients">
-        <div><p className="eyebrow light">Пацієнтам</p><h2>Для військових і цивільних</h2></div>
-        <article><span>01</span><div><h3>Військовослужбовцям</h3><p>Дослідження за направленням та відповідно до встановленого порядку надання медичної допомоги.</p></div></article>
-        <article><span>02</span><div><h3>Цивільним пацієнтам</h3><p>Платні діагностичні послуги за чинними офіційними тарифами.</p></div></article>
       </section>
 
       <section className="section prepSection" id="preparation">
