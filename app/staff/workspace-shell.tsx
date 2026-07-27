@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "overview" | "patients" | "protocols" | "reports";
+type WorkspaceSection = "overview" | "patients" | "protocols" | "imaging" | "reports";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -22,6 +22,7 @@ const navigation = [
   { href:"/staff/patients", label:"Пацієнти", glyph:"☺", section:"patients" as WorkspaceSection },
   { href:"/staff#bookings", label:"Дослідження", glyph:"◎" },
   { href:"/staff/protocols", label:"Протоколи", glyph:"▤", section:"protocols" as WorkspaceSection },
+  { href:"/staff/imaging", label:"Знімки DICOM", glyph:"▦", section:"imaging" as WorkspaceSection },
   { href:"/staff/reports", label:"Звіти", glyph:"▥", section:"reports" as WorkspaceSection },
 ];
 
@@ -124,14 +125,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients"
+              : active === "protocols" || active === "patients" || active === "imaging"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>

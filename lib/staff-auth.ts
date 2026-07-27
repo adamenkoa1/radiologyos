@@ -24,3 +24,7 @@ export function canManageProtocols(role: StaffRole) {
 export function canManageFinance(role: StaffRole) {
   return role === "admin" || role === "registrar";
 }
+
+export function canManageImaging(role: StaffRole) {
+  return role === "admin" || role === "radiographer" || role === "radiologist";
+}
