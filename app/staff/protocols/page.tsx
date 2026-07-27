@@ -12,6 +12,7 @@ import {
   renderProtocolText,
   suggestTemplateKey,
 } from "../../../lib/protocols";
+import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -59,6 +60,8 @@ export default function ProtocolsPage() {
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [saving,setSaving] = useState(false);
+  const [aiDraft,setAiDraft] = useState<ProtocolDraft | null>(null);
+  const [aiLoading,setAiLoading] = useState(false);
   const [filter,setFilter] = useState<"awaiting"|"ready"|"issued"|"all">("awaiting");
   const [query,setQuery] = useState("");
 
@@ -84,7 +87,7 @@ export default function ProtocolsPage() {
   }, [queue]);
 
   async function openBooking(id:number) {
-    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null);
+    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
     const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
     const data = await response.json() as {
       booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
@@ -183,6 +186,29 @@ export default function ProtocolsPage() {
     } catch {
       setActionError("Не вдалося скопіювати текст.");
     }
+  }
+
+  async function generateDraft() {
+    if (!doc || !booking) return;
+    setActionError(""); setActionSuccess(""); setAiLoading(true);
+    const response = await fetch("/api/staff/ai/protocol-draft", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ bookingId:booking.id, ...doc }),
+    });
+    const data = await response.json() as { ok?:boolean; draft?:ProtocolDraft; error?:string };
+    setAiLoading(false);
+    if (!response.ok || !data.draft) { setActionError(data.error || "Не вдалося сформувати чернетку"); return; }
+    setAiDraft(data.draft);
+  }
+
+  function applyDraft(part:"conclusion"|"recommendations"|"all") {
+    if (!aiDraft) return;
+    setDoc((current) => current && ({
+      ...current,
+      conclusion:part === "recommendations" ? current.conclusion : aiDraft.conclusion,
+      recommendations:part === "conclusion" ? current.recommendations : aiDraft.recommendations,
+    }));
+    setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед видачею.");
   }
 
   const canEdit = staff?.role === "admin" || staff?.role === "radiologist";
@@ -313,6 +339,38 @@ export default function ProtocolsPage() {
                 onChange={(e)=>setDoc((c)=>c && ({...c,recommendations:e.target.value}))}/>
             </label>
           </fieldset>
+
+          {canEdit && <section className="aiAssist">
+            <div className="aiAssistHead">
+              <div>
+                <p className="eyebrow">AI-асистент</p>
+                <b>Чернетка висновку зі структурованих полів</b>
+                <small>Порівнює заповнені поля з нормою й пропонує проєкт висновку та рекомендацій.</small>
+              </div>
+              <button type="button" onClick={()=>void generateDraft()} disabled={aiLoading}>
+                {aiLoading ? "Формування…" : "✨ Згенерувати чернетку"}
+              </button>
+            </div>
+            {aiDraft && <div className="aiAssistResult">
+              <p className="aiDisclaimer">{aiDraft.disclaimer}</p>
+              <div className="aiDraftBlock">
+                <div className="aiDraftBlockHead"><b>Запропонований висновок</b><button type="button" onClick={()=>applyDraft("conclusion")}>Вставити у висновок</button></div>
+                <p>{aiDraft.conclusion}</p>
+              </div>
+              {aiDraft.recommendations && <div className="aiDraftBlock">
+                <div className="aiDraftBlockHead"><b>Рекомендації</b><button type="button" onClick={()=>applyDraft("recommendations")}>Вставити рекомендації</button></div>
+                <p>{aiDraft.recommendations}</p>
+              </div>}
+              <div className="aiDraftMeta">
+                <span>Перевірено полів: {aiDraft.reviewedFieldCount}</span>
+                <span>Відхилень від норми: {aiDraft.deviations.length}</span>
+                <button type="button" className="primary" onClick={()=>applyDraft("all")}>Вставити висновок і рекомендації</button>
+              </div>
+              {aiDraft.deviations.length > 0 && <ul className="aiDeviations">
+                {aiDraft.deviations.map((deviation)=><li key={`${deviation.section}-${deviation.field}`}><b>{deviation.label}:</b> {deviation.value}</li>)}
+              </ul>}
+            </div>}
+          </section>}
 
           <div className="protocolActions">
             {canEdit && <>

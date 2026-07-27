@@ -62,7 +62,8 @@ const eventLabels: Record<string,string> = {
   created:"Заявку створено", rescheduled:"Перенесено", staff_note:"Оновлено нотатку",
   status_changed:"Змінено статус", protocol_updated:"Оновлено протокол",
   finance_updated:"Оновлено оплату / НСЗУ", staff_assigned:"Призначено виконавців",
-  execution_recorded:"Зафіксовано виконання",
+  execution_recorded:"Зафіксовано виконання", protocol_document_saved:"Збережено протокол",
+  ai_draft_generated:"Сформовано AI-чернетку",
 };
 
 function todayInKyiv() {
