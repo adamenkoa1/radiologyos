@@ -56,6 +56,14 @@ test("execution migration adds performers, actual results and export audit", asy
   assert.match(migration, /contains_personal_data/);
 });
 
+test("external reference migration replaces the vendor-specific field", async () => {
+  const migration = await readFile(new URL("../drizzle/0004_generic_external_reference.sql", import.meta.url), "utf8");
+  assert.match(migration, /RENAME COLUMN `medlink_reference` TO `external_reference`/);
+  const schema = await readFile(new URL("../db/schema.ts", import.meta.url), "utf8");
+  assert.match(schema, /externalReference: text\("external_reference"\)/);
+  assert.doesNotMatch(schema, /medlink/i);
+});
+
 test("report builder provides five protected Excel templates without patient identity", async () => {
   const route = await readFile(new URL("../app/api/staff/reports/route.ts", import.meta.url), "utf8");
   const exportRoute = await readFile(new URL("../app/api/staff/reports/export/route.ts", import.meta.url), "utf8");

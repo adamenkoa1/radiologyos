@@ -41,7 +41,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateKey, ReportTemplate> = {
       column("performedAt","Фактично виконано"),
       column("regions","Анатомічні ділянки","number"),
       column("duration","Тривалість, хв","number"),
-      column("medlinkReference","№ MED-LINK"),
+      column("externalReference","№ зовнішнього документа"),
     ],
   },
   protocols: {
@@ -57,7 +57,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateKey, ReportTemplate> = {
       column("protocolStatus","Статус протоколу"),
       column("protocolReadyAt","Готовий"),
       column("protocolIssuedAt","Виданий"),
-      column("medlinkReference","№ MED-LINK"),
+      column("externalReference","№ зовнішнього документа"),
     ],
   },
   staff: {
