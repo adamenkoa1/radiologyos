@@ -388,6 +388,7 @@ export default function StaffPage() {
               </section>
               <section>
                 <h3>Протокол дослідження</h3>
+                <a className="protocolBuilderLink" href={`/staff/protocols?open=${item.id}`}>Відкрити конструктор протоколу →</a>
                 {canProtocol ? <form onSubmit={event=>{
                   event.preventDefault();
                   const data = new FormData(event.currentTarget);

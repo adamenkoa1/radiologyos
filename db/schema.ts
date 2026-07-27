@@ -92,6 +92,23 @@ export const equipmentBlocks = sqliteTable("equipment_blocks", {
   reason: text("reason").notNull().default(""),
 }, table => [index("equipment_blocks_schedule_idx").on(table.equipmentId, table.blockedDate, table.startTime)]);
 
+export const protocols = sqliteTable("protocols", {
+  bookingId: integer("booking_id").primaryKey(),
+  templateKey: text("template_key").notNull().default("generic"),
+  method: text("method").notNull().default(""),
+  sectionsJson: text("sections_json").notNull().default("{}"),
+  findings: text("findings").notNull().default(""),
+  conclusion: text("conclusion").notNull().default(""),
+  recommendations: text("recommendations").notNull().default(""),
+  number: text("number").notNull().default(""),
+  status: text("status").notNull().default("draft"),
+  version: integer("version").notNull().default(1),
+  authorEmail: text("author_email").notNull().default(""),
+  updatedBy: text("updated_by").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
+
 export const reportExports = sqliteTable("report_exports", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   requestedBy: text("requested_by").notNull(),

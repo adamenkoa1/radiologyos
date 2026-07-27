@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "overview" | "reports";
+type WorkspaceSection = "overview" | "protocols" | "reports";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -20,7 +20,7 @@ const navigation = [
   { href:"/staff#schedule", label:"Розклад", glyph:"◫" },
   { href:"/staff#bookings", label:"Заявки", glyph:"≡" },
   { href:"/staff#bookings", label:"Дослідження", glyph:"◎" },
-  { href:"/staff#bookings", label:"Протоколи", glyph:"▤" },
+  { href:"/staff/protocols", label:"Протоколи", glyph:"▤", section:"protocols" as WorkspaceSection },
   { href:"/staff/reports", label:"Звіти", glyph:"▥", section:"reports" as WorkspaceSection },
 ];
 
@@ -123,13 +123,15 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
+              : active === "protocols"
+              ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
         </header>
