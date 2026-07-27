@@ -32,8 +32,9 @@ database_name = "radiologyos"
 database_id = "REPLACE_WITH_YOUR_D1_DATABASE_ID"
 migrations_dir = "drizzle"
 
-# Cloudflare Images binding — powers the /_vinext/image optimizer.
-# Optional: delete this block if your plan does not include Images (the rest of
-# the app works without it).
-[images]
-binding = "IMAGES"
+# Cloudflare Images binding — powers the /_vinext/image optimizer. Left OUT
+# because Images is a paid product not available on the Free plan (the app
+# does not use next/image, so nothing requests /_vinext/image). If you later
+# enable Images, uncomment:
+# [images]
+# binding = "IMAGES"
