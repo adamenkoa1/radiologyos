@@ -33,7 +33,7 @@ export async function GET(request: Request) {
         assigned_radiographer_email AS assignedRadiographerEmail,
         performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
-        paid_amount AS paidAmount, medlink_reference AS medlinkReference,
+        paid_amount AS paidAmount, external_reference AS externalReference,
         comment, status, created_at AS createdAt
        FROM bookings ORDER BY created_at DESC LIMIT 500`
     ).all(),
@@ -86,7 +86,7 @@ export async function PATCH(request: Request) {
     assignedRadiographerEmail?: string;
     performedAt?: string;
     anatomicalRegionsCount?: number;
-    medlinkReference?: string;
+    externalReference?: string;
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
 
@@ -143,12 +143,12 @@ export async function PATCH(request: Request) {
   if (
     typeof body.performedAt === "string" ||
     typeof body.anatomicalRegionsCount === "number" ||
-    typeof body.medlinkReference === "string"
+    typeof body.externalReference === "string"
   ) {
     if (!canWriteNotes(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
     const performedAt = String(body.performedAt || "").trim().slice(0, 19);
     const anatomicalRegionsCount = Number(body.anatomicalRegionsCount);
-    const medlinkReference = String(body.medlinkReference || "").trim().slice(0, 120);
+    const externalReference = String(body.externalReference || "").trim().slice(0, 120);
     if (performedAt && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(performedAt)) {
       return Response.json({ error: "Некоректні дата або час виконання" }, { status: 400 });
     }
@@ -157,22 +157,22 @@ export async function PATCH(request: Request) {
     }
     const updated = await db.prepare(
       `UPDATE bookings SET performed_at = ?, anatomical_regions_count = ?,
-       medlink_reference = ?, status = CASE WHEN ? != '' THEN 'completed' ELSE status END
+       external_reference = ?, status = CASE WHEN ? != '' THEN 'completed' ELSE status END
        WHERE id = ?`
-    ).bind(performedAt, anatomicalRegionsCount, medlinkReference, performedAt, body.id).run();
+    ).bind(performedAt, anatomicalRegionsCount, externalReference, performedAt, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
       "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'execution_recorded', ?, ?)"
     ).bind(
       body.id,
-      `${performedAt || "not performed"} · regions=${anatomicalRegionsCount}${medlinkReference ? ` · MED-LINK ${medlinkReference}` : ""}`,
+      `${performedAt || "not performed"} · regions=${anatomicalRegionsCount}${externalReference ? ` · document=${externalReference}` : ""}`,
       member.email
     ).run();
     return Response.json({
       ok: true,
       performedAt,
       anatomicalRegionsCount,
-      medlinkReference,
+      externalReference,
       ...(performedAt ? { status:"completed" } : {}),
     });
   }

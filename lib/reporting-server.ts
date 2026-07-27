@@ -53,7 +53,7 @@ export type ReportSourceRow = {
   paymentMethod:string;
   nszuStatus:string;
   nszuReference:string;
-  medlinkReference:string;
+  externalReference:string;
 };
 
 const statusLabels:Record<string,string> = {
@@ -153,7 +153,7 @@ export async function fetchReportSource(db:D1Database,filters:ReportFilters) {
       b.payment_status AS paymentStatus, b.payment_amount AS paymentAmount,
       b.paid_amount AS paidAmount, b.payment_method AS paymentMethod,
       b.nszu_status AS nszuStatus, b.nszu_reference AS nszuReference,
-      b.medlink_reference AS medlinkReference
+      b.external_reference AS externalReference
      FROM bookings b
      LEFT JOIN staff_members rad ON rad.email = b.assigned_radiologist_email
      LEFT JOIN staff_members graph ON graph.email = b.assigned_radiographer_email
@@ -224,7 +224,7 @@ export function buildTemplateRows(template:ReportTemplateKey,source:ReportSource
       protocolStatus:protocolLabels[row.protocolStatus] || row.protocolStatus,
       protocolReadyAt:row.protocolReadyAt || "",
       protocolIssuedAt:row.protocolIssuedAt || "",
-      medlinkReference:row.medlinkReference || "",
+      externalReference:row.externalReference || "",
     }));
   }
 
@@ -256,7 +256,7 @@ export function buildTemplateRows(template:ReportTemplateKey,source:ReportSource
     performedAt:row.performedAt || "Не виконано",
     regions:Number(row.anatomicalRegionsCount || 1),
     duration:Number(row.durationMinutes || 0),
-    medlinkReference:row.medlinkReference || "",
+    externalReference:row.externalReference || "",
   }));
 }
 

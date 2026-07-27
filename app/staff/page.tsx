@@ -15,7 +15,7 @@ type Booking = {
   assignedRadiologistEmail:string; assignedRadiographerEmail:string;
   performedAt:string; anatomicalRegionsCount:number;
   protocolReadyAt:string; protocolIssuedAt:string;
-  paidAmount:number; medlinkReference:string;
+  paidAmount:number; externalReference:string;
   paymentStatus:string; paymentAmount:number; paymentMethod:string;
   nszuStatus:string; nszuReference:string; listedPrice:number;
   comment:string; status:string; createdAt:string;
@@ -370,12 +370,12 @@ export default function StaffPage() {
                   void saveOperations(item.id,{
                     performedAt:String(data.get("performedAt")),
                     anatomicalRegionsCount:Number(data.get("anatomicalRegionsCount")),
-                    medlinkReference:String(data.get("medlinkReference")),
+                    externalReference:String(data.get("externalReference")),
                   },"Фактичне виконання дослідження зафіксовано.");
                 }}>
                   <label><span>Дата й час виконання</span><input name="performedAt" type="datetime-local" defaultValue={item.performedAt}/></label>
                   <label><span>Анатомічних ділянок</span><input name="anatomicalRegionsCount" type="number" min="1" max="20" step="1" defaultValue={item.anatomicalRegionsCount || 1}/></label>
-                  <label><span>№ запису / документа MED-LINK</span><input name="medlinkReference" maxLength={120} defaultValue={item.medlinkReference} placeholder="Номер із MED-LINK"/></label>
+                  <label><span>№ зовнішнього документа</span><input name="externalReference" maxLength={120} defaultValue={item.externalReference} placeholder="За наявності"/></label>
                   <button type="submit">Зафіксувати виконання</button>
                 </form>
               </section>

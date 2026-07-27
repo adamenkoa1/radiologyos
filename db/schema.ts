@@ -33,7 +33,7 @@ export const bookings = sqliteTable("bookings", {
   protocolReadyAt: text("protocol_ready_at").notNull().default(""),
   protocolIssuedAt: text("protocol_issued_at").notNull().default(""),
   paidAmount: integer("paid_amount").notNull().default(0),
-  medlinkReference: text("medlink_reference").notNull().default(""),
+  externalReference: text("external_reference").notNull().default(""),
   comment: text("comment").notNull().default(""),
   status: text("status").notNull().default("new"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
