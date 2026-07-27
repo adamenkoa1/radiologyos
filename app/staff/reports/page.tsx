@@ -1,9 +1,9 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { REPORT_TEMPLATES } from "../../../lib/reporting";
 import type { ReportColumn, ReportRecord, ReportTemplateKey } from "../../../lib/reporting";
+import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email:string; displayName:string; role:string };
 type StaffOption = { email:string; displayName:string; role:string };
@@ -135,18 +135,13 @@ export default function ReportsPage() {
     );
   }
 
-  return <main className="reportShell">
-    <header className="reportHead">
-      <div>
-        <p className="eyebrow">RadiologyOS · аналітика</p>
-        <h1>Звіти відділення</h1>
-        {data?.staff && <p>{data.staff.displayName || data.staff.email} · {roleLabels[data.staff.role] || data.staff.role}</p>}
-      </div>
-      <nav className="staffHeadActions" aria-label="Навігація персоналу">
-        <Link className="button compact secondaryButton" href="/staff">Черга заявок</Link>
-        <Link className="button compact" href="/">Публічний сайт</Link>
-      </nav>
-    </header>
+  return <StaffWorkspaceShell
+    active="reports"
+    title="Звіти та аналітика"
+    description="Контроль виконаних досліджень, протоколів, навантаження персоналу, обладнання та оплат."
+    staffName={data?.staff.displayName || data?.staff.email}
+    staffRole={data?.staff ? roleLabels[data.staff.role] || data.staff.role : undefined}
+  >
 
     {error && !data ? <section className="accessDenied">
       <b>Захищений розділ</b>
@@ -246,5 +241,5 @@ export default function ReportsPage() {
         </section>
       </div>}
     </>}
-  </main>;
+  </StaffWorkspaceShell>;
 }
