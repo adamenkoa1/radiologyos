@@ -26,12 +26,22 @@ export const bookings = sqliteTable("bookings", {
   paymentMethod: text("payment_method").notNull().default(""),
   nszuStatus: text("nszu_status").notNull().default("not_applicable"),
   nszuReference: text("nszu_reference").notNull().default(""),
+  assignedRadiologistEmail: text("assigned_radiologist_email").notNull().default(""),
+  assignedRadiographerEmail: text("assigned_radiographer_email").notNull().default(""),
+  performedAt: text("performed_at").notNull().default(""),
+  anatomicalRegionsCount: integer("anatomical_regions_count").notNull().default(1),
+  protocolReadyAt: text("protocol_ready_at").notNull().default(""),
+  protocolIssuedAt: text("protocol_issued_at").notNull().default(""),
+  paidAmount: integer("paid_amount").notNull().default(0),
+  medlinkReference: text("medlink_reference").notNull().default(""),
   comment: text("comment").notNull().default(""),
   status: text("status").notNull().default("new"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   index("bookings_equipment_schedule_idx").on(table.equipmentId, table.desiredDate, table.desiredTime),
   index("bookings_report_date_idx").on(table.desiredDate, table.status),
+  index("bookings_performed_report_idx").on(table.performedAt, table.equipmentId),
+  index("bookings_staff_report_idx").on(table.assignedRadiologistEmail, table.assignedRadiographerEmail),
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {
@@ -81,3 +91,15 @@ export const equipmentBlocks = sqliteTable("equipment_blocks", {
   endTime: text("end_time").notNull(),
   reason: text("reason").notNull().default(""),
 }, table => [index("equipment_blocks_schedule_idx").on(table.equipmentId, table.blockedDate, table.startTime)]);
+
+export const reportExports = sqliteTable("report_exports", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  requestedBy: text("requested_by").notNull(),
+  reportType: text("report_type").notNull(),
+  filtersJson: text("filters_json").notNull().default("{}"),
+  columnsJson: text("columns_json").notNull().default("[]"),
+  format: text("format").notNull().default("xlsx"),
+  rowCount: integer("row_count").notNull().default(0),
+  containsPersonalData: integer("contains_personal_data").notNull().default(0),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("report_exports_created_idx").on(table.createdAt, table.requestedBy)]);

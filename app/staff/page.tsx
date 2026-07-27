@@ -5,12 +5,17 @@ import { useEffect, useMemo, useState } from "react";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
+type StaffOption = { email:string; displayName:string; role:StaffRole };
 type Booking = {
   id:number; code:string; name:string; phone:string; service:string;
   serviceCode:string; equipmentId:string; durationMinutes:number;
   desiredDate:string; desiredTime:string; referral:string;
   patientCategory:string; referralType:string; referralNumber:string;
   marketingSource:string; protocolNumber:string; protocolStatus:string; protocolUpdatedAt:string;
+  assignedRadiologistEmail:string; assignedRadiographerEmail:string;
+  performedAt:string; anatomicalRegionsCount:number;
+  protocolReadyAt:string; protocolIssuedAt:string;
+  paidAmount:number; medlinkReference:string;
   paymentStatus:string; paymentAmount:number; paymentMethod:string;
   nszuStatus:string; nszuReference:string; listedPrice:number;
   comment:string; status:string; createdAt:string;
@@ -56,7 +61,8 @@ const nszuLabels: Record<string,string> = {
 const eventLabels: Record<string,string> = {
   created:"Заявку створено", rescheduled:"Перенесено", staff_note:"Оновлено нотатку",
   status_changed:"Змінено статус", protocol_updated:"Оновлено протокол",
-  finance_updated:"Оновлено оплату / НСЗУ",
+  finance_updated:"Оновлено оплату / НСЗУ", staff_assigned:"Призначено виконавців",
+  execution_recorded:"Зафіксовано виконання",
 };
 
 function todayInKyiv() {
@@ -73,6 +79,7 @@ export default function StaffPage() {
   const [equipment,setEquipment] = useState<Equipment[]>([]);
   const [blocks,setBlocks] = useState<EquipmentBlock[]>([]);
   const [members,setMembers] = useState<StaffMember[]>([]);
+  const [staffOptions,setStaffOptions] = useState<StaffOption[]>([]);
   const [error,setError] = useState("");
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
@@ -87,7 +94,8 @@ export default function StaffPage() {
       fetch("/api/staff/equipment", { cache:"no-store" }),
     ]);
     const data = await bookingsResponse.json() as {
-      bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo; error?:string;
+      bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo;
+      staffOptions?:StaffOption[]; error?:string;
     };
     if (!bookingsResponse.ok) { setError(data.error || "Немає доступу"); return; }
     const equipmentData = await equipmentResponse.json() as {
@@ -98,6 +106,7 @@ export default function StaffPage() {
     setEvents(data.events || []);
     setNotes(data.notes || []);
     setStaff(data.staff || null);
+    setStaffOptions(data.staffOptions || []);
     setEquipment(equipmentData.equipment || []);
     setBlocks(equipmentData.blocks || []);
     if (data.staff?.role === "admin") {
@@ -324,10 +333,52 @@ export default function StaffPage() {
           </form>
           <details className="bookingOperations">
             <summary>
+              {item.performedAt ? `Виконано: ${new Date(item.performedAt).toLocaleString("uk-UA")} · ` : "Очікує виконання · "}
               Протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus} ·
               Оплата: {paymentLabels[item.paymentStatus] || item.paymentStatus}
             </summary>
             <div className="operationsGrid">
+              <section>
+                <h3>Призначені виконавці</h3>
+                {canManage ? <form onSubmit={event=>{
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  void saveOperations(item.id,{
+                    assignedRadiologistEmail:String(data.get("assignedRadiologistEmail")),
+                    assignedRadiographerEmail:String(data.get("assignedRadiographerEmail")),
+                  },"Лікаря та рентгенолаборанта призначено.");
+                }}>
+                  <label><span>Лікар-рентгенолог</span><select name="assignedRadiologistEmail" defaultValue={item.assignedRadiologistEmail}>
+                    <option value="">Не призначено</option>
+                    {staffOptions.filter(member=>member.role==="radiologist").map(member=><option value={member.email} key={member.email}>{member.displayName || member.email}</option>)}
+                  </select></label>
+                  <label><span>Рентгенолаборант</span><select name="assignedRadiographerEmail" defaultValue={item.assignedRadiographerEmail}>
+                    <option value="">Не призначено</option>
+                    {staffOptions.filter(member=>member.role==="radiographer").map(member=><option value={member.email} key={member.email}>{member.displayName || member.email}</option>)}
+                  </select></label>
+                  <button type="submit">Зберегти виконавців</button>
+                </form> : <dl className="operationReadOnly">
+                  <div><dt>Лікар</dt><dd>{staffOptions.find(member=>member.email===item.assignedRadiologistEmail)?.displayName || item.assignedRadiologistEmail || "Не призначено"}</dd></div>
+                  <div><dt>Лаборант</dt><dd>{staffOptions.find(member=>member.email===item.assignedRadiographerEmail)?.displayName || item.assignedRadiographerEmail || "Не призначено"}</dd></div>
+                </dl>}
+              </section>
+              <section>
+                <h3>Фактичне виконання</h3>
+                <form onSubmit={event=>{
+                  event.preventDefault();
+                  const data = new FormData(event.currentTarget);
+                  void saveOperations(item.id,{
+                    performedAt:String(data.get("performedAt")),
+                    anatomicalRegionsCount:Number(data.get("anatomicalRegionsCount")),
+                    medlinkReference:String(data.get("medlinkReference")),
+                  },"Фактичне виконання дослідження зафіксовано.");
+                }}>
+                  <label><span>Дата й час виконання</span><input name="performedAt" type="datetime-local" defaultValue={item.performedAt}/></label>
+                  <label><span>Анатомічних ділянок</span><input name="anatomicalRegionsCount" type="number" min="1" max="20" step="1" defaultValue={item.anatomicalRegionsCount || 1}/></label>
+                  <label><span>№ запису / документа MED-LINK</span><input name="medlinkReference" maxLength={120} defaultValue={item.medlinkReference} placeholder="Номер із MED-LINK"/></label>
+                  <button type="submit">Зафіксувати виконання</button>
+                </form>
+              </section>
               <section>
                 <h3>Протокол дослідження</h3>
                 {canProtocol ? <form onSubmit={event=>{
@@ -341,9 +392,15 @@ export default function StaffPage() {
                   <label><span>Номер протоколу</span><input name="protocolNumber" maxLength={80} defaultValue={item.protocolNumber} placeholder="Наприклад, КТ-2026-001"/></label>
                   <label><span>Статус</span><select name="protocolStatus" defaultValue={item.protocolStatus}>{Object.entries(protocolLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
                   <button type="submit">Зберегти протокол</button>
+                  {(item.protocolReadyAt || item.protocolIssuedAt) && <p className="operationDates">
+                    {item.protocolReadyAt && <span>Готовий: {new Date(item.protocolReadyAt).toLocaleString("uk-UA")}</span>}
+                    {item.protocolIssuedAt && <span>Видано: {new Date(item.protocolIssuedAt).toLocaleString("uk-UA")}</span>}
+                  </p>}
                 </form> : <dl className="operationReadOnly">
                   <div><dt>Номер</dt><dd>{item.protocolNumber || "Не присвоєно"}</dd></div>
                   <div><dt>Статус</dt><dd>{protocolLabels[item.protocolStatus] || item.protocolStatus}</dd></div>
+                  <div><dt>Готовий</dt><dd>{item.protocolReadyAt ? new Date(item.protocolReadyAt).toLocaleString("uk-UA") : "—"}</dd></div>
+                  <div><dt>Видано</dt><dd>{item.protocolIssuedAt ? new Date(item.protocolIssuedAt).toLocaleString("uk-UA") : "—"}</dd></div>
                 </dl>}
               </section>
               <section>
@@ -354,19 +411,23 @@ export default function StaffPage() {
                   void saveOperations(item.id,{
                     paymentStatus:String(data.get("paymentStatus")),
                     paymentAmount:Number(data.get("paymentAmount")),
+                    paidAmount:Number(data.get("paidAmount")),
                     paymentMethod:String(data.get("paymentMethod")),
                     nszuStatus:String(data.get("nszuStatus")),
                     nszuReference:String(data.get("nszuReference")),
                   },"Дані оплати та НСЗУ збережено.");
                 }}>
                   <label><span>Статус оплати</span><select name="paymentStatus" defaultValue={item.paymentStatus}>{Object.entries(paymentLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
-                  <label><span>Сума, грн</span><input name="paymentAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paymentAmount || item.listedPrice}/></label>
+                  <label><span>Сума до сплати, грн</span><input name="paymentAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paymentAmount || item.listedPrice}/></label>
+                  <label><span>Фактично сплачено, грн</span><input name="paidAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paidAmount}/></label>
                   <label><span>Спосіб</span><select name="paymentMethod" defaultValue={item.paymentMethod}>{Object.entries(paymentMethodLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
                   <label><span>Статус НСЗУ</span><select name="nszuStatus" defaultValue={item.nszuStatus}>{Object.entries(nszuLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
                   <label><span>Номер підтвердження НСЗУ</span><input name="nszuReference" maxLength={80} defaultValue={item.nszuReference}/></label>
                   <button type="submit">Зберегти оплату / НСЗУ</button>
                 </form> : <dl className="operationReadOnly">
-                  <div><dt>Оплата</dt><dd>{paymentLabels[item.paymentStatus] || item.paymentStatus} · {item.paymentAmount || item.listedPrice} грн</dd></div>
+                  <div><dt>Оплата</dt><dd>{paymentLabels[item.paymentStatus] || item.paymentStatus}</dd></div>
+                  <div><dt>До сплати</dt><dd>{item.paymentAmount || item.listedPrice} грн</dd></div>
+                  <div><dt>Сплачено</dt><dd>{item.paidAmount} грн</dd></div>
                   <div><dt>НСЗУ</dt><dd>{nszuLabels[item.nszuStatus] || item.nszuStatus}</dd></div>
                 </dl>}
               </section>

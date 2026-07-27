@@ -45,10 +45,29 @@ test("operations migration adds protocol, finance and reporting fields", async (
   assert.match(migration, /CREATE INDEX `bookings_report_date_idx`/);
 });
 
-test("staff reports require authorization and export only aggregate daily CSV", async () => {
+test("execution migration adds performers, actual results and export audit", async () => {
+  const migration = await readFile(new URL("../drizzle/0003_execution_report_builder.sql", import.meta.url), "utf8");
+  for (const field of [
+    "assigned_radiologist_email", "assigned_radiographer_email", "performed_at",
+    "anatomical_regions_count", "protocol_ready_at", "protocol_issued_at",
+    "paid_amount", "medlink_reference",
+  ]) assert.match(migration, new RegExp(`\\\`${field}\\\``));
+  assert.match(migration, /CREATE TABLE `report_exports`/);
+  assert.match(migration, /contains_personal_data/);
+});
+
+test("report builder provides five protected Excel templates without patient identity", async () => {
   const route = await readFile(new URL("../app/api/staff/reports/route.ts", import.meta.url), "utf8");
-  assert.match(route, /requireStaff\(request, db\)/);
-  assert.match(route, /format"\) === "csv"/);
-  assert.match(route, /Дані згруповано|byDay|Оплачено, грн/);
-  assert.doesNotMatch(route, /SELECT[^`]*(?:name|phone)/i);
+  const exportRoute = await readFile(new URL("../app/api/staff/reports/export/route.ts", import.meta.url), "utf8");
+  const reporting = await readFile(new URL("../lib/reporting.ts", import.meta.url), "utf8");
+  const reportingServer = await readFile(new URL("../lib/reporting-server.ts", import.meta.url), "utf8");
+  assert.match(route, /requireStaff\(request,\s*db\)/);
+  assert.match(exportRoute, /requireStaff\(request,\s*db\)/);
+  assert.match(exportRoute, /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
+  assert.match(exportRoute, /INSERT INTO report_exports/);
+  for (const template of ["studies", "protocols", "staff", "equipment", "finance"]) {
+    assert.match(reporting, new RegExp(`\\b${template}: \\\{`));
+  }
+  assert.doesNotMatch(reportingServer, /\bb\.name\b|\bb\.phone\b/i);
+  assert.doesNotMatch(exportRoute, /\bname\b|\bphone\b/i);
 });

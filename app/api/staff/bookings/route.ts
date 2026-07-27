@@ -18,7 +18,7 @@ export async function GET(request: Request) {
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
 
-  const [result, events, notes] = await Promise.all([
+  const [result, events, notes, staffOptions] = await Promise.all([
     db.prepare(
       `SELECT id, code, name, phone, service, service_code AS serviceCode,
         equipment_id AS equipmentId, duration_minutes AS durationMinutes,
@@ -29,6 +29,11 @@ export async function GET(request: Request) {
         protocol_updated_at AS protocolUpdatedAt, payment_status AS paymentStatus,
         payment_amount AS paymentAmount, payment_method AS paymentMethod,
         nszu_status AS nszuStatus, nszu_reference AS nszuReference,
+        assigned_radiologist_email AS assignedRadiologistEmail,
+        assigned_radiographer_email AS assignedRadiographerEmail,
+        performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
+        protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
+        paid_amount AS paidAmount, medlink_reference AS medlinkReference,
         comment, status, created_at AS createdAt
        FROM bookings ORDER BY created_at DESC LIMIT 500`
     ).all(),
@@ -40,6 +45,10 @@ export async function GET(request: Request) {
       `SELECT booking_id AS bookingId, note, updated_by AS updatedBy, updated_at AS updatedAt
        FROM booking_staff_notes`
     ).all(),
+    db.prepare(
+      `SELECT email, display_name AS displayName, role
+       FROM staff_members WHERE active = 1 ORDER BY role, display_name, email`
+    ).all(),
   ]);
   const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
     ...booking,
@@ -49,6 +58,7 @@ export async function GET(request: Request) {
     bookings,
     events: events.results,
     notes: notes.results,
+    staffOptions: staffOptions.results,
     staff: member,
   });
 }
@@ -68,9 +78,15 @@ export async function PATCH(request: Request) {
     protocolStatus?: string;
     paymentStatus?: string;
     paymentAmount?: number;
+    paidAmount?: number;
     paymentMethod?: string;
     nszuStatus?: string;
     nszuReference?: string;
+    assignedRadiologistEmail?: string;
+    assignedRadiographerEmail?: string;
+    performedAt?: string;
+    anatomicalRegionsCount?: number;
+    medlinkReference?: string;
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
 
@@ -88,6 +104,79 @@ export async function PATCH(request: Request) {
     return Response.json({ ok: true });
   }
 
+  if (
+    typeof body.assignedRadiologistEmail === "string" ||
+    typeof body.assignedRadiographerEmail === "string"
+  ) {
+    if (!canManageBookings(member.role)) {
+      return Response.json({ error: "Виконавців може призначати лише реєстратор або адміністратор" }, { status: 403 });
+    }
+    const radiologistEmail = String(body.assignedRadiologistEmail || "").trim().toLowerCase().slice(0, 254);
+    const radiographerEmail = String(body.assignedRadiographerEmail || "").trim().toLowerCase().slice(0, 254);
+    if (radiologistEmail) {
+      const radiologist = await db.prepare(
+        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiologist' AND active = 1"
+      ).bind(radiologistEmail).first();
+      if (!radiologist) return Response.json({ error: "Оберіть активного лікаря-рентгенолога" }, { status: 400 });
+    }
+    if (radiographerEmail) {
+      const radiographer = await db.prepare(
+        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiographer' AND active = 1"
+      ).bind(radiographerEmail).first();
+      if (!radiographer) return Response.json({ error: "Оберіть активного рентгенолаборанта" }, { status: 400 });
+    }
+    const updated = await db.prepare(
+      `UPDATE bookings SET assigned_radiologist_email = ?,
+       assigned_radiographer_email = ? WHERE id = ?`
+    ).bind(radiologistEmail, radiographerEmail, body.id).run();
+    if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_assigned', ?, ?)"
+    ).bind(
+      body.id,
+      `radiologist=${radiologistEmail || "none"}; radiographer=${radiographerEmail || "none"}`,
+      member.email
+    ).run();
+    return Response.json({ ok: true, assignedRadiologistEmail: radiologistEmail, assignedRadiographerEmail: radiographerEmail });
+  }
+
+  if (
+    typeof body.performedAt === "string" ||
+    typeof body.anatomicalRegionsCount === "number" ||
+    typeof body.medlinkReference === "string"
+  ) {
+    if (!canWriteNotes(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
+    const performedAt = String(body.performedAt || "").trim().slice(0, 19);
+    const anatomicalRegionsCount = Number(body.anatomicalRegionsCount);
+    const medlinkReference = String(body.medlinkReference || "").trim().slice(0, 120);
+    if (performedAt && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(performedAt)) {
+      return Response.json({ error: "Некоректні дата або час виконання" }, { status: 400 });
+    }
+    if (!Number.isInteger(anatomicalRegionsCount) || anatomicalRegionsCount < 1 || anatomicalRegionsCount > 20) {
+      return Response.json({ error: "Кількість анатомічних ділянок має бути від 1 до 20" }, { status: 400 });
+    }
+    const updated = await db.prepare(
+      `UPDATE bookings SET performed_at = ?, anatomical_regions_count = ?,
+       medlink_reference = ?, status = CASE WHEN ? != '' THEN 'completed' ELSE status END
+       WHERE id = ?`
+    ).bind(performedAt, anatomicalRegionsCount, medlinkReference, performedAt, body.id).run();
+    if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'execution_recorded', ?, ?)"
+    ).bind(
+      body.id,
+      `${performedAt || "not performed"} · regions=${anatomicalRegionsCount}${medlinkReference ? ` · MED-LINK ${medlinkReference}` : ""}`,
+      member.email
+    ).run();
+    return Response.json({
+      ok: true,
+      performedAt,
+      anatomicalRegionsCount,
+      medlinkReference,
+      ...(performedAt ? { status:"completed" } : {}),
+    });
+  }
+
   if (typeof body.protocolStatus === "string" || typeof body.protocolNumber === "string") {
     if (!canManageProtocols(member.role)) {
       return Response.json({ error: "Протоколи може змінювати лише лікар або адміністратор" }, { status: 403 });
@@ -103,18 +192,29 @@ export async function PATCH(request: Request) {
     }
     const updated = await db.prepare(
       `UPDATE bookings SET protocol_number = ?, protocol_status = ?,
-       protocol_updated_at = CURRENT_TIMESTAMP WHERE id = ?`
-    ).bind(protocolNumber, protocolStatus, body.id).run();
+       protocol_updated_at = CURRENT_TIMESTAMP,
+       protocol_ready_at = CASE
+         WHEN ? IN ('ready','issued') AND protocol_ready_at = '' THEN CURRENT_TIMESTAMP
+         ELSE protocol_ready_at END,
+       protocol_issued_at = CASE
+         WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
+         ELSE protocol_issued_at END
+       WHERE id = ?`
+    ).bind(protocolNumber, protocolStatus, protocolStatus, protocolStatus, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
       "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'protocol_updated', ?, ?)"
     ).bind(body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
-    return Response.json({ ok: true, protocolNumber, protocolStatus });
+    const protocolDates = await db.prepare(
+      "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ?"
+    ).bind(body.id).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
+    return Response.json({ ok: true, protocolNumber, protocolStatus, ...protocolDates });
   }
 
   if (
     typeof body.paymentStatus === "string" ||
     typeof body.paymentAmount === "number" ||
+    typeof body.paidAmount === "number" ||
     typeof body.paymentMethod === "string" ||
     typeof body.nszuStatus === "string" ||
     typeof body.nszuReference === "string"
@@ -130,28 +230,32 @@ export async function PATCH(request: Request) {
     const nszuStatus = String(body.nszuStatus || "");
     const nszuReference = String(body.nszuReference || "").trim().slice(0, 80);
     const paymentAmount = Number(body.paymentAmount);
+    const paidAmount = Number(body.paidAmount);
     if (
       !paymentStatuses.has(paymentStatus) ||
       !paymentMethods.has(paymentMethod) ||
       !nszuStatuses.has(nszuStatus) ||
       !Number.isInteger(paymentAmount) ||
       paymentAmount < 0 ||
-      paymentAmount > 100000
+      paymentAmount > 100000 ||
+      !Number.isInteger(paidAmount) ||
+      paidAmount < 0 ||
+      paidAmount > 100000
     ) {
       return Response.json({ error: "Некоректні дані оплати або НСЗУ" }, { status: 400 });
     }
-    if (paymentStatus === "paid" && paymentAmount === 0) {
-      return Response.json({ error: "Для оплаченої послуги вкажіть суму" }, { status: 400 });
+    if (paymentStatus === "paid" && paidAmount === 0) {
+      return Response.json({ error: "Для оплаченої послуги вкажіть фактично сплачену суму" }, { status: 400 });
     }
     const updated = await db.prepare(
-      `UPDATE bookings SET payment_status = ?, payment_amount = ?, payment_method = ?,
+      `UPDATE bookings SET payment_status = ?, payment_amount = ?, paid_amount = ?, payment_method = ?,
        nszu_status = ?, nszu_reference = ? WHERE id = ?`
-    ).bind(paymentStatus, paymentAmount, paymentMethod, nszuStatus, nszuReference, body.id).run();
+    ).bind(paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
       "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'finance_updated', ?, ?)"
-    ).bind(body.id, `${paymentStatus} · ${paymentAmount} грн · ${nszuStatus}`, member.email).run();
-    return Response.json({ ok: true, paymentStatus, paymentAmount, paymentMethod, nszuStatus, nszuReference });
+    ).bind(body.id, `${paymentStatus} · paid=${paidAmount} грн · ${nszuStatus}`, member.email).run();
+    return Response.json({ ok: true, paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference });
   }
 
   if (!canManageBookings(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
