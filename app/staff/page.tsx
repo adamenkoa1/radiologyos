@@ -251,8 +251,8 @@ export default function StaffPage() {
           <b>записів у розкладі</b>
           <small>{items.filter(i=>i.desiredDate===today&&i.status==="confirmed").length} підтверджено · {items.filter(i=>i.desiredDate===today&&i.status==="new").length} нових</small>
         </a>
+        <a href="/staff/dashboard"><span className="quickGlyph">▣</span><b>Пульт відділення</b><small>Що потребує уваги зараз</small></a>
         <a href="#bookings"><span className="quickGlyph">≡</span><b>Черга заявок</b><small>Перегляд і зміна статусів</small></a>
-        <a href="#bookings"><span className="quickGlyph">◎</span><b>Дослідження</b><small>Виконавці та фактичне виконання</small></a>
         <a href="/staff/reports"><span className="quickGlyph">▥</span><b>Звіти</b><small>Аналітика та експорт Excel</small></a>
       </section>
 

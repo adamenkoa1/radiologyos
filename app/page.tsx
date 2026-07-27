@@ -22,8 +22,29 @@ export default function Home() {
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotDetails, setSlotDetails] = useState("");
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [patientCategory, setPatientCategory] = useState("");
+  const [referralType, setReferralType] = useState("");
 
   const selectedService = serviceByCode(serviceCode);
+  const phoneDigits = phone.replace(/\D/g, "");
+  const step1Done = !!(serviceCode && selectedDate && selectedTime);
+  const step2Done = name.trim().length >= 2 && phoneDigits.length >= 11 && !!patientCategory;
+  const step3Done = !!referralType;
+
+  function formatPhone(raw:string) {
+    let d = raw.replace(/\D/g, "");
+    if (d.startsWith("380")) d = d.slice(3); else if (d.startsWith("0")) d = d.slice(1);
+    d = d.slice(0, 9);
+    if (!d) return "";
+    let out = "+380";
+    if (d.length) out += ` ${d.slice(0, 2)}`;
+    if (d.length > 2) out += ` ${d.slice(2, 5)}`;
+    if (d.length > 5) out += ` ${d.slice(5, 7)}`;
+    if (d.length > 7) out += ` ${d.slice(7, 9)}`;
+    return out;
+  }
 
   function chooseService(code:string) {
     setServiceCode(code);
@@ -78,6 +99,7 @@ export default function Home() {
       setServiceCode("");
       setAvailableTimes([]);
       setSlotDetails("");
+      setName(""); setPhone(""); setPatientCategory(""); setReferralType("");
     } catch (error) {
       setBookingError(error instanceof Error ? error.message : "Не вдалося надіслати заявку");
       setStatus("error");
@@ -172,7 +194,7 @@ export default function Home() {
         <form className="bookingForm" onSubmit={submitBooking}>
           <div className="formSections">
             <fieldset className="formSection">
-              <legend><span>1</span> Послуга, дата та час</legend>
+              <legend className={step1Done?"done":""}><span>{step1Done?"✓":"1"}</span> Послуга, дата та час</legend>
               <div className="formGrid">
                 <label className="wide"><span>Дослідження *</span><select name="serviceCode" required value={serviceCode} onChange={event=>{setServiceCode(event.target.value);setSelectedTime("");}}><option value="" disabled>Оберіть послугу</option>{Object.entries(serviceGroups).map(([group,items])=><optgroup label={group} key={group}>{items.map(service=><option value={service.code} key={service.code}>{service.code} · {service.title} · {money.format(service.price)} грн</option>)}</optgroup>)}</select></label>
                 <label><span>Бажана дата *</span><input id="bookingDate" name="date" type="date" required min={todayInKyiv()} value={selectedDate} onChange={event=>{setSelectedDate(event.target.value);setSelectedTime("");}} /></label>
@@ -180,18 +202,18 @@ export default function Home() {
               </div>
             </fieldset>
             <fieldset className="formSection">
-              <legend><span>2</span> Ваші дані</legend>
+              <legend className={step2Done?"done":""}><span>{step2Done?"✓":"2"}</span> Ваші дані</legend>
               <div className="formGrid">
-                <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" /></label>
-                <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" /></label>
-                <label className="wide"><span>Категорія пацієнта *</span><select name="patientCategory" required defaultValue=""><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
+                <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" value={name} onChange={event=>setName(event.target.value)} /></label>
+                <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" value={phone} onChange={event=>setPhone(formatPhone(event.target.value))} /></label>
+                <label className="wide"><span>Категорія пацієнта *</span><select name="patientCategory" required value={patientCategory} onChange={event=>setPatientCategory(event.target.value)}><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
               </div>
             </fieldset>
             <fieldset className="formSection">
-              <legend><span>3</span> Направлення та деталі</legend>
+              <legend className={step3Done?"done":""}><span>{step3Done?"✓":"3"}</span> Направлення та деталі</legend>
               <div className="formGrid">
-                <label><span>Тип направлення *</span><select name="referralType" required defaultValue=""><option value="" disabled>Оберіть тип</option><option value="military_referral">Направлення військової частини/закладу</option><option value="eh_referral">Електронне направлення</option><option value="paper_referral">Паперове направлення</option><option value="none">Немає направлення</option><option value="other">Інше</option></select></label>
-                <label><span>Номер направлення</span><input name="referralNumber" maxLength={80} placeholder="За наявності" /></label>
+                <label><span>Тип направлення *</span><select name="referralType" required value={referralType} onChange={event=>setReferralType(event.target.value)}><option value="" disabled>Оберіть тип</option><option value="military_referral">Направлення військової частини/закладу</option><option value="eh_referral">Електронне направлення</option><option value="paper_referral">Паперове направлення</option><option value="none">Немає направлення</option><option value="other">Інше</option></select></label>
+                {referralType && referralType !== "none" ? <label><span>Номер направлення</span><input name="referralNumber" maxLength={80} placeholder="За наявності" /></label> : <input type="hidden" name="referralNumber" value="" />}
                 <label><span>Як дізналися про нас</span><select name="marketingSource" defaultValue=""><option value="">Не вказано</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="recommendation">Рекомендація</option><option value="hospital">Направив медичний заклад</option><option value="other">Інше</option></select></label>
                 <label className="wide"><span>Коментар</span><textarea name="comment" rows={3} maxLength={700} placeholder="За потреби вкажіть важливі деталі" /></label>
               </div>
