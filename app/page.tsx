@@ -2,28 +2,45 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
-import { groupedServices, SERVICES } from "../lib/catalog";
+import { groupedServices, serviceByCode, SERVICES } from "../lib/catalog";
 import { todayInKyiv } from "../lib/booking-rules";
 
 const featuredServices = SERVICES.filter(service => service.featured);
 const serviceGroups = groupedServices();
 const money = new Intl.NumberFormat("uk-UA");
+const equipmentNames: Record<string,string> = {
+  ct:"Комп’ютерний томограф", xray:"Цифровий рентген", fluoro:"Флюорограф",
+};
 
 export default function Home() {
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [bookingCode, setBookingCode] = useState("");
   const [bookingError, setBookingError] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
+  const [selectedTime, setSelectedTime] = useState("");
   const [serviceCode, setServiceCode] = useState("");
   const [availableTimes, setAvailableTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [slotDetails, setSlotDetails] = useState("");
+
+  const selectedService = serviceByCode(serviceCode);
+
+  function chooseService(code:string) {
+    setServiceCode(code);
+    setSelectedTime("");
+    if (typeof window === "undefined") return;
+    window.setTimeout(() => {
+      document.getElementById("booking")?.scrollIntoView({ behavior:"smooth", block:"start" });
+      document.getElementById("bookingDate")?.focus({ preventScroll:true });
+    }, 60);
+  }
 
   useEffect(() => {
     if (!selectedDate || !serviceCode) return;
     let active = true;
     async function loadSlots() {
       setSlotsLoading(true);
+      setSelectedTime("");
       try {
         const response = await fetch(`/api/availability?date=${encodeURIComponent(selectedDate)}&serviceCode=${encodeURIComponent(serviceCode)}`, { cache:"no-store" });
         const data = await response.json() as {times?:string[];durationMinutes?:number;equipment?:string};
@@ -57,6 +74,7 @@ export default function Home() {
       setStatus("success");
       form.reset();
       setSelectedDate("");
+      setSelectedTime("");
       setServiceCode("");
       setAvailableTimes([]);
       setSlotDetails("");
@@ -107,7 +125,7 @@ export default function Home() {
             <article className="serviceCard" key={service.code}>
               <span className="serviceIcon">{service.equipmentId === "ct" ? "CT" : service.equipmentId === "xray" ? "XR" : "FL"}</span>
               <h3>{service.title}</h3><p>{service.description}</p>
-              <div><b>{money.format(service.price)} грн</b><a href="#booking" onClick={()=>setServiceCode(service.code)}>Записатися →</a></div>
+              <div><b>{money.format(service.price)} грн</b><a href="#booking" onClick={(event)=>{event.preventDefault();chooseService(service.code);}}>Записатися →</a></div>
             </article>
           ))}
         </div>
@@ -137,19 +155,47 @@ export default function Home() {
           <h2>Залиште заявку<br />на дослідження</h2>
           <p>Це заявка на бажаний час. Працівник відділення зв’яжеться з вами для уточнення підготовки та остаточного підтвердження.</p>
           <div className="steps"><span>1</span><p><b>Заповніть форму</b><small>Оберіть послугу, дату та час.</small></p><span>2</span><p><b>Дочекайтеся дзвінка</b><small>Ми підтвердимо запис і деталі.</small></p></div>
+          <div className="bookingSummary" aria-live="polite">
+            <p className="bookingSummaryTitle">Ваше замовлення</p>
+            {selectedService ? <>
+              <p className="bookingSummaryService">{selectedService.title}</p>
+              <ul>
+                <li><span>Апарат</span><b>{equipmentNames[selectedService.equipmentId]}</b></li>
+                <li><span>Тривалість</span><b>{selectedService.durationMinutes} хв</b></li>
+                <li><span>Дата й час</span><b>{selectedDate ? `${selectedDate}${selectedTime ? ` · ${selectedTime}` : ""}` : "не обрано"}</b></li>
+                <li className="price"><span>Орієнтовна ціна</span><b>{money.format(selectedService.price)} грн</b></li>
+              </ul>
+              <small>Остаточну вартість підтвердить адміністратор за чинним тарифом.</small>
+            </> : <p className="bookingSummaryEmpty">Оберіть послугу — тут з’явиться підсумок і орієнтовна ціна.</p>}
+          </div>
         </div>
         <form className="bookingForm" onSubmit={submitBooking}>
-          <div className="formGrid">
-            <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" /></label>
-            <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" /></label>
-            <label><span>Категорія пацієнта *</span><select name="patientCategory" required defaultValue=""><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
-            <label><span>Тип направлення *</span><select name="referralType" required defaultValue=""><option value="" disabled>Оберіть тип</option><option value="military_referral">Направлення військової частини/закладу</option><option value="eh_referral">Електронне направлення</option><option value="paper_referral">Паперове направлення</option><option value="none">Немає направлення</option><option value="other">Інше</option></select></label>
-            <label className="wide"><span>Дослідження *</span><select name="serviceCode" required value={serviceCode} onChange={event=>setServiceCode(event.target.value)}><option value="" disabled>Оберіть послугу</option>{Object.entries(serviceGroups).map(([group,items])=><optgroup label={group} key={group}>{items.map(service=><option value={service.code} key={service.code}>{service.code} · {service.title} · {money.format(service.price)} грн</option>)}</optgroup>)}</select></label>
-            <label><span>Бажана дата *</span><input name="date" type="date" required min={todayInKyiv()} onChange={event=>setSelectedDate(event.target.value)} /></label>
-            <label><span>Вільний час *</span><select name="time" required defaultValue="" disabled={!selectedDate||!serviceCode||slotsLoading}><option value="" disabled>{slotsLoading?"Перевіряємо…":availableTimes.length?"Оберіть час":"Вільного часу немає"}</option>{availableTimes.map(t => <option key={t}>{t}</option>)}</select>{slotDetails&&<small className="slotDetails">{slotDetails}</small>}</label>
-            <label><span>Номер направлення</span><input name="referralNumber" maxLength={80} placeholder="За наявності" /></label>
-            <label><span>Як дізналися про нас</span><select name="marketingSource" defaultValue=""><option value="">Не вказано</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="recommendation">Рекомендація</option><option value="hospital">Направив медичний заклад</option><option value="other">Інше</option></select></label>
-            <label className="wide"><span>Коментар</span><textarea name="comment" rows={3} maxLength={700} placeholder="За потреби вкажіть важливі деталі" /></label>
+          <div className="formSections">
+            <fieldset className="formSection">
+              <legend><span>1</span> Послуга, дата та час</legend>
+              <div className="formGrid">
+                <label className="wide"><span>Дослідження *</span><select name="serviceCode" required value={serviceCode} onChange={event=>{setServiceCode(event.target.value);setSelectedTime("");}}><option value="" disabled>Оберіть послугу</option>{Object.entries(serviceGroups).map(([group,items])=><optgroup label={group} key={group}>{items.map(service=><option value={service.code} key={service.code}>{service.code} · {service.title} · {money.format(service.price)} грн</option>)}</optgroup>)}</select></label>
+                <label><span>Бажана дата *</span><input id="bookingDate" name="date" type="date" required min={todayInKyiv()} value={selectedDate} onChange={event=>{setSelectedDate(event.target.value);setSelectedTime("");}} /></label>
+                <label><span>Вільний час *</span><select name="time" required value={selectedTime} onChange={event=>setSelectedTime(event.target.value)} disabled={!selectedDate||!serviceCode||slotsLoading}><option value="" disabled>{!serviceCode?"Спершу оберіть послугу":!selectedDate?"Оберіть дату":slotsLoading?"Перевіряємо…":availableTimes.length?"Оберіть час":"Вільного часу немає"}</option>{availableTimes.map(t => <option key={t}>{t}</option>)}</select>{slotDetails&&<small className="slotDetails">{slotDetails}</small>}</label>
+              </div>
+            </fieldset>
+            <fieldset className="formSection">
+              <legend><span>2</span> Ваші дані</legend>
+              <div className="formGrid">
+                <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" /></label>
+                <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" /></label>
+                <label className="wide"><span>Категорія пацієнта *</span><select name="patientCategory" required defaultValue=""><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
+              </div>
+            </fieldset>
+            <fieldset className="formSection">
+              <legend><span>3</span> Направлення та деталі</legend>
+              <div className="formGrid">
+                <label><span>Тип направлення *</span><select name="referralType" required defaultValue=""><option value="" disabled>Оберіть тип</option><option value="military_referral">Направлення військової частини/закладу</option><option value="eh_referral">Електронне направлення</option><option value="paper_referral">Паперове направлення</option><option value="none">Немає направлення</option><option value="other">Інше</option></select></label>
+                <label><span>Номер направлення</span><input name="referralNumber" maxLength={80} placeholder="За наявності" /></label>
+                <label><span>Як дізналися про нас</span><select name="marketingSource" defaultValue=""><option value="">Не вказано</option><option value="google">Google</option><option value="facebook">Facebook</option><option value="instagram">Instagram</option><option value="recommendation">Рекомендація</option><option value="hospital">Направив медичний заклад</option><option value="other">Інше</option></select></label>
+                <label className="wide"><span>Коментар</span><textarea name="comment" rows={3} maxLength={700} placeholder="За потреби вкажіть важливі деталі" /></label>
+              </div>
+            </fieldset>
           </div>
           <label className="consent"><input type="checkbox" required name="consent" value="yes" /><span>Погоджуюся на обробку контактних даних для організації запису та ознайомився(-лася) з <Link href="/privacy">політикою конфіденційності</Link>.</span></label>
           <button className="button submit" disabled={status === "sending"}>{status === "sending" ? "Надсилаємо…" : "Надіслати заявку →"}</button>
