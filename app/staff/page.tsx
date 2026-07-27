@@ -62,7 +62,8 @@ const eventLabels: Record<string,string> = {
   created:"Заявку створено", rescheduled:"Перенесено", staff_note:"Оновлено нотатку",
   status_changed:"Змінено статус", protocol_updated:"Оновлено протокол",
   finance_updated:"Оновлено оплату / НСЗУ", staff_assigned:"Призначено виконавців",
-  execution_recorded:"Зафіксовано виконання",
+  execution_recorded:"Зафіксовано виконання", protocol_document_saved:"Збережено протокол",
+  ai_draft_generated:"Сформовано AI-чернетку",
 };
 
 function todayInKyiv() {
@@ -213,12 +214,15 @@ export default function StaffPage() {
         displayName:String(data.get("displayName")),
         role:String(data.get("role")),
         active:String(data.get("active")) !== "false",
+        password:String(data.get("password") || ""),
       }),
     });
-    const result = await response.json() as { error?:string };
+    const result = await response.json() as { error?:string; needsPassword?:boolean };
     if (!response.ok) { setActionError(result.error || "Не вдалося зберегти доступ"); return; }
     form.reset();
-    setActionSuccess("Доступ працівника збережено.");
+    setActionSuccess(result.needsPassword
+      ? "Працівника додано. Задайте йому пароль, щоб він міг увійти."
+      : "Доступ працівника збережено.");
     await load();
   }
 
@@ -241,7 +245,7 @@ export default function StaffPage() {
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
-    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/signin-with-chatgpt?returnTo=%2Fstaff">Увійти для роботи</a></section> :
+    {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff">Увійти для роботи</a></section> :
     <>
       <section className="workspaceQuickGrid" aria-label="Швидкі дії">
         <a className="workspaceTodayCard" href="#schedule">
@@ -250,8 +254,8 @@ export default function StaffPage() {
           <b>записів у розкладі</b>
           <small>{items.filter(i=>i.desiredDate===today&&i.status==="confirmed").length} підтверджено · {items.filter(i=>i.desiredDate===today&&i.status==="new").length} нових</small>
         </a>
+        <a href="/staff/dashboard"><span className="quickGlyph">▣</span><b>Пульт відділення</b><small>Що потребує уваги зараз</small></a>
         <a href="#bookings"><span className="quickGlyph">≡</span><b>Черга заявок</b><small>Перегляд і зміна статусів</small></a>
-        <a href="#bookings"><span className="quickGlyph">◎</span><b>Дослідження</b><small>Виконавці та фактичне виконання</small></a>
         <a href="/staff/reports"><span className="quickGlyph">▥</span><b>Звіти</b><small>Аналітика та експорт Excel</small></a>
       </section>
 
@@ -282,6 +286,7 @@ export default function StaffPage() {
           <label><span>Робочий email</span><input name="email" type="email" required placeholder="name@example.com"/></label>
           <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
           <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          <label><span>Пароль для входу</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Мінімум 8 символів"/></label>
           <input name="active" type="hidden" value="true"/>
           <button type="submit">Додати працівника</button>
         </form>
@@ -292,6 +297,7 @@ export default function StaffPage() {
             <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
             <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>
+            <label><span>Новий пароль</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Залиште порожнім, щоб не змінювати"/></label>
             <button type="submit">Зберегти</button>
           </form>)}
         </div>
@@ -324,7 +330,7 @@ export default function StaffPage() {
         {visible.map(item => <article className="bookingRow" key={item.id}>
           <div className="bookingPrimary"><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span><b>{item.name}</b><small>{item.code} · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small></div>
           <div><small>Дослідження</small><b>{item.service}</b><span>Код {item.serviceCode} · {equipment.find(unit=>unit.id===item.equipmentId)?.name || item.equipmentId} · {item.durationMinutes} хв</span><span>{item.desiredDate} · {item.desiredTime}</span></div>
-          <div><small>Контакт і маршрут</small><a href={`tel:${item.phone}`}>{item.phone}</a><span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
+          <div><small>Контакт і маршрут</small><a href={`tel:${item.phone}`}>{item.phone}</a><a className="crmCardLink" href={`/staff/patients?phone=${encodeURIComponent(item.phone)}`}>Картка пацієнта →</a><span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
           <div className="bookingAction"><small>Статус</small>{canManage?<select value={item.status} onChange={e=>void changeStatus(item.id,e.target.value)}>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select>:<b>{labels[item.status] || item.status}</b>}</div>
           {canManage && <form className="rescheduleForm" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);void reschedule(item.id,String(data.get("date")),String(data.get("time")));}}>
             <small>Перенести запис</small>
@@ -388,6 +394,8 @@ export default function StaffPage() {
               </section>
               <section>
                 <h3>Протокол дослідження</h3>
+                <a className="protocolBuilderLink" href={`/staff/protocols?open=${item.id}`}>Відкрити конструктор протоколу →</a>
+                <a className="protocolBuilderLink" href={`/staff/imaging?open=${item.id}`}>Знімки DICOM →</a>
                 {canProtocol ? <form onSubmit={event=>{
                   event.preventDefault();
                   const data = new FormData(event.currentTarget);

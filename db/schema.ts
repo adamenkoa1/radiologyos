@@ -42,6 +42,7 @@ export const bookings = sqliteTable("bookings", {
   index("bookings_report_date_idx").on(table.desiredDate, table.status),
   index("bookings_performed_report_idx").on(table.performedAt, table.equipmentId),
   index("bookings_staff_report_idx").on(table.assignedRadiologistEmail, table.assignedRadiographerEmail),
+  index("bookings_patient_idx").on(table.phoneNormalized, table.desiredDate),
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {
@@ -71,8 +72,16 @@ export const staffMembers = sqliteTable("staff_members", {
   displayName: text("display_name").notNull().default(""),
   role: text("role").notNull(),
   active: integer("active").notNull().default(1),
+  passwordHash: text("password_hash").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
+
+export const staffSessions = sqliteTable("staff_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  email: text("email").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, table => [index("staff_sessions_expiry_idx").on(table.expiresAt)]);
 
 export const equipment = sqliteTable("equipment", {
   id: text("id").primaryKey(),
@@ -91,6 +100,69 @@ export const equipmentBlocks = sqliteTable("equipment_blocks", {
   endTime: text("end_time").notNull(),
   reason: text("reason").notNull().default(""),
 }, table => [index("equipment_blocks_schedule_idx").on(table.equipmentId, table.blockedDate, table.startTime)]);
+
+export const protocols = sqliteTable("protocols", {
+  bookingId: integer("booking_id").primaryKey(),
+  templateKey: text("template_key").notNull().default("generic"),
+  method: text("method").notNull().default(""),
+  sectionsJson: text("sections_json").notNull().default("{}"),
+  findings: text("findings").notNull().default(""),
+  conclusion: text("conclusion").notNull().default(""),
+  recommendations: text("recommendations").notNull().default(""),
+  number: text("number").notNull().default(""),
+  status: text("status").notNull().default("draft"),
+  version: integer("version").notNull().default(1),
+  authorEmail: text("author_email").notNull().default(""),
+  updatedBy: text("updated_by").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
+
+export const patientProfiles = sqliteTable("patient_profiles", {
+  phoneNormalized: text("phone_normalized").primaryKey(),
+  displayName: text("display_name").notNull().default(""),
+  birthYear: integer("birth_year").notNull().default(0),
+  tags: text("tags").notNull().default(""),
+  notes: text("notes").notNull().default(""),
+  doNotContact: integer("do_not_contact").notNull().default(0),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const patientCommunications = sqliteTable("patient_communications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  phoneNormalized: text("phone_normalized").notNull(),
+  channel: text("channel").notNull().default("call"),
+  direction: text("direction").notNull().default("outbound"),
+  summary: text("summary").notNull().default(""),
+  actor: text("actor").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
+
+export const imagingStudies = sqliteTable("imaging_studies", {
+  bookingId: integer("booking_id").primaryKey(),
+  accessionNumber: text("accession_number").notNull().default(""),
+  studyInstanceUid: text("study_instance_uid").notNull().default(""),
+  modality: text("modality").notNull().default(""),
+  seriesCount: integer("series_count").notNull().default(0),
+  instancesCount: integer("instances_count").notNull().default(0),
+  studyStatus: text("study_status").notNull().default("not_linked"),
+  studyDatetime: text("study_datetime").notNull().default(""),
+  source: text("source").notNull().default("manual"),
+  updatedBy: text("updated_by").notNull(),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("imaging_studies_status_idx").on(table.studyStatus, table.updatedAt)]);
+
+export const pacsSettings = sqliteTable("pacs_settings", {
+  id: integer("id").primaryKey(),
+  dicomwebBaseUrl: text("dicomweb_base_url").notNull().default(""),
+  viewerBaseUrl: text("viewer_base_url").notNull().default(""),
+  aeTitle: text("ae_title").notNull().default(""),
+  enabled: integer("enabled").notNull().default(0),
+  notes: text("notes").notNull().default(""),
+  updatedBy: text("updated_by").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
 
 export const reportExports = sqliteTable("report_exports", {
   id: integer("id").primaryKey({ autoIncrement: true }),

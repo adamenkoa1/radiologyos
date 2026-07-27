@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "overview" | "reports";
+type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -16,11 +16,14 @@ type StaffWorkspaceShellProps = {
 };
 
 const navigation = [
+  { href:"/staff/dashboard", label:"Пульт", glyph:"▣", section:"dashboard" as WorkspaceSection },
   { href:"/staff", label:"Головна", glyph:"⌂", section:"overview" as WorkspaceSection },
   { href:"/staff#schedule", label:"Розклад", glyph:"◫" },
   { href:"/staff#bookings", label:"Заявки", glyph:"≡" },
+  { href:"/staff/patients", label:"Пацієнти", glyph:"☺", section:"patients" as WorkspaceSection },
   { href:"/staff#bookings", label:"Дослідження", glyph:"◎" },
-  { href:"/staff#bookings", label:"Протоколи", glyph:"▤" },
+  { href:"/staff/protocols", label:"Протоколи", glyph:"▤", section:"protocols" as WorkspaceSection },
+  { href:"/staff/imaging", label:"Знімки DICOM", glyph:"▦", section:"imaging" as WorkspaceSection },
   { href:"/staff/reports", label:"Звіти", glyph:"▥", section:"reports" as WorkspaceSection },
 ];
 
@@ -64,6 +67,11 @@ export default function StaffWorkspaceShell({
 
   const current = now ? formatDateTime(now) : {date:"—",time:"—"};
   const identity = staffName || "Робочий профіль";
+
+  async function logout() {
+    await fetch("/api/staff/logout", { method:"POST" }).catch(()=>{});
+    window.location.assign("/staff/login");
+  }
 
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}`}>
     <aside className="workspaceSidebar">
@@ -116,6 +124,7 @@ export default function StaffWorkspaceShell({
             <Link href="/staff">Робочий кабінет</Link>
             <Link href="/staff/reports">Звіти відділення</Link>
             <Link href="/">Публічний сайт</Link>
+            <button type="button" className="workspaceLogout" onClick={()=>void logout()}>Вийти</button>
           </div>
         </details>
       </header>
@@ -123,13 +132,15 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard"
+              ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
         </header>

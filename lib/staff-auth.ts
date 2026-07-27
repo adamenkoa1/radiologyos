@@ -1,12 +1,40 @@
+import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_COOKIE } from "./auth";
+
 export type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 
+// Resolve the signed-in staff member from the session cookie. Returns null for
+// anonymous or expired sessions.
 export async function requireStaff(request: Request, db: D1Database) {
-  const email = (request.headers.get("oai-authenticated-user-email") || "").trim().toLowerCase();
-  if (!email) return null;
+  const rawToken = readCookie(request, SESSION_COOKIE);
+  if (!rawToken) return null;
+  const tokenHash = await hashToken(rawToken);
   const member = await db.prepare(
-    "SELECT email, display_name AS displayName, role FROM staff_members WHERE email = ? AND active = 1 LIMIT 1"
-  ).bind(email).first<{email:string;displayName:string;role:StaffRole}>();
+    `SELECT m.email AS email, m.display_name AS displayName, m.role AS role
+     FROM staff_sessions s
+     JOIN staff_members m ON m.email = s.email AND m.active = 1
+     WHERE s.token_hash = ? AND s.expires_at > CURRENT_TIMESTAMP
+     LIMIT 1`
+  ).bind(tokenHash).first<{email:string;displayName:string;role:StaffRole}>();
   return member || null;
+}
+
+// Issue a new session for an authenticated member and return the raw token to
+// place in the cookie. Old sessions for the member are pruned opportunistically.
+export async function createSession(db: D1Database, email: string): Promise<string> {
+  const rawToken = newSessionToken();
+  const tokenHash = await hashToken(rawToken);
+  await db.prepare(
+    `INSERT INTO staff_sessions (token_hash, email, expires_at)
+     VALUES (?, ?, datetime('now', ?))`
+  ).bind(tokenHash, email, `+${SESSION_TTL_SECONDS} seconds`).run();
+  await db.prepare("DELETE FROM staff_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
+  return rawToken;
+}
+
+export async function destroySession(db: D1Database, rawToken: string): Promise<void> {
+  if (!rawToken) return;
+  const tokenHash = await hashToken(rawToken);
+  await db.prepare("DELETE FROM staff_sessions WHERE token_hash = ?").bind(tokenHash).run();
 }
 
 export function canManageBookings(role: StaffRole) {
@@ -23,4 +51,8 @@ export function canManageProtocols(role: StaffRole) {
 
 export function canManageFinance(role: StaffRole) {
   return role === "admin" || role === "registrar";
+}
+
+export function canManageImaging(role: StaffRole) {
+  return role === "admin" || role === "radiographer" || role === "radiologist";
 }
