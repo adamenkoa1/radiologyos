@@ -307,4 +307,12 @@ a.dashKpi:hover{border-color:#8db7af;transform:translateY(-2px);box-shadow:0 12p
 .publicShell .button{background:#556349;color:#fff}.publicShell .button:hover{background:#465239}
 .publicShell .notice.success{background:#eef4e6;color:#33632c}.publicShell .notice.error{background:#fdf1ee;color:#a23c1d}
 .publicShell footer{background:transparent;border-top:1px solid var(--pub-line);color:#667062}.publicShell footer a{color:#4e5d46}.publicShell footer a:hover{color:#4f5d3e}
+/* v22-exact typography: Inter sans everywhere on public pages (no serif) */
+.publicShell .landingHeaderTitle b,.publicShell .categoryCopy b,.publicShell h1,.publicShell h2,.publicShell h3,.publicShell .bookingSummaryService,.publicShell .bookingTopTitle b,.publicShell .serviceCard h3,.publicShell .steps b,.publicShell .prepGrid h3{font-family:var(--font-sans)}
+.publicShell .landingHeaderTitle b{font-size:clamp(20px,3vw,27px);font-weight:700;letter-spacing:-.01em}
+.publicShell .landingHeaderTitle small{font-size:14px}
+.publicShell .categoryCopy b{font-size:clamp(22px,3.3vw,29px);font-weight:650;letter-spacing:-.005em}
+.publicShell h2{font-weight:700;letter-spacing:-.03em}
+.publicShell .serviceCard h3{font-weight:700}
+.publicShell .serviceCard>div b{color:#4f6140}
 @media(max-width:600px){.bookingTop{flex-direction:column;align-items:flex-start;gap:10px}}
