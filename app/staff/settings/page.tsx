@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email: string; displayName: string; role: string };
-type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string };
+type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean };
 
 export default function StaffSettingsPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -13,6 +13,7 @@ export default function StaffSettingsPage() {
   const [chatId, setChatId] = useState("");
   const [payLink, setPayLink] = useState("");
   const [token, setToken] = useState("");
+  const [accessCode, setAccessCode] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
@@ -37,12 +38,13 @@ export default function StaffSettingsPage() {
     try {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ telegramBotToken: token, telegramChatId: chatId, payLink }),
+        body: JSON.stringify({ telegramBotToken: token, telegramChatId: chatId, payLink, accessCode }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
       if (data.settings) setSettings(data.settings);
       setToken("");
+      setAccessCode("");
       setNotice("Налаштування збережено");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося зберегти");
@@ -72,6 +74,18 @@ export default function StaffSettingsPage() {
           {testing ? "Надсилаємо…" : "Надіслати тестове повідомлення"}
         </button>
         {!settings?.telegramConfigured && <small className="settingsHint">Спершу збережіть токен і ID чату — тоді кнопку буде розблоковано.</small>}
+      </section>
+
+      <section className="settingsBlock">
+        <h2>Код доступу для реєстрації персоналу</h2>
+        <p>Потрібен, щоб зареєструватися чи відновити пароль на сторінках <b>/staff/register</b> та <b>/staff/forgot</b>. Змініть стандартний код на власний і повідомте його лише працівникам.</p>
+        <span className={`settingsState ${settings?.registrationCodeSet ? "on" : "off"}`}>
+          {settings?.registrationCodeSet ? "✓ Код встановлено" : "Не встановлено"}
+        </span>
+        <label><span>Новий код доступу</span>
+          <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Залиште порожнім, щоб не змінювати" autoComplete="off" minLength={6} />
+          <small>Мінімум 6 символів. Зберігається лише у вигляді хешу.</small>
+        </label>
       </section>
 
       <section className="settingsBlock">

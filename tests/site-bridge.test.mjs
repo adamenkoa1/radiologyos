@@ -73,6 +73,8 @@ test("department settings are admin-only and validated", async () => {
   assert.match(route, /telegram_bot_token/);
   assert.match(route, /pay_link/);
   assert.match(route, /https:\\\/\\\//); // pay link must be https
+  assert.match(route, /registration_code_hash/); // admin can rotate the access code
+  assert.match(route, /hashPassword\(accessCode\)/); // stored hashed only
   const migration = await read("drizzle/0010_department_settings.sql");
   assert.match(migration, /telegram_bot_token/);
   assert.match(migration, /pay_link/);
