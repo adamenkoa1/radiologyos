@@ -98,3 +98,13 @@ test("the slot picker uses the real department schedule", async () => {
   const cart = await read("public/site/assets/cart.js");
   assert.match(cart, /serviceCode:\s*code/); // cart drives the picker by service code
 });
+
+test("the military free-booking form saves to D1 as category 'military'", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /getElementById\('militaryRequestForm'\)/);
+  assert.match(bridge, /category:\s*'military'/);
+  assert.match(bridge, /referralType:\s*'military_referral'/);
+  const military = await read("public/site/military.html");
+  assert.match(military, /assets\/d1-bridge\.js/); // bridge loaded on the military page
+  assert.match(military, /serviceCode:\s*String\(militaryCart\[0\]\.code\)/); // picker fixed to new signature
+});

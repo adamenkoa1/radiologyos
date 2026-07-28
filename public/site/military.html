@@ -524,11 +524,10 @@ function openMilitaryCart() {
 
   /* вибір вільного часу для апарата обраних досліджень */
   if (typeof initSlotPicker === 'function' && militaryCart.length) {
-    const app = (typeof apparatusForCode === 'function' && militaryCart.some(x => apparatusForCode(x.code) === 'ct')) ? 'ct' : 'xray';
     window.milPickedSlot = { date: '', time: '' };
     initSlotPicker({
       container: document.getElementById('milSlotPicker'),
-      apparatus: app,
+      serviceCode: String(militaryCart[0].code),
       onPick: sl => {
         window.milPickedSlot = sl;
         const dd = document.getElementById('militaryDesiredDate');
@@ -642,6 +641,7 @@ renderMilitaryCart();
 </script>
 <script src="/site/assets/notify.js"></script>
 <script src="/site/assets/slots.js"></script>
+<script src="/site/assets/d1-bridge.js" defer></script>
 <script>
 const _mdd=document.getElementById('militaryDesiredDate');
 if(_mdd)_mdd.min=new Date().toISOString().slice(0,10);
