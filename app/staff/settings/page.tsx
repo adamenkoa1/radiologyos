@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email: string; displayName: string; role: string };
-type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean; calendarToken: string };
+type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean; calendarToken: string; externalIcsUrl: string };
 
 export default function StaffSettingsPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -14,6 +14,7 @@ export default function StaffSettingsPage() {
   const [payLink, setPayLink] = useState("");
   const [token, setToken] = useState("");
   const [accessCode, setAccessCode] = useState("");
+  const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
   const [calBusy, setCalBusy] = useState(false);
@@ -28,7 +29,7 @@ export default function StaffSettingsPage() {
       if (res.status === 403) { if (active) setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
       if (!active) return;
-      if (data.settings) { setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); }
+      if (data.settings) { setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || ""); }
       if (data.staff) setStaff(data.staff);
     })();
     return () => { active = false; };
@@ -40,7 +41,7 @@ export default function StaffSettingsPage() {
     try {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ telegramBotToken: token, telegramChatId: chatId, payLink, accessCode }),
+        body: JSON.stringify({ telegramBotToken: token, telegramChatId: chatId, payLink, accessCode, externalIcsUrl }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
@@ -137,6 +138,15 @@ export default function StaffSettingsPage() {
           {calBusy ? "Оновлюємо…" : settings?.calendarToken ? "Оновити посилання" : "Створити посилання"}
         </button>
         {settings?.calendarToken && <small className="settingsHint">Оновлення посилання вимкне попереднє (стару підписку доведеться додати заново).</small>}
+      </section>
+
+      <section className="settingsBlock">
+        <h2>Розклад із Google (у кабінеті)</h2>
+        <p>Щоб персонал бачив події з вашого Google Календаря в пульті: у Google Календарі → «Налаштування календаря» → «Секретна адреса у форматі iCal» → скопіюйте й вставте сюди.</p>
+        <label><span>Адреса календаря (iCal)</span>
+          <input value={externalIcsUrl} onChange={(e) => setExternalIcsUrl(e.target.value)} placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" autoComplete="off" inputMode="url" />
+          <small>Порожнє поле вимикає показ. Найближчі події зʼявляться на «Пульті».</small>
+        </label>
       </section>
 
       {notice && <p className="notice success" role="status">{notice}</p>}

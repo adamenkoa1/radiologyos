@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (member.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
 
-  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token"]);
+  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token", "external_ics_url"]);
   return Response.json({
     settings: {
       telegramConfigured: Boolean(values.telegram_bot_token && values.telegram_chat_id),
@@ -28,6 +28,7 @@ export async function GET(request: Request) {
       payLink: values.pay_link,
       registrationCodeSet: Boolean(values.registration_code_hash),
       calendarToken: values.calendar_token,
+      externalIcsUrl: values.external_ics_url,
     },
     staff: member,
   }, { headers: { "cache-control": "no-store" } });
@@ -42,9 +43,11 @@ export async function PUT(request: Request) {
 
   const body = await request.json().catch(() => ({})) as {
     telegramBotToken?: string; telegramChatId?: string; payLink?: string; accessCode?: string;
+    externalIcsUrl?: string;
   };
   const chatId = clean(body.telegramChatId, 40);
   const payLink = clean(body.payLink, 500);
+  const externalIcsUrl = clean(body.externalIcsUrl, 600);
   // Empty token keeps the stored one (so the admin isn't forced to re-enter the
   // secret on every save); a value of "-" explicitly clears it.
   const token = clean(body.telegramBotToken, 120);
@@ -53,6 +56,9 @@ export async function PUT(request: Request) {
 
   if (payLink && !/^https:\/\//i.test(payLink)) {
     return Response.json({ error: "Посилання на оплату має починатися з https://" }, { status: 400 });
+  }
+  if (externalIcsUrl && !/^https?:\/\//i.test(externalIcsUrl)) {
+    return Response.json({ error: "Посилання на календар має починатися з http(s)://" }, { status: 400 });
   }
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
@@ -65,9 +71,10 @@ export async function PUT(request: Request) {
   else if (token) await setSetting(db, "telegram_bot_token", token);
   await setSetting(db, "telegram_chat_id", chatId);
   await setSetting(db, "pay_link", payLink);
+  await setSetting(db, "external_ics_url", externalIcsUrl);
   if (accessCode) await setSetting(db, "registration_code_hash", await hashPassword(accessCode));
 
-  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token"]);
+  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token", "external_ics_url"]);
   return Response.json({
     ok: true,
     settings: {
@@ -76,6 +83,7 @@ export async function PUT(request: Request) {
       payLink: values.pay_link,
       registrationCodeSet: Boolean(values.registration_code_hash),
       calendarToken: values.calendar_token,
+      externalIcsUrl: values.external_ics_url,
     },
   });
 }
