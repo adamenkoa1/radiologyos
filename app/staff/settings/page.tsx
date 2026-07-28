@@ -4,7 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email: string; displayName: string; role: string };
-type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean };
+type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean; calendarToken: string };
 
 export default function StaffSettingsPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -16,6 +16,8 @@ export default function StaffSettingsPage() {
   const [accessCode, setAccessCode] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
+  const [calBusy, setCalBusy] = useState(false);
+  const [calCopied, setCalCopied] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -52,6 +54,25 @@ export default function StaffSettingsPage() {
       setStatus("idle");
     }
   }
+
+  async function generateCalendar() {
+    setCalBusy(true); setNotice(""); setError("");
+    try {
+      const res = await fetch("/api/staff/settings/calendar", { method: "POST" });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; calendarToken?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося створити посилання");
+      setSettings((prev) => (prev ? { ...prev, calendarToken: data.calendarToken || "" } : prev));
+      setNotice("Посилання на календар оновлено");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося створити посилання");
+    } finally {
+      setCalBusy(false);
+    }
+  }
+
+  const calendarUrl = settings?.calendarToken && typeof window !== "undefined"
+    ? `${window.location.origin}/api/calendar?token=${settings.calendarToken}`
+    : "";
 
   const body = forbidden ? (
     <div className="accessDenied"><b>Доступ обмежено</b><p>Налаштування відділення доступні лише адміністратору.</p></div>
@@ -94,6 +115,28 @@ export default function StaffSettingsPage() {
         <label><span>Посилання на оплату</span>
           <input value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://…" autoComplete="off" inputMode="url" />
         </label>
+      </section>
+
+      <section className="settingsBlock">
+        <h2>Google Календар (записи)</h2>
+        <p>Приватне посилання-підписка: додайте його в Google Календар → «Інші календарі» → «Підписатися за URL». Підтверджені записи зʼявлятимуться в календарі й оновлюватимуться автоматично.</p>
+        <span className={`settingsState ${settings?.calendarToken ? "on" : "off"}`}>
+          {settings?.calendarToken ? "✓ Посилання створено" : "Не створено"}
+        </span>
+        {calendarUrl && (
+          <label><span>Посилання для підписки</span>
+            <input value={calendarUrl} readOnly onFocus={(e) => e.target.select()} />
+            <small>
+              <button type="button" className="linkBtn" onClick={() => { navigator.clipboard?.writeText(calendarUrl); setCalCopied(true); setTimeout(() => setCalCopied(false), 1500); }}>
+                {calCopied ? "Скопійовано ✓" : "Копіювати посилання"}
+              </button> · тримайте його в таємниці — воно містить дані пацієнтів.
+            </small>
+          </label>
+        )}
+        <button type="button" className="button secondary" onClick={generateCalendar} disabled={calBusy}>
+          {calBusy ? "Оновлюємо…" : settings?.calendarToken ? "Оновити посилання" : "Створити посилання"}
+        </button>
+        {settings?.calendarToken && <small className="settingsHint">Оновлення посилання вимкне попереднє (стару підписку доведеться додати заново).</small>}
       </section>
 
       {notice && <p className="notice success" role="status">{notice}</p>}
