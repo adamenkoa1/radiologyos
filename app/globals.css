@@ -591,3 +591,12 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .workspaceShell input:focus,.workspaceShell select:focus,.workspaceShell textarea:focus{
   box-shadow:0 0 0 3px rgba(12,122,133,.14)!important}
 @media print{.workspaceShell{background:#fff}}
+
+/* Підтвердження заявки одним рухом + статус нагадування */
+.bookingAction .confirmBooking{margin-top:8px;width:100%;border:0;border-radius:8px;background:var(--green);color:#fff;padding:10px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:filter .15s}
+.bookingAction .confirmBooking:hover{filter:brightness(1.06)}
+.reminderTag{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:800;line-height:1.35;background:#eef1f0;color:#5f706c}
+.reminderTag.sent{background:#daf0e5;color:#145b44}
+.reminderTag.failed{background:#f9e1da;color:#983b24}
+.reminderTag.skipped{background:#eef1f0;color:#5f706c}
+.reminderTag.queued{background:#fdeede;color:#9a5a1c}
