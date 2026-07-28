@@ -102,6 +102,20 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   assert.match(cabinet, /Очікує оплати/);
 });
 
+test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
+  // site: button hidden for a raw bank-QR payload, QR still drawn
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /if \(\/\^https\?:/); // button gated on a real http(s) URL
+  assert.match(bridge, /btn\.removeAttribute\('href'\); btn\.hidden = true/); // raw QR payload => scan-only
+  assert.match(bridge, /qr\.createImgTag/);
+  // cabinet: loads the QR generator and draws a QR for pending payments
+  const cabinet = await read("public/site/cabinet.html");
+  assert.match(cabinet, /assets\/qrgen\.js/);
+  assert.match(cabinet, /function payQrImg/);
+  assert.match(cabinet, /awaitingPayment && payLink \? `<div class="pay-qr"/);
+  assert.match(cabinet, /awaitingPayment && isPayUrl\(payLink\)/); // link button gated on http(s)
+});
+
 test("the slot picker uses the real department schedule", async () => {
   const slots = await read("public/site/assets/slots.js");
   assert.match(slots, /\/api\/availability\?date=/);

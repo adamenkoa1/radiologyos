@@ -141,6 +141,7 @@ header{padding:0 14px;margin-bottom:18px}
 
 </main>
 
+<script src="/site/assets/qrgen.js"></script>
 <script>
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
@@ -157,6 +158,12 @@ const statusMeta = {
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
 const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 const money = (n) => new Intl.NumberFormat('uk-UA').format(Number(n) || 0);
+const isPayUrl = (s) => /^https?:\/\//i.test(String(s || ''));
+function payQrImg(payload) {
+  if (!payload || typeof qrcode !== 'function') return '';
+  try { const qr = qrcode(0, 'M'); qr.addData(payload); qr.make(); return qr.createImgTag(4, 6); }
+  catch (e) { return ''; }
+}
 
 const gate = document.getElementById('gate');
 const cabinet = document.getElementById('cabinet');
@@ -190,8 +197,9 @@ function cardHtml(b) {
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
     ${awaitingPayment ? `<div class="pay-row">💳 <span>Очікує оплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>` : ''}
+    ${awaitingPayment && payLink ? `<div class="pay-qr" style="text-align:center;margin:4px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Наведіть камеру банку, щоб сплатити</div></div>` : ''}
     <div class="actions">
-      ${awaitingPayment && payLink ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити</a>` : ''}
+      ${awaitingPayment && isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити</a>` : ''}
       ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
       ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
     </div>
