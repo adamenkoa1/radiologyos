@@ -181,6 +181,7 @@ export default function PatientsPage() {
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ПІБ, телефон, тег"/>
+          <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Пацієнтів у цій категорії немає.</p> : visible.map((item)=><button
