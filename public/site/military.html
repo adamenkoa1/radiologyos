@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+
+<html lang="uk"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Дослідження для військовослужбовців</title>
+<meta name="description" content="Безоплатні дослідження для військовослужбовців у відділенні променевої діагностики Чернігівського військового госпіталю: КТ, рентгенографія, флюорографія."/>
+<meta name="theme-color" content="#4f5d3e"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23152011'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23ead7ad'/%3E%3C/svg%3E"/>
+<style>
+:root{
+  --bg:#f5f3ed;--paper:#fff;--ink:#141712;--muted:#667062;--dark:#4f5d3e;
+  --dark2:#5d6b48;--olive:#4f6140;--beige:#ead7ad;--line:#e0e4da;
+  --gold:#f4c64f;--shadow:0 16px 42px rgba(24,34,19,.12);--r:24px
+}
+*{box-sizing:border-box}html{scroll-behavior:smooth}
+body{margin:0;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
+a{text-decoration:none;color:inherit}.wrap{width:min(1160px,calc(100% - 28px));margin:auto}
+header{position:sticky;top:0;z-index:50;background:linear-gradient(90deg,var(--dark),var(--dark2));color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.18)}
+.header-row{min-height:84px;display:flex;align-items:center;gap:18px}
+.brand{display:flex;align-items:center;gap:13px}.mark{width:54px;height:54px;border:2px solid #ead8b4;border-radius:17px;display:grid;place-items:center;font-weight:750}
+.brand strong{font-size:26px;display:block;line-height:1}.brand small{display:block;margin-top:6px;color:#e6eadf}
+nav{margin-left:auto;display:flex;align-items:center;gap:22px;font-weight:650;font-size:14px}
+.call{padding:12px 16px;border-radius:13px;background:var(--beige);color:#1d2419}
+.hero{padding:24px 0 0}
+.audience{display:grid;grid-template-columns:1fr 1fr;border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+.audience>div{padding:20px 24px;min-height:120px;display:flex;gap:15px;align-items:center}
+.military{background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:white}.civil{background:linear-gradient(135deg,#f4e8cf,#e6cb95)}
+.icon{width:58px;height:58px;border-radius:17px;background:rgba(255,255,255,.12);display:grid;place-items:center;font-weight:750;flex:0 0 58px}
+.civil .icon{background:rgba(26,36,20,.08)}.audience strong{display:block;font-size:21px}.audience span{font-size:14px}
+.support{margin-top:14px;border-radius:18px;padding:17px 22px;background:#5a684a;color:white;font-size:17px;font-weight:700}
+.support b{color:var(--gold)}
+.hero-main{margin-top:14px;min-height:455px;border-radius:24px;overflow:hidden;position:relative;box-shadow:var(--shadow);
+ background:linear-gradient(90deg,rgba(20,27,17,.96),rgba(20,27,17,.72) 41%,rgba(20,27,17,.08) 72%),
+ url('https://upload.wikimedia.org/wikipedia/commons/1/1a/Siemens_Somatom_CT_scanner.jpg') 74% center/cover no-repeat}
+.hero-copy{padding:58px 42px;max-width:540px;color:#fff}.eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:700;color:#d8c18a}
+h1{font-size:clamp(30px,4.2vw,44px);font-weight:700;line-height:1.1;letter-spacing:-.02em;margin:14px 0}.hero-copy p{font-size:19px;color:#ecf0e8;max-width:500px}
+.hero-actions{display:flex;gap:12px;margin-top:28px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;min-height:50px;padding:0 18px;border-radius:14px;font-weight:700}
+.btn.primary{background:var(--beige);color:#20261b}.btn.secondary{border:1px solid rgba(255,255,255,.35);color:#fff;background:rgba(255,255,255,.08)}
+.quick{margin-top:15px;display:grid;grid-template-columns:repeat(3,1fr);background:#fff;border:1px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:var(--shadow)}
+.quick a{padding:18px;display:flex;gap:13px;align-items:center;border-right:1px solid var(--line)}.quick a:last-child{border-right:0}
+.quick .qicon{width:48px;height:48px;border-radius:50%;background:var(--dark2);color:#eeddb3;display:grid;place-items:center;font-weight:750}
+.section{padding:56px 0}.section-head{display:flex;justify-content:space-between;gap:18px;align-items:end;margin-bottom:24px}
+.section h2{font-size:42px;line-height:1.05;letter-spacing:-.03em;margin:5px 0}.section p.lead{color:var(--muted);max-width:760px}
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:20px;box-shadow:0 10px 26px rgba(24,34,19,.07)}
+.card h3{margin:8px 0 4px;font-size:18px}.card p{color:var(--muted);font-size:14px;min-height:40px}.price{font-size:26px;font-weight:750;color:var(--olive)}
+.card .mini{font-size:12px;color:var(--muted)}.card .book{margin-top:14px;width:100%;background:#edf0e9;color:#556349}
+.price-cta{margin-top:18px;display:flex;justify-content:center}
+.features{background:#ece9df}.feature-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}.feature{background:#fff;border:1px solid var(--line);padding:20px;border-radius:18px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}.step{background:#fff;border-radius:18px;border:1px solid var(--line);padding:20px}.num{font-size:34px;font-weight:750;color:var(--olive)}
+.contact{background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:white;padding:52px 0}.contact-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:24px}
+.contact-box{border:1px solid rgba(255,255,255,.14);border-radius:17px;padding:17px;margin-bottom:11px}.contact-box small{display:block;color:#d5dccf;margin-bottom:4px}
+footer{padding:26px 0 100px;color:var(--muted);font-size:13px}
+.fixed{display:none}
+.price-page{padding:34px 0 70px}.price-group{background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
+.price-group h2{margin:0;padding:18px 20px;background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:#fff;font-size:23px}
+table{width:100%;border-collapse:collapse}th,td{padding:13px 15px;border-bottom:1px solid var(--line);text-align:left}th{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}.code{color:var(--muted);width:68px}
+.note{background:#fff8e8;border:1px solid #ead8b2;border-radius:18px;padding:18px;color:#5a4b25;margin-top:20px}
+@media(max-width:900px){nav a:not(.call){display:none}.cards,.feature-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:700px){
+ .wrap{width:min(100% - 18px,1160px)}.header-row{min-height:72px}.mark{width:44px;height:44px}.brand strong{font-size:21px}.brand small{font-size:10px}
+ .audience{grid-template-columns:1fr 1fr}.audience>div{padding:12px;min-height:112px;align-items:flex-start}.icon{width:42px;height:42px;flex-basis:42px;border-radius:12px;font-size:12px}
+ .audience strong{font-size:14px}.audience span{font-size:11px}.support{font-size:13px;padding:13px}
+ .hero-main{min-height:340px;background-position:78% center}.hero-copy{padding:30px 20px;max-width:62%}h1{font-size:40px}.hero-copy p{font-size:14px}
+ .quick a{padding:12px 9px;align-items:flex-start}.quick .qicon{width:40px;height:40px;flex:0 0 40px}.quick strong{font-size:14px}.quick span{font-size:11px}
+ .section{padding:36px 0}.section h2{font-size:31px}.cards,.feature-grid,.steps,.contact-grid{grid-template-columns:1fr}
+ .section-head{align-items:flex-start}.section-head .btn{font-size:12px;padding:0 12px}
+ th{display:none}tr{display:grid;grid-template-columns:50px 1fr;border-bottom:1px solid var(--line)}td{border:0;padding:11px 8px}td:last-child{text-align:right}
+ .fixed{display:grid;grid-template-columns:1.2fr .8fr;gap:8px;position:fixed;left:8px;right:8px;bottom:8px;z-index:90;background:rgba(255,255,255,.96);padding:8px;border:1px solid var(--line);border-radius:16px;box-shadow:0 16px 38px rgba(0,0,0,.18)}
+ .fixed a{min-height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700}.fixed a:first-child{background:var(--dark2);color:white}.fixed a:last-child{background:var(--beige)}
+}
+
+.cart-button{position:relative;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:13px;background:#fff;color:#1d2419;font-weight:700;border:0;cursor:pointer}.cart-count{min-width:23px;height:23px;padding:0 6px;border-radius:99px;background:#f4c64f;display:grid;place-items:center;font-size:12px}.add-cart{margin-top:8px;width:100%;border:0;cursor:pointer;background:#556349;color:#fff}.add-cart.added{background:#75816d}.row-add{border:0;background:#556349;color:#fff;border-radius:10px;padding:9px 12px;font-weight:650;cursor:pointer;white-space:nowrap}.cart-overlay{position:fixed;inset:0;background:rgba(8,12,7,.55);z-index:120;opacity:0;pointer-events:none;transition:.2s}.cart-overlay.open{opacity:1;pointer-events:auto}.cart-drawer{position:absolute;right:0;top:0;height:100%;width:min(520px,100%);background:#f7f5ef;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.22)}.cart-head{display:flex;justify-content:space-between;align-items:center;gap:15px}.cart-close{border:0;background:#e6e8df;width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer}.cart-empty{padding:35px 15px;text-align:center;color:#667062}.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid #e0e4da;border-radius:16px;padding:14px;margin:10px 0}.cart-item small{display:block;color:#667062}.remove-item{border:0;background:none;color:#9b3b32;cursor:pointer;font-weight:650}.cart-total{display:flex;justify-content:space-between;padding:18px 4px;font-size:21px;font-weight:750}.request-form{background:#fff;border:1px solid #e0e4da;border-radius:18px;padding:16px}.request-form h3{margin-top:0}.field{margin:11px 0}.field label{display:block;font-size:13px;font-weight:650;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #cfd4c8;border-radius:11px;font:inherit;background:#fff}.field textarea{min-height:85px;resize:vertical}.send-request{width:100%;border:0;background:#556349;color:#fff;cursor:pointer}.cart-note{font-size:12px;color:#667062;margin:10px 0}.floating-cart{position:fixed;right:18px;bottom:20px;z-index:95;border:0;border-radius:999px;background:#ead7ad;color:#1d2419;padding:14px 18px;font-weight:750;box-shadow:0 12px 30px rgba(0,0,0,.2);cursor:pointer}.floating-cart .cart-count{display:inline-grid;margin-left:6px}
+@media(max-width:700px){.cart-button{padding:10px 12px}.cart-button .cart-label{display:none}.floating-cart{bottom:74px;right:12px}.price-group tr{grid-template-columns:46px 1fr auto}.row-add{grid-column:2/4;margin:0 8px 10px}.cart-drawer{padding:16px}}
+
+.upload-box{border:1.5px dashed #9ca893;border-radius:16px;padding:16px;background:#f7f8f4}
+.upload-title{font-weight:700;margin-bottom:4px}
+.upload-help{font-size:13px;color:var(--muted);margin-bottom:12px}
+.file-input{width:100%;padding:11px;background:#fff;border:1px solid var(--line);border-radius:12px}
+.file-summary{margin-top:10px;font-size:13px;color:#4e5d46}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#556050}
+.consent input{margin-top:3px;width:18px;height:18px;flex:0 0 18px}
+
+
+.price-group{margin-bottom:14px}
+.price-group h2{position:relative;cursor:pointer;padding-right:56px}
+.price-group h2::after{content:"+";position:absolute;right:20px;top:50%;transform:translateY(-50%);font-size:28px;font-weight:700}
+.price-group.open h2::after{content:"−"}
+.price-group table{display:none}
+.price-group.open table{display:table}
+.price-intro{background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:18px;color:var(--muted)}
+@media(max-width:700px){
+  .price-group.open table{display:table}
+  .price-group h2{font-size:19px}
+}
+
+
+.service-title{font-weight:700;color:#1b2118}
+.service-help{margin-top:4px;color:#667062;font-size:13px;line-height:1.35;max-width:760px}
+@media(max-width:700px){.service-help{font-size:12px}}
+
+.military-notice{padding:28px 0 0}
+.military-notice-card{
+  background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:#fff;border-radius:22px;
+  padding:28px;display:flex;justify-content:space-between;gap:20px;align-items:center;
+  box-shadow:var(--shadow)
+}
+.military-notice-card h1{font-size:42px;margin:6px 0}
+.military-notice-card p{margin:0;color:#e5eadf}
+@media(max-width:700px){
+  .military-notice-card{align-items:flex-start;flex-direction:column;padding:20px}
+  .military-notice-card h1{font-size:30px}
+  .price-group tr{grid-template-columns:52px 1fr}
+}
+
+.hospital-brand-text{display:flex;flex-direction:column;gap:3px;min-width:0}
+.hospital-brand-title{font-size:24px;font-weight:700;line-height:1.15;color:#fff}
+.hospital-brand-subtitle{font-size:16px;line-height:1.25;color:#d9dfd4}
+header .wrap{gap:18px}
+header .brand{flex:1;min-width:0}
+@media(max-width:760px){
+  .hospital-brand-title{font-size:18px}
+  .hospital-brand-subtitle{font-size:13px}
+  header .brand{gap:10px}
+}
+@media(max-width:520px){
+  .hospital-brand-title{font-size:15px}
+  .hospital-brand-subtitle{font-size:11px}
+  header .logo{width:52px;height:52px;min-width:52px}
+  header .cart-button{padding:12px 14px}
+}
+
+/* Military page: no price column */
+.price-group table th:last-child,
+.price-group table td:last-child{text-align:left;white-space:normal;font-weight:inherit}
+
+.service-schedule{
+  margin-top:7px;
+  color:#6f746d;
+  font-size:14px;
+  line-height:1.45;
+}
+.service-schedule p{margin:3px 0}
+.military-book-cell{
+  width:135px;
+  text-align:right;
+  vertical-align:middle;
+}
+.military-book-btn{
+  border:0;
+  border-radius:12px;
+  padding:12px 16px;
+  background:#f0d79a;
+  color:#26311f;
+  font:inherit;
+  font-weight:650;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.military-book-btn:hover{filter:brightness(.97)}
+@media(max-width:700px){
+  .military-book-cell{
+    width:auto;
+    padding-top:8px!important;
+  }
+  .military-book-btn{
+    width:100%;
+  }
+}
+
+.service-description{
+  margin-top:5px;
+  color:#7a7f78;
+  font-size:14px;
+  line-height:1.42;
+}
+.schedule-row td{
+  padding:14px 18px 18px!important;
+  background:#fff;
+}
+.shared-schedule{
+  display:grid;
+  gap:8px;
+  padding:16px 18px;
+  border:1px solid #e5dfcf;
+  border-radius:16px;
+  background:#fffdf8;
+  color:#686e66;
+  font-size:15px;
+  line-height:1.45;
+}
+.shared-schedule strong{color:#4f564d}
+.schedule-icon{
+  display:inline-block;
+  width:28px;
+  margin-right:6px;
+  text-align:center;
+}
+@media(max-width:700px){
+  .shared-schedule{
+    padding:14px;
+    font-size:14px;
+  }
+  .schedule-row{display:table-row!important}
+  .schedule-row td{display:table-cell!important}
+}
+
+.upload-box{
+  border:2px dashed #aab29f;
+  border-radius:15px;
+  padding:16px;
+  background:#fbfbf7;
+}
+.upload-box strong{display:block;margin-bottom:7px}
+.upload-box p{margin:0 0 12px;color:#7a7f78;font-size:13px;line-height:1.45}
+.upload-box input{
+  padding:10px;
+  border:1px solid #d4d8cf;
+  border-radius:10px;
+  background:#fff;
+}
+.military-cart-item{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:10px;
+  background:#fff;
+  border:1px solid #e0e4da;
+  border-radius:16px;
+  padding:14px;
+  margin:10px 0;
+}
+.military-cart-item small{display:block;color:#667062;margin-top:4px}
+
+/* Професійна форма заявки */
+.form-step{padding:4px 0 14px}
+.form-step + .form-step{border-top:1px solid #e0e4da;padding-top:16px}
+.step-title{display:flex;align-items:center;gap:9px;font-weight:650;font-size:15px;margin-bottom:11px}
+.step-num{width:24px;height:24px;border-radius:50%;background:#556349;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:700}
+.field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.req{color:#9b3b32}
+.opt{font-weight:500;color:#788175}
+.phone-wrap{display:flex;align-items:stretch}
+.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #cfd4c8;border-right:0;border-radius:11px 0 0 11px;background:#f1f3ed;font-weight:700;color:#4f5d3e}
+.phone-wrap input{border-radius:0 11px 11px 0}
+.field-error{display:none;font-size:12px;color:#9b3b32;margin-top:4px}
+.was-validated .field:has(input:invalid) .field-error{display:block}
+.was-validated:has(#militaryConsent:invalid) .consent-error{display:block}
+.was-validated .field input:invalid{border-color:#c66a5f;background:#fdf6f5}
+.upload-help{font-size:13px;color:#667062;margin-bottom:10px}
+.file-input{width:100%;padding:11px;background:#fff;border:1px solid #e0e4da;border-radius:12px}
+.success-panel{background:#fff;border:1px solid #e0e4da;border-radius:18px;padding:24px 18px;text-align:center}
+.success-summary{background:#f4f5f0;border:1px solid #e0e4da;border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:13.5px;text-align:left}
+.success-summary div{margin:3px 0}
+.offline-note{background:#fdf3e4;border:1px solid #e8cf9e;border-radius:11px;padding:10px 12px}
+.success-icon{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;background:#556349;color:#fff;display:grid;place-items:center;font-size:28px}
+.req-text{white-space:pre-wrap;text-align:left;font:13px/1.5 ui-monospace,Menlo,Consolas,monospace;background:#f4f5f0;border:1px solid #e0e4da;border-radius:12px;padding:13px;max-height:220px;overflow:auto;margin:0 0 10px}
+.msg-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px}
+.next-steps{text-align:left;font-size:13.5px;color:#3d4638;padding-left:20px;margin:0 0 12px}
+.next-steps li{margin:5px 0}
+.msg-actions .btn{min-height:44px;font-size:13px}
+.btn.secondary{background:#eef1e9;color:#3c4a30}
+@media(max-width:520px){.field-row{grid-template-columns:1fr}}
+
+/* Вибір вільного часу */
+.slot-picker{border:1px solid #e0e4da;border-radius:14px;padding:12px;background:#fbfcf9;margin:10px 0}
+.sp-head{font-weight:700;font-size:13.5px;margin-bottom:9px}
+.sp-note{font-weight:500;color:#8a927f;font-size:12px}
+.sp-loading,.sp-empty{color:#8a927f;font-size:13px;padding:8px 2px}
+.sp-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
+.sp-day{flex-shrink:0;padding:8px 11px;border-radius:10px;border:1.5px solid #cfd4c8;background:#fff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.sp-day.on{border-color:#556349;background:#eef1e9;color:#3c4a30}
+.sp-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:8px;max-height:150px;overflow:auto}
+.sp-time{padding:8px 4px;border-radius:9px;border:1.5px solid #cfd4c8;background:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.sp-time.on{border-color:#556349;background:#556349;color:#fff}
+.sp-picked{margin-top:9px;font-size:13px;color:#2f5c2a}
+</style></head><body>
+<header><div class="wrap header-row"><a class="brand" href="/"><div class="hospital-brand-text"><div class="hospital-brand-title">Чернігівський військовий госпіталь</div><div class="hospital-brand-subtitle">Відділення променевої діагностики</div></div></a><nav><a href="/">Головна</a><button class="cart-button" onclick="openMilitaryCart()" type="button">
+<span class="cart-label">Моя заявка</span>
+<span class="cart-count" data-military-cart-count="">0</span>
+</button></nav></div></header>
+<main class="price-page"><section class="military-notice">
+<div class="wrap">
+<div class="military-notice-card">
+<div>
+<div class="eyebrow">Військовослужбовцям</div>
+<h1 id="scMilPageTitle">Дослідження для військовослужбовців</h1>
+<p id="scMilPageSub">За направленням лікаря та відповідно до чинного законодавства України.</p>
+</div>
+</div>
+</div>
+</section><div class="wrap"><div class="price-intro" id="scMilNotice"><strong>Оберіть потрібний розділ.</strong> Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.</div><div class="section-head"><div><div class="eyebrow" style="color:#596b4c">Офіційний перелік досліджень</div><p class="lead" style="margin-top:8px" id="scMilLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
+<section class="price-group open"><h2>1. Цифрова флюорографія</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th></tr></thead><tbody><tr>
+<td class="code">101</td>
+<td>
+<strong>Цифрова флюорографія органів грудної клітки</strong>
+<div class="service-description">Один знімок органів грудної клітки у прямій проекції та письмовий висновок лікаря-рентгенолога.</div>
+</td>
+</tr><tr class="schedule-row">
+<td colspan="2">
+<div class="shared-schedule">
+<div><span class="schedule-icon">👥</span><strong>Запису не потрібно.</strong> Дослідження проводиться в порядку живої черги.</div>
+<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> у робочі дні з 08:00 до 12:00.</div>
+<div><span class="schedule-icon">🕒</span><strong>Ургентно:</strong> цілодобово.</div>
+<div><span class="schedule-icon">🏢</span><strong>Місце проведення:</strong> 2-й поверх.</div>
+</div>
+</td>
+</tr></tbody></table></section><section class="price-group"><h2>2. Цифрова рентгенографія</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th></tr></thead><tbody><tr>
+<td class="code">201</td>
+<td>
+<strong>Цифрова рентгенографія однієї анатомічної ділянки</strong>
+<div class="service-description">Два стандартні знімки однієї ділянки, наприклад суглоба, кістки або відділу хребта.</div>
+</td>
+</tr><tr>
+<td class="code">202</td>
+<td>
+<strong>Цифрова рентгенографія двох і більше анатомічних ділянок</strong>
+<div class="service-description">Два і більше стандартних знімки різних анатомічних ділянок за одне дослідження.</div>
+</td>
+</tr><tr>
+<td class="code">203</td>
+<td>
+<strong>Функціональна рентгенографія одного відділу хребта</strong>
+<div class="service-description">До трьох знімків із функціональними пробами для оцінки рухливості та нестабільності хребців.</div>
+</td>
+</tr><tr>
+<td class="code">204</td>
+<td>
+<strong>Оглядова рентгенографія органів черевної порожнини</strong>
+<div class="service-description">Оглядовий знімок живота для оцінки газу, рівнів рідини, сторонніх тіл та інших рентгенологічних ознак.</div>
+</td>
+</tr><tr class="schedule-row">
+<td colspan="2">
+<div class="shared-schedule">
+<div><span class="schedule-icon">👥</span><strong>Для досліджень 201–204 запису не потрібно.</strong> Прийом проводиться в порядку живої черги.</div>
+<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> у робочі дні з 13:00 до 17:00.</div>
+<div><span class="schedule-icon">🕒</span><strong>Ургентно:</strong> цілодобово.</div>
+<div><span class="schedule-icon">🏢</span><strong>Місце проведення:</strong> 2-й поверх.</div>
+</div>
+</td>
+</tr></tbody></table></section><section class="price-group open"><h2>3. Контрастні рентгенологічні дослідження</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">301</td><td><div class="service-title">Рентгеноскопія стравоходу, шлунка та дванадцятипалої кишки</div><div class="service-help">Дослідження верхніх відділів травного тракту з прийманням барієвої суспензії.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('301','Рентгеноскопія стравоходу, шлунка та дванадцятипалої кишки')" type="button">Записатися</button></td></tr><tr><td class="code">302</td><td><div class="service-title">Дослідження проходження барію по тонкій кишці</div><div class="service-help">Серія до чотирьох знімків для оцінки проходження контрасту тонкою кишкою.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('302','Дослідження проходження барію по тонкій кишці')" type="button">Записатися</button></td></tr><tr><td class="code">303</td><td><div class="service-title">Додатковий відстрочений знімок під час дослідження пасажу</div><div class="service-help">Один додатковий знімок, якщо потрібне триваліше спостереження за проходженням барію.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('303','Додатковий відстрочений знімок під час дослідження пасажу')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>4. КТ без внутрішньовенного контрастування</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">401</td><td><div class="service-title">КТ головного мозку</div><div class="service-help">Головний мозок і кістки черепа без внутрішньовенного контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('401','КТ головного мозку')" type="button">Записатися</button></td></tr><tr><td class="code">402</td><td><div class="service-title">КТ придаткових пазух носа</div><div class="service-help">Гайморові, лобові, клиноподібна пазухи та клітини решітчастого лабіринту.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('402','КТ придаткових пазух носа')" type="button">Записатися</button></td></tr><tr><td class="code">403</td><td><div class="service-title">КТ кісток лицевого скелета</div><div class="service-help">Кістки обличчя, орбіти, верхня та нижня щелепи.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('403','КТ кісток лицевого скелета')" type="button">Записатися</button></td></tr><tr><td class="code">404</td><td><div class="service-title">КТ м’яких тканин шиї</div><div class="service-help">М’які тканини, глотка, гортань, лімфатичні вузли та інші структури шиї без контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('404','КТ м’яких тканин шиї')" type="button">Записатися</button></td></tr><tr><td class="code">405</td><td><div class="service-title">КТ одного відділу хребта</div><div class="service-help">Один відділ: шийний, грудний або попереково-крижовий.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('405','КТ одного відділу хребта')" type="button">Записатися</button></td></tr><tr><td class="code">406</td><td><div class="service-title">КТ двох відділів хребта</div><div class="service-help">Два відділи хребта в межах одного обстеження.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('406','КТ двох відділів хребта')" type="button">Записатися</button></td></tr><tr><td class="code">407</td><td><div class="service-title">КТ поперекового відділу хребта та кульшових суглобів</div><div class="service-help">Одночасна оцінка поперекового відділу хребта і обох кульшових суглобів.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('407','КТ поперекового відділу хребта та кульшових суглобів')" type="button">Записатися</button></td></tr><tr><td class="code">408</td><td><div class="service-title">КТ органів грудної клітки</div><div class="service-help">Легені, плевра, середостіння та грудна стінка без контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('408','КТ органів грудної клітки')" type="button">Записатися</button></td></tr><tr><td class="code">409</td><td><div class="service-title">КТ органів черевної порожнини та заочеревинного простору</div><div class="service-help">Печінка, жовчний міхур, підшлункова залоза, селезінка, нирки та інші структури живота.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('409','КТ органів черевної порожнини та заочеревинного простору')" type="button">Записатися</button></td></tr><tr><td class="code">410</td><td><div class="service-title">КТ органів малого таза</div><div class="service-help">Сечовий міхур, внутрішні статеві органи, пряма кишка та навколишні тканини.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('410','КТ органів малого таза')" type="button">Записатися</button></td></tr><tr><td class="code">411</td><td><div class="service-title">КТ органів черевної порожнини та малого таза</div><div class="service-help">Комплексне дослідження живота, заочеревинного простору й органів малого таза.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('411','КТ органів черевної порожнини та малого таза')" type="button">Записатися</button></td></tr><tr><td class="code">412</td><td><div class="service-title">КТ органів грудної клітки та черевної порожнини</div><div class="service-help">Комплексне дослідження грудної клітки та живота без контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('412','КТ органів грудної клітки та черевної порожнини')" type="button">Записатися</button></td></tr><tr><td class="code">413</td><td><div class="service-title">КТ грудної клітки, черевної порожнини та малого таза</div><div class="service-help">Комплексне обстеження трьох анатомічних ділянок без контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('413','КТ грудної клітки, черевної порожнини та малого таза')" type="button">Записатися</button></td></tr><tr><td class="code">414</td><td><div class="service-title">КТ одного суглоба</div><div class="service-help">Детальна оцінка одного суглоба та прилеглих кісток.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('414','КТ одного суглоба')" type="button">Записатися</button></td></tr><tr><td class="code">415</td><td><div class="service-title">КТ двох симетричних суглобів</div><div class="service-help">Порівняльне дослідження парних суглобів, наприклад обох колінних або кульшових.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('415','КТ двох симетричних суглобів')" type="button">Записатися</button></td></tr><tr><td class="code">416</td><td><div class="service-title">КТ кісток таза та кульшових суглобів</div><div class="service-help">Кістки таза, крижово-клубові та кульшові суглоби.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('416','КТ кісток таза та кульшових суглобів')" type="button">Записатися</button></td></tr><tr><td class="code">417</td><td><div class="service-title">КТ верхньої або нижньої кінцівки</div><div class="service-help">Дослідження вибраної ділянки руки або ноги.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('417','КТ верхньої або нижньої кінцівки')" type="button">Записатися</button></td></tr><tr><td class="code">418</td><td><div class="service-title">КТ кисті або стопи</div><div class="service-help">Дрібні кістки та суглоби кисті чи стопи.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('418','КТ кисті або стопи')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>5. КТ з внутрішньовенним контрастуванням</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">501</td><td><div class="service-title">КТ головного мозку з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження головного мозку за медичними показаннями.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('501','КТ головного мозку з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">502</td><td><div class="service-title">КТ м’яких тканин шиї з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження органів і м’яких тканин шиї та лімфатичних вузлів.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('502','КТ м’яких тканин шиї з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">503</td><td><div class="service-title">КТ органів грудної клітки з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження легень, середостіння, плеври та грудної стінки.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('503','КТ органів грудної клітки з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">504</td><td><div class="service-title">КТ органів черевної порожнини та заочеревинного простору з контрастуванням</div><div class="service-help">Контрастна оцінка органів живота, нирок, судин та заочеревинних структур.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('504','КТ органів черевної порожнини та заочеревинного простору з контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">505</td><td><div class="service-title">КТ органів малого таза з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження органів і тканин малого таза.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('505','КТ органів малого таза з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">506</td><td><div class="service-title">КТ органів черевної порожнини та малого таза з контрастуванням</div><div class="service-help">Комплексне контрастне дослідження живота, заочеревинного простору та малого таза.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('506','КТ органів черевної порожнини та малого таза з контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">507</td><td><div class="service-title">КТ органів грудної клітки та черевної порожнини з контрастуванням</div><div class="service-help">Комплексне контрастне дослідження грудної клітки та живота.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('507','КТ органів грудної клітки та черевної порожнини з контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">508</td><td><div class="service-title">КТ грудної клітки, черевної порожнини та малого таза з контрастуванням</div><div class="service-help">Комплексне контрастне обстеження трьох анатомічних ділянок.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('508','КТ грудної клітки, черевної порожнини та малого таза з контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">509</td><td><div class="service-title">Додаткове пероральне контрастування</div><div class="service-help">Приймання контрастної речовини через рот для кращої оцінки шлунково-кишкового тракту.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('509','Додаткове пероральне контрастування')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>6. КТ-ангіографія</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">601</td><td><div class="service-title">КТ-ангіографія однієї анатомічної ділянки</div><div class="service-help">Контрастне дослідження судин однієї ділянки, визначеної лікарем.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('601','КТ-ангіографія однієї анатомічної ділянки')" type="button">Записатися</button></td></tr><tr><td class="code">602</td><td><div class="service-title">КТ-ангіографія двох анатомічних ділянок</div><div class="service-help">Контрастне дослідження судин двох суміжних або окремих ділянок.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('602','КТ-ангіографія двох анатомічних ділянок')" type="button">Записатися</button></td></tr><tr><td class="code">603</td><td><div class="service-title">КТ-ангіопульмонографія</div><div class="service-help">Контрастне дослідження легеневих артерій, зокрема для виключення тромбоемболії.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('603','КТ-ангіопульмонографія')" type="button">Записатися</button></td></tr><tr><td class="code">604</td><td><div class="service-title">КТ-ангіографія аорти та артерій нижніх кінцівок</div><div class="service-help">Контрастна оцінка аорти та артерій ніг.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('604','КТ-ангіографія аорти та артерій нижніх кінцівок')" type="button">Записатися</button></td></tr></tbody></table></section>
+<div class="note"><strong>Для військовослужбовців.</strong> Дослідження проводяться безоплатно за направленням лікаря та відповідно до медичних показань. Остаточний вид і обсяг дослідження визначає лікар.</div>
+</div></main>
+<script>
+document.querySelectorAll('.price-group h2').forEach((heading)=>{
+  heading.addEventListener('click',()=>{
+    const group=heading.closest('.price-group');
+    group.classList.toggle('open');
+  });
+});
+</script>
+
+<div aria-hidden="true" class="cart-overlay" id="militaryCartOverlay">
+<aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog">
+<div class="cart-head">
+<div>
+<div class="eyebrow" style="color:#596b4c">Попередній вибір</div>
+<h2 style="margin:5px 0">Моя заявка</h2>
+</div>
+<button class="cart-close" onclick="closeMilitaryCart()" type="button">×</button>
+</div>
+<div id="militaryCartItems"></div>
+<form class="request-form" id="militaryRequestForm" novalidate>
+      <div class="form-step">
+        <div class="step-title"><span class="step-num">1</span>Контактні дані</div>
+        <div class="field">
+          <label for="militaryPatientName">Ім’я та прізвище <span class="req">*</span></label>
+          <input autocomplete="name" id="militaryPatientName" required placeholder="Іван Іваненко"/>
+          <span class="field-error">Вкажіть ім’я та прізвище</span>
+        </div>
+        <div class="field">
+          <label for="militaryPatientPhone">Номер телефону <span class="req">*</span></label>
+          <div class="phone-wrap">
+            <span class="phone-prefix">+380</span>
+            <input autocomplete="tel-national" id="militaryPatientPhone" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="97 000 00 00" required/>
+          </div>
+          <span class="field-error">Введіть 9 цифр після +380</span>
+        </div>
+      </div>
+      <div class="form-step">
+        <div class="step-title"><span class="step-num">2</span>Деталі візиту</div>
+        <div class="slot-picker" id="milSlotPicker"><div class="sp-loading">Оберіть послугу — і тут з’явиться вільний час</div></div>
+        <div class="field-row">
+          <div class="field">
+            <label for="militaryDesiredDate">Або вкажіть дату вручну</label>
+            <input id="militaryDesiredDate" type="date"/>
+          </div>
+          <div class="field">
+            <label for="militaryDesiredTime">Зручний час</label>
+            <select id="militaryDesiredTime">
+              <option value="">Будь-який</option>
+              <option>Ранок (8:00–12:00)</option>
+              <option>День (12:00–17:00)</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label for="militaryReferral">Направлення</label>
+          <select id="militaryReferral">
+            <option>Є направлення</option>
+            <option>Направлення ще немає</option>
+            <option>Потрібна консультація</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Попередній висновок <span class="opt">(необов’язково)</span></label>
+          <div class="upload-box">
+            <div class="upload-help">Фото або PDF попереднього висновку КТ, МРТ чи рентгенографії.</div>
+            <input accept=".pdf,image/*" class="file-input" id="militaryPreviousReport" type="file"/>
+          </div>
+        </div>
+        <div class="field">
+          <label for="militaryComment">Коментар <span class="opt">(необов’язково)</span></label>
+          <textarea id="militaryComment" placeholder="Підрозділ, зручний час або інша інформація"></textarea>
+        </div>
+      </div>
+      <div class="form-step">
+        <div class="step-title"><span class="step-num">3</span>Підтвердження</div>
+        <label class="consent">
+          <input id="militaryConsent" required type="checkbox"/>
+          <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження.</span>
+        </label>
+        <span class="field-error consent-error">Потрібна згода на обробку даних</span>
+        <p class="cart-note">Після формування ви отримаєте готовий текст заявки — його можна надіслати у WhatsApp, Viber або продиктувати за телефоном реєстратури.</p>
+        <button class="btn send-request" type="submit">Сформувати заявку</button>
+      </div>
+    </form>
+
+    <div class="success-panel" id="milSuccessPanel" hidden>
+      <div class="success-icon" aria-hidden="true">✓</div>
+      <h3>Заявку прийнято</h3>
+      <div class="success-summary" id="milSuccessSummary"></div>
+      <p>Реєстратура опрацює заявку та зателефонує вам для підтвердження дати й часу. Стежити за статусом можна в особистому кабінеті за номером телефону.</p>
+      <p class="cart-note offline-note" id="milOfflineNote" hidden><strong>Увага:</strong> онлайн-передача заявок тимчасово не працює. Будь ласка, зателефонуйте в реєстратуру: <a href="tel:+380972808899"><strong>+380 97 280 88 99</strong></a></p>
+      <a class="btn send-request" href="/site/cabinet.html" style="margin-bottom:8px">Особистий кабінет</a>
+      <button class="btn send-request" type="button" onclick="closeMilitaryCart()" style="background:#eef1e9;color:#3c4a30">Готово</button>
+    </div>
+</aside>
+</div>
+<button class="floating-cart" onclick="openMilitaryCart()" type="button">
+      Моя заявка <span class="cart-count" data-military-cart-count="">0</span>
+</button>
+<script>
+const MILITARY_CART_KEY = 'radiologyos_military_cart';
+let militaryCart = [];
+
+try {
+  militaryCart = JSON.parse(localStorage.getItem(MILITARY_CART_KEY) || '[]');
+  if (!Array.isArray(militaryCart)) militaryCart = [];
+} catch (error) {
+  militaryCart = [];
+}
+
+function saveMilitaryCart() {
+  localStorage.setItem(MILITARY_CART_KEY, JSON.stringify(militaryCart));
+  renderMilitaryCart();
+}
+
+function addMilitaryItem(code, name) {
+  code = String(code);
+  if (!militaryCart.some(item => item.code === code)) {
+    militaryCart.push({ code, name });
+    saveMilitaryCart();
+  }
+  openMilitaryCart();
+}
+
+function removeMilitaryItem(code) {
+  militaryCart = militaryCart.filter(item => item.code !== String(code));
+  saveMilitaryCart();
+}
+
+function renderMilitaryCart() {
+  document.querySelectorAll('[data-military-cart-count]').forEach(el => {
+    el.textContent = militaryCart.length;
+  });
+
+  const container = document.getElementById('militaryCartItems');
+  if (!container) return;
+
+  if (!militaryCart.length) {
+    container.innerHTML = '<div class="cart-empty">Дослідження ще не вибрані.</div>';
+  } else {
+    container.innerHTML = militaryCart.map(item => `
+      <div class="military-cart-item">
+        <div>
+          <strong>${escapeMilitaryHtml(item.name)}</strong>
+          <small>Код ${escapeMilitaryHtml(item.code)}</small>
+        </div>
+        <button class="remove-item" type="button"
+                onclick="removeMilitaryItem('${escapeMilitaryJs(item.code)}')">Видалити</button>
+      </div>
+    `).join('');
+  }
+
+  const submit = document.querySelector('#militaryRequestForm .send-request');
+  if (submit) submit.disabled = militaryCart.length === 0;
+}
+
+function escapeMilitaryHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;'
+  })[char]);
+}
+
+function escapeMilitaryJs(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function openMilitaryCart() {
+  const overlay = document.getElementById('militaryCartOverlay');
+  if (!overlay) return;
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  document.body.style.overflow = 'hidden';
+
+  /* повертаємо форму після попередньої відправки */
+  const f = document.getElementById('militaryRequestForm');
+  if (f) {
+    f.hidden = false;
+    f.classList.remove('was-validated');
+    document.getElementById('milSuccessPanel').hidden = true;
+    const milList = document.getElementById('militaryCartItems');
+    if (milList) milList.style.display = '';
+  }
+
+  /* вибір вільного часу для апарата обраних досліджень */
+  if (typeof initSlotPicker === 'function' && militaryCart.length) {
+    window.milPickedSlot = { date: '', time: '' };
+    initSlotPicker({
+      container: document.getElementById('milSlotPicker'),
+      serviceCode: String(militaryCart[0].code),
+      onPick: sl => {
+        window.milPickedSlot = sl;
+        const dd = document.getElementById('militaryDesiredDate');
+        if (dd && sl.date) dd.value = sl.date;
+      }
+    });
+  }
+
+  renderMilitaryCart();
+}
+
+function closeMilitaryCart() {
+  const overlay = document.getElementById('militaryCartOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('open');
+  overlay.setAttribute('aria-hidden', 'true');
+  document.body.style.overflow = '';
+}
+
+document.getElementById('militaryCartOverlay')?.addEventListener('click', event => {
+  if (event.target.id === 'militaryCartOverlay') closeMilitaryCart();
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') closeMilitaryCart();
+});
+
+document.getElementById('militaryRequestForm').addEventListener('submit', event => {
+  event.preventDefault();
+  const form = document.getElementById('militaryRequestForm');
+
+  if (!militaryCart.length) { alert('Оберіть хоча б одне дослідження.'); return; }
+  if (!form.checkValidity()) {
+    form.classList.add('was-validated');
+    form.querySelector(':invalid')?.focus();
+    return;
+  }
+
+  const name = document.getElementById('militaryPatientName').value.trim();
+  const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
+  const _ps = window.milPickedSlot || { date: '', time: '' };
+  const dateISO = _ps.date || document.getElementById('militaryDesiredDate').value;
+  const time = _ps.time || document.getElementById('militaryDesiredTime').value || 'будь-який';
+  const referral = document.getElementById('militaryReferral').value;
+  const comment = document.getElementById('militaryComment').value.trim() || '—';
+  const hasFile = (document.getElementById('militaryPreviousReport')?.files || []).length > 0;
+
+
+  const commentFull = [referral, time !== 'будь-який' ? 'Зручний час: ' + time : '', comment !== '—' ? comment : ''].filter(Boolean).join('. ');
+  const _sid = (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
+
+  /* панель персоналу (цей пристрій) */
+  try {
+    const STAFF_STORE = 'radiologyos_applications_v1';
+    const apps = JSON.parse(localStorage.getItem(STAFF_STORE) || '[]');
+    const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+    militaryCart.forEach(item => {
+      apps.push({ id: uid(), sid: _sid, name, phone, category: 'Військовослужбовець',
+        study: item.name, desiredDate: dateISO || '', desiredTime: _ps.time || '',
+        apparatus: (typeof apparatusForCode === 'function') ? apparatusForCode(item.code) : 'xray',
+        appointmentDate: '', appointmentTime: '',
+        status: 'new', comment: commentFull, createdAt: new Date().toISOString() });
+    });
+    localStorage.setItem(STAFF_STORE, JSON.stringify(apps));
+  } catch (e) {}
+
+  /* лист адміністратору + журнал */
+  if (typeof notifyAdmin === 'function') notifyAdmin({
+    id: _sid, name, phone,
+    category: 'Військовослужбовець',
+    studies: militaryCart.map(item => item.name).join('; '),
+    desiredDate: dateISO || '',
+    source: (typeof getTrafficSource === 'function') ? getTrafficSource() : '',
+    apparatus: (typeof apparatusForCode === 'function' && militaryCart.some(x => apparatusForCode(x.code) === 'ct')) ? 'ct' : 'xray',
+    comment: [_ps.time ? 'Обраний час: ' + _ps.time : '', commentFull].filter(Boolean).join('. ')
+  });
+
+  /* екран підтвердження */
+  const escS = t => String(t ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
+  document.getElementById('milSuccessSummary').innerHTML =
+    `<div><strong>Дослідження:</strong> ${militaryCart.map(x => escS(x.name)).join('; ')}</div>` +
+    (dateISO ? `<div><strong>Бажана дата:</strong> ${dateISO.split('-').reverse().join('.')}${_ps.time ? ' о ' + _ps.time : ''}</div>` : '') +
+    `<div><strong>Телефон для зв'язку:</strong> ${escS(phone)}</div>`;
+  const milOff = document.getElementById('milOfflineNote');
+  if (milOff) milOff.hidden = !!(typeof NOTIFY_ENDPOINT !== 'undefined' && NOTIFY_ENDPOINT);
+  form.hidden = true;
+  document.getElementById('milSuccessPanel').hidden = false;
+  const milList = document.getElementById('militaryCartItems');
+  if (milList) milList.style.display = 'none';
+  militaryCart = [];
+  saveMilitaryCart();
+});
+
+
+
+renderMilitaryCart();
+</script><script src="/site/assets/department.js"></script>
+<script>
+(function(){
+  try{
+    if(!localStorage.getItem(SITECONTENT_STORE)) return;
+    const c=getSiteContent();
+    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.textContent=v};
+    set('scMilPageTitle',c.milPageTitle); set('scMilPageSub',c.milPageSub);
+    set('scMilNotice',c.milNotice); set('scMilLead',c.milLead);
+    /* шапка спільна */
+    document.querySelectorAll('.hospital-brand-title').forEach(el=>{if(c.brandTitle)el.textContent=c.brandTitle});
+    document.querySelectorAll('.hospital-brand-subtitle').forEach(el=>{if(c.brandSubtitle)el.textContent=c.brandSubtitle});
+  }catch(e){}
+})();
+</script>
+<script src="/site/assets/notify.js"></script>
+<script src="/site/assets/slots.js"></script>
+<script src="/site/assets/d1-bridge.js" defer></script>
+<script>
+const _mdd=document.getElementById('militaryDesiredDate');
+if(_mdd)_mdd.min=new Date().toISOString().slice(0,10);
+</script>
+</body></html>
