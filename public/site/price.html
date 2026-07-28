@@ -561,4 +561,22 @@ header .brand{flex:1;min-width:0}
 <script src="/site/assets/cart.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
 
+<script>
+/* Підтягуємо змінені персоналом тарифи (кабінет → «Тарифи») і оновлюємо ціни в таблиці. */
+(function(){
+  var fmt=new Intl.NumberFormat('uk-UA');
+  fetch('/api/tariffs',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    var prices=(d&&d.prices)||{};
+    if(!prices||!Object.keys(prices).length)return;
+    document.querySelectorAll('table tr').forEach(function(tr){
+      var codeCell=tr.querySelector('td.code');if(!codeCell)return;
+      var code=codeCell.textContent.trim();
+      if(prices[code]==null)return;
+      var cells=[].slice.call(tr.querySelectorAll('td'));
+      var priceCell=cells.filter(function(td){return /грн/.test(td.textContent);})[0];
+      if(priceCell)priceCell.textContent=fmt.format(prices[code])+' грн';
+    });
+  }).catch(function(){});
+})();
+</script>
 </body></html>

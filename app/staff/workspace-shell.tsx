@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "settings";
+type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -25,6 +25,7 @@ const navigation = [
   { href:"/staff/protocols", label:"Протоколи", glyph:"▤", section:"protocols" as WorkspaceSection },
   { href:"/staff/imaging", label:"Знімки DICOM", glyph:"▦", section:"imaging" as WorkspaceSection },
   { href:"/staff/reports", label:"Звіти", glyph:"▥", section:"reports" as WorkspaceSection },
+  { href:"/staff/tariffs", label:"Тарифи", glyph:"₴", section:"tariffs" as WorkspaceSection },
 ];
 
 const administration = [
@@ -135,14 +136,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "settings" ? "Налаштування":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings" || active === "tariffs"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>

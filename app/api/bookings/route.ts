@@ -2,6 +2,7 @@ import { addMinutes, serviceByCode } from "../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../lib/booking-rules";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
+import { effectivePrice } from "../../../lib/tariffs";
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -47,6 +48,7 @@ export async function POST(request: Request) {
     const referral = referralType === "none" ? "Немає направлення" : referralType;
     const paymentStatus = patientCategory === "civilian" ? "pending" : "not_required";
     const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
+    const price = await effectivePrice(db, service.code);
     const result = await db.prepare(
       `INSERT INTO bookings (
         code, name, phone, phone_normalized, service, service_code, equipment_id,
@@ -71,7 +73,7 @@ export async function POST(request: Request) {
       code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
       service.durationMinutes, desiredDate, desiredTime, referral, patientCategory,
       referralType, referralNumber, marketingSource, paymentStatus,
-      service.price, nszuStatus, comment,
+      price, nszuStatus, comment,
       service.equipmentId, desiredDate, endTime, desiredTime,
       service.equipmentId, desiredDate, endTime, desiredTime,
     ).run();

@@ -7,6 +7,7 @@ import { serviceByCode } from "../../../lib/catalog";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
+import { effectivePrice } from "../../../lib/tariffs";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -59,6 +60,7 @@ export async function POST(request: Request) {
       const code = `RD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
       const paymentStatus = category === "civilian" ? "pending" : "not_required";
       const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
+      const price = await effectivePrice(db, service.code);
       const result = await db.prepare(
         `INSERT INTO bookings (
           code, name, phone, phone_normalized, service, service_code, equipment_id,
@@ -68,7 +70,7 @@ export async function POST(request: Request) {
       ).bind(
         code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
         service.durationMinutes, desiredDate, desiredTime, referral, category,
-        referralType, marketingSource, paymentStatus, service.price, nszuStatus, comment,
+        referralType, marketingSource, paymentStatus, price, nszuStatus, comment,
       ).run();
       if (result.meta.last_row_id) {
         await db.prepare(
