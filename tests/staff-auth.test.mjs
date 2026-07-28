@@ -79,3 +79,53 @@ test("the self-managed login page renders", async () => {
   assert.match(html, /Кабінет персоналу/);
   assert.match(html, /Пароль/);
 });
+
+test("self-service migration seeds an access code and re-asserts the admin", async () => {
+  const migration = await read("drizzle/0009_staff_self_service.sql");
+  assert.match(migration, /CREATE TABLE IF NOT EXISTS `app_settings`/);
+  assert.match(migration, /registration_code_hash/);
+  assert.match(migration, /pbkdf2\$sha256\$/);
+  assert.match(migration, /password_hash` IS NULL OR/); // only re-set when unset
+  const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
+  assert.ok(journal.entries.some((entry) => entry.tag === "0009_staff_self_service"));
+});
+
+test("account helpers enforce access code, email and password rules", async () => {
+  const source = await read("lib/staff-accounts.ts");
+  assert.match(source, /export async function verifyAccessCode/);
+  assert.match(source, /export async function registerStaff/);
+  assert.match(source, /export async function resetStaffPassword/);
+  assert.match(source, /export function passwordProblem/);
+  assert.match(source, /await hashPassword\(/);
+  // a reset revokes existing sessions so old devices are logged out
+  assert.match(source, /DELETE FROM staff_sessions WHERE email = \?/);
+});
+
+test("register and reset endpoints gate on the department access code", async () => {
+  const register = await read("app/api/staff/register/route.ts");
+  const reset = await read("app/api/staff/reset/route.ts");
+  for (const route of [register, reset]) {
+    assert.match(route, /verifyAccessCode\(/);
+    assert.match(route, /isRateLimited\(/);
+    assert.match(route, /Невірний код доступу відділення/);
+  }
+  assert.match(register, /set-cookie/i); // registration signs the member in
+  assert.match(register, /emailTaken\(/);
+});
+
+test("login page exposes the eye toggle, registration and reset links", async () => {
+  const response = await renderPath("/staff/login");
+  const html = await response.text();
+  assert.match(html, /passwordEye/);
+  assert.match(html, /href=["']\/staff\/register["']/);
+  assert.match(html, /href=["']\/staff\/forgot["']/);
+});
+
+test("registration and password-reset pages render", async () => {
+  const register = await renderPath("/staff/register");
+  assert.equal(register.status, 200);
+  assert.match(await register.text(), /Код доступу відділення/);
+  const forgot = await renderPath("/staff/forgot");
+  assert.equal(forgot.status, 200);
+  assert.match(await forgot.text(), /Відновлення пароля/);
+});
