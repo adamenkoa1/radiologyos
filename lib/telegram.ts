@@ -35,25 +35,27 @@ export function bookingMessage(notice: BookingNotice): string {
   return lines.join("\n");
 }
 
-// Sends a message to the department chat. Returns false when Telegram is not
-// configured or the call fails — callers must never let this break the booking.
-export async function sendTelegram(db: D1Database, text: string): Promise<boolean> {
+// Sends a message to the department chat and reports the outcome. Returns a
+// human-readable Ukrainian error on failure (used by the "send test" button).
+export async function sendTelegramResult(db: D1Database, text: string): Promise<{ ok: boolean; error?: string }> {
   const { telegram_bot_token: token, telegram_chat_id: chatId } =
     await getSettings(db, ["telegram_bot_token", "telegram_chat_id"]);
-  if (!token || !chatId) return false;
+  if (!token || !chatId) return { ok: false, error: "Спочатку збережіть токен бота та ID чату" };
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text,
-        parse_mode: "HTML",
-        disable_web_page_preview: true,
-      }),
+      body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
     });
-    return response.ok;
+    if (response.ok) return { ok: true };
+    const data = await response.json().catch(() => ({})) as { description?: string };
+    return { ok: false, error: data.description || `Telegram відповів помилкою (${response.status})` };
   } catch {
-    return false;
+    return { ok: false, error: "Не вдалося з'єднатися з Telegram" };
   }
+}
+
+// Best-effort variant for the booking path — never throws, ignores the reason.
+export async function sendTelegram(db: D1Database, text: string): Promise<boolean> {
+  return (await sendTelegramResult(db, text)).ok;
 }

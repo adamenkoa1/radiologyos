@@ -14,6 +14,7 @@ export default function StaffSettingsPage() {
   const [payLink, setPayLink] = useState("");
   const [token, setToken] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [testing, setTesting] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -67,6 +68,10 @@ export default function StaffSettingsPage() {
         <label><span>ID чату</span>
           <input value={chatId} onChange={(e) => setChatId(e.target.value)} placeholder="-1001234567890 або 123456789" autoComplete="off" />
         </label>
+        <button type="button" className="button secondary" onClick={sendTest} disabled={testing || !settings?.telegramConfigured}>
+          {testing ? "Надсилаємо…" : "Надіслати тестове повідомлення"}
+        </button>
+        {!settings?.telegramConfigured && <small className="settingsHint">Спершу збережіть токен і ID чату — тоді кнопку буде розблоковано.</small>}
       </section>
 
       <section className="settingsBlock">
@@ -82,6 +87,20 @@ export default function StaffSettingsPage() {
       <button className="button" disabled={status === "saving"}>{status === "saving" ? "Зберігаємо…" : "Зберегти налаштування"}</button>
     </form>
   );
+
+  async function sendTest() {
+    setTesting(true); setNotice(""); setError("");
+    try {
+      const res = await fetch("/api/staff/settings/telegram-test", { method: "POST" });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося надіслати");
+      setNotice("Тестове повідомлення надіслано — перевірте чат");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося надіслати");
+    } finally {
+      setTesting(false);
+    }
+  }
 
   return (
     <StaffWorkspaceShell

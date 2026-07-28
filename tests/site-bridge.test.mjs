@@ -61,7 +61,7 @@ test("my-protocol only returns an issued protocol behind code + phone", async ()
 test("new bookings notify the registrar via Telegram (best-effort)", async () => {
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /api\.telegram\.org\/bot/);
-  assert.match(lib, /if \(!token \|\| !chatId\) return false/); // no-op until configured
+  assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok: false/); // no-op until configured
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /sendTelegram\(/);
   assert.match(route, /bookingMessage\(/);
@@ -78,6 +78,15 @@ test("department settings are admin-only and validated", async () => {
   assert.match(migration, /pay_link/);
   const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
   assert.ok(journal.entries.some((e) => e.tag === "0010_department_settings"));
+});
+
+test("a test-message endpoint verifies the Telegram connection (admin-only)", async () => {
+  const route = await read("app/api/staff/settings/telegram-test/route.ts");
+  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /sendTelegramResult\(/);
+  const lib = await read("lib/telegram.ts");
+  assert.match(lib, /export async function sendTelegramResult/);
+  assert.match(lib, /description \|\|/); // surfaces Telegram's error reason
 });
 
 test("payment link is served publicly and used by the site, not hardcoded", async () => {

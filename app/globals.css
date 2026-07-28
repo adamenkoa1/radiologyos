@@ -237,7 +237,9 @@ a.dashKpi:hover{border-color:#8db7af;transform:translateY(-2px);box-shadow:0 12p
 .settingsCard label{display:block;margin-top:12px}.settingsCard label>span{display:block;margin-bottom:6px;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.06em;color:#41544f}
 .settingsCard input{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink)}.settingsCard input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .settingsCard label>small{display:block;margin-top:5px;color:#7a8b88;font-size:11px}
-.settingsCard .button{align-self:flex-start;min-height:44px;padding:0 20px;border:0;border-radius:7px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.settingsCard .button:hover:not(:disabled){background:#0a4b42}.settingsCard .button:disabled{opacity:.6}
+.settingsCard .button{align-self:flex-start;min-height:44px;padding:0 20px;border:0;border-radius:7px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.settingsCard .button:hover:not(:disabled){background:#0a4b42}.settingsCard .button:disabled{opacity:.5;cursor:not-allowed}
+.settingsBlock .button.secondary{margin-top:14px;background:#eef1e9;color:#3c4a30}.settingsBlock .button.secondary:hover:not(:disabled){background:#e2e8dc}
+.settingsHint{display:block;margin-top:8px;color:#7a8b88;font-size:11px}
 .settingsCard .notice{margin:0;padding:11px 13px;border-radius:7px;font-size:13px}.settingsCard .notice.success{background:#eef4e6;color:#33632c}.settingsCard .notice.error{background:#fdf1ee;color:#a23c1d}
 .dashLists{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .dashList{padding:20px;background:#fff;border:1px solid #dce4e3;border-radius:8px;box-shadow:0 8px 24px rgba(23,54,52,.035)}

@@ -77,9 +77,16 @@ test("home is a card landing that routes into booking and staff login", async ()
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });
 
-test("booking page renders the full service catalog", async () => {
-  const response = await renderPath("/booking");
-  const html = await response.text();
-  const visibleHtml = html.replace(/<!--.*?-->/g, "");
-  assert.match(visibleHtml, /Повний каталог:\s*38\s*послуг/);
+test("legacy /booking and /cabinet redirect to the v22 static pages", async () => {
+  const civ = await renderPath("/booking?category=civilian");
+  assert.equal(civ.status, 302);
+  assert.match(civ.headers.get("location") ?? "", /\/site\/price\.html$/);
+
+  const mil = await renderPath("/booking?category=military");
+  assert.equal(mil.status, 302);
+  assert.match(mil.headers.get("location") ?? "", /\/site\/military\.html$/);
+
+  const cab = await renderPath("/cabinet");
+  assert.equal(cab.status, 302);
+  assert.match(cab.headers.get("location") ?? "", /\/site\/cabinet\.html$/);
 });

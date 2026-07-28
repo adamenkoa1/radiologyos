@@ -46,6 +46,16 @@ const worker = {
       }
     }
 
+    // Legacy Next public routes → v22 static pages, so nobody lands on the old
+    // card-grid booking screen. Civilian price list / military free list / cabinet.
+    if (url.pathname === "/booking") {
+      const target = url.searchParams.get("category") === "military" ? "/site/military.html" : "/site/price.html";
+      return Response.redirect(new URL(target, request.url).toString(), 302);
+    }
+    if (url.pathname === "/cabinet") {
+      return Response.redirect(new URL("/site/cabinet.html", request.url).toString(), 302);
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
