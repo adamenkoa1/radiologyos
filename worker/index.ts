@@ -32,6 +32,20 @@ const worker = {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
     const url = new URL(request.url);
 
+    // Public site is the v22 static design served from `public/site`. The root
+    // path renders v22's landing; all other `/site/*` files (pages, assets) are
+    // served by the normal static-asset handler below. The Next app keeps
+    // owning `/staff`, `/api` and everything else.
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      const landing = await env.ASSETS.fetch(new URL("/site/index.html", request.url));
+      if (landing.ok) {
+        return new Response(landing.body, {
+          status: 200,
+          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
+        });
+      }
+    }
+
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
       return handleImageOptimization(request, {
