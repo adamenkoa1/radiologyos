@@ -28,6 +28,17 @@ a { color:inherit; text-decoration:none; }
 .loginCard button{min-height:48px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:14px;cursor:pointer;transition:.15s}.loginCard button:hover:not(:disabled){background:#0a4b42}.loginCard button:disabled{opacity:.6}
 .loginBack{margin-top:18px;text-align:center;color:#66756f;font-size:12px;font-weight:600}.loginBack:hover{color:var(--green)}
 .workspaceLogout{width:100%;text-align:left;display:block;padding:11px 12px;border:0;border-top:1px solid #eef2f0;margin-top:4px;background:transparent;color:#a23c1d;font:inherit;font-size:12px;font-weight:700;cursor:pointer;border-radius:5px}.workspaceLogout:hover{background:#fdeeea}
+/* Password field with show/hide eye toggle */
+.loginCard .labelRow{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.loginCard .labelLink{font-size:11px;font-weight:700;letter-spacing:0;text-transform:none;color:var(--green)}.loginCard .labelLink:hover{color:#0a4b42;text-decoration:underline}
+.passwordField{position:relative;display:flex}
+.passwordField input{width:100%;padding:12px 44px 12px 13px;border:1px solid #d5ddd9;border-radius:8px;font:inherit;color:var(--ink)}.passwordField input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.passwordEye{position:absolute;right:6px;top:50%;transform:translateY(-50%);width:34px;height:34px;display:grid;place-items:center;border:0;border-radius:7px;background:transparent;color:#67766f;cursor:pointer;padding:0}
+.passwordEye:hover{background:#eef4f2;color:var(--green)}.passwordEye:focus-visible{outline:2px solid var(--green);outline-offset:1px}
+.passwordEye svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.passwordEye[aria-pressed="true"]{color:var(--green)}
+.loginAlt{margin:16px 0 0!important;text-align:center;color:#66756f;font-size:13px}.loginAlt a{color:var(--green);font-weight:700}.loginAlt a:hover{text-decoration:underline}
+.loginPrimaryLink{margin-top:8px;min-height:48px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:14px}.loginPrimaryLink:hover{background:#0a4b42}
 
 /* Home landing cards */
 .landing{max-width:1140px;margin:0 auto;padding:clamp(18px,4vw,44px) clamp(14px,4vw,28px) 0;display:flex;flex-direction:column;gap:14px}

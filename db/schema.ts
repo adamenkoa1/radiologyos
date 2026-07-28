@@ -83,6 +83,11 @@ export const staffSessions = sqliteTable("staff_sessions", {
   expiresAt: text("expires_at").notNull(),
 }, table => [index("staff_sessions_expiry_idx").on(table.expiresAt)]);
 
+export const appSettings = sqliteTable("app_settings", {
+  key: text("key").primaryKey(),
+  value: text("value").notNull().default(""),
+});
+
 export const equipment = sqliteTable("equipment", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
+import { PasswordInput } from "../PasswordInput";
 
 function safeReturnTo(): string {
   if (typeof window === "undefined") return "/staff";
@@ -36,9 +37,13 @@ export default function StaffLoginPage() {
       <h1>RadiologyOS</h1>
       <p>Кабінет персоналу відділення променевої діагностики</p>
       <label><span>Робочий email</span><input name="email" type="email" required autoComplete="username" placeholder="name@example.com" autoFocus /></label>
-      <label><span>Пароль</span><input name="password" type="password" required autoComplete="current-password" placeholder="Ваш пароль" /></label>
+      <label>
+        <span className="labelRow">Пароль <Link className="labelLink" href="/staff/forgot">Забули пароль?</Link></span>
+        <PasswordInput name="password" autoComplete="current-password" placeholder="Ваш пароль" />
+      </label>
       {error && <p className="loginError" role="alert">{error}</p>}
       <button type="submit" disabled={status === "sending"}>{status === "sending" ? "Вхід…" : "Увійти"}</button>
+      <p className="loginAlt">Немає акаунта? <Link href="/staff/register">Зареєструватися</Link></p>
       <Link className="loginBack" href="/">← На головну</Link>
     </form>
   </main>;
