@@ -13,8 +13,10 @@ const REGISTRY_EMAIL = '';
 /* Оплата платних послуг — офіційне посилання ПриватБанку в/ч А3120
    (розшифровано з QR-плаката бухгалтерії). Значення з панелі
    («Комунікації та оплата») має пріоритет над цим стандартом. */
-const DEFAULT_PAY_LINK_RAW = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params={"token":"cadc7a4d-d56c-4005-9cfe-04a96077f8c1"}';
-const DEFAULT_PAY_LINK = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params=%7B%22token%22%3A%22cadc7a4d-d56c-4005-9cfe-04a96077f8c1%22%7D';
+/* Посилання на оплату більше не «зашите» в код — його задає адміністратор у
+   /staff/settings, а клієнт бере через /api/pay-link (див. d1-bridge.js). */
+const DEFAULT_PAY_LINK_RAW = '';
+const DEFAULT_PAY_LINK = '';
 
 function notifyAdmin(payload) {
   if (!NOTIFY_ENDPOINT) return;

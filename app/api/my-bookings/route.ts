@@ -25,7 +25,8 @@ export async function POST(request: Request) {
 
   const rows = await db.prepare(
     `SELECT code, service, desired_date AS desiredDate, desired_time AS desiredTime,
-       status, created_at AS createdAt,
+       status, created_at AS createdAt, patient_category AS category,
+       payment_status AS paymentStatus, payment_amount AS paymentAmount,
        CASE WHEN protocol_status = 'issued' THEN 1 ELSE 0 END AS hasProtocol
      FROM bookings WHERE phone_normalized = ?
      ORDER BY created_at DESC, id DESC
