@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings";
+type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "system-map";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -31,6 +31,7 @@ const navigation = [
 const administration = [
   { href:"/staff#staff-admin", label:"Персонал", glyph:"◉" },
   { href:"/staff#equipment", label:"Обладнання", glyph:"◇" },
+  { href:"/staff/system-map", label:"Карта системи", glyph:"◑", section:"system-map" as WorkspaceSection },
   { href:"/staff/settings", label:"Налаштування", glyph:"⚙", section:"settings" as WorkspaceSection },
   { href:"/", label:"Публічний сайт", glyph:"↗" },
 ];
@@ -136,7 +137,7 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
