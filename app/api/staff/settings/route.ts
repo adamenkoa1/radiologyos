@@ -20,13 +20,14 @@ export async function GET(request: Request) {
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (member.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
 
-  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash"]);
+  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token"]);
   return Response.json({
     settings: {
       telegramConfigured: Boolean(values.telegram_bot_token && values.telegram_chat_id),
       telegramChatId: values.telegram_chat_id,
       payLink: values.pay_link,
       registrationCodeSet: Boolean(values.registration_code_hash),
+      calendarToken: values.calendar_token,
     },
     staff: member,
   }, { headers: { "cache-control": "no-store" } });
@@ -66,7 +67,7 @@ export async function PUT(request: Request) {
   await setSetting(db, "pay_link", payLink);
   if (accessCode) await setSetting(db, "registration_code_hash", await hashPassword(accessCode));
 
-  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash"]);
+  const values = await getSettings(db, ["telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash", "calendar_token"]);
   return Response.json({
     ok: true,
     settings: {
@@ -74,6 +75,7 @@ export async function PUT(request: Request) {
       telegramChatId: values.telegram_chat_id,
       payLink: values.pay_link,
       registrationCodeSet: Boolean(values.registration_code_hash),
+      calendarToken: values.calendar_token,
     },
   });
 }
