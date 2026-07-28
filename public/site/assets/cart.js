@@ -16,7 +16,7 @@ function saveCart() {
 }
 
 function addToCart(code, name, price) {
-  _lastPickerApp = null;
+  _lastPickerCode = null;
   if (!cart.some(x => x.code === String(code))) {
     cart.push({ code: String(code), name, price: Number(price) });
     saveCart();
@@ -142,22 +142,25 @@ function cartApparatus() {
   return cart.some(x => apparatusForCode(x.code) === 'ct') ? 'ct' : 'xray';
 }
 
-let _lastPickerApp = null;
+let _lastPickerCode = null;
 function refreshSlotPicker() {
   const box = document.getElementById('slotPicker');
   if (!box || typeof initSlotPicker !== 'function') return;
   if (!cart.length) {
     box.innerHTML = '<div class="sp-loading">Оберіть послугу — і тут з’явиться вільний час</div>';
-    _lastPickerApp = null;
+    _lastPickerCode = null;
     return;
   }
-  const app = cartApparatus();
-  if (app === _lastPickerApp) return;
-  _lastPickerApp = app;
+  // Real free times come from the department schedule for the first service in
+  // the cart (see /api/availability). The chosen time is a preferred slot the
+  // registrar confirms for every service in the request.
+  const code = String(cart[0].code);
+  if (code === _lastPickerCode) return;
+  _lastPickerCode = code;
   pickedSlot = { date: '', time: '' };
   initSlotPicker({
     container: box,
-    apparatus: app,
+    serviceCode: code,
     onPick: s => {
       pickedSlot = s;
       const dd = document.getElementById('desiredDate');
