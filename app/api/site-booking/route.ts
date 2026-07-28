@@ -6,6 +6,7 @@
 import { serviceByCode } from "../../../lib/catalog";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
+import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -75,6 +76,17 @@ export async function POST(request: Request) {
         ).bind(result.meta.last_row_id, `${service.code} ${desiredDate} ${desiredTime || "час не обрано"}`).run();
       }
       codes.push(code);
+    }
+
+    // Best-effort registrar notification; never let it break the booking.
+    try {
+      await sendTelegram(db, bookingMessage({
+        codes, name, phone, category,
+        services: services.map((s) => s.title),
+        desiredDate, desiredTime, comment,
+      }));
+    } catch (notifyError) {
+      console.error("site_booking_notify_failed", notifyError);
     }
 
     return Response.json({ codes, code: codes[0] }, { status: 201 });

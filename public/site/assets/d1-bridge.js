@@ -15,6 +15,26 @@
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
   const humanDate = (iso) => (iso ? iso.split('-').reverse().join('.') : '');
 
+  // Fill the confirmation screen's payment block from the department pay link.
+  async function populatePayBlock() {
+    const block = document.getElementById('payBlock');
+    if (!block) return;
+    try {
+      const res = await fetch('/api/pay-link', { cache: 'no-store' });
+      const data = await res.json().catch(() => ({}));
+      const link = (data && data.payLink) || '';
+      if (!link) { block.hidden = true; return; }
+      const btn = document.getElementById('payBtn');
+      if (btn) btn.href = link;
+      const qrBox = document.getElementById('payQr');
+      if (qrBox && typeof qrcode === 'function') {
+        try { const qr = qrcode(0, 'M'); qr.addData(link); qr.make(); qrBox.innerHTML = qr.createImgTag(4, 6); }
+        catch (e) { qrBox.innerHTML = ''; }
+      }
+      block.hidden = false;
+    } catch (e) { /* leave hidden on failure */ }
+  }
+
   // Capture phase: run before cart.js's own submit handler and take over.
   form.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -71,6 +91,8 @@
       // We saved to the server, so hide the "online transfer not configured" note.
       const offline = document.getElementById('offlineNote');
       if (offline) offline.hidden = true;
+      // Show the department payment link/QR for civilian patients.
+      if (category === 'civilian') populatePayBlock();
     } catch (error) {
       if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
       alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');

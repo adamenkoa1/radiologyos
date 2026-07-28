@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports";
+type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "settings";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -30,6 +30,7 @@ const navigation = [
 const administration = [
   { href:"/staff#staff-admin", label:"Персонал", glyph:"◉" },
   { href:"/staff#equipment", label:"Обладнання", glyph:"◇" },
+  { href:"/staff/settings", label:"Налаштування", glyph:"⚙", section:"settings" as WorkspaceSection },
   { href:"/", label:"Публічний сайт", glyph:"↗" },
 ];
 
@@ -93,6 +94,8 @@ export default function StaffWorkspaceShell({
         {administration.map((item)=><Link
           href={item.href}
           key={item.label}
+          className={"section" in item && item.section === active ? "active":""}
+          aria-current={"section" in item && item.section === active ? "page":undefined}
           title={collapsed ? item.label:undefined}
         ><span aria-hidden="true">{item.glyph}</span><b>{item.label}</b></Link>)}
       </nav>
@@ -132,14 +135,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "settings" ? "Налаштування":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
