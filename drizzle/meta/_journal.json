@@ -92,6 +92,13 @@
       "when": 1785207600000,
       "tag": "0012_calendar_token",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1785211200000,
+      "tag": "0013_external_calendar",
+      "breakpoints": true
     }
   ]
 }

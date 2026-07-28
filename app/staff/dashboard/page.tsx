@@ -44,6 +44,28 @@ function ActionList({ title, items, hint, href, empty }:{
   </section>;
 }
 
+type ExtEvent = { display: string; summary: string };
+
+function ExternalCalendar() {
+  const [state, setState] = useState<{ configured: boolean; events: ExtEvent[]; error?: string } | null>(null);
+  useEffect(() => {
+    let active = true;
+    fetch("/api/staff/external-calendar", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((d) => { if (active) setState(d); })
+      .catch(() => { if (active) setState({ configured: false, events: [] }); });
+    return () => { active = false; };
+  }, []);
+  if (!state || !state.configured) return null;
+  return <section className="dashList" style={{ maxWidth: 1500, margin: "16px auto 0" }}>
+    <div className="dashListHead"><h3>Google Календар — найближчі події</h3><span>{state.events.length || ""}</span></div>
+    <p className="dashListHint">Події з підключеного Google Календаря (налаштування — у розділі «Налаштування»).</p>
+    {state.error ? <p className="dashListEmpty">{state.error}</p>
+      : state.events.length === 0 ? <p className="dashListEmpty">Найближчих подій немає.</p>
+      : <ul>{state.events.map((e, i) => <li key={i}><a><b>{e.summary}</b><small>{e.display}</small></a></li>)}</ul>}
+  </section>;
+}
+
 export default function DashboardPage() {
   const [data,setData] = useState<Data | null>(null);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
@@ -120,6 +142,7 @@ export default function DashboardPage() {
           hint="Нові заявки, що очікують на реакцію реєстратури" empty="Нових непідтверджених заявок немає."
           href={()=>"/staff#bookings"}/>
       </div>
+      <ExternalCalendar/>
     </>}
   </StaffWorkspaceShell>;
 }
