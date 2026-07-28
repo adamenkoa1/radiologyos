@@ -88,6 +88,11 @@ export const appSettings = sqliteTable("app_settings", {
   value: text("value").notNull().default(""),
 });
 
+export const servicePrices = sqliteTable("service_prices", {
+  code: text("code").primaryKey(),
+  price: integer("price").notNull(),
+});
+
 export const equipment = sqliteTable("equipment", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
