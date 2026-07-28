@@ -11,7 +11,7 @@
 @font-face{font-family:"Lora Variable";font-style:normal;font-weight:400 700;font-display:swap;src:url("/fonts/lora-latin.woff2") format("woff2");unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+2000-206F,U+2074,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
 @font-face{font-family:"Lora Variable";font-style:normal;font-weight:400 700;font-display:swap;src:url("/fonts/lora-latin-ext.woff2") format("woff2");unicode-range:U+0100-02AF,U+0304,U+0308,U+0329,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF}
 
-:root { --ink:#142d2b; --green:#0d5b50; --mint:#d9f0e9; --paper:#f5f3ed; --sand:#e9e4d8; --orange:#ee744c; --font-sans:"Inter Variable",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; --font-serif:"Lora Variable",Georgia,"Times New Roman",serif; }
+:root { --ink:#142d2b; --green:#0d5b50; --mint:#d9f0e9; --paper:#f5f3ed; --sand:#e9e4d8; --orange:#ee744c; --field-border:#d7ddd4; --field-bg:#fff; --field-radius:8px; --field-pad:11px 12px; --font-sans:"Inter Variable",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif; --font-serif:"Lora Variable",Georgia,"Times New Roman",serif; }
 * { box-sizing:border-box; }
 html { scroll-behavior:smooth; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-sans); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; text-rendering:optimizeLegibility; letter-spacing:-.006em; }
@@ -330,3 +330,37 @@ a.dashKpi:hover{border-color:#8db7af;transform:translateY(-2px);box-shadow:0 12p
 .publicShell .serviceCard h3{font-weight:700}
 .publicShell .serviceCard>div b{color:#4f6140}
 @media(max-width:600px){.bookingTop{flex-direction:column;align-items:flex-start;gap:10px}}
+
+/* ================= Уніфіковані поля форм кабінету ================= */
+/* Один колір, шрифт, формат для всіх полів вводу (крім інлайн-фільтрів). */
+.loginCard input,
+.passwordField input,
+.settingsCard input,
+.protocolFields input,.protocolFields select,.protocolFields textarea,
+.crmProfile input,.crmProfile select,.crmProfile textarea,
+.crmCommForm input,.crmCommForm select,.crmCommForm textarea,
+.pacsSettings input,.pacsSettings textarea,
+.staffMemberAdd input,.staffMemberAdd select,
+.staffMemberList input,.staffMemberList select,
+.rescheduleForm input,.rescheduleForm select,
+.protocolQueueTools input,
+.staffNoteForm textarea{
+  width:100%;padding:var(--field-pad);border:1px solid var(--field-border);border-radius:var(--field-radius);
+  background:var(--field-bg);font:inherit;font-size:14px;line-height:1.4;color:var(--ink);appearance:none;-webkit-appearance:none;transition:border-color .12s,box-shadow .12s;
+}
+.staffNoteForm textarea,.crmProfile textarea,.crmCommForm textarea,.protocolFields textarea,.pacsSettings textarea{min-height:76px;resize:vertical}
+.loginCard input:focus,
+.passwordField input:focus,
+.settingsCard input:focus,
+.protocolFields input:focus,.protocolFields select:focus,.protocolFields textarea:focus,
+.crmProfile input:focus,.crmProfile select:focus,.crmProfile textarea:focus,
+.crmCommForm input:focus,.crmCommForm select:focus,.crmCommForm textarea:focus,
+.pacsSettings input:focus,.pacsSettings textarea:focus,
+.staffMemberAdd input:focus,.staffMemberAdd select:focus,
+.staffMemberList input:focus,.staffMemberList select:focus,
+.rescheduleForm input:focus,.rescheduleForm select:focus,
+.protocolQueueTools input:focus,
+.staffNoteForm textarea:focus{
+  outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(13,91,80,.12);
+}
+.passwordField input{padding-right:44px}
