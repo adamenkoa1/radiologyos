@@ -4,7 +4,7 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Особистий кабінет — RadiologyOS</title>
-<meta name="description" content="Особистий кабінет пацієнта відділення променевої діагностики: статус заявки, дата запису, протокол дослідження."/>
+<meta name="description" content="Особистий кабінет пацієнта відділення променевої діагностики: статус заявки та дата запису."/>
 <meta name="robots" content="noindex"/>
 <meta name="theme-color" content="#4f5d3e"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f5d3e'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23ead7ad'/%3E%3C/svg%3E"/>
@@ -30,18 +30,24 @@ header{padding:0 14px;margin-bottom:18px}
 
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
 .gate p{color:var(--muted);font-size:14px;margin:6px 0 14px}
+.field-label{display:block;font-size:13px;font-weight:700;margin:12px 0 6px}
+.code-input{width:100%;padding:12px;border:1px solid #cfd4c8;border-radius:11px;font:inherit;text-transform:uppercase}
+.code-input:focus,.phone-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
 .phone-wrap{display:flex}
 .phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #cfd4c8;border-right:0;border-radius:11px 0 0 11px;background:#f1f3ed;font-weight:700;color:#4f5d3e}
 .phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #cfd4c8;border-radius:0 11px 11px 0;font:inherit}
-.gate .btn{margin-top:12px}
+.gate .btn{margin-top:14px}
 .btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:13px;background:var(--olive);color:#fff;font:inherit;font-weight:800;cursor:pointer}
+.btn:disabled{opacity:.6}
 .btn.secondary{background:#eef1e9;color:#3c4a30}
-.gate-error{display:none;color:#9b3b32;font-size:13px;margin-top:8px}
+.btn.danger{background:#f4dcda;color:#8f2f27}
+.gate-error{display:none;color:#9b3b32;font-size:13px;margin-top:10px}
+.gate-error.show{display:block}
 
 .cab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 14px}
 .cab-head h1{font-size:20px;margin:0}
 .cab-phone{font-size:13px;color:var(--muted)}
-.logout{border:0;background:none;color:#9b3b32;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
+.logout{border:0;background:none;color:#3c4a30;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
 
 .app-card{margin-bottom:14px}
 .app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
@@ -65,31 +71,11 @@ header{padding:0 14px;margin-bottom:18px}
 
 .visit-row{display:flex;gap:10px;align-items:center;background:#f7f8f4;border:1px solid var(--line);border-radius:13px;padding:12px 14px;margin-top:14px;font-size:14px}
 .visit-row strong{font-weight:800}
-
-.protocol-toggle{margin-top:14px}
-.protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfdfb}
-.protocol.open{display:block}
-.protocol h4{margin:0 0 2px;font-size:15px}
-.protocol .p-org{font-size:12px;color:var(--muted);margin-bottom:12px}
-.p-field{margin:10px 0}
-.p-field b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6c7562;margin-bottom:3px}
-.p-field div{font-size:14px;white-space:pre-wrap}
-.p-sign{display:flex;justify-content:space-between;gap:12px;margin-top:16px;padding-top:12px;border-top:1px solid var(--line);font-size:13px;color:#3c4a30}
-.sign-line{display:none}
-.p-caveat{margin-top:12px;font-size:11px;color:#8a927f}
-@media print{.sign-line{display:inline}}
-.print-btn{margin-top:14px}
+.cancel-btn{margin-top:14px}
 
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
 .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5}
-
-@media print{
-  body{background:#fff;padding:0}
-  header,.cab-head,.gate,.hint,.logout,.protocol-toggle,.print-btn,.app-card:not(.printing){display:none!important}
-  .app-card.printing{border:0;box-shadow:none;padding:0}
-  .app-card.printing .app-top,.app-card.printing .stepper,.app-card.printing .visit-row{display:none!important}
-  .protocol{display:block!important;border:0;padding:0}
-}
+.hint a{color:#3c4a30;font-weight:700}
 </style>
 </head>
 <body>
@@ -106,123 +92,156 @@ header{padding:0 14px;margin-bottom:18px}
 
 <main class="wrap">
 
-  <!-- Вхід за номером телефону -->
+  <!-- Перевірка статусу за кодом заявки + телефоном -->
   <div class="card gate" id="gate">
-    <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-    <p>Введіть номер телефону, який ви вказували в заявці. Ви побачите статус своїх заявок, дату запису та протокол дослідження.</p>
+    <h1 style="margin:0;font-size:20px">Статус заявки</h1>
+    <p>Введіть код заявки (він показаний одразу після подання, напр. RD-AB12CD34) і номер телефону, який ви вказували під час запису.</p>
+    <label class="field-label" for="gateCode">Код заявки</label>
+    <input class="code-input" id="gateCode" placeholder="RD-XXXXXXXX" autocomplete="off"/>
+    <label class="field-label" for="gatePhone">Номер телефону</label>
     <div class="phone-wrap">
       <span class="phone-prefix">+380</span>
       <input id="gatePhone" inputmode="numeric" maxlength="9" placeholder="97 000 00 00" aria-label="Номер телефону"/>
     </div>
-    <span class="gate-error" id="gateError">Введіть 9 цифр номера</span>
-    <button class="btn" id="gateBtn" type="button">Увійти</button>
+    <span class="gate-error" id="gateError"></span>
+    <button class="btn" id="gateBtn" type="button">Переглянути статус</button>
   </div>
 
-  <!-- Кабінет -->
+  <!-- Результат -->
   <div id="cabinet" hidden>
     <div class="cab-head">
       <div>
-        <h1>Мої заявки</h1>
-        <div class="cab-phone" id="cabPhone"></div>
+        <h1>Ваша заявка</h1>
+        <div class="cab-phone" id="cabCode"></div>
       </div>
-      <button class="logout" id="logoutBtn" type="button">Вийти</button>
+      <button class="logout" id="resetBtn" type="button">Нова перевірка</button>
     </div>
     <div id="appList"></div>
-    <div class="empty" id="emptyState" hidden>
-      За цим номером заявок не знайдено.<br/>
-      <a href="/site/price.html" style="color:#3c4a30;font-weight:700">Подати заявку →</a>
-    </div>
-    <p class="hint" style="margin-top:14px"><a href="/site/about.html#feedbackForm" style="color:#3c4a30;font-weight:700">Залишити відгук чи звернення →</a></p>
-    <p class="hint">Кабінет працює на цьому пристрої: тут відображаються заявки, подані з цього браузера, та протоколи, оформлені відділенням у демонстраційному режимі.</p>
+    <p class="hint"><a href="/site/price.html">Подати нову заявку →</a></p>
   </div>
 
 </main>
 
 <script>
-const STAFF_STORE = 'radiologyos_applications_v1';
-const PHONE_KEY = 'radiologyos_cabinet_phone';
-const statusNames = { new: 'Нова', progress: 'В роботі', booked: 'Записана', done: 'Виконана', cancelled: 'Скасована' };
-const esc = s => String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-const last9 = p => String(p || '').replace(/\D/g, '').slice(-9);
+const STATUS_API = '/api/booking-status';
+const statusMeta = {
+  new:         { badge: 'new',       label: 'Нова',           step: 'new' },
+  confirmed:   { badge: 'booked',    label: 'Підтверджена',   step: 'booked' },
+  rescheduled: { badge: 'booked',    label: 'Перенесена',     step: 'booked' },
+  completed:   { badge: 'done',      label: 'Виконана',       step: 'done' },
+  cancelled:   { badge: 'cancelled', label: 'Скасована',      step: 'cancelled' },
+};
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 
 const gate = document.getElementById('gate');
 const cabinet = document.getElementById('cabinet');
+const errorBox = document.getElementById('gateError');
+let current = null; // { code, phoneLast4 }
 
-function enter(digits) {
-  localStorage.setItem(PHONE_KEY, digits);
-  gate.hidden = true;
-  cabinet.hidden = false;
-  document.getElementById('cabPhone').textContent = '+380 ' + digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
-  renderApps(digits);
+function showError(message) {
+  errorBox.textContent = message;
+  errorBox.classList.add('show');
 }
-
-document.getElementById('gateBtn').addEventListener('click', () => {
-  const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
-  if (digits.length !== 9) { document.getElementById('gateError').style.display = 'block'; return; }
-  enter(digits);
-});
-document.getElementById('gatePhone').addEventListener('keydown', e => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
-
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem(PHONE_KEY);
-  cabinet.hidden = true;
-  gate.hidden = false;
-});
 
 function stepper(status) {
   const order = ['new', 'booked', 'done'];
   const labels = ['Заявку подано', 'Записано', 'Виконано'];
-  const idx = status === 'progress' ? 0 : order.indexOf(status);
+  const step = (statusMeta[status] || {}).step || 'new';
+  const idx = order.indexOf(step);
   return '<div class="stepper">' + labels.map((l, i) =>
     `<div class="step ${i <= idx ? 'on' : ''}">${l}</div>`).join('') + '</div>';
 }
 
-function renderApps(digits) {
-  const apps = JSON.parse(localStorage.getItem(STAFF_STORE) || '[]')
-    .filter(a => last9(a.phone) === digits)
-    .reverse();
-  const list = document.getElementById('appList');
-  document.getElementById('emptyState').hidden = apps.length > 0;
-  list.innerHTML = apps.map(a => {
-    const p = a.protocol;
-    return `<div class="card app-card" id="card-${a.id}">
+function renderBooking(b) {
+  const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
+  const when = b.desiredDate ? `бажана дата: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
+  const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
+  document.getElementById('appList').innerHTML =
+    `<div class="card app-card">
       <div class="app-top">
         <div>
-          <div class="app-study">${esc(a.study)}</div>
-          <div class="app-meta">${esc(a.category)}${a.desiredDate ? ' · бажана дата: ' + esc(a.desiredDate) : ''}</div>
+          <div class="app-study">${esc(b.service)}</div>
+          <div class="app-meta">Код ${esc(b.code)}${when ? ' · ' + when : ''}</div>
         </div>
-        <span class="badge ${a.status}">${statusNames[a.status] || a.status}</span>
+        <span class="badge ${meta.badge}">${esc(meta.label)}</span>
       </div>
-      ${a.status !== 'cancelled' ? stepper(a.status) : ''}
-      ${a.appointmentDate ? `<div class="visit-row">📅 <span>Ваш запис: <strong>${esc(a.appointmentDate)} о ${esc(a.appointmentTime)}</strong></span></div>` : ''}
-      ${p ? `
-        <button class="btn secondary protocol-toggle" type="button" onclick="document.getElementById('prot-${a.id}').classList.toggle('open')">Протокол дослідження</button>
-        <div class="protocol" id="prot-${a.id}">
-          <h4>Протокол променевого дослідження ${p.number ? '№ ' + esc(p.number) : ''}</h4>
-          <div class="p-org">Чернігівський військовий госпіталь · Відділення променевої діагностики</div>
-          <div class="p-field"><b>Пацієнт</b><div>${esc(a.name)}</div></div>
-          <div class="p-field"><b>Дослідження</b><div>${esc(a.study)}${p.nk ? ' · код інтервенції eHealth: ' + esc(p.nk) : ''}</div></div>
-          <div class="p-field"><b>Опис</b><div>${esc(p.desc || '—')}</div></div>
-          <div class="p-field"><b>Висновок</b><div>${esc(p.conclusion || '—')}</div></div>
-          ${p.recs ? `<div class="p-field"><b>Рекомендації</b><div>${esc(p.recs)}</div></div>` : ''}
-          <div class="p-sign"><span>${esc(p.doctor || '')}<span class="sign-line"> ________________ <small>(підпис)</small></span></span><span>${esc(p.date || '')}</span></div>
-          <div class="p-caveat">Роздруківка з демонстраційної системи. Юридичну силу має протокол, оформлений і засвідчений закладом у встановленому порядку.</div>
-          <button class="btn secondary print-btn" type="button" onclick="printProtocol('${a.id}')">🖨 Роздрукувати / зберегти PDF</button>
-        </div>` : ''}
+      ${b.status !== 'cancelled' ? stepper(b.status) : ''}
+      ${canCancel ? '<button class="btn danger cancel-btn" id="cancelBtn" type="button">Скасувати заявку</button>' : ''}
     </div>`;
-  }).join('');
+  const cancelBtn = document.getElementById('cancelBtn');
+  if (cancelBtn) cancelBtn.addEventListener('click', cancelBooking);
 }
 
-function printProtocol(id) {
-  const card = document.getElementById('card-' + id);
-  card.classList.add('printing');
-  window.print();
-  card.classList.remove('printing');
+async function lookup() {
+  const code = document.getElementById('gateCode').value.trim().toUpperCase();
+  const phoneLast4 = document.getElementById('gatePhone').value.replace(/\D/g, '').slice(-4);
+  errorBox.classList.remove('show');
+  if (!/^RD-[A-Z0-9]{8}$/.test(code)) { showError('Код має вигляд RD-XXXXXXXX'); return; }
+  if (phoneLast4.length !== 4) { showError('Введіть номер телефону (мінімум останні 4 цифри)'); return; }
+  const btn = document.getElementById('gateBtn');
+  btn.disabled = true; btn.textContent = 'Перевіряємо…';
+  try {
+    const res = await fetch(STATUS_API, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ code, phoneLast4 }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.booking) { showError(data.error || 'Заявку не знайдено'); return; }
+    current = { code, phoneLast4 };
+    document.getElementById('cabCode').textContent = 'Код заявки: ' + code;
+    gate.hidden = true; cabinet.hidden = false;
+    renderBooking(data.booking);
+  } catch (e) {
+    showError('Не вдалося перевірити статус. Спробуйте пізніше.');
+  } finally {
+    btn.disabled = false; btn.textContent = 'Переглянути статус';
+  }
 }
 
-/* автовхід, якщо номер збережено */
-const saved = localStorage.getItem(PHONE_KEY);
-if (saved) enter(saved);
+async function cancelBooking() {
+  if (!current) return;
+  if (!confirm('Скасувати цю заявку?')) return;
+  const btn = document.getElementById('cancelBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Скасовуємо…'; }
+  try {
+    const res = await fetch(STATUS_API, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ...current, action: 'cancel' }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.ok) { alert(data.error || 'Не вдалося скасувати заявку'); if (btn) { btn.disabled = false; btn.textContent = 'Скасувати заявку'; } return; }
+    await lookupSilent();
+  } catch (e) {
+    alert('Не вдалося скасувати заявку. Спробуйте пізніше.');
+    if (btn) { btn.disabled = false; btn.textContent = 'Скасувати заявку'; }
+  }
+}
+
+async function lookupSilent() {
+  if (!current) return;
+  const res = await fetch(STATUS_API, {
+    method: 'POST', headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(current),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.ok && data.booking) renderBooking(data.booking);
+}
+
+document.getElementById('gateBtn').addEventListener('click', lookup);
+document.getElementById('gateCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gatePhone').focus(); });
+document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') lookup(); });
+document.getElementById('resetBtn').addEventListener('click', () => {
+  current = null;
+  cabinet.hidden = true; gate.hidden = false;
+  errorBox.classList.remove('show');
+  document.getElementById('gateCode').value = '';
+  document.getElementById('gatePhone').value = '';
+});
+
+// Prefill the code from ?code=RD-... (e.g. a link from the confirmation screen).
+const codeParam = new URLSearchParams(location.search).get('code');
+if (codeParam) document.getElementById('gateCode').value = codeParam.toUpperCase();
 </script>
 </body>
 </html>
