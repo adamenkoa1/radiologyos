@@ -27,6 +27,35 @@ async function renderPath(path) {
 
 const renderHome = () => renderPath("/");
 
+// When the static v22 landing exists in ASSETS, the worker serves it at "/".
+async function renderWithAssets(path, assetBodies) {
+  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
+  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-a`);
+  const { default: worker } = await import(workerUrl.href);
+  return worker.fetch(
+    new Request(`http://localhost${path}`, { headers: { accept: "text/html" } }),
+    {
+      ASSETS: {
+        fetch: async (req) => {
+          const href = typeof req === "string" ? req : req instanceof URL ? req.href : req.url;
+          const p = new URL(href).pathname;
+          return p in assetBodies
+            ? new Response(assetBodies[p], { status: 200 })
+            : new Response("Not found", { status: 404 });
+        },
+      },
+    },
+    { waitUntil() {}, passThroughOnException() {} },
+  );
+}
+
+test("the worker serves the static v22 landing at / when present", async () => {
+  const marker = "<main>v22-landing</main>";
+  const response = await renderWithAssets("/", { "/site/index.html": marker });
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), marker);
+});
+
 test("renders development preview metadata", async () => {
   const response = await renderHome();
 
