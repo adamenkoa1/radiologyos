@@ -196,6 +196,36 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .sp-time{padding:8px 4px;border-radius:9px;border:1.5px solid #cfd4c8;background:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
 .sp-time.on{border-color:#556349;background:#556349;color:#fff}
 .sp-picked{margin-top:9px;font-size:13px;color:#2f5c2a}
+/* ===== Тарифи на головній ===== */
+.tariffs-home{padding:22px 0 0}
+.tariffs-head{margin-bottom:14px}
+.tariffs-head h2{font-size:clamp(24px,3.2vw,32px);font-weight:700;letter-spacing:-.02em;margin:6px 0}
+.tariffs-head p{color:var(--muted);max-width:760px;margin:0}
+.tariffs-head p b{color:#4f5d3e}
+.ht-loading{padding:22px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:18px}
+.ht-group{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
+.ht-group>h3{margin:0;padding:15px 18px;background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:#fff;font-size:17px;font-weight:700}
+.ht-table{width:100%;border-collapse:collapse}
+.ht-table th{text-align:left;padding:10px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}
+.ht-table th.num,.ht-table td.num{text-align:right}
+.ht-table td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
+.ht-table tr:last-child td{border-bottom:0}
+.ht-title{font-weight:700;color:#1b2118}
+.ht-help{margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.35}
+.ht-mil{color:#4f5d3e;font-weight:800;white-space:nowrap}
+.ht-civ{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
+.ht-book{border:0;background:#556349;color:#fff;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ht-book:hover{background:#465239}.ht-book.added{background:#75816d}
+.field-note{display:block;margin-top:6px;font-size:12px;color:#4f5d3e}
+@media(max-width:640px){
+  .ht-table thead{display:none}
+  .ht-table,.ht-table tbody,.ht-table tr,.ht-table td{display:block;width:100%}
+  .ht-table tr{border-bottom:1px solid var(--line);padding:6px 0}
+  .ht-table td{border:0;padding:4px 16px}
+  .ht-table td.num{text-align:left}
+  .ht-table td.num::before{content:attr(data-label)": ";color:var(--muted);font-weight:600}
+  .ht-book{width:100%;margin-top:6px}
+}
 </style>
 </head>
 <body>
@@ -254,6 +284,17 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     </div>
   </section>
 
+  <section class="tariffs-home" id="tariffs">
+    <div class="wrap">
+      <div class="tariffs-head">
+        <div class="eyebrow" style="color:#4f5d3e">Тарифи</div>
+        <h2>Дослідження та вартість</h2>
+        <p>Військовослужбовцям — <b>безоплатно</b> за направленням. Цивільним особам — за тарифом. Оберіть дослідження, натисніть «Записатися» та вкажіть категорію.</p>
+      </div>
+      <div id="homeTariffs" class="home-tariffs"><div class="ht-loading">Завантаження тарифів…</div></div>
+    </div>
+  </section>
+
   <section class="contact" id="contacts">
     <div class="wrap">
       <a class="contact-card address-row" href="tel:+380972808899" aria-label="Зателефонувати в реєстратуру" style="margin-bottom:14px">
@@ -300,6 +341,14 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
             <input autocomplete="tel-national" id="patientPhone" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="97 000 00 00" required/>
           </div>
           <span class="field-error">Введіть 9 цифр після +380</span>
+        </div>
+        <div class="field">
+          <label for="patientCategory">Категорія пацієнта <span class="req">*</span></label>
+          <select id="patientCategory" required>
+            <option value="civilian">Цивільна особа — платно</option>
+            <option value="military">Військовослужбовець — безоплатно (за направленням)</option>
+          </select>
+          <span class="field-note" id="categoryNote"></span>
         </div>
       </div>
 
@@ -396,5 +445,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 <script src="/site/assets/slots.js"></script>
 <script src="/site/assets/cart.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
+<script src="/site/assets/home-tariffs.js" defer></script>
 </body>
 </html>
