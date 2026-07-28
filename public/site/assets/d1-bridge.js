@@ -39,7 +39,11 @@
       const link = (data && data.payLink) || '';
       if (!link) { block.hidden = true; return; }
       const btn = document.getElementById('payBtn');
-      if (btn) btn.href = link;
+      // The button must be a real link; a raw bank-QR payload is scan-only.
+      if (btn) {
+        if (/^https?:\/\//i.test(link)) { btn.href = link; btn.hidden = false; }
+        else { btn.removeAttribute('href'); btn.hidden = true; }
+      }
       const qrBox = document.getElementById('payQr');
       if (qrBox && typeof qrcode === 'function') {
         try { const qr = qrcode(0, 'M'); qr.addData(link); qr.make(); qrBox.innerHTML = qr.createImgTag(4, 6); }
