@@ -386,3 +386,32 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .tariffPrice b{font-variant-numeric:tabular-nums}
 .tariffCustom{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:99px;background:#fef2e0;color:#a15a1e;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
 @media(max-width:600px){.tariffPrice{width:120px}.tariffPrice input{width:88px}}
+
+/* ============ Приват24 card language — світлі картки для всіх розділів кабінету ============ */
+:root{--field-radius:10px}
+/* Контейнери-картки: 18px, м'яка тінь, тонка лінія */
+.protocolQueue,.protocolEditor,.settingsBlock,.crmProfile,
+.tariffBar,.tariffGroup,.pacsBanner,.pacsSettings,
+.workspaceShell .staffStats article,.workspaceShell .bookingRow,
+.workspaceShell .equipmentAdmin,.workspaceShell .staffAdmin,
+.workspaceShell .reportBuilder,.workspaceShell .reportPanel,
+.workspaceShell .reportStats article{
+  border-color:#e7ece9!important;border-radius:18px!important;
+  box-shadow:0 1px 2px rgba(24,40,30,.04),0 8px 24px rgba(24,40,30,.05)!important;
+}
+/* Внутрішні під-картки й рядки: 12px */
+.protocolQueueItem,.protocolSection,.crmStats article,.crmVisits li,
+.crmComms .crmCommForm,.aiAssist,.aiDraftBlock,.pacsSeries .empty,
+.protocolReadonlyHint,.aiDisclaimer{
+  border-radius:12px!important;
+}
+/* Заокруглені вкладки й керування */
+.protocolFilterTabs button,.crmSegmentTabs button,.crmExport{border-radius:10px!important}
+/* Геометричні (несерифні) заголовки карток — як у Приват24 */
+.protocolEditorHead h2,.protocolSection h3,.crmColumns h3,.pacsSeries h3,
+.protocolPlaceholder b,.settingsBlock h2{font-family:var(--font-sans)!important;letter-spacing:-.2px}
+/* Світлі шапки замість темно-зелених брусків */
+.tariffGroup h2{background:#f5f8f6!important;color:#20423d!important;border-bottom:1px solid #e7ece9!important}
+.pacsSeriesTable th,.workspaceShell .reportTableScroll th{background:#f2f6f4!important;color:#41544f!important}
+.workspaceShell .staffTools,.workspaceShell .reportFilterGrid{background:#f2f6f4!important;color:#41544f!important;border:1px solid #e7ece9!important;border-radius:14px!important}
+.workspaceShell .staffTools label,.workspaceShell .reportFilterGrid label>span{color:#41544f!important}
