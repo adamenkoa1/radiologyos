@@ -52,7 +52,6 @@
   // ----- Civilian request (index.html, price.html) -----
   const civilForm = document.getElementById('requestForm');
   if (civilForm) {
-    const category = /military/i.test(location.pathname) ? 'military' : 'civilian';
     civilForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
@@ -60,12 +59,20 @@
       if (!items.length) { alert('Спочатку додайте послугу до заявки.'); return; }
       if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
+      // Category comes from the form selector when present (home page), else the page.
+      const catSel = document.getElementById('patientCategory');
+      const category = catSel
+        ? (catSel.value === 'military' ? 'military' : 'civilian')
+        : (/military/i.test(location.pathname) ? 'military' : 'civilian');
+
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const picked = (typeof pickedSlot !== 'undefined') ? pickedSlot : { date: '', time: '' };
       const desiredDate = picked.date || document.getElementById('desiredDate').value || '';
       const desiredTime = picked.time || document.getElementById('desiredTime').value || '';
-      const referralType = REFERRAL_MAP[document.getElementById('referral').value] || 'other';
+      const referralType = category === 'military'
+        ? 'military_referral'
+        : (REFERRAL_MAP[document.getElementById('referral').value] || 'other');
       const comment = document.getElementById('comment').value.trim();
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 

@@ -31,6 +31,22 @@ test("bookings charge the effective (override-aware) price", async () => {
   assert.match(legacy, /effectivePrice\(db, service\.code\)/);
 });
 
+test("home page shows tariffs (military free / civilian priced) with booking", async () => {
+  const route = await read("app/api/catalog/route.ts");
+  assert.match(route, /priceOverrides\(/);
+  assert.match(route, /groups/);
+  const index = await read("public/site/index.html");
+  assert.match(index, /id="homeTariffs"/);
+  assert.match(index, /assets\/home-tariffs\.js/);
+  assert.match(index, /id="patientCategory"/); // category chooser on the home form
+  const js = await read("public/site/assets/home-tariffs.js");
+  assert.match(js, /\/api\/catalog/);
+  assert.match(js, /безоплатно/); // military column
+  assert.match(js, /addToCart\(/); // booking from a tariff row
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /getElementById\('patientCategory'\)/); // category read at submit
+});
+
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/tariffs", label:"Тарифи"/);
