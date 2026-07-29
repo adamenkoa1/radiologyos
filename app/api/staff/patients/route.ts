@@ -1,4 +1,5 @@
-import { canManageBookings, canWriteNotes, requireStaff } from "../../../../lib/staff-auth";
+import { canManageBookings, canViewPatientRegistry, requireStaff } from "../../../../lib/staff-auth";
+import { logSecurityEvent } from "../../../../lib/audit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import {
   PatientBookingRow,
@@ -29,6 +30,9 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (!canViewPatientRegistry(member.role)) {
+    return Response.json({ error: "Реєстр пацієнтів доступний лише реєстратору або адміністратору" }, { status: 403 });
+  }
 
   const phone = normalizeUkrainianPhone(new URL(request.url).searchParams.get("phone") || "");
 
@@ -48,6 +52,12 @@ export async function GET(request: Request) {
     const profiles = new Map<string, PatientProfile>();
     if (profileRow) profiles.set(phone, profileRow);
     const [summary] = buildPatientSummaries(rows, profiles);
+    await logSecurityEvent(db, {
+      actorEmail: member.email,
+      action: "patient_record_viewed",
+      resource: "patient",
+      targetId: phone,
+    });
     return Response.json({
       patient: summary || null,
       phone,
@@ -65,6 +75,12 @@ export async function GET(request: Request) {
   const profiles = new Map<string, PatientProfile>();
   for (const row of profileRows.results as unknown as PatientProfile[]) profiles.set(row.phoneNormalized, row);
   const patients = buildPatientSummaries(bookings.results as unknown as PatientBookingRow[], profiles);
+  await logSecurityEvent(db, {
+    actorEmail: member.email,
+    action: "patient_registry_viewed",
+    resource: "patient_registry",
+    details: { rows: patients.length },
+  });
   return Response.json({ patients, staff: member }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -101,7 +117,9 @@ export async function POST(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (!canWriteNotes(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
+  if (!canViewPatientRegistry(member.role)) {
+    return Response.json({ error: "Комунікації доступні лише реєстратору або адміністратору" }, { status: 403 });
+  }
   const parsed = sanitizeCommunication(await request.json());
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { communication } = parsed;

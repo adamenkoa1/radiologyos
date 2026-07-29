@@ -5,7 +5,7 @@
 // here depends on an external identity provider — the application owns the
 // whole flow. Runs on the Cloudflare Workers Web Crypto API.
 
-const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_ITERATIONS = 600000;
 const PBKDF2_KEYLEN = 32;
 
 export const SESSION_COOKIE = "rid_session";
@@ -69,6 +69,23 @@ export async function verifyPassword(password: string, encoded: string): Promise
   return timingSafeEqual(derived, expected);
 }
 
+export function passwordHashNeedsUpgrade(encoded: string): boolean {
+  const parts = encoded.split("$");
+  return parts.length !== 5
+    || parts[0] !== "pbkdf2"
+    || parts[1] !== "sha256"
+    || Number(parts[2]) < PBKDF2_ITERATIONS;
+}
+
+// This initial credential was published in the repository history.
+const COMPROMISED_PASSWORD_HASHES = new Set([
+  "pbkdf2$sha256$100000$DIdGQmQdc8l2yyObk0lw0A==$btlwHhk42m8+m7NJlqXpZXQZYZ5d8gsRfxFMTqw59gc=",
+]);
+
+export function isCompromisedPasswordHash(encoded: string): boolean {
+  return COMPROMISED_PASSWORD_HASHES.has(encoded);
+}
+
 // Session tokens: the raw token goes to the client cookie, only its hash is
 // stored server-side, so a database leak can't be replayed as a session.
 export function newSessionToken(): string {
@@ -85,15 +102,21 @@ export function readCookie(request: Request, name: string): string {
   const header = request.headers.get("cookie") || "";
   for (const part of header.split(";")) {
     const [key, ...rest] = part.trim().split("=");
-    if (key === name) return decodeURIComponent(rest.join("="));
+    if (key === name) {
+      try {
+        return decodeURIComponent(rest.join("="));
+      } catch {
+        return "";
+      }
+    }
   }
   return "";
 }
 
 export function sessionCookie(rawToken: string, maxAgeSeconds: number): string {
-  return `${SESSION_COOKIE}=${rawToken}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${maxAgeSeconds}`;
+  return `${SESSION_COOKIE}=${rawToken}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${maxAgeSeconds}`;
 }
 
 export function clearedSessionCookie(): string {
-  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`;
+  return `${SESSION_COOKIE}=; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=0`;
 }

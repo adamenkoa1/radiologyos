@@ -16,14 +16,22 @@ if grep -q "REPLACE_WITH_YOUR_D1_DATABASE_ID" "${CONFIG}"; then
   exit 1
 fi
 
-echo "[1/3] Building the artifact (dist/server + dist/client)…"
+if [[ "${RADIOLOGYOS_DEPLOY_CONFIRM:-}" != "DEPLOY" ]]; then
+  echo "Production deployment is blocked." >&2
+  echo "Review the change, then run with RADIOLOGYOS_DEPLOY_CONFIRM=DEPLOY." >&2
+  exit 1
+fi
+
+echo "[1/4] Building the artifact (dist/server + dist/client)…"
 npm run build
 
-echo "[2/3] Applying D1 migrations to the remote database…"
-npx wrangler d1 migrations apply DB --remote --config "${CONFIG}"
+echo "[2/4] Recording the current D1 recovery bookmark…"
+npx wrangler d1 time-travel info radiologyos --remote --config "${CONFIG}"
 
-echo "[3/3] Deploying the Worker and static assets…"
+echo "[3/4] Applying D1 migrations to the remote database…"
+npx wrangler d1 migrations apply radiologyos --remote --config "${CONFIG}"
+
+echo "[4/4] Deploying the Worker and static assets…"
 npx wrangler deploy --config "${CONFIG}"
 
-echo "✓ Deployed. Configure your custom domain in the Cloudflare dashboard"
-echo "  (Workers & Pages → your worker → Settings → Domains & Routes)."
+echo "✓ Deployed to the custom domains configured in ${CONFIG}."

@@ -24,7 +24,9 @@ test("external-calendar endpoint fetches the configured feed for staff", async (
   assert.match(route, /requireStaff\(/);
   assert.match(route, /getSetting\(db, "external_ics_url"\)/);
   assert.match(route, /parseIcs\(/);
-  assert.match(route, /await fetch\(url/);
+  assert.match(route, /safeOutboundUrl\(url\)/);
+  assert.match(route, /fetchLimited\(safeUrl/);
+  assert.match(route, /canAccessAllBookings\(member\.role\)/);
 });
 
 test("settings expose the external calendar URL and the dashboard shows events", async () => {

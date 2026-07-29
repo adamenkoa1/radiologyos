@@ -1,10 +1,11 @@
 import { serviceByCode } from "../../../../lib/catalog";
-import { canManageImaging, requireStaff } from "../../../../lib/staff-auth";
+import { canAccessBooking, canManageImaging, requireStaff } from "../../../../lib/staff-auth";
 import {
   parseQidoSeries,
   qidoSeriesUrl,
   sanitizeImagingStudy,
 } from "../../../../lib/dicom";
+import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -41,15 +42,13 @@ const STUDY_COLUMNS = `booking_id AS bookingId, accession_number AS accessionNum
 async function querySeries(pacs:PacsRow, studyInstanceUid:string) {
   if (!pacs.enabled || !pacs.dicomwebBaseUrl || !studyInstanceUid) return { series:[], reachable:true };
   try {
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5000);
-    const response = await fetch(qidoSeriesUrl(pacs.dicomwebBaseUrl, studyInstanceUid), {
+    const url = safeOutboundUrl(qidoSeriesUrl(pacs.dicomwebBaseUrl, studyInstanceUid));
+    if (!url) return { series:[], reachable:false };
+    const response = await fetchLimited(url, {
       headers:{ accept:"application/dicom+json" },
-      signal:controller.signal,
-    });
-    clearTimeout(timer);
+    }, 5000);
     if (!response.ok) return { series:[], reachable:false };
-    return { series:parseQidoSeries(await response.json()), reachable:true };
+    return { series:parseQidoSeries(JSON.parse(await readLimitedText(response))), reachable:true };
   } catch {
     return { series:[], reachable:false };
   }
@@ -60,11 +59,17 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (!canManageImaging(member.role)) {
+    return Response.json({ error: "Доступ до знімків має лише залучений медичний персонал" }, { status: 403 });
+  }
 
   const pacs = await loadPacs(db);
   const bookingId = Number(new URL(request.url).searchParams.get("bookingId"));
 
   if (Number.isInteger(bookingId) && bookingId > 0) {
+    if (!await canAccessBooking(db, member, bookingId)) {
+      return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
+    }
     const [booking, study] = await Promise.all([
       db.prepare(
         `SELECT id, code, name, service, service_code AS serviceCode, equipment_id AS equipmentId,
@@ -93,7 +98,12 @@ export async function GET(request: Request) {
     }, { headers: { "cache-control": "no-store" } });
   }
 
-  const worklist = await db.prepare(
+  const assignmentClause = member.role === "radiologist"
+    ? " AND b.assigned_radiologist_email = ?"
+    : member.role === "radiographer"
+      ? " AND b.assigned_radiographer_email = ?"
+      : "";
+  const worklistStatement = db.prepare(
     `SELECT b.id, b.code, b.name, b.service, b.service_code AS serviceCode,
        b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
        b.performed_at AS performedAt, b.status,
@@ -104,9 +114,13 @@ export async function GET(request: Request) {
      FROM bookings b
      LEFT JOIN imaging_studies i ON i.booking_id = b.id
      WHERE b.status != 'cancelled' AND (b.performed_at != '' OR i.booking_id IS NOT NULL)
+     ${assignmentClause}
      ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
      LIMIT 300`
-  ).all();
+  );
+  const worklist = assignmentClause
+    ? await worklistStatement.bind(member.email).all()
+    : await worklistStatement.all();
   const items = (worklist.results as Array<Record<string, unknown>>).map((item) => ({
     ...item,
     serviceTitle: serviceByCode(String(item.serviceCode))?.title || String(item.service),
@@ -126,6 +140,9 @@ export async function PUT(request: Request) {
   const body = await request.json() as Record<string, unknown>;
   const bookingId = Number(body.bookingId);
   if (!Number.isInteger(bookingId) || bookingId <= 0) return Response.json({ error: "Некоректні дані" }, { status: 400 });
+  if (!await canAccessBooking(db, member, bookingId)) {
+    return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
+  }
   const parsed = sanitizeImagingStudy(body);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { study } = parsed;

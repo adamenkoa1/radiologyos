@@ -45,10 +45,10 @@ export async function POST(request: Request) {
       return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
     }
 
-    const code = `RD-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+    const code = `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`;
     const endTime = addMinutes(desiredTime, service.durationMinutes);
     const referral = referralType === "none" ? "Немає направлення" : referralType;
-    const paymentStatus = patientCategory === "civilian" ? "pending" : "not_required";
+    const paymentStatus = patientCategory === "civilian" ? "pending" : "verification_required";
     const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
     const price = await effectivePrice(db, service.code);
     const result = await db.prepare(
@@ -56,13 +56,13 @@ export async function POST(request: Request) {
         code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
         duration_minutes, desired_date, desired_time, referral, patient_category,
         referral_type, referral_number, marketing_source, payment_status,
-        payment_amount, nszu_status, comment
+        payment_amount, nszu_status, comment, consent_at, consent_version, consent_source
       )
-      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?
       WHERE NOT EXISTS (
         SELECT 1 FROM bookings
         WHERE equipment_id = ? AND desired_date = ?
-          AND status NOT IN ('cancelled','completed')
+          AND status IN ('confirmed','rescheduled')
           AND desired_time < ?
           AND time(desired_time, '+' || duration_minutes || ' minutes') > ?
       )
@@ -75,7 +75,7 @@ export async function POST(request: Request) {
       code, name, phone, phoneNormalized, patientEmail, service.title, service.code, service.equipmentId,
       service.durationMinutes, desiredDate, desiredTime, referral, patientCategory,
       referralType, referralNumber, marketingSource, paymentStatus,
-      price, nszuStatus, comment,
+      price, nszuStatus, comment, "2026-07-29", "booking_page",
       service.equipmentId, desiredDate, endTime, desiredTime,
       service.equipmentId, desiredDate, endTime, desiredTime,
     ).run();

@@ -1,14 +1,9 @@
-// Self-service staff account operations: registration and password reset,
-// both authorised by the shared department access code. No external identity
-// provider or email delivery is required — the application owns the whole flow.
+// Staff account validation and administrator-owned account operations.
 
-import { hashPassword, verifyPassword } from "./auth";
+import { hashPassword } from "./auth";
 import type { StaffRole } from "./staff-auth";
 
-// New self-registered members join as registrars so they can immediately work
-// the booking queue. An administrator can adjust roles afterwards.
-export const DEFAULT_SELF_REGISTER_ROLE: StaffRole = "registrar";
-export const MIN_PASSWORD_LENGTH = 8;
+export const MIN_PASSWORD_LENGTH = 12;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -32,19 +27,6 @@ export function passwordProblem(password: string): string | null {
   return null;
 }
 
-async function getSetting(db: D1Database, key: string): Promise<string> {
-  const row = await db.prepare("SELECT value FROM app_settings WHERE key = ? LIMIT 1")
-    .bind(key).first<{ value: string }>();
-  return row?.value || "";
-}
-
-// Confirm the supplied department access code against the stored hash.
-export async function verifyAccessCode(db: D1Database, code: string): Promise<boolean> {
-  const encoded = await getSetting(db, "registration_code_hash");
-  if (!encoded) return false;
-  return verifyPassword(code.trim(), encoded);
-}
-
 export async function emailTaken(db: D1Database, email: string): Promise<boolean> {
   const row = await db.prepare("SELECT email FROM staff_members WHERE email = ? LIMIT 1")
     .bind(email).first<{ email: string }>();
@@ -53,19 +35,18 @@ export async function emailTaken(db: D1Database, email: string): Promise<boolean
 
 export interface StaffSummary { email: string; displayName: string; role: StaffRole }
 
-// Create a new active staff member. Assumes the caller has already verified the
-// access code and that the email is free.
+// Create a new active staff member. Assumes the authenticated administrator has
+// already selected the role and verified that the email is free.
 export async function registerStaff(
   db: D1Database,
-  input: { email: string; displayName: string; password: string; role?: StaffRole },
+  input: { email: string; displayName: string; password: string; role: StaffRole },
 ): Promise<StaffSummary> {
-  const role = input.role || DEFAULT_SELF_REGISTER_ROLE;
   const passwordHash = await hashPassword(input.password);
   await db.prepare(
     `INSERT INTO staff_members (email, display_name, role, password_hash, active)
      VALUES (?, ?, ?, ?, 1)`
-  ).bind(input.email, input.displayName, role, passwordHash).run();
-  return { email: input.email, displayName: input.displayName, role };
+  ).bind(input.email, input.displayName, input.role, passwordHash).run();
+  return { email: input.email, displayName: input.displayName, role: input.role };
 }
 
 // Set a new password for an existing member. Returns false when no such active

@@ -26,7 +26,7 @@ test("bookings charge the effective (override-aware) price", async () => {
   const lib = await read("lib/tariffs.ts");
   assert.match(lib, /export async function effectivePrice/);
   const site = await read("app/api/site-booking/route.ts");
-  assert.match(site, /effectivePrice\(db, service\.code\)/);
+  assert.match(site, /effectivePrice\(db, service!\.code\)/);
   const legacy = await read("app/api/bookings/route.ts");
   assert.match(legacy, /effectivePrice\(db, service\.code\)/);
 });

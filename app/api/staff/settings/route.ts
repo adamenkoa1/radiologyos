@@ -3,7 +3,7 @@
 
 import { requireStaff } from "../../../../lib/staff-auth";
 import { getSettings, setSetting } from "../../../../lib/settings";
-import { hashPassword } from "../../../../lib/auth";
+import { safeOutboundUrl } from "../../../../lib/outbound";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -14,8 +14,8 @@ function clean(value: unknown, max: number) {
 }
 
 const SETTING_KEYS = [
-  "telegram_bot_token", "telegram_chat_id", "pay_link", "registration_code_hash",
-  "calendar_token", "external_ics_url",
+  "telegram_bot_token", "telegram_chat_id", "pay_link",
+  "calendar_token_hash", "external_ics_url",
   "patient_reminders_enabled", "sms_gateway_url", "sms_gateway_auth",
   "email_gateway_url", "email_gateway_auth", "email_gateway_from",
 ];
@@ -25,8 +25,7 @@ function settingsView(values: Record<string, string>) {
     telegramConfigured: Boolean(values.telegram_bot_token && values.telegram_chat_id),
     telegramChatId: values.telegram_chat_id,
     payLink: values.pay_link,
-    registrationCodeSet: Boolean(values.registration_code_hash),
-    calendarToken: values.calendar_token,
+    calendarConfigured: Boolean(values.calendar_token_hash),
     externalIcsUrl: values.external_ics_url,
     remindersEnabled: Boolean(values.patient_reminders_enabled),
     smsGatewayUrl: values.sms_gateway_url,
@@ -59,7 +58,7 @@ export async function PUT(request: Request) {
   if (member.role !== "admin") return Response.json({ error: "Змінювати налаштування може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as {
-    telegramBotToken?: string; telegramChatId?: string; payLink?: string; accessCode?: string;
+    telegramBotToken?: string; telegramChatId?: string; payLink?: string;
     externalIcsUrl?: string; remindersEnabled?: boolean;
     smsGatewayUrl?: string; smsGatewayAuth?: string;
     emailGatewayUrl?: string; emailGatewayAuth?: string; emailGatewayFrom?: string;
@@ -76,20 +75,24 @@ export async function PUT(request: Request) {
   // Empty token keeps the stored one (so the admin isn't forced to re-enter the
   // secret on every save); a value of "-" explicitly clears it.
   const token = clean(body.telegramBotToken, 120);
-  // Empty access code keeps the current one; a value sets a new registration code.
-  const accessCode = clean(body.accessCode, 64);
 
-  if (payLink && !/^https:\/\//i.test(payLink)) {
+  let paymentUrl: URL | null = null;
+  try {
+    paymentUrl = payLink ? new URL(payLink) : null;
+  } catch {
+    paymentUrl = null;
+  }
+  if (payLink && (!paymentUrl || paymentUrl.protocol !== "https:" || paymentUrl.username || paymentUrl.password)) {
     return Response.json({ error: "Посилання на оплату має починатися з https://" }, { status: 400 });
   }
-  if (externalIcsUrl && !/^https?:\/\//i.test(externalIcsUrl)) {
-    return Response.json({ error: "Посилання на календар має починатися з http(s)://" }, { status: 400 });
+  if (externalIcsUrl && !safeOutboundUrl(externalIcsUrl)) {
+    return Response.json({ error: "Адреса календаря заборонена політикою зовнішніх підключень" }, { status: 400 });
   }
-  if (smsGatewayUrl && !/^https:\/\//i.test(smsGatewayUrl)) {
-    return Response.json({ error: "Адреса SMS-шлюзу має починатися з https://" }, { status: 400 });
+  if (smsGatewayUrl && !safeOutboundUrl(smsGatewayUrl)) {
+    return Response.json({ error: "Адреса SMS-шлюзу заборонена політикою зовнішніх підключень" }, { status: 400 });
   }
-  if (emailGatewayUrl && !/^https:\/\//i.test(emailGatewayUrl)) {
-    return Response.json({ error: "Адреса e-mail-шлюзу має починатися з https://" }, { status: 400 });
+  if (emailGatewayUrl && !safeOutboundUrl(emailGatewayUrl)) {
+    return Response.json({ error: "Адреса e-mail-шлюзу заборонена політикою зовнішніх підключень" }, { status: 400 });
   }
   if (emailGatewayFrom && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailGatewayFrom)) {
     return Response.json({ error: "Адреса відправника e-mail некоректна" }, { status: 400 });
@@ -97,17 +100,11 @@ export async function PUT(request: Request) {
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
-  if (accessCode && accessCode.length < 6) {
-    return Response.json({ error: "Код доступу має містити щонайменше 6 символів" }, { status: 400 });
-  }
-
   if (token === "-") await setSetting(db, "telegram_bot_token", "");
   else if (token) await setSetting(db, "telegram_bot_token", token);
   await setSetting(db, "telegram_chat_id", chatId);
   await setSetting(db, "pay_link", payLink);
   await setSetting(db, "external_ics_url", externalIcsUrl);
-  if (accessCode) await setSetting(db, "registration_code_hash", await hashPassword(accessCode));
-
   await setSetting(db, "patient_reminders_enabled", body.remindersEnabled ? "1" : "");
   await setSetting(db, "sms_gateway_url", smsGatewayUrl);
   await setSetting(db, "email_gateway_url", emailGatewayUrl);

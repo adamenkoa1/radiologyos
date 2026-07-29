@@ -56,3 +56,33 @@ export function canManageFinance(role: StaffRole) {
 export function canManageImaging(role: StaffRole) {
   return role === "admin" || role === "radiographer" || role === "radiologist";
 }
+
+export function canViewPatientRegistry(role: StaffRole) {
+  return role === "admin" || role === "registrar";
+}
+
+export function canExportPatientData(role: StaffRole) {
+  return role === "admin";
+}
+
+export function canViewReports(role: StaffRole) {
+  return role === "admin";
+}
+
+export function canAccessAllBookings(role: StaffRole) {
+  return role === "admin" || role === "registrar";
+}
+
+export async function canAccessBooking(
+  db: D1Database,
+  member: { email: string; role: StaffRole },
+  bookingId: number,
+): Promise<boolean> {
+  if (canAccessAllBookings(member.role)) return true;
+  const column = member.role === "radiologist"
+    ? "assigned_radiologist_email"
+    : "assigned_radiographer_email";
+  const row = await db.prepare(`SELECT id FROM bookings WHERE id = ? AND ${column} = ? LIMIT 1`)
+    .bind(bookingId, member.email).first();
+  return Boolean(row);
+}

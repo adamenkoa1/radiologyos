@@ -39,7 +39,8 @@ test("CRM API guards profile writes and validates before persisting", async () =
   const route = await read("app/api/staff/patients/route.ts");
   assert.match(route, /requireStaff\(request, db\)/);
   assert.match(route, /canManageBookings\(member\.role\)/);
-  assert.match(route, /canWriteNotes\(member\.role\)/);
+  assert.match(route, /canViewPatientRegistry\(member\.role\)/);
+  assert.match(route, /logSecurityEvent\(/);
   assert.match(route, /sanitizeProfile\(/);
   assert.match(route, /sanitizeCommunication\(/);
   assert.match(route, /INSERT INTO patient_profiles/);

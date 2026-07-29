@@ -7,6 +7,7 @@
 // підтвердження / перенесення не має падати через недоступний шлюз.
 
 import { getSettings } from "./settings";
+import { fetchLimited, readLimitedText, safeOutboundUrl } from "./outbound";
 
 export type ReminderKind = "confirmed" | "rescheduled";
 
@@ -64,11 +65,17 @@ async function record(
 }
 
 async function postJson(url: string, auth: string, payload: Record<string, string>): Promise<void> {
+  const outbound = safeOutboundUrl(url);
+  if (!outbound) throw new Error("Адреса шлюзу заборонена політикою зовнішніх підключень");
   const headers: Record<string, string> = { "content-type": "application/json" };
   if (auth) headers.authorization = auth;
-  const response = await fetch(url, { method: "POST", headers, body: JSON.stringify(payload) });
+  const response = await fetchLimited(outbound, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  }, 5000);
   if (!response.ok) {
-    const detail = await response.text().catch(() => "");
+    const detail = await readLimitedText(response).catch(() => "");
     throw new Error(`Шлюз відповів ${response.status}${detail ? `: ${detail.slice(0, 120)}` : ""}`);
   }
 }

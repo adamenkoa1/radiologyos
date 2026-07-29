@@ -78,59 +78,6 @@ document.addEventListener('click', e => { if (!e.target.closest('.login-menu-wra
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLoginMenu(); });
 document.getElementById('cartOverlay')?.addEventListener('click', e => { if (e.target.id === 'cartOverlay') closeCart(); });
 
-/* --- Прикріплення попереднього висновку --- */
-
-const medicalFiles = document.getElementById('medicalFiles');
-const fileSummary = document.getElementById('fileSummary');
-medicalFiles?.addEventListener('change', () => {
-  const files = [...medicalFiles.files];
-  fileSummary.textContent = files.length
-    ? `Вибрано файлів: ${files.length} — ${files.map(f => f.name).join(', ')}`
-    : 'Файли не вибрано';
-});
-
-
-/* --- Синхронізація з панеллю персоналу (staff.html) ---
-   Заявка зберігається в тому ж сховищі, яке читає панель.
-   Працює в межах одного браузера/пристрою (localStorage). */
-
-const STAFF_STORE = 'radiologyos_applications_v1';
-
-function pushToStaffPanel({ name, phone, category, studies, desiredDate, desiredTime, apparatus, comment, sid }) {
-  try {
-    const apps = JSON.parse(localStorage.getItem(STAFF_STORE) || '[]');
-    const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-    studies.forEach(st => {
-      const study = typeof st === 'string' ? st : st.name;
-      const code = typeof st === 'string' ? '' : st.code;
-      apps.push({
-        id: uid(),
-        name, phone, category, study,
-        desiredDate: desiredDate || '',
-        appointmentDate: '', appointmentTime: '',
-        status: 'new',
-        comment: comment || '',
-        createdAt: new Date().toISOString(),
-        sid: sid || '',
-        desiredTime: desiredTime || '',
-        apparatus: (function () {
-          /* конкретна машина з прайсу, якщо призначена; інакше тип за кодом */
-          try {
-            if (code && typeof getPricelist === 'function') {
-              for (const g of getPricelist())
-                for (const it of g.items)
-                  if (String(it.code) === String(code) && it.equip) return it.equip;
-            }
-          } catch (e) {}
-          return (code && typeof apparatusForCode === 'function') ? apparatusForCode(code)
-               : (apparatus || (typeof apparatusForStudyTitle === 'function' ? apparatusForStudyTitle(study) : 'xray'));
-        })()
-      });
-    });
-    localStorage.setItem(STAFF_STORE, JSON.stringify(apps));
-  } catch (e) { /* сховище недоступне — заявка все одно піде у WhatsApp */ }
-}
-
 /* --- Формування заявки --- */
 
 const requestForm = document.getElementById('requestForm');
@@ -169,63 +116,11 @@ function refreshSlotPicker() {
   });
 }
 
-requestForm?.addEventListener('submit', e => {
-  e.preventDefault();
-  if (!cart.length) { alert('Спочатку додайте послугу до заявки.'); return; }
-
-  if (!requestForm.checkValidity()) {
-    requestForm.classList.add('was-validated');
-    requestForm.querySelector(':invalid')?.focus();
-    return;
-  }
-
-  const name = document.getElementById('patientName').value.trim();
-  const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
-  const dateISO = pickedSlot.date || document.getElementById('desiredDate').value;
-  const time = pickedSlot.time || document.getElementById('desiredTime').value || 'будь-який';
-  const ref = document.getElementById('referral').value;
-  const comment = document.getElementById('comment').value.trim() || '—';
-  const files = [...(document.getElementById('medicalFiles')?.files || [])];
-
-
-  const sid = (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
-  const commentFull = [ref, time !== 'будь-який' ? 'Зручний час: ' + time : '', comment !== '—' ? comment : ''].filter(Boolean).join('. ');
-
-  pushToStaffPanel({
-    name, phone,
-    category: 'Цивільна особа',
-    studies: cart.map(x => ({ name: x.name, code: x.code })),
-    desiredDate: dateISO,
-    desiredTime: pickedSlot.time || '',
-    comment: commentFull,
-    sid
-  });
-
-  if (typeof notifyAdmin === 'function') notifyAdmin({
-    id: sid, name, phone,
-    category: 'Цивільна особа',
-    studies: cart.map(x => x.name).join('; '),
-    desiredDate: dateISO,
-    apparatus: cartApparatus(),
-    source: (typeof getTrafficSource === 'function') ? getTrafficSource() : '',
-    comment: [pickedSlot.time ? 'Обраний час: ' + pickedSlot.time : '', commentFull].filter(Boolean).join('. ')
-  });
-
-  const escS = t => String(t ?? '').replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
-  showSuccess(
-    `<div><strong>Дослідження:</strong> ${cart.map(x => escS(x.name)).join('; ')}</div>` +
-    (dateISO ? `<div><strong>Бажана дата:</strong> ${humanDate(dateISO)}${pickedSlot.time ? ' о ' + pickedSlot.time : ''}</div>` : '') +
-    `<div><strong>Телефон для зв'язку:</strong> ${escS(phone)}</div>` +
-    (files.length ? `<div><strong>Файли:</strong> принесіть попередній висновок із собою або передайте реєстратурі</div>` : '')
-  );
-});
-
 function showSuccess(summary) {
   const box = document.getElementById('successSummary');
   if (box) box.innerHTML = summary;
-  /* якщо онлайн-передача не налаштована — заявка НЕ дійде до реєстратури: чесно кажемо подзвонити */
   const off = document.getElementById('offlineNote');
-  if (off) off.hidden = !!(typeof NOTIFY_ENDPOINT !== 'undefined' && NOTIFY_ENDPOINT);
+  if (off) off.hidden = true;
   requestForm.hidden = true;
   document.getElementById('successPanel').hidden = false;
   showPaymentBlock();

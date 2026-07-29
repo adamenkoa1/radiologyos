@@ -3,6 +3,7 @@
 
 import { requireStaff } from "../../../../../lib/staff-auth";
 import { setSetting } from "../../../../../lib/settings";
+import { hashToken } from "../../../../../lib/auth";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -17,6 +18,6 @@ export async function POST(request: Request) {
 
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-  await setSetting(db, "calendar_token", token);
+  await setSetting(db, "calendar_token_hash", await hashToken(token));
   return Response.json({ ok: true, calendarToken: token });
 }

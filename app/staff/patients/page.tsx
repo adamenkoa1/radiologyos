@@ -43,7 +43,7 @@ const protocolLabels: Record<string,string> = {
   not_started:"Не розпочато", in_progress:"В роботі", ready:"Готовий", issued:"Видано",
 };
 const paymentLabels: Record<string,string> = {
-  not_set:"Не визначено", pending:"Очікує оплати", paid:"Оплачено", not_required:"Не потрібна", refunded:"Повернено",
+  not_set:"Не визначено", verification_required:"Потрібна перевірка пільги", pending:"Очікує оплати", paid:"Оплачено", not_required:"Не потрібна", refunded:"Повернено",
 };
 const categoryLabels: Record<string,string> = { civilian:"Цивільний", military:"Військовий" };
 

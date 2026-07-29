@@ -1,5 +1,6 @@
 import { EQUIPMENT, SERVICES, serviceByCode } from "../../../../lib/catalog";
-import { requireStaff } from "../../../../lib/staff-auth";
+import { canViewReports, requireStaff } from "../../../../lib/staff-auth";
+import { logSecurityEvent } from "../../../../lib/audit";
 import { REPORT_TEMPLATES } from "../../../../lib/reporting";
 import {
   fetchReportSource,
@@ -17,6 +18,9 @@ export async function GET(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
   const member = await requireStaff(request,db);
   if (!member) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  if (!canViewReports(member.role)) {
+    return Response.json({ error:"Звіти з медичними та фінансовими даними доступні лише адміністратору" },{ status:403 });
+  }
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректний період або параметри звіту" },{ status:400 });
@@ -91,6 +95,13 @@ export async function GET(request:Request) {
     ).all(),
   ]);
   const report = reportPayload(filters,source);
+  await logSecurityEvent(db, {
+    actorEmail: member.email,
+    action: "report_viewed",
+    resource: "report",
+    targetId: filters.template,
+    details: { from: filters.from, to: filters.to, rows: report.rows.length },
+  });
   return Response.json({
     ...publicFilters(filters),
     summary,

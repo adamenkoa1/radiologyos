@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
   STUDY_STATUS_LABELS,
@@ -55,7 +55,13 @@ export default function ImagingPage() {
   const [filter,setFilter] = useState<"all"|"not_linked"|"available">("all");
   const [query,setQuery] = useState("");
 
-  async function loadWorklist() {
+  const loadSettings = useCallback(async () => {
+    const response = await fetch("/api/staff/imaging/settings", { cache:"no-store" });
+    const data = await response.json() as { settings?:FullSettings; error?:string };
+    if (response.ok && data.settings) setFullSettings(data.settings);
+  }, []);
+
+  const loadWorklist = useCallback(async () => {
     const response = await fetch("/api/staff/imaging", { cache:"no-store" });
     const data = await response.json() as { worklist?:WorklistItem[]; settings?:Settings; staff?:StaffInfo; error?:string };
     if (!response.ok) { setError(data.error || "Немає доступу"); return; }
@@ -64,18 +70,12 @@ export default function ImagingPage() {
     if (data.settings) setSettings(data.settings);
     setError("");
     if (data.staff?.role === "admin") void loadSettings();
-  }
-
-  async function loadSettings() {
-    const response = await fetch("/api/staff/imaging/settings", { cache:"no-store" });
-    const data = await response.json() as { settings?:FullSettings; error?:string };
-    if (response.ok && data.settings) setFullSettings(data.settings);
-  }
+  }, [loadSettings]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadWorklist(); }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [loadWorklist]);
 
   useEffect(() => {
     if (!worklist.length || selectedId !== null) return;

@@ -41,7 +41,9 @@ test("imaging API guards writes, keeps PACS calls best-effort, no runtime DDL", 
   assert.match(route, /canManageImaging\(member\.role\)/);
   assert.match(route, /sanitizeImagingStudy\(/);
   assert.match(route, /imaging_linked/);
-  assert.match(route, /AbortController/);
+  assert.match(route, /safeOutboundUrl\(/);
+  assert.match(route, /fetchLimited\(/);
+  assert.match(route, /canAccessBooking\(/);
   assert.match(settingsRoute, /member\.role !== "admin"/);
   assert.match(settingsRoute, /sanitizePacsSettings\(/);
   for (const source of [route, settingsRoute]) {
