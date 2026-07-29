@@ -62,11 +62,25 @@ export default function StaffWorkspaceShell({
 }:StaffWorkspaceShellProps) {
   const [collapsed,setCollapsed] = useState(false);
   const [now,setNow] = useState<Date | null>(null);
+  const [dark,setDark] = useState(false);
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
     return ()=>window.clearInterval(timer);
   },[]);
+
+  useEffect(()=>{
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDark(window.localStorage.getItem("ws-theme") === "dark");
+  },[]);
+
+  function toggleTheme() {
+    setDark((value)=>{
+      const next = !value;
+      window.localStorage.setItem("ws-theme", next ? "dark" : "light");
+      return next;
+    });
+  }
 
   const current = now ? formatDateTime(now) : {date:"—",time:"—"};
   const identity = staffName || "Робочий профіль";
@@ -76,7 +90,7 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}`}>
+  return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}`}>
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff" aria-label="RadiologyOS — головна">
         <span className="workspaceBrandMark">R</span>
@@ -120,6 +134,14 @@ export default function StaffWorkspaceShell({
         <div className="workspaceTopTitle"><b>Чернігівський військовий госпіталь</b><small>Відділення променевої діагностики</small></div>
         <div className="workspaceClock" aria-label="Поточна дата і час"><b>{current.time}</b><span>{current.date}</span></div>
         <span className="workspaceOnline"><i/> Онлайн</span>
+        <button
+          className="workspaceThemeToggle"
+          type="button"
+          aria-pressed={dark}
+          aria-label={dark ? "Світла тема":"Темна тема"}
+          title={dark ? "Світла тема":"Темна тема"}
+          onClick={toggleTheme}
+        >{dark ? "◑":"◐"}</button>
         <details className="workspaceProfile">
           <summary>
             <span className="workspaceAvatar">{identity.trim().charAt(0).toUpperCase() || "R"}</span>
