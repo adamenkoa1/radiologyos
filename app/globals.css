@@ -493,7 +493,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 
 .sysmapColhead{display:grid;grid-template-columns:26px minmax(150px,1.15fr) minmax(200px,2fr) 92px 108px minmax(150px,1.1fr);gap:12px;padding:0 18px 8px 22px;font-family:var(--sm-mono);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--sm-faint)}
 
-.sysmapMod{border:1px solid var(--sm-hair);background:var(--sm-panel);border-radius:12px;margin-bottom:12px;box-shadow:var(--sm-shadow);overflow:hidden}
+.sysmapMod{border:1px solid var(--sm-hair);background:var(--sm-panel);border-radius:12px;margin-bottom:12px;box-shadow:var(--sm-shadow);overflow:hidden;scroll-margin-top:84px}
 .sysmapModhead{width:100%;text-align:left;font:inherit;cursor:pointer;background:transparent;border:0;display:flex;align-items:center;gap:14px;padding:14px 18px;color:var(--sm-ink)}
 .sysmapModhead:hover{background:var(--sm-panel-2)}
 .sysmapNum{font-family:var(--sm-mono);font-size:12px;font-weight:600;color:var(--sm-accent);border:1px solid var(--sm-hair);border-radius:7px;padding:4px 8px;background:var(--sm-accent-soft);flex:0 0 auto;min-width:30px;text-align:center}
@@ -703,3 +703,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .themeDark .protocolFilterTabs button,.themeDark .crmSegmentTabs button,.themeDark .reportTemplateTabs button{background:#0e151a;border-color:#26333d;color:#aebeca}
 .themeDark .reportTemplateTabs button span{color:#93a3ad}
 .themeDark .protocolActions button,.themeDark .pacsFormActions button.ghost{background:#0e151a;border-color:#26333d;color:#cdd8de}
+
+/* Пункти-модулі «Карти системи» в бічній панелі — номерні бейджі */
+.workspaceNavigation a.workspaceModuleLink>span{display:grid;place-items:center;width:20px;height:20px;flex:0 0 20px;border-radius:6px;background:rgba(37,180,192,.16);color:#7fd4dc;font-size:11px;font-weight:700}
+.workspaceNavigation a.workspaceModuleLink.active>span,.workspaceNavigation a.workspaceModuleLink:hover>span{background:rgba(37,180,192,.28);color:#bff0f5}

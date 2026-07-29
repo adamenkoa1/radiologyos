@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type Status = "ok" | "warn" | "new";
@@ -93,6 +93,22 @@ export default function SystemMapPage() {
   const [dark, setDark] = useState(true);
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
+  // Перехід до блоку модуля за якорем (#mod-N) із бічної панелі.
+  useEffect(() => {
+    function jump() {
+      const hash = window.location.hash;
+      if (!hash.startsWith("#mod-")) return;
+      const id = hash.slice(1);
+      setCollapsed((current) => ({ ...current, [id.replace("mod-", "")]: false }));
+      window.setTimeout(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 60);
+    }
+    jump();
+    window.addEventListener("hashchange", jump);
+    return () => window.removeEventListener("hashchange", jump);
+  }, []);
+
   const totals = useMemo(() => {
     const t = { ok: 0, warn: 0, new: 0, all: 0, ph2: 0, ph3: 0, ph4: 0 };
     for (const m of DATA) for (const it of m.items) {
@@ -184,7 +200,7 @@ export default function SystemMapPage() {
           for (const it of m.items) counts[it.st]++;
           const pct = Math.round((counts.ok / m.items.length) * 100);
           const isCollapsed = !!collapsed[m.num];
-          return <section className={`sysmapMod${isCollapsed ? " collapsed" : ""}`} key={m.num}>
+          return <section id={`mod-${m.num}`} className={`sysmapMod${isCollapsed ? " collapsed" : ""}`} key={m.num}>
             <button type="button" className="sysmapModhead" aria-expanded={!isCollapsed}
               onClick={() => setCollapsed((c) => ({ ...c, [m.num]: !c[m.num] }))}>
               <span className="sysmapNum">{m.num}</span>

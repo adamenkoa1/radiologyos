@@ -36,6 +36,18 @@ const administration = [
   { href:"/", label:"Публічний сайт", glyph:"↗" },
 ];
 
+// Модулі цільової структури — у тому ж порядку, що й «Карта системи».
+// Кожен пункт веде до відповідного блоку в дереві (#mod-N).
+const systemModules = [
+  { n:"1", label:"Головна / Продаж" },
+  { n:"2", label:"Запис і заявки" },
+  { n:"3", label:"CRM (пацієнти)" },
+  { n:"4", label:"Бухгалтерія / Фінанси" },
+  { n:"5", label:"Персонал (HR)" },
+  { n:"6", label:"Обладнання" },
+  { n:"7", label:"Адмін / Наскрізне" },
+];
+
 function formatDateTime(value:Date) {
   const date = new Intl.DateTimeFormat("uk-UA", {
     timeZone:"Europe/Kyiv",
@@ -116,6 +128,13 @@ export default function StaffWorkspaceShell({
           aria-current={"section" in item && item.section === active ? "page":undefined}
           title={collapsed ? item.label:undefined}
         ><span aria-hidden="true">{item.glyph}</span><b>{item.label}</b></Link>)}
+        <p>Карта системи</p>
+        {systemModules.map((item)=><Link
+          href={`/staff/system-map#mod-${item.n}`}
+          key={item.n}
+          className="workspaceModuleLink"
+          title={collapsed ? item.label:undefined}
+        ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>)}
       </nav>
 
       <div className="workspaceSidebarFoot">
