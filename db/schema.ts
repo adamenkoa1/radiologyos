@@ -7,6 +7,7 @@ export const bookings = sqliteTable("bookings", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   phoneNormalized: text("phone_normalized").notNull().default(""),
+  patientEmail: text("patient_email").notNull().default(""),
   service: text("service").notNull(),
   serviceCode: text("service_code").notNull().default("legacy"),
   equipmentId: text("equipment_id").notNull().default("ct"),
@@ -148,6 +149,19 @@ export const patientCommunications = sqliteTable("patient_communications", {
   actor: text("actor").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
+
+export const patientNotifications = sqliteTable("patient_notifications", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  bookingId: integer("booking_id").notNull(),
+  kind: text("kind").notNull(),
+  channel: text("channel").notNull(),
+  recipient: text("recipient").notNull().default(""),
+  body: text("body").notNull().default(""),
+  status: text("status").notNull().default("queued"),
+  error: text("error").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  sentAt: text("sent_at").notNull().default(""),
+}, table => [index("patient_notifications_booking_idx").on(table.bookingId, table.createdAt)]);
 
 export const imagingStudies = sqliteTable("imaging_studies", {
   bookingId: integer("booking_id").primaryKey(),

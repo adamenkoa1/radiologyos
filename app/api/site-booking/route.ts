@@ -31,6 +31,8 @@ export async function POST(request: Request) {
     const name = clean(body.name, 120);
     const phone = clean(body.phone, 40);
     const phoneNormalized = normalizeUkrainianPhone(phone);
+    const emailRaw = clean(body.email, 254).toLowerCase();
+    const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const category = clean(body.category, 20) === "military" ? "military" : "civilian";
     let referralType = clean(body.referralType, 30);
     if (!REFERRAL_TYPES.includes(referralType)) referralType = "other";
@@ -63,12 +65,12 @@ export async function POST(request: Request) {
       const price = await effectivePrice(db, service.code);
       const result = await db.prepare(
         `INSERT INTO bookings (
-          code, name, phone, phone_normalized, service, service_code, equipment_id,
+          code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
           duration_minutes, desired_date, desired_time, referral, patient_category,
           referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment
-        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+        ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
       ).bind(
-        code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
+        code, name, phone, phoneNormalized, patientEmail, service.title, service.code, service.equipmentId,
         service.durationMinutes, desiredDate, desiredTime, referral, category,
         referralType, marketingSource, paymentStatus, price, nszuStatus, comment,
       ).run();

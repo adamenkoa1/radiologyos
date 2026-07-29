@@ -4,7 +4,12 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email: string; displayName: string; role: string };
-type Settings = { telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean; calendarToken: string; externalIcsUrl: string };
+type Settings = {
+  telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean;
+  calendarToken: string; externalIcsUrl: string;
+  remindersEnabled: boolean; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
+  emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
+};
 
 export default function StaffSettingsPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
@@ -15,6 +20,12 @@ export default function StaffSettingsPage() {
   const [token, setToken] = useState("");
   const [accessCode, setAccessCode] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
+  const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [smsGatewayUrl, setSmsGatewayUrl] = useState("");
+  const [smsGatewayAuth, setSmsGatewayAuth] = useState("");
+  const [emailGatewayUrl, setEmailGatewayUrl] = useState("");
+  const [emailGatewayAuth, setEmailGatewayAuth] = useState("");
+  const [emailGatewayFrom, setEmailGatewayFrom] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
   const [calBusy, setCalBusy] = useState(false);
@@ -29,7 +40,13 @@ export default function StaffSettingsPage() {
       if (res.status === 403) { if (active) setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
       if (!active) return;
-      if (data.settings) { setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || ""); }
+      if (data.settings) {
+        setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || "");
+        setRemindersEnabled(Boolean(data.settings.remindersEnabled));
+        setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
+        setEmailGatewayUrl(data.settings.emailGatewayUrl || "");
+        setEmailGatewayFrom(data.settings.emailGatewayFrom || "");
+      }
       if (data.staff) setStaff(data.staff);
     })();
     return () => { active = false; };
@@ -41,13 +58,18 @@ export default function StaffSettingsPage() {
     try {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ telegramBotToken: token, telegramChatId: chatId, payLink, accessCode, externalIcsUrl }),
+        body: JSON.stringify({
+          telegramBotToken: token, telegramChatId: chatId, payLink, accessCode, externalIcsUrl,
+          remindersEnabled, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
+        }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
       if (data.settings) setSettings(data.settings);
       setToken("");
       setAccessCode("");
+      setSmsGatewayAuth("");
+      setEmailGatewayAuth("");
       setNotice("Налаштування збережено");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося зберегти");
@@ -146,6 +168,35 @@ export default function StaffSettingsPage() {
         <label><span>Адреса календаря (iCal)</span>
           <input value={externalIcsUrl} onChange={(e) => setExternalIcsUrl(e.target.value)} placeholder="https://calendar.google.com/calendar/ical/.../basic.ics" autoComplete="off" inputMode="url" />
           <small>Порожнє поле вимикає показ. Найближчі події зʼявляться на «Пульті».</small>
+        </label>
+      </section>
+
+      <section className="settingsBlock">
+        <h2>Нагадування пацієнтам (SMS / e-mail)</h2>
+        <p>Після <b>підтвердження</b> або <b>перенесення</b> запису пацієнту автоматично надсилається нагадування. SMS — на телефон із заявки, e-mail — якщо пацієнт вказав адресу. Кожне відправлення видно у черзі заявок.</p>
+        <span className={`settingsState ${remindersEnabled ? "on" : "off"}`}>{remindersEnabled ? "✓ Увімкнено" : "Вимкнено"}</span>
+        <label className="consent" style={{ margin: "6px 0 10px" }}>
+          <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
+          <span>Надсилати пацієнтам автонагадування про підтвердження та перенесення запису</span>
+        </label>
+        <label><span>Адреса SMS-шлюзу (HTTP POST)</span>
+          <input value={smsGatewayUrl} onChange={(e) => setSmsGatewayUrl(e.target.value)} placeholder="https://sms-провайдер/api/send" autoComplete="off" inputMode="url" />
+          <small>Отримає JSON {"{ to, text }"}. Порожнє поле — SMS-канал вимкнено.</small>
+        </label>
+        <label><span>Авторизація SMS-шлюзу</span>
+          <input value={smsGatewayAuth} onChange={(e) => setSmsGatewayAuth(e.target.value)} placeholder={settings?.smsGatewayAuthSet ? "Збережено — введіть, щоб змінити" : "Напр. Bearer <ключ>"} autoComplete="off" />
+          <small>Значення заголовка Authorization. Порожнє — лишити збережене, «-» — очистити.</small>
+        </label>
+        <label><span>Адреса e-mail-шлюзу (HTTP POST)</span>
+          <input value={emailGatewayUrl} onChange={(e) => setEmailGatewayUrl(e.target.value)} placeholder="https://email-провайдер/api/send" autoComplete="off" inputMode="url" />
+          <small>Отримає JSON {"{ to, from, subject, text }"}. Порожнє поле — e-mail-канал вимкнено.</small>
+        </label>
+        <label><span>Авторизація e-mail-шлюзу</span>
+          <input value={emailGatewayAuth} onChange={(e) => setEmailGatewayAuth(e.target.value)} placeholder={settings?.emailGatewayAuthSet ? "Збережено — введіть, щоб змінити" : "Напр. Bearer <ключ>"} autoComplete="off" />
+          <small>Порожнє — лишити збережене, «-» — очистити.</small>
+        </label>
+        <label><span>Адреса відправника e-mail</span>
+          <input value={emailGatewayFrom} onChange={(e) => setEmailGatewayFrom(e.target.value)} placeholder="noreply@likarnya.example" autoComplete="off" inputMode="email" />
         </label>
       </section>
 

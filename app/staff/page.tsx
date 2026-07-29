@@ -7,7 +7,7 @@ type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type StaffOption = { email:string; displayName:string; role:StaffRole };
 type Booking = {
-  id:number; code:string; name:string; phone:string; service:string;
+  id:number; code:string; name:string; phone:string; patientEmail:string; service:string;
   serviceCode:string; equipmentId:string; durationMinutes:number;
   desiredDate:string; desiredTime:string; referral:string;
   patientCategory:string; referralType:string; referralNumber:string;
@@ -21,6 +21,8 @@ type Booking = {
   comment:string; status:string; createdAt:string;
 };
 type BookingEvent = { id:number; bookingId:number; action:string; details:string; actor:string; createdAt:string };
+type PatientNotification = { id:number; bookingId:number; kind:string; channel:string; recipient:string; status:string; error:string; createdAt:string; sentAt:string };
+type ReminderResult = { sent:number; skipped:number; failed:number } | null | undefined;
 type StaffNote = { bookingId:number; note:string; updatedBy:string; updatedAt:string };
 type Equipment = { id:string; name:string; slotMinutes:number; start:string; end:string };
 type EquipmentBlock = {
@@ -58,6 +60,19 @@ const nszuLabels: Record<string,string> = {
   not_applicable:"Не застосовується", pending:"Очікує перевірки",
   confirmed:"Підтверджено", rejected:"Відхилено",
 };
+const notificationStatusLabels: Record<string,string> = {
+  sent:"надіслано", skipped:"пропущено", failed:"помилка", queued:"у черзі",
+};
+const notificationChannelLabels: Record<string,string> = { sms:"SMS", email:"e-mail" };
+
+function reminderNote(result:ReminderResult):string {
+  if (!result) return "";
+  if (result.sent) return ` Нагадування пацієнту надіслано (${result.sent}).`;
+  if (result.failed) return " Нагадування не надіслалося — перевірте шлюз у Налаштуваннях.";
+  if (result.skipped) return " Нагадування не надсилалося (вимкнено або немає адреси/шлюзу).";
+  return "";
+}
+
 const eventLabels: Record<string,string> = {
   created:"Заявку створено", rescheduled:"Перенесено", staff_note:"Оновлено нотатку",
   status_changed:"Змінено статус", protocol_updated:"Оновлено протокол",
@@ -72,10 +87,71 @@ function todayInKyiv() {
   }).format(new Date());
 }
 
+// Перенесення запису з реального розкладу: показує лише вільні слоти обраного
+// апарата на обрану дату (через /api/availability), як у формі для пацієнта.
+function RescheduleForm({ item, today, onSubmit }:{
+  item:Booking; today:string; onSubmit:(date:string,time:string)=>void | Promise<void>;
+}) {
+  const [date,setDate] = useState(item.desiredDate);
+  const [time,setTime] = useState(item.desiredTime);
+  const [times,setTimes] = useState<string[]>([]);
+  const [loading,setLoading] = useState(false);
+  const [loaded,setLoaded] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    async function loadSlots() {
+      if (!date || date < today) {
+        if (active) { setTimes([]); setLoaded(true); setLoading(false); }
+        return;
+      }
+      if (active) { setLoading(true); setLoaded(false); }
+      try {
+        const response = await fetch(`/api/availability?date=${encodeURIComponent(date)}&serviceCode=${encodeURIComponent(item.serviceCode)}`, { cache:"no-store" });
+        const data = await response.json() as { times?:string[] };
+        if (!active) return;
+        const free = Array.isArray(data.times) ? data.times : [];
+        // Поточний слот заявки лічильник вважає зайнятим — повертаємо його як варіант.
+        const merged = date === item.desiredDate && item.desiredTime && !free.includes(item.desiredTime)
+          ? [...free, item.desiredTime].sort()
+          : free;
+        setTimes(merged);
+        setTime(prev => merged.includes(prev)
+          ? prev
+          : (date === item.desiredDate && merged.includes(item.desiredTime) ? item.desiredTime : merged[0] || ""));
+      } catch {
+        if (active) setTimes([]);
+      } finally {
+        if (active) { setLoading(false); setLoaded(true); }
+      }
+    }
+    void loadSlots();
+    return () => { active = false; };
+  }, [date, item.serviceCode, item.desiredDate, item.desiredTime, today]);
+
+  const hasSlots = times.length > 0;
+  return <form className="rescheduleForm" onSubmit={event => { event.preventDefault(); if (time) void onSubmit(date, time); }}>
+    <small>Перенести запис</small>
+    <input name="date" type="date" required min={today} value={date} onChange={event => setDate(event.target.value)}/>
+    <select name="time" required aria-label="Вільний час" value={time} disabled={loading || !hasSlots} onChange={event => setTime(event.target.value)}>
+      {loading ? <option value="">Завантаження…</option>
+        : !hasSlots ? <option value="">Немає вільних слотів</option>
+        : times.map(slot => <option value={slot} key={slot}>{slot}{slot === item.desiredTime && date === item.desiredDate ? " · поточний" : ""}</option>)}
+    </select>
+    <button type="submit" disabled={loading || !hasSlots || !time}>Зберегти новий час</button>
+    <span className="rescheduleHint">{
+      loading ? "Перевіряємо вільний час…"
+        : hasSlots ? `${times.length} вільних слотів на ${date} · ${item.durationMinutes} хв`
+        : loaded ? "Немає вільних слотів — оберіть іншу дату" : ""
+    }</span>
+  </form>;
+}
+
 export default function StaffPage() {
   const [items,setItems] = useState<Booking[]>([]);
   const [events,setEvents] = useState<BookingEvent[]>([]);
   const [notes,setNotes] = useState<StaffNote[]>([]);
+  const [notifications,setNotifications] = useState<PatientNotification[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [equipment,setEquipment] = useState<Equipment[]>([]);
   const [blocks,setBlocks] = useState<EquipmentBlock[]>([]);
@@ -96,7 +172,7 @@ export default function StaffPage() {
     ]);
     const data = await bookingsResponse.json() as {
       bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo;
-      staffOptions?:StaffOption[]; error?:string;
+      staffOptions?:StaffOption[]; notifications?:PatientNotification[]; error?:string;
     };
     if (!bookingsResponse.ok) { setError(data.error || "Немає доступу"); return; }
     const equipmentData = await equipmentResponse.json() as {
@@ -106,6 +182,7 @@ export default function StaffPage() {
     setItems(data.bookings || []);
     setEvents(data.events || []);
     setNotes(data.notes || []);
+    setNotifications(data.notifications || []);
     setStaff(data.staff || null);
     setStaffOptions(data.staffOptions || []);
     setEquipment(equipmentData.equipment || []);
@@ -143,10 +220,24 @@ export default function StaffPage() {
       method:"PATCH", headers:{"content-type":"application/json"},
       body:JSON.stringify({id,desiredDate,desiredTime}),
     });
-    const data = await response.json() as { error?:string };
+    const data = await response.json() as { error?:string; reminder?:ReminderResult };
     if (!response.ok) { setActionError(data.error || "Не вдалося перенести запис"); return; }
     setItems(current => current.map(item => item.id === id ? {...item,desiredDate,desiredTime,status:"rescheduled"} : item));
-    setActionSuccess("Новий час запису збережено.");
+    setActionSuccess(`Новий час запису збережено.${reminderNote(data.reminder)}`);
+    void load();
+  }
+
+  async function confirmBooking(id:number) {
+    setActionError(""); setActionSuccess("");
+    const response = await fetch("/api/staff/bookings", {
+      method:"PATCH", headers:{"content-type":"application/json"},
+      body:JSON.stringify({id,confirm:true}),
+    });
+    const data = await response.json() as { error?:string; reminder?:ReminderResult };
+    if (!response.ok) { setActionError(data.error || "Не вдалося підтвердити запис"); return; }
+    setItems(current => current.map(item => item.id === id ? {...item,status:"confirmed"} : item));
+    setActionSuccess(`Запис підтверджено та поставлено в розклад.${reminderNote(data.reminder)}`);
+    void load();
   }
 
   async function saveNote(id:number,note:string) {
@@ -331,13 +422,12 @@ export default function StaffPage() {
           <div className="bookingPrimary"><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span><b>{item.name}</b><small>{item.code} · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small></div>
           <div><small>Дослідження</small><b>{item.service}</b><span>Код {item.serviceCode} · {equipment.find(unit=>unit.id===item.equipmentId)?.name || item.equipmentId} · {item.durationMinutes} хв</span><span>{item.desiredDate} · {item.desiredTime}</span></div>
           <div><small>Контакт і маршрут</small><a href={`tel:${item.phone}`}>{item.phone}</a><a className="crmCardLink" href={`/staff/patients?phone=${encodeURIComponent(item.phone)}`}>Картка пацієнта →</a><span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
-          <div className="bookingAction"><small>Статус</small>{canManage?<select value={item.status} onChange={e=>void changeStatus(item.id,e.target.value)}>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select>:<b>{labels[item.status] || item.status}</b>}</div>
-          {canManage && <form className="rescheduleForm" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);void reschedule(item.id,String(data.get("date")),String(data.get("time")));}}>
-            <small>Перенести запис</small>
-            <input name="date" type="date" required min={today} defaultValue={item.desiredDate}/>
-            <input name="time" type="time" required min="08:00" max="16:45" step={item.equipmentId==="ct"?1800:900} defaultValue={item.desiredTime}/>
-            <button type="submit">Зберегти новий час</button>
-          </form>}
+          <div className="bookingAction"><small>Статус</small>
+            {canManage?<select value={item.status} onChange={e=>void changeStatus(item.id,e.target.value)}>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select>:<b>{labels[item.status] || item.status}</b>}
+            {canManage && (item.status==="new"||item.status==="rescheduled") && <button type="button" className="confirmBooking" onClick={()=>void confirmBooking(item.id)}>✓ Підтвердити й у розклад</button>}
+            {(() => { const last = notifications.find(note=>note.bookingId===item.id); return last ? <span className={`reminderTag ${last.status}`}>Нагадування: {notificationStatusLabels[last.status]||last.status} · {notificationChannelLabels[last.channel]||last.channel}{last.status==="failed"&&last.error?` — ${last.error}`:""}</span> : null; })()}
+          </div>
+          {canManage && <RescheduleForm item={item} today={today} onSubmit={(date,time)=>reschedule(item.id,date,time)}/>}
           {item.comment && <p className="bookingComment">{item.comment}</p>}
           <form className="staffNoteForm" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);void saveNote(item.id,String(data.get("note")));}}>
             <label><small>Внутрішня нотатка персоналу</small><textarea name="note" maxLength={1200} defaultValue={notes.find(note=>note.bookingId===item.id)?.note||""} placeholder="Підготовка, уточнення направлення, домовленості…"/></label>

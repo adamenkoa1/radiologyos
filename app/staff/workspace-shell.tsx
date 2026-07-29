@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings";
+type WorkspaceSection = "dashboard" | "overview" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "system-map";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -31,6 +31,7 @@ const navigation = [
 const administration = [
   { href:"/staff#staff-admin", label:"Персонал", glyph:"◉" },
   { href:"/staff#equipment", label:"Обладнання", glyph:"◇" },
+  { href:"/staff/system-map", label:"Карта системи", glyph:"◑", section:"system-map" as WorkspaceSection },
   { href:"/staff/settings", label:"Налаштування", glyph:"⚙", section:"settings" as WorkspaceSection },
   { href:"/", label:"Публічний сайт", glyph:"↗" },
 ];
@@ -61,11 +62,27 @@ export default function StaffWorkspaceShell({
 }:StaffWorkspaceShellProps) {
   const [collapsed,setCollapsed] = useState(false);
   const [now,setNow] = useState<Date | null>(null);
+  const [dark,setDark] = useState(false);
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
     return ()=>window.clearInterval(timer);
   },[]);
+
+  useEffect(()=>{
+    const stored = window.localStorage.getItem("ws-theme");
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setDark(stored ? stored === "dark" : prefersDark);
+  },[]);
+
+  function toggleTheme() {
+    setDark((value)=>{
+      const next = !value;
+      window.localStorage.setItem("ws-theme", next ? "dark" : "light");
+      return next;
+    });
+  }
 
   const current = now ? formatDateTime(now) : {date:"—",time:"—"};
   const identity = staffName || "Робочий профіль";
@@ -75,7 +92,7 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}`}>
+  return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}`}>
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff" aria-label="RadiologyOS — головна">
         <span className="workspaceBrandMark">R</span>
@@ -119,6 +136,14 @@ export default function StaffWorkspaceShell({
         <div className="workspaceTopTitle"><b>Чернігівський військовий госпіталь</b><small>Відділення променевої діагностики</small></div>
         <div className="workspaceClock" aria-label="Поточна дата і час"><b>{current.time}</b><span>{current.date}</span></div>
         <span className="workspaceOnline"><i/> Онлайн</span>
+        <button
+          className="workspaceThemeToggle"
+          type="button"
+          aria-pressed={dark}
+          aria-label={dark ? "Світла тема":"Темна тема"}
+          title={dark ? "Світла тема":"Темна тема"}
+          onClick={toggleTheme}
+        >{dark ? "◑":"◐"}</button>
         <details className="workspaceProfile">
           <summary>
             <span className="workspaceAvatar">{identity.trim().charAt(0).toUpperCase() || "R"}</span>
@@ -136,7 +161,7 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
