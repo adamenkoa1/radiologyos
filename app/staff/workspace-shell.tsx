@@ -164,7 +164,7 @@ export default function StaffWorkspaceShell({
         <p>Модулі</p>
         {systemModules.map((item)=>{
           const isActive = !!item.section && item.section === active;
-          const isOpen = openModules[item.n] ?? isActive;
+          const isOpen = openModules[item.n] ?? true;
           return <div className="workspaceModuleGroup" key={item.n}>
             <div className="workspaceModuleRow">
               <Link
