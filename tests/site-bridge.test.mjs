@@ -50,10 +50,11 @@ test("my-bookings lists every booking for a full phone number", async () => {
   assert.match(route, /isRateLimited\(/);
 });
 
-test("my-protocol only returns an issued protocol behind code + phone", async () => {
+test("my-protocol only returns an issued protocol behind a verified patient session", async () => {
   const route = await read("app/api/my-protocol/route.ts");
-  assert.match(route, /RD-\[A-Z0-9\]\{8\}/); // code required
-  assert.match(route, /substr\(phone_normalized, -4\)/); // phone required
+  assert.match(route, /normalizeBookingCode\(/);
+  assert.match(route, /requirePatientSession\(/);
+  assert.match(route, /phone_normalized = \?/);
   assert.match(route, /protocolStatus !== "issued"/); // gated until issued
   assert.match(route, /FROM protocols WHERE booking_id = \?/);
 });
@@ -72,9 +73,9 @@ test("department settings are admin-only and validated", async () => {
   assert.match(route, /member\.role !== "admin"/);
   assert.match(route, /telegram_bot_token/);
   assert.match(route, /pay_link/);
-  assert.match(route, /https:\\\/\\\//); // pay link must be https
-  assert.match(route, /registration_code_hash/); // admin can rotate the access code
-  assert.match(route, /hashPassword\(accessCode\)/); // stored hashed only
+  assert.match(route, /paymentUrl\.protocol !== "https:"/);
+  assert.match(route, /safeOutboundUrl\(externalIcsUrl\)/);
+  assert.doesNotMatch(route, /registration_code_hash|accessCode/);
   const migration = await read("drizzle/0010_department_settings.sql");
   assert.match(migration, /telegram_bot_token/);
   assert.match(migration, /pay_link/);
@@ -96,8 +97,8 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   assert.match(route, /pay_link/);
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /\/api\/pay-link/);
-  const notify = await read("public/site/assets/notify.js");
-  assert.doesNotMatch(notify, /cadc7a4d/); // hardcoded PrivatBank token removed
+  const index = await read("public/site/index.html");
+  assert.doesNotMatch(index, /assets\/notify\.js/); // obsolete client-side gateway removed
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /Очікує оплати/);
 });

@@ -1,8 +1,10 @@
-// Patient self-service: list every booking tied to a phone number. Requires the
-// full phone number (not just the last four digits) so the list isn't trivially
-// enumerable. Returns only non-sensitive fields; the protocol document itself is
-// gated separately behind the booking code (see /api/my-protocol).
-
+import {
+  clearedPatientSessionCookie,
+  createPatientSession,
+  destroyPatientSession,
+  normalizeBookingCode,
+  patientSessionCookie,
+} from "../../../lib/patient-auth";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
 
@@ -13,14 +15,22 @@ function dbBinding() {
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
-  if (await isRateLimited(db, request, "my-bookings", 12, 15)) {
+  if (await isRateLimited(db, request, "patient-login", 8, 15)) {
     return Response.json({ error: "Забагато спроб. Повторіть перевірку пізніше." }, { status: 429 });
   }
 
-  const body = await request.json().catch(() => ({})) as { phone?: string };
+  const body = await request.json().catch(() => ({})) as { phone?: string; code?: string };
   const phoneNormalized = normalizeUkrainianPhone(String(body.phone || ""));
-  if (!phoneNormalized) {
-    return Response.json({ error: "Введіть повний номер телефону" }, { status: 400 });
+  const code = normalizeBookingCode(body.code);
+  if (!phoneNormalized || !code) {
+    return Response.json({ error: "Введіть повний номер телефону та код заявки" }, { status: 400 });
+  }
+
+  const proof = await db.prepare(
+    "SELECT id FROM bookings WHERE code = ? AND phone_normalized = ? LIMIT 1"
+  ).bind(code, phoneNormalized).first();
+  if (!proof) {
+    return Response.json({ error: "Не вдалося підтвердити номер телефону або код заявки" }, { status: 401 });
   }
 
   const rows = await db.prepare(
@@ -37,5 +47,23 @@ export async function POST(request: Request) {
     ...row,
     hasProtocol: Number((row as { hasProtocol: number }).hasProtocol) === 1,
   }));
-  return Response.json({ bookings });
+  const rawToken = await createPatientSession(db, phoneNormalized);
+  return Response.json(
+    { bookings },
+    {
+      headers: {
+        "set-cookie": patientSessionCookie(rawToken),
+        "cache-control": "no-store",
+      },
+    },
+  );
+}
+
+export async function DELETE(request: Request) {
+  const db = dbBinding();
+  if (db) await destroyPatientSession(request, db);
+  return Response.json(
+    { ok: true },
+    { headers: { "set-cookie": clearedPatientSessionCookie(), "cache-control": "no-store" } },
+  );
 }

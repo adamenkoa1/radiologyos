@@ -9,7 +9,7 @@ test("auth migration adds password hashing and a sessions table", async () => {
   assert.match(migration, /ALTER TABLE `staff_members` ADD COLUMN `password_hash`/);
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `staff_sessions`/);
   assert.match(migration, /`token_hash` text PRIMARY KEY/);
-  assert.match(migration, /pbkdf2\$sha256\$/); // seeded admin password hash
+  assert.doesNotMatch(migration, /pbkdf2\$sha256\$/); // no published default credential
   const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
   assert.ok(journal.entries.some((entry) => entry.tag === "0008_staff_auth"));
   const schema = await read("db/schema.ts");
@@ -23,7 +23,8 @@ test("auth library stores PBKDF2 hashes and hashed session tokens", async () => 
     assert.match(source, new RegExp(`export (?:async )?function ${fn}`));
   }
   assert.match(source, /PBKDF2/);
-  assert.match(source, /HttpOnly; Secure; SameSite=Lax/);
+  assert.match(source, /HttpOnly; Secure; SameSite=Strict/);
+  assert.match(source, /PBKDF2_ITERATIONS = 600000/);
 });
 
 test("requireStaff resolves the member from a session cookie, not an external header", async () => {
@@ -80,52 +81,50 @@ test("the self-managed login page renders", async () => {
   assert.match(html, /Пароль/);
 });
 
-test("self-service migration seeds an access code and re-asserts the admin", async () => {
+test("self-service migration creates settings without a shared access code or active default admin", async () => {
   const migration = await read("drizzle/0009_staff_self_service.sql");
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `app_settings`/);
-  assert.match(migration, /registration_code_hash/);
-  assert.match(migration, /pbkdf2\$sha256\$/);
-  assert.match(migration, /password_hash` IS NULL OR/); // only re-set when unset
+  assert.doesNotMatch(migration, /registration_code_hash|pbkdf2\$sha256\$/);
+  assert.match(migration, /'admin', 0, ''/);
   const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
   assert.ok(journal.entries.some((entry) => entry.tag === "0009_staff_self_service"));
 });
 
-test("account helpers enforce access code, email and password rules", async () => {
+test("account helpers enforce administrator-owned roles, email and password rules", async () => {
   const source = await read("lib/staff-accounts.ts");
-  assert.match(source, /export async function verifyAccessCode/);
   assert.match(source, /export async function registerStaff/);
   assert.match(source, /export async function resetStaffPassword/);
   assert.match(source, /export function passwordProblem/);
+  assert.match(source, /MIN_PASSWORD_LENGTH = 12/);
+  assert.match(source, /role: StaffRole/);
+  assert.doesNotMatch(source, /verifyAccessCode/);
   assert.match(source, /await hashPassword\(/);
   // a reset revokes existing sessions so old devices are logged out
   assert.match(source, /DELETE FROM staff_sessions WHERE email = \?/);
 });
 
-test("register and reset endpoints gate on the department access code", async () => {
+test("public register and reset endpoints are disabled", async () => {
   const register = await read("app/api/staff/register/route.ts");
   const reset = await read("app/api/staff/reset/route.ts");
   for (const route of [register, reset]) {
-    assert.match(route, /verifyAccessCode\(/);
-    assert.match(route, /isRateLimited\(/);
-    assert.match(route, /Невірний код доступу відділення/);
+    assert.match(route, /status: 410/);
+    assert.doesNotMatch(route, /verifyAccessCode|hashPassword|createSession/);
   }
-  assert.match(register, /set-cookie/i); // registration signs the member in
-  assert.match(register, /emailTaken\(/);
 });
 
-test("login page exposes the eye toggle, registration and reset links", async () => {
+test("login page exposes the password control without self-service links", async () => {
   const response = await renderPath("/staff/login");
   const html = await response.text();
   assert.match(html, /passwordEye/);
-  assert.match(html, /href=["']\/staff\/register["']/);
-  assert.match(html, /href=["']\/staff\/forgot["']/);
+  assert.doesNotMatch(html, /href=["']\/staff\/register["']/);
+  assert.doesNotMatch(html, /href=["']\/staff\/forgot["']/);
 });
 
-test("registration and password-reset pages render", async () => {
+test("registration and password-reset pages explain the administrator workflow", async () => {
   const register = await renderPath("/staff/register");
   assert.equal(register.status, 200);
-  assert.match(await register.text(), /Код доступу відділення/);
+  assert.match(await register.text(), /Самостійну реєстрацію вимкнено/);
   const forgot = await renderPath("/staff/forgot");
   assert.equal(forgot.status, 200);
-  assert.match(await forgot.text(), /Відновлення пароля/);
+  assert.match(await forgot.text(), /пароль більше не скидається спільним кодом/);
 });

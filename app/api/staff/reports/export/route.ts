@@ -1,4 +1,5 @@
-import { requireStaff } from "../../../../../lib/staff-auth";
+import { logSecurityEvent } from "../../../../../lib/audit";
+import { canViewReports, requireStaff } from "../../../../../lib/staff-auth";
 import {
   fetchReportSource,
   publicFilters,
@@ -16,6 +17,9 @@ export async function GET(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
   const member = await requireStaff(request,db);
   if (!member) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  if (!canViewReports(member.role)) {
+    return Response.json({ error:"Експорт звітів доступний лише адміністратору" },{ status:403 });
+  }
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректні параметри звіту" },{ status:400 });
@@ -37,6 +41,13 @@ export async function GET(request:Request) {
     rows.length,
     containsPersonalData
   ).run();
+  await logSecurityEvent(db, {
+    actorEmail: member.email,
+    action: "report_exported",
+    resource: "report",
+    targetId: filters.template,
+    details: { format: "xlsx", rows: rows.length, containsPersonalData: Boolean(containsPersonalData) },
+  });
 
   const filename = `radiologyos-${filters.template}-${filters.from}-${filters.to}.xlsx`;
   const body = new ArrayBuffer(workbook.byteLength);

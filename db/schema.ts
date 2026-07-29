@@ -35,6 +35,11 @@ export const bookings = sqliteTable("bookings", {
   protocolIssuedAt: text("protocol_issued_at").notNull().default(""),
   paidAmount: integer("paid_amount").notNull().default(0),
   externalReference: text("external_reference").notNull().default(""),
+  consentAt: text("consent_at").notNull().default(""),
+  consentVersion: text("consent_version").notNull().default(""),
+  consentSource: text("consent_source").notNull().default(""),
+  militaryVerifiedAt: text("military_verified_at").notNull().default(""),
+  militaryVerifiedBy: text("military_verified_by").notNull().default(""),
   comment: text("comment").notNull().default(""),
   status: text("status").notNull().default("new"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
@@ -84,6 +89,19 @@ export const staffSessions = sqliteTable("staff_sessions", {
   expiresAt: text("expires_at").notNull(),
 }, table => [index("staff_sessions_expiry_idx").on(table.expiresAt)]);
 
+export const patientSessions = sqliteTable("patient_sessions", {
+  tokenHash: text("token_hash").primaryKey(),
+  phoneNormalized: text("phone_normalized").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, table => [index("patient_sessions_expiry_idx").on(table.expiresAt)]);
+
+export const bookingRequests = sqliteTable("booking_requests", {
+  idempotencyKey: text("idempotency_key").primaryKey(),
+  responseJson: text("response_json").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
 export const appSettings = sqliteTable("app_settings", {
   key: text("key").primaryKey(),
   value: text("value").notNull().default(""),
@@ -128,6 +146,22 @@ export const protocols = sqliteTable("protocols", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
+
+export const protocolRevisions = sqliteTable("protocol_revisions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  bookingId: integer("booking_id").notNull(),
+  version: integer("version").notNull(),
+  templateKey: text("template_key").notNull(),
+  method: text("method").notNull().default(""),
+  sectionsJson: text("sections_json").notNull().default("{}"),
+  findings: text("findings").notNull().default(""),
+  conclusion: text("conclusion").notNull().default(""),
+  recommendations: text("recommendations").notNull().default(""),
+  number: text("number").notNull().default(""),
+  status: text("status").notNull().default("draft"),
+  savedBy: text("saved_by").notNull(),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("protocol_revisions_booking_idx").on(table.bookingId, table.version)]);
 
 export const patientProfiles = sqliteTable("patient_profiles", {
   phoneNormalized: text("phone_normalized").primaryKey(),
@@ -199,3 +233,13 @@ export const reportExports = sqliteTable("report_exports", {
   containsPersonalData: integer("contains_personal_data").notNull().default(0),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [index("report_exports_created_idx").on(table.createdAt, table.requestedBy)]);
+
+export const securityAuditLog = sqliteTable("security_audit_log", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  actorEmail: text("actor_email").notNull(),
+  action: text("action").notNull(),
+  resource: text("resource").notNull(),
+  targetId: text("target_id").notNull().default(""),
+  detailsJson: text("details_json").notNull().default("{}"),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("security_audit_created_idx").on(table.createdAt, table.actorEmail)]);

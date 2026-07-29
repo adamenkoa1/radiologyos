@@ -401,10 +401,9 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
           </select>
         </div>
         <div class="field">
-          <label>Попередній висновок <span class="opt">(необов’язково)</span></label>
+          <label>Попередні медичні документи</label>
           <div class="upload-box">
-            <div class="upload-help">Фото або PDF попереднього висновку КТ, МРТ чи рентгенографії.</div>
-            <input accept=".pdf,image/*" class="file-input" id="militaryPreviousReport" type="file"/>
+            <div class="upload-help">Завантаження документів на сайті не виконується. Візьміть попередні висновки та зображення із собою або передайте їх реєстратурі узгодженим захищеним способом.</div>
           </div>
         </div>
         <div class="field">
@@ -416,10 +415,10 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
         <div class="step-title"><span class="step-num">3</span>Підтвердження</div>
         <label class="consent">
           <input id="militaryConsent" required type="checkbox"/>
-          <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження.</span>
+          <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження та ознайомився(-лася) з <a href="/privacy" rel="noopener" target="_blank">політикою конфіденційності</a>.</span>
         </label>
         <span class="field-error consent-error">Потрібна згода на обробку даних</span>
-        <p class="cart-note">Після формування ви отримаєте готовий текст заявки — його можна надіслати у WhatsApp, Viber або продиктувати за телефоном реєстратури.</p>
+        <p class="cart-note">Після надсилання ви отримаєте індивідуальний код заявки. Збережіть його для входу до кабінету пацієнта.</p>
         <button class="btn send-request" type="submit">Сформувати заявку</button>
       </div>
     </form>
@@ -428,8 +427,7 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
       <div class="success-icon" aria-hidden="true">✓</div>
       <h3>Заявку прийнято</h3>
       <div class="success-summary" id="milSuccessSummary"></div>
-      <p>Реєстратура опрацює заявку та зателефонує вам для підтвердження дати й часу. Стежити за статусом можна в особистому кабінеті за номером телефону.</p>
-      <p class="cart-note offline-note" id="milOfflineNote" hidden><strong>Увага:</strong> онлайн-передача заявок тимчасово не працює. Будь ласка, зателефонуйте в реєстратуру: <a href="tel:+380972808899"><strong>+380 97 280 88 99</strong></a></p>
+      <p>Реєстратура опрацює заявку та зателефонує вам для підтвердження дати й часу. Стежити за статусом можна в кабінеті пацієнта за повним номером телефону та кодом заявки.</p>
       <a class="btn send-request" href="/site/cabinet.html" style="margin-bottom:8px">Особистий кабінет</a>
       <button class="btn send-request" type="button" onclick="closeMilitaryCart()" style="background:#eef2f5;color:#0e454c">Готово</button>
     </div>
@@ -555,74 +553,6 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeMilitaryCart();
 });
 
-document.getElementById('militaryRequestForm').addEventListener('submit', event => {
-  event.preventDefault();
-  const form = document.getElementById('militaryRequestForm');
-
-  if (!militaryCart.length) { alert('Оберіть хоча б одне дослідження.'); return; }
-  if (!form.checkValidity()) {
-    form.classList.add('was-validated');
-    form.querySelector(':invalid')?.focus();
-    return;
-  }
-
-  const name = document.getElementById('militaryPatientName').value.trim();
-  const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
-  const _ps = window.milPickedSlot || { date: '', time: '' };
-  const dateISO = _ps.date || document.getElementById('militaryDesiredDate').value;
-  const time = _ps.time || document.getElementById('militaryDesiredTime').value || 'будь-який';
-  const referral = document.getElementById('militaryReferral').value;
-  const comment = document.getElementById('militaryComment').value.trim() || '—';
-  const hasFile = (document.getElementById('militaryPreviousReport')?.files || []).length > 0;
-
-
-  const commentFull = [referral, time !== 'будь-який' ? 'Зручний час: ' + time : '', comment !== '—' ? comment : ''].filter(Boolean).join('. ');
-  const _sid = (crypto.randomUUID ? crypto.randomUUID() : 'sid-' + Date.now());
-
-  /* панель персоналу (цей пристрій) */
-  try {
-    const STAFF_STORE = 'radiologyos_applications_v1';
-    const apps = JSON.parse(localStorage.getItem(STAFF_STORE) || '[]');
-    const uid = () => (crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-    militaryCart.forEach(item => {
-      apps.push({ id: uid(), sid: _sid, name, phone, category: 'Військовослужбовець',
-        study: item.name, desiredDate: dateISO || '', desiredTime: _ps.time || '',
-        apparatus: (typeof apparatusForCode === 'function') ? apparatusForCode(item.code) : 'xray',
-        appointmentDate: '', appointmentTime: '',
-        status: 'new', comment: commentFull, createdAt: new Date().toISOString() });
-    });
-    localStorage.setItem(STAFF_STORE, JSON.stringify(apps));
-  } catch (e) {}
-
-  /* лист адміністратору + журнал */
-  if (typeof notifyAdmin === 'function') notifyAdmin({
-    id: _sid, name, phone,
-    category: 'Військовослужбовець',
-    studies: militaryCart.map(item => item.name).join('; '),
-    desiredDate: dateISO || '',
-    source: (typeof getTrafficSource === 'function') ? getTrafficSource() : '',
-    apparatus: (typeof apparatusForCode === 'function' && militaryCart.some(x => apparatusForCode(x.code) === 'ct')) ? 'ct' : 'xray',
-    comment: [_ps.time ? 'Обраний час: ' + _ps.time : '', commentFull].filter(Boolean).join('. ')
-  });
-
-  /* екран підтвердження */
-  const escS = t => String(t ?? '').replace(/[&<>]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[ch]));
-  document.getElementById('milSuccessSummary').innerHTML =
-    `<div><strong>Дослідження:</strong> ${militaryCart.map(x => escS(x.name)).join('; ')}</div>` +
-    (dateISO ? `<div><strong>Бажана дата:</strong> ${dateISO.split('-').reverse().join('.')}${_ps.time ? ' о ' + _ps.time : ''}</div>` : '') +
-    `<div><strong>Телефон для зв'язку:</strong> ${escS(phone)}</div>`;
-  const milOff = document.getElementById('milOfflineNote');
-  if (milOff) milOff.hidden = !!(typeof NOTIFY_ENDPOINT !== 'undefined' && NOTIFY_ENDPOINT);
-  form.hidden = true;
-  document.getElementById('milSuccessPanel').hidden = false;
-  const milList = document.getElementById('militaryCartItems');
-  if (milList) milList.style.display = 'none';
-  militaryCart = [];
-  saveMilitaryCart();
-});
-
-
-
 renderMilitaryCart();
 </script><script src="/site/assets/department.js"></script>
 <script>
@@ -639,7 +569,6 @@ renderMilitaryCart();
   }catch(e){}
 })();
 </script>
-<script src="/site/assets/notify.js"></script>
 <script src="/site/assets/slots.js"></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
 <script>

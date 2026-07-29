@@ -151,7 +151,7 @@ export default function ProtocolsPage() {
     setSaving(true);
     const response = await fetch("/api/staff/protocols", {
       method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({ bookingId:booking.id, ...doc, status }),
+      body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status }),
     });
     const data = await response.json() as {
       ok?:boolean; version?:number; protocolStatus?:string; protocolNumber?:string;

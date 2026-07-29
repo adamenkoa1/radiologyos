@@ -13,7 +13,7 @@ export async function GET(request: Request) {
     db.prepare(
       `SELECT desired_time AS startTime, duration_minutes AS durationMinutes
        FROM bookings WHERE equipment_id = ? AND desired_date = ?
-       AND status NOT IN ('cancelled','completed')`
+       AND status IN ('confirmed','rescheduled')`
     ).bind(service.equipmentId, date).all<{startTime:string;durationMinutes:number}>(),
     db.prepare(
       `SELECT start_time AS startTime, end_time AS endTime FROM equipment_blocks

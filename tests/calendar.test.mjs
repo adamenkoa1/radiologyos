@@ -18,10 +18,12 @@ test("ICS builder emits valid VCALENDAR events", async () => {
   assert.match(lib, /DTSTART;TZID=Europe\/Kyiv/);
 });
 
-test("calendar feed is gated by the secret token", async () => {
+test("calendar feed is gated by a hashed secret token and omits direct identifiers", async () => {
   const route = await read("app/api/calendar/route.ts");
   assert.match(route, /searchParams\.get\("token"\)/);
-  assert.match(route, /token !== expected/);
+  assert.match(route, /hashToken\(token\) !== expected/);
+  assert.match(route, /calendar_token_hash/);
+  assert.doesNotMatch(route, /SELECT[^`]*name|phone/s);
   assert.match(route, /text\/calendar/);
   assert.match(route, /status IN \('new','confirmed','rescheduled'\)/);
 });
@@ -29,7 +31,7 @@ test("calendar feed is gated by the secret token", async () => {
 test("admin can generate the calendar link from settings", async () => {
   const route = await read("app/api/staff/settings/calendar/route.ts");
   assert.match(route, /member\.role !== "admin"/);
-  assert.match(route, /setSetting\(db, "calendar_token"/);
+  assert.match(route, /setSetting\(db, "calendar_token_hash", await hashToken\(token\)\)/);
   const page = await read("app/staff/settings/page.tsx");
   assert.match(page, /\/api\/staff\/settings\/calendar/);
   assert.match(page, /\/api\/calendar\?token=/);

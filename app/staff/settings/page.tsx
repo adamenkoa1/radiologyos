@@ -5,8 +5,8 @@ import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = {
-  telegramConfigured: boolean; telegramChatId: string; payLink: string; registrationCodeSet: boolean;
-  calendarToken: string; externalIcsUrl: string;
+  telegramConfigured: boolean; telegramChatId: string; payLink: string;
+  calendarConfigured: boolean; calendarToken?: string; externalIcsUrl: string;
   remindersEnabled: boolean; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
   emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
 };
@@ -18,7 +18,6 @@ export default function StaffSettingsPage() {
   const [chatId, setChatId] = useState("");
   const [payLink, setPayLink] = useState("");
   const [token, setToken] = useState("");
-  const [accessCode, setAccessCode] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
   const [smsGatewayUrl, setSmsGatewayUrl] = useState("");
@@ -59,7 +58,7 @@ export default function StaffSettingsPage() {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          telegramBotToken: token, telegramChatId: chatId, payLink, accessCode, externalIcsUrl,
+          telegramBotToken: token, telegramChatId: chatId, payLink, externalIcsUrl,
           remindersEnabled, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
         }),
       });
@@ -67,7 +66,6 @@ export default function StaffSettingsPage() {
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
       if (data.settings) setSettings(data.settings);
       setToken("");
-      setAccessCode("");
       setSmsGatewayAuth("");
       setEmailGatewayAuth("");
       setNotice("Налаштування збережено");
@@ -84,7 +82,7 @@ export default function StaffSettingsPage() {
       const res = await fetch("/api/staff/settings/calendar", { method: "POST" });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; calendarToken?: string };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося створити посилання");
-      setSettings((prev) => (prev ? { ...prev, calendarToken: data.calendarToken || "" } : prev));
+      setSettings((prev) => (prev ? { ...prev, calendarConfigured: true, calendarToken: data.calendarToken || "" } : prev));
       setNotice("Посилання на календар оновлено");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося створити посилання");
@@ -121,18 +119,6 @@ export default function StaffSettingsPage() {
       </section>
 
       <section className="settingsBlock">
-        <h2>Код доступу для реєстрації персоналу</h2>
-        <p>Потрібен, щоб зареєструватися чи відновити пароль на сторінках <b>/staff/register</b> та <b>/staff/forgot</b>. Змініть стандартний код на власний і повідомте його лише працівникам.</p>
-        <span className={`settingsState ${settings?.registrationCodeSet ? "on" : "off"}`}>
-          {settings?.registrationCodeSet ? "✓ Код встановлено" : "Не встановлено"}
-        </span>
-        <label><span>Новий код доступу</span>
-          <input value={accessCode} onChange={(e) => setAccessCode(e.target.value)} placeholder="Залиште порожнім, щоб не змінювати" autoComplete="off" minLength={6} />
-          <small>Мінімум 6 символів. Зберігається лише у вигляді хешу.</small>
-        </label>
-      </section>
-
-      <section className="settingsBlock">
         <h2>Оплата (ПриватБанк) для цивільних</h2>
         <p>Посилання на оплату (напр. кнопка/QR «Оплатити частинами» або checkout ПриватБанку). Його побачать цивільні пацієнти після заявки та в кабінеті.</p>
         <label><span>Посилання на оплату</span>
@@ -143,8 +129,8 @@ export default function StaffSettingsPage() {
       <section className="settingsBlock">
         <h2>Google Календар (записи)</h2>
         <p>Приватне посилання-підписка: додайте його в Google Календар → «Інші календарі» → «Підписатися за URL». Підтверджені записи зʼявлятимуться в календарі й оновлюватимуться автоматично.</p>
-        <span className={`settingsState ${settings?.calendarToken ? "on" : "off"}`}>
-          {settings?.calendarToken ? "✓ Посилання створено" : "Не створено"}
+        <span className={`settingsState ${settings?.calendarConfigured ? "on" : "off"}`}>
+          {settings?.calendarConfigured ? "✓ Посилання створено" : "Не створено"}
         </span>
         {calendarUrl && (
           <label><span>Посилання для підписки</span>
@@ -152,14 +138,14 @@ export default function StaffSettingsPage() {
             <small>
               <button type="button" className="linkBtn" onClick={() => { navigator.clipboard?.writeText(calendarUrl); setCalCopied(true); setTimeout(() => setCalCopied(false), 1500); }}>
                 {calCopied ? "Скопійовано ✓" : "Копіювати посилання"}
-              </button> · тримайте його в таємниці — воно містить дані пацієнтів.
+              </button> · тримайте його в таємниці: воно відкриває службовий розклад.
             </small>
           </label>
         )}
         <button type="button" className="button secondary" onClick={generateCalendar} disabled={calBusy}>
-          {calBusy ? "Оновлюємо…" : settings?.calendarToken ? "Оновити посилання" : "Створити посилання"}
+          {calBusy ? "Оновлюємо…" : settings?.calendarConfigured ? "Оновити посилання" : "Створити посилання"}
         </button>
-        {settings?.calendarToken && <small className="settingsHint">Оновлення посилання вимкне попереднє (стару підписку доведеться додати заново).</small>}
+        {settings?.calendarConfigured && !calendarUrl && <small className="settingsHint">З міркувань безпеки повне посилання показується лише одразу після створення. Оновлення вимкне попередню підписку.</small>}
       </section>
 
       <section className="settingsBlock">

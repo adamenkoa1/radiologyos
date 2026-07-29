@@ -1,5 +1,12 @@
 import { createSession } from "../../../../lib/staff-auth";
-import { sessionCookie, SESSION_TTL_SECONDS, verifyPassword } from "../../../../lib/auth";
+import {
+  hashPassword,
+  isCompromisedPasswordHash,
+  passwordHashNeedsUpgrade,
+  sessionCookie,
+  SESSION_TTL_SECONDS,
+  verifyPassword,
+} from "../../../../lib/auth";
 import { isRateLimited } from "../../../../lib/rate-limit";
 
 function dbBinding() {
@@ -22,9 +29,19 @@ export async function POST(request: Request) {
     "SELECT email, display_name AS displayName, role, password_hash AS passwordHash FROM staff_members WHERE email = ? AND active = 1 LIMIT 1"
   ).bind(email).first<{ email: string; displayName: string; role: string; passwordHash: string }>();
 
-  const ok = member ? await verifyPassword(password, member.passwordHash) : false;
+  const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
+  const ok = member && !compromised ? await verifyPassword(password, member.passwordHash) : false;
   if (!member || !ok) {
-    return Response.json({ error: "Невірний email або пароль" }, { status: 401 });
+    return Response.json({
+      error: compromised
+        ? "Початковий пароль заблоковано. Зверніться до адміністратора для безпечної заміни."
+        : "Невірний email або пароль",
+    }, { status: 401 });
+  }
+
+  if (passwordHashNeedsUpgrade(member.passwordHash)) {
+    await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
+      .bind(await hashPassword(password), member.email).run();
   }
 
   const rawToken = await createSession(db, member.email);

@@ -9,29 +9,20 @@ function escapeHtml(value: string): string {
 
 export interface BookingNotice {
   codes: string[];
-  name: string;
-  phone: string;
-  category: string;
-  services: string[];
   desiredDate: string;
   desiredTime: string;
-  comment?: string;
 }
 
 export function bookingMessage(notice: BookingNotice): string {
-  const who = notice.category === "military" ? "Військовослужбовець" : "Цивільний пацієнт";
   const when = notice.desiredDate
     ? `${notice.desiredDate}${notice.desiredTime ? ` о ${notice.desiredTime}` : ""}`
     : "не вказано";
   const lines = [
     "🆕 <b>Нова заявка</b>",
-    `👤 ${escapeHtml(notice.name)} · ${who}`,
-    `📞 ${escapeHtml(notice.phone)}`,
-    `🩻 ${notice.services.map(escapeHtml).join("; ")}`,
     `📅 Бажаний час: ${escapeHtml(when)}`,
     `🔖 Код: ${notice.codes.map(escapeHtml).join(", ")}`,
+    "Відкрийте захищений кабінет персоналу для перегляду деталей.",
   ];
-  if (notice.comment) lines.push(`💬 ${escapeHtml(notice.comment)}`);
   return lines.join("\n");
 }
 
@@ -42,11 +33,15 @@ export async function sendTelegramResult(db: D1Database, text: string): Promise<
     await getSettings(db, ["telegram_bot_token", "telegram_chat_id"]);
   if (!token || !chatId) return { ok: false, error: "Спочатку збережіть токен бота та ID чату" };
   try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 3000);
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ chat_id: chatId, text, parse_mode: "HTML", disable_web_page_preview: true }),
+      signal: controller.signal,
     });
+    clearTimeout(timer);
     if (response.ok) return { ok: true };
     const data = await response.json().catch(() => ({})) as { description?: string };
     return { ok: false, error: data.description || `Telegram відповів помилкою (${response.status})` };

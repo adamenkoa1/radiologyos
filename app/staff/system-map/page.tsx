@@ -70,7 +70,7 @@ const DATA: Module[] = [
   ] },
   { num: "7", name: "Адмін / Наскрізне", items: [
     { scr: "Пульт відділення", fn: "KPI, зведення дня", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "/staff/dashboard" },
-    { scr: "Налаштування", fn: "Telegram, оплата, код доступу, календар", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "/staff/settings" },
+    { scr: "Налаштування", fn: "Telegram, оплата, нагадування, календар", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "/staff/settings" },
     { scr: "Ролі й права", fn: "Доступ за ролями (адмін/реєстратор/лікар/лаборант)", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "lib/staff-auth.ts" },
     { scr: "Календар", fn: "Google експорт/імпорт (iCal)", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "/api/calendar · external-calendar" },
     { scr: "Резервне копіювання", fn: "Бекап бази D1", st: "warn", ph: "Фаза 2", prcls: "hi", prlbl: "Високий", path: "Cloudflare D1" },

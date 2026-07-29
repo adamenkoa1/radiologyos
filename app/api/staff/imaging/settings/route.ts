@@ -1,5 +1,6 @@
 import { requireStaff } from "../../../../../lib/staff-auth";
 import { sanitizePacsSettings } from "../../../../../lib/dicom";
+import { safeOutboundUrl } from "../../../../../lib/outbound";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -29,6 +30,9 @@ export async function PUT(request: Request) {
   const parsed = sanitizePacsSettings(await request.json());
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { settings } = parsed;
+  if (settings.dicomwebBaseUrl && !safeOutboundUrl(settings.dicomwebBaseUrl)) {
+    return Response.json({ error: "Адреса DICOMweb заборонена політикою зовнішніх підключень" }, { status: 400 });
+  }
 
   await db.prepare(
     `UPDATE pacs_settings SET dicomweb_base_url = ?, viewer_base_url = ?, ae_title = ?,

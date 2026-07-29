@@ -5,6 +5,7 @@ import handler from "vinext/server/app-router-entry";
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  OUTBOUND_ALLOWED_HOSTS?: string;
   IMAGES: {
     input(stream: ReadableStream): {
       transform(options: Record<string, unknown>): {
@@ -19,6 +20,54 @@ interface ExecutionContext {
   passThroughOnException(): void;
 }
 
+const SECURITY_HEADERS: Record<string, string> = {
+  "content-security-policy": [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "object-src 'none'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data:",
+    "connect-src 'self'",
+    "font-src 'self'",
+  ].join("; "),
+  "cross-origin-opener-policy": "same-origin",
+  "cross-origin-resource-policy": "same-origin",
+  "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=(), usb=()",
+  "referrer-policy": "no-referrer",
+  "strict-transport-security": "max-age=31536000; includeSubDomains",
+  "x-content-type-options": "nosniff",
+  "x-frame-options": "DENY",
+};
+
+function secure(response: Response, request?: Request): Response {
+  const headers = new Headers(response.headers);
+  for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
+  if (request) {
+    const pathname = new URL(request.url).pathname;
+    if (pathname.startsWith("/api/") || pathname.startsWith("/staff")) {
+      headers.set("cache-control", "no-store");
+    }
+  }
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function unsafeCrossSiteRequest(request: Request): boolean {
+  if (!["POST", "PUT", "PATCH", "DELETE"].includes(request.method.toUpperCase())) return false;
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith("/api/")) return false;
+  if ((request.headers.get("sec-fetch-site") || "").toLowerCase() === "cross-site") return true;
+  const origin = request.headers.get("origin");
+  if (!origin) return false;
+  try {
+    return new URL(origin).origin !== url.origin;
+  } catch {
+    return true;
+  }
+}
+
 // Image security config. SVG sources with .svg extension auto-skip the
 // optimization endpoint on the client side (served directly, no proxy).
 // To route SVGs through the optimizer (with security headers), set
@@ -30,7 +79,14 @@ const worker = {
     // Make the site-owned D1 binding available to server route modules without
     // importing the runtime-only `cloudflare:workers` module into the artifact.
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    (globalThis as typeof globalThis & {
+      __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
+    }).__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = env.OUTBOUND_ALLOWED_HOSTS || "";
     const url = new URL(request.url);
+
+    if (unsafeCrossSiteRequest(request)) {
+      return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
+    }
 
     // Public site is the v22 static design served from `public/site`. The root
     // path renders v22's landing; all other `/site/*` files (pages, assets) are
@@ -39,10 +95,10 @@ const worker = {
     if (url.pathname === "/" || url.pathname === "/index.html") {
       const landing = await env.ASSETS.fetch(new URL("/site/index.html", request.url));
       if (landing.ok) {
-        return new Response(landing.body, {
+        return secure(new Response(landing.body, {
           status: 200,
           headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-        });
+        }), request);
       }
     }
 
@@ -50,24 +106,24 @@ const worker = {
     // card-grid booking screen. Civilian price list / military free list / cabinet.
     if (url.pathname === "/booking") {
       const target = url.searchParams.get("category") === "military" ? "/site/military.html" : "/site/price.html";
-      return Response.redirect(new URL(target, request.url).toString(), 302);
+      return secure(Response.redirect(new URL(target, request.url).toString(), 302), request);
     }
     if (url.pathname === "/cabinet") {
-      return Response.redirect(new URL("/site/cabinet.html", request.url).toString(), 302);
+      return secure(Response.redirect(new URL("/site/cabinet.html", request.url).toString(), 302), request);
     }
 
     if (url.pathname === "/_vinext/image") {
       const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      return handleImageOptimization(request, {
+      return secure(await handleImageOptimization(request, {
         fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
         transformImage: async (body, { width, format, quality }) => {
           const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
           return result.response();
         },
-      }, allowedWidths);
+      }, allowedWidths), request);
     }
 
-    return handler.fetch(request, env, ctx);
+    return secure(await handler.fetch(request, env, ctx), request);
   },
 };
 

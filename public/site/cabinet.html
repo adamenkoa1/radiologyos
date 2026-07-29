@@ -34,6 +34,10 @@ header{padding:0 14px;margin-bottom:18px}
 .phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:11px 0 0 11px;background:#f2f6f8;font-weight:700;color:#0c7a85}
 .phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #dbe3e8;border-radius:0 11px 11px 0;font:inherit}
 .phone-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
+.code-wrap{margin-top:12px}
+.code-wrap label{display:block;font-size:13px;font-weight:700;color:#33434d;margin-bottom:5px}
+.code-wrap input{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:11px;font:inherit;text-transform:uppercase}
+.code-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
 .gate .btn{margin-top:14px}
 .btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:13px;background:var(--olive);color:#fff;font:inherit;font-weight:800;cursor:pointer}
 .btn:disabled{opacity:.6}
@@ -110,13 +114,17 @@ header{padding:0 14px;margin-bottom:18px}
 
 <main class="wrap">
 
-  <!-- Вхід за номером телефону -->
+  <!-- Вхід за номером телефону та індивідуальним кодом заявки -->
   <div class="card gate" id="gate">
     <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-    <p>Введіть номер телефону, який ви вказували в заявці. Ви побачите статуси своїх заявок, дату запису та готові протоколи.</p>
+    <p>Введіть номер телефону та код однієї зі своїх заявок. Код надруковано на екрані після надсилання заявки.</p>
     <div class="phone-wrap">
       <span class="phone-prefix">+380</span>
       <input id="gatePhone" inputmode="numeric" maxlength="9" placeholder="97 000 00 00" aria-label="Номер телефону"/>
+    </div>
+    <div class="code-wrap">
+      <label for="gateCode">Код заявки</label>
+      <input id="gateCode" maxlength="19" placeholder="RD-XXXXXXXX" aria-label="Код заявки" autocomplete="off"/>
     </div>
     <span class="gate-error" id="gateError"></span>
     <button class="btn" id="gateBtn" type="button">Переглянути заявки</button>
@@ -146,7 +154,6 @@ header{padding:0 14px;margin-bottom:18px}
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
-const PHONE_KEY = 'radiologyos_cabinet_phone';
 
 const statusMeta = {
   new:         { badge: 'new',       label: 'Нова',           step: 'new' },
@@ -169,6 +176,7 @@ const gate = document.getElementById('gate');
 const cabinet = document.getElementById('cabinet');
 const errorBox = document.getElementById('gateError');
 let phoneDigits = '';
+let bookingCode = '';
 let payLink = '';
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
@@ -215,7 +223,7 @@ async function loadBookings() {
   } catch (e) { payLink = ''; }
   const res = await fetch(MY_BOOKINGS, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ phone: '+380' + phoneDigits }),
+    body: JSON.stringify({ phone: '+380' + phoneDigits, code: bookingCode }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { showError(data.error || 'Не вдалося завантажити заявки'); return false; }
@@ -228,19 +236,19 @@ async function loadBookings() {
   return true;
 }
 
-function enter(digits) {
+async function enter(digits, code) {
   phoneDigits = digits;
-  localStorage.setItem(PHONE_KEY, digits);
+  bookingCode = code;
   document.getElementById('cabPhone').textContent = '+380 ' + digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
-  gate.hidden = true; cabinet.hidden = false;
-  loadBookings();
+  const loaded = await loadBookings();
+  if (loaded) { gate.hidden = true; cabinet.hidden = false; }
 }
 
 async function cancelBooking(code) {
   if (!confirm('Скасувати цю заявку?')) return;
   const res = await fetch(STATUS_API, {
     method: 'PATCH', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, phoneLast4: phoneDigits.slice(-4), action: 'cancel' }),
+    body: JSON.stringify({ code, action: 'cancel' }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok || !data.ok) { alert(data.error || 'Не вдалося скасувати заявку'); return; }
@@ -255,7 +263,7 @@ async function toggleProtocol(code, btn) {
     try {
       const res = await fetch(PROTOCOL_API, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code, phoneLast4: phoneDigits.slice(-4) }),
+        body: JSON.stringify({ code }),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.protocol) { alert(data.error || 'Протокол недоступний'); return; }
@@ -288,21 +296,22 @@ function printProtocol(code) {
 
 document.getElementById('gateBtn').addEventListener('click', () => {
   const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
+  const code = document.getElementById('gateCode').value.trim().toUpperCase();
   errorBox.classList.remove('show');
   if (digits.length !== 9) { showError('Введіть 9 цифр номера'); return; }
-  enter(digits);
+  if (!/^RD-[A-Z0-9]{8,16}$/.test(code)) { showError('Введіть код заявки у форматі RD-XXXXXXXX'); return; }
+  enter(digits, code);
 });
 document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
-document.getElementById('logoutBtn').addEventListener('click', () => {
-  localStorage.removeItem(PHONE_KEY);
+document.getElementById('gateCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
+document.getElementById('logoutBtn').addEventListener('click', async () => {
+  await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
   phoneDigits = '';
+  bookingCode = '';
   cabinet.hidden = true; gate.hidden = false;
   document.getElementById('gatePhone').value = '';
+  document.getElementById('gateCode').value = '';
 });
-
-// Auto-open if a phone was remembered on this device.
-const saved = localStorage.getItem(PHONE_KEY);
-if (saved && /^\d{9}$/.test(saved)) enter(saved);
 </script>
 </body>
 </html>

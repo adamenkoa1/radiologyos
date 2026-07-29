@@ -28,11 +28,11 @@ export default function CabinetPage() {
   const [booking,setBooking] = useState<StatusResult|null>(null);
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(false);
-  const [credentials,setCredentials] = useState({code:"",phoneLast4:""});
+  const [credentials,setCredentials] = useState({code:"",phone:""});
   async function lookup(event:FormEvent<HTMLFormElement>) {
     event.preventDefault(); setLoading(true); setError(""); setBooking(null);
     const data = Object.fromEntries(new FormData(event.currentTarget));
-    setCredentials({code:String(data.code||""),phoneLast4:String(data.phoneLast4||"")});
+    setCredentials({code:String(data.code||""),phone:String(data.phone||"")});
     const response = await fetch("/api/booking-status", {
       method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(data),
     });
@@ -54,10 +54,10 @@ export default function CabinetPage() {
   return <main className="cabinetShell">
     <header className="cabinetHead"><Link className="brand" href="/"><span className="brandMark">R</span><span><b>Променева діагностика</b><small>Чернігівський військовий госпіталь</small></span></Link><Link href="/" className="textLink">На головну</Link></header>
     <section className="cabinetHero">
-      <div><p className="eyebrow">Кабінет пацієнта</p><h1>Перевірте статус<br/><em>своєї заявки</em></h1><p>Введіть код, отриманий після онлайн-запису, та останні чотири цифри номера телефону.</p></div>
+      <div><p className="eyebrow">Кабінет пацієнта</p><h1>Перевірте статус<br/><em>своєї заявки</em></h1><p>Введіть код, отриманий після онлайн-запису, та повний номер телефону із заявки.</p></div>
       <form className="lookupForm" onSubmit={lookup}>
         <label><span>Код заявки</span><input name="code" required placeholder="RD-XXXXXXXX" autoCapitalize="characters"/></label>
-        <label><span>Останні 4 цифри телефону</span><input name="phoneLast4" required inputMode="numeric" pattern="[0-9]{4}" maxLength={4} placeholder="1234"/></label>
+        <label><span>Повний номер телефону</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 97 000 00 00"/></label>
         <button className="button" disabled={loading}>{loading?"Перевіряємо…":"Перевірити статус →"}</button>
         {error&&<p className="notice error" role="alert">{error}</p>}
       </form>

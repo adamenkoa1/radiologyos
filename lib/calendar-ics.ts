@@ -5,13 +5,10 @@
 export interface CalendarBooking {
   code: string;
   service: string;
-  name: string;
   desiredDate: string;   // YYYY-MM-DD
   desiredTime: string;   // HH:MM or ""
   durationMinutes: number;
   status: string;
-  phone: string;
-  category: string;
 }
 
 const STATUS_MAP: Record<string, string> = {
@@ -56,11 +53,8 @@ export function buildIcs(bookings: CalendarBooking[]): string {
   for (const b of bookings) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(b.desiredDate)) continue;
     const ymd = b.desiredDate.replace(/-/g, "");
-    const who = b.category === "military" ? "військовий" : "цивільний";
-    const summary = esc(`${b.service} — ${b.name || b.code}`);
-    const description = esc(
-      `Код: ${b.code}\nПацієнт: ${b.name}\nТелефон: ${b.phone}\nКатегорія: ${who}\nСтатус: ${b.status}`,
-    );
+    const summary = esc(b.service);
+    const description = esc(`Код запису: ${b.code}\nСтатус: ${b.status}`);
     lines.push("BEGIN:VEVENT");
     lines.push(`UID:${esc(b.code)}@radiologyos.tech`);
     lines.push(`DTSTAMP:${now}`);

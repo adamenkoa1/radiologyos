@@ -18,10 +18,10 @@
       `<div style="margin-top:4px;color:#4e5d46;font-size:13px">Збережіть код — за ним і номером телефону можна відстежити статус у кабінеті пацієнта.</div>`;
   }
 
-  async function postBooking(payload) {
+  async function postBooking(payload, requestKey) {
     const response = await fetch('/api/site-booking', {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', 'idempotency-key': requestKey },
       body: JSON.stringify(payload),
     });
     const data = await response.json().catch(() => ({}));
@@ -82,9 +82,17 @@
 
       const submitBtn = civilForm.querySelector('.send-request');
       const submitLabel = submitBtn ? submitBtn.textContent : '';
+      const requestKey = (submitBtn && submitBtn.dataset.idempotencyKey)
+        || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        const codes = await postBooking({ name, phone, category, referralType, comment, desiredDate, desiredTime, source, items: items.map((x) => ({ code: String(x.code) })) });
+        const codes = await postBooking({
+          name, phone, category, referralType, comment, desiredDate, desiredTime, source,
+          consent: true, consentVersion: '2026-07-29',
+          items: items.map((x) => ({ code: String(x.code) })),
+        }, requestKey);
+        if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         if (typeof showSuccess === 'function') {
           showSuccess(
             `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
@@ -92,8 +100,6 @@
             `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes)
           );
         }
-        const offline = document.getElementById('offlineNote');
-        if (offline) offline.hidden = true;
         if (category === 'civilian') populatePayBlock();
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
@@ -124,13 +130,18 @@
 
       const submitBtn = milForm.querySelector('.send-request');
       const submitLabel = submitBtn ? submitBtn.textContent : '';
+      const requestKey = (submitBtn && submitBtn.dataset.idempotencyKey)
+        || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`);
+      if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const codes = await postBooking({
           name, phone, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
+          consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
-        });
+        }, requestKey);
+        if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         const summary = document.getElementById('milSuccessSummary');
         if (summary) {
           summary.innerHTML =
@@ -138,8 +149,6 @@
             (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
             `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes);
         }
-        const milOffline = document.getElementById('milOfflineNote');
-        if (milOffline) milOffline.hidden = true;
         milForm.hidden = true;
         const panel = document.getElementById('milSuccessPanel');
         if (panel) panel.hidden = false;

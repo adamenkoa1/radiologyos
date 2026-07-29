@@ -1,5 +1,7 @@
 import { requireStaff, type StaffRole } from "../../../../lib/staff-auth";
 import { hashPassword } from "../../../../lib/auth";
+import { logSecurityEvent } from "../../../../lib/audit";
+import { passwordProblem } from "../../../../lib/staff-accounts";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -40,11 +42,14 @@ export async function POST(request: Request) {
   if (email === member.email && (role !== "admin" || active !== 1)) {
     return Response.json({ error: "Не можна забрати власний адміністративний доступ" }, { status: 409 });
   }
-  if (password && password.length < 8) {
-    return Response.json({ error: "Пароль має містити щонайменше 8 символів" }, { status: 400 });
-  }
-
   const existing = await db.prepare("SELECT email FROM staff_members WHERE email = ? LIMIT 1").bind(email).first();
+  if (!existing && !password) {
+    return Response.json({ error: "Для нового працівника потрібно задати тимчасовий пароль" }, { status: 400 });
+  }
+  if (password) {
+    const problem = passwordProblem(password);
+    if (problem) return Response.json({ error: problem }, { status: 400 });
+  }
   await db.prepare(
     `INSERT INTO staff_members (email, display_name, role, active)
      VALUES (?, ?, ?, ?)
@@ -53,10 +58,18 @@ export async function POST(request: Request) {
   ).bind(email, displayName, role, active).run();
 
   if (password) {
-    await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
-      .bind(await hashPassword(password), email).run();
+    await db.batch([
+      db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
+        .bind(await hashPassword(password), email),
+      db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email),
+    ]);
   }
-  // A brand-new member without a password can never sign in — surface that.
-  const needsPassword = !existing && !password;
-  return Response.json({ ok:true, needsPassword }, { status:201 });
+  await logSecurityEvent(db, {
+    actorEmail: member.email,
+    action: existing ? "staff_member_updated" : "staff_member_created",
+    resource: "staff_member",
+    targetId: email,
+    details: { role, active: Boolean(active), passwordChanged: Boolean(password) },
+  });
+  return Response.json({ ok:true, needsPassword:false }, { status:201 });
 }

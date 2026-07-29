@@ -5,12 +5,33 @@ import {
   canManageBookings,
   canManageFinance,
   canManageProtocols,
+  canAccessBooking,
   canWriteNotes,
   requireStaff,
+  type StaffRole,
 } from "../../../../lib/staff-auth";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
+}
+
+function bookingScope(member: { email: string; role: StaffRole }) {
+  if (member.role === "admin" || member.role === "registrar") return { sql: "1 = 1", values: [] as string[] };
+  if (member.role === "radiologist") {
+    return { sql: "assigned_radiologist_email = ?", values: [member.email] };
+  }
+  return { sql: "assigned_radiographer_email = ?", values: [member.email] };
+}
+
+function allowedStatusTransition(from: string, to: string) {
+  const transitions: Record<string, string[]> = {
+    new: ["confirmed", "cancelled"],
+    confirmed: ["rescheduled", "completed", "cancelled"],
+    rescheduled: ["confirmed", "completed", "cancelled"],
+    completed: [],
+    cancelled: [],
+  };
+  return from === to || (transitions[from] || []).includes(to);
 }
 
 export async function GET(request: Request) {
@@ -18,6 +39,7 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const scope = bookingScope(member);
 
   const [result, events, notes, staffOptions, notifications] = await Promise.all([
     db.prepare(
@@ -36,16 +58,19 @@ export async function GET(request: Request) {
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         paid_amount AS paidAmount, external_reference AS externalReference,
         comment, status, created_at AS createdAt
-       FROM bookings ORDER BY created_at DESC LIMIT 500`
-    ).all(),
+       FROM bookings WHERE ${scope.sql} ORDER BY created_at DESC LIMIT 500`
+    ).bind(...scope.values).all(),
     db.prepare(
       `SELECT id, booking_id AS bookingId, action, details, actor, created_at AS createdAt
-       FROM booking_events ORDER BY created_at DESC LIMIT 1000`
-    ).all(),
+       FROM booking_events
+       WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
+       ORDER BY created_at DESC LIMIT 1000`
+    ).bind(...scope.values).all(),
     db.prepare(
       `SELECT booking_id AS bookingId, note, updated_by AS updatedBy, updated_at AS updatedAt
-       FROM booking_staff_notes`
-    ).all(),
+       FROM booking_staff_notes
+       WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})`
+    ).bind(...scope.values).all(),
     db.prepare(
       `SELECT email, display_name AS displayName, role
        FROM staff_members WHERE active = 1 ORDER BY role, display_name, email`
@@ -53,8 +78,10 @@ export async function GET(request: Request) {
     db.prepare(
       `SELECT id, booking_id AS bookingId, kind, channel, recipient, status, error,
         created_at AS createdAt, sent_at AS sentAt
-       FROM patient_notifications ORDER BY created_at DESC LIMIT 1000`
-    ).all(),
+       FROM patient_notifications
+       WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
+       ORDER BY created_at DESC LIMIT 1000`
+    ).bind(...scope.values).all(),
   ]);
   const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
     ...booking,
@@ -97,6 +124,9 @@ export async function PATCH(request: Request) {
     externalReference?: string;
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
+  if (!(await canAccessBooking(db, member, body.id!))) {
+    return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
+  }
 
   if (typeof body.note === "string") {
     if (!canWriteNotes(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
@@ -198,6 +228,22 @@ export async function PATCH(request: Request) {
     if ((protocolStatus === "ready" || protocolStatus === "issued") && !protocolNumber) {
       return Response.json({ error: "Для готового або виданого протоколу вкажіть його номер" }, { status: 400 });
     }
+    const current = await db.prepare(
+      "SELECT protocol_status AS protocolStatus FROM bookings WHERE id = ? LIMIT 1"
+    ).bind(body.id).first<{ protocolStatus: string }>();
+    const protocolTransitions: Record<string, string[]> = {
+      not_started: ["in_progress"],
+      in_progress: ["ready"],
+      ready: ["issued"],
+      issued: [],
+    };
+    if (
+      current
+      && protocolStatus !== current.protocolStatus
+      && !(protocolTransitions[current.protocolStatus] || []).includes(protocolStatus)
+    ) {
+      return Response.json({ error: "Неможливо повернути протокол до попереднього статусу" }, { status: 409 });
+    }
     const updated = await db.prepare(
       `UPDATE bookings SET protocol_number = ?, protocol_status = ?,
        protocol_updated_at = CURRENT_TIMESTAMP,
@@ -230,7 +276,7 @@ export async function PATCH(request: Request) {
     if (!canManageFinance(member.role)) {
       return Response.json({ error: "Розрахунки та НСЗУ може змінювати лише реєстратор або адміністратор" }, { status: 403 });
     }
-    const paymentStatuses = new Set(["not_set", "pending", "paid", "not_required", "refunded"]);
+    const paymentStatuses = new Set(["not_set", "verification_required", "pending", "paid", "not_required", "refunded"]);
     const paymentMethods = new Set(["", "cash", "card", "bank_transfer", "privat_link", "other"]);
     const nszuStatuses = new Set(["not_applicable", "pending", "confirmed", "rejected"]);
     const paymentStatus = String(body.paymentStatus || "");
@@ -257,8 +303,18 @@ export async function PATCH(request: Request) {
     }
     const updated = await db.prepare(
       `UPDATE bookings SET payment_status = ?, payment_amount = ?, paid_amount = ?, payment_method = ?,
-       nszu_status = ?, nszu_reference = ? WHERE id = ?`
-    ).bind(paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference, body.id).run();
+       nszu_status = ?, nszu_reference = ?,
+       military_verified_at = CASE
+         WHEN patient_category = 'military' AND ? = 'not_required' THEN CURRENT_TIMESTAMP
+         ELSE military_verified_at END,
+       military_verified_by = CASE
+         WHEN patient_category = 'military' AND ? = 'not_required' THEN ?
+         ELSE military_verified_by END
+       WHERE id = ?`
+    ).bind(
+      paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference,
+      paymentStatus, paymentStatus, member.email, body.id,
+    ).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
       "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'finance_updated', ?, ?)"
@@ -281,7 +337,7 @@ export async function PATCH(request: Request) {
     const endTime = addMinutes(body.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
-       AND status NOT IN ('cancelled','completed') AND desired_time < ?
+       AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
@@ -323,7 +379,7 @@ export async function PATCH(request: Request) {
     const endTime = addMinutes(booking.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
-       AND status NOT IN ('cancelled','completed') AND desired_time < ?
+       AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий — перенесіть запис на вільний слот" }, { status: 409 });
@@ -347,6 +403,12 @@ export async function PATCH(request: Request) {
 
   const allowed = new Set(["new", "confirmed", "rescheduled", "completed", "cancelled"]);
   if (!body.status || !allowed.has(body.status)) return Response.json({ error: "Некоректний статус" }, { status: 400 });
+  const current = await db.prepare("SELECT status FROM bookings WHERE id = ? LIMIT 1")
+    .bind(body.id).first<{ status: string }>();
+  if (!current) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+  if (!allowedStatusTransition(current.status, body.status)) {
+    return Response.json({ error: "Недопустимий перехід між статусами заявки" }, { status: 409 });
+  }
   const updated = await db.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind(body.status, body.id).run();
   if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   await db.prepare(
