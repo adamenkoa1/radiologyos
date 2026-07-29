@@ -724,3 +724,179 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 /* У згорнутій/мобільній панелі підпункти й перемикач ховаються */
 .workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}
 @media(max-width:820px){.workspaceSubList,.workspaceSubToggle{display:none}.workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}}
+
+/* ================= «Записи» — таби, групи по днях, керування ================= */
+.apptTabs{max-width:1500px;margin:0 auto 12px;display:flex;flex-wrap:wrap;gap:6px}
+.apptTab{display:inline-flex;align-items:center;gap:7px;border:1px solid #dce4e3;background:#fff;color:#41544f;font:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:999px;cursor:pointer;transition:.15s}
+.apptTab:hover{border-color:var(--green);color:var(--green)}
+.apptTab.active{background:var(--green);border-color:var(--green);color:#fff}
+.apptTabCount{font-family:var(--font-sans);font-size:11px;font-weight:800;background:rgba(20,45,43,.08);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+.apptTab.active .apptTabCount{background:rgba(255,255,255,.24)}
+.apptDay{max-width:1500px;margin:0 auto 16px}
+.apptDayHead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 4px 8px;margin-bottom:8px;border-bottom:1px solid #e0e7ea}
+.apptDayHead b{font-size:14.5px;font-weight:750;letter-spacing:-.01em}
+.apptDayHead span{font-size:11px;font-weight:700;color:#6c7c86;text-transform:uppercase;letter-spacing:.05em}
+.apptManage{grid-column:1/-1;border-top:1px solid #e1ded6;margin-top:6px;padding-top:4px}
+.apptManage>summary{cursor:pointer;color:var(--green);font-size:12px;font-weight:800;padding:6px 0;list-style:none}
+.apptManage>summary::-webkit-details-marker{display:none}
+.apptManage>summary::before{content:"▸ "}
+.apptManage[open]>summary::before{content:"▾ "}
+.apptEmpty{max-width:760px;margin:34px auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:48px 30px;background:#fff;border:1px solid #e7ece9;border-radius:16px;box-shadow:0 8px 24px rgba(23,54,52,.04)}
+.apptEmptyIcon{font-size:34px;opacity:.65}
+.apptEmpty b{font-size:16px}
+.apptEmpty p{margin:0;color:#6c7c86;font-size:13px;max-width:44ch;line-height:1.5}
+@media print{.apptTabs,.staffTools .toolButtons{display:none!important}}
+/* Темна тема */
+.themeDark .apptTab{background:#121a20;border-color:#26333d;color:#aebeca}
+.themeDark .apptTab:hover{border-color:#25b4c0;color:#25b4c0}
+.themeDark .apptTab.active{background:#25b4c0;border-color:#25b4c0;color:#06131a}
+.themeDark .apptTabCount{background:rgba(255,255,255,.1)}
+.themeDark .apptTab.active .apptTabCount{background:rgba(6,19,26,.25)}
+.themeDark .apptDayHead{border-bottom-color:#22303a}
+.themeDark .apptDayHead span{color:#8b98a1}
+.themeDark .apptManage{border-top-color:#22303a}
+.themeDark .apptEmpty{background:#121a20!important;border-color:#22303a!important}
+.themeDark .apptEmpty p{color:#93a3ad}
+
+/* ================= Комерційний лендинг RadiologyOS (стиль Doctime) ================= */
+.rosLanding{--ros-bg:#f6f3ec;--ros-bg2:#ece7db;--ros-ink:#2b2621;--ros-muted:#6b655e;--ros-teal:#2e9e85;--ros-teal-deep:#256f60;--ros-orange:#e8794b;--ros-card:#fff;--ros-line:#e6e0d1;--ros-footer:#2b2621;background:var(--ros-bg);color:var(--ros-ink);font-family:var(--font-sans);line-height:1.5;letter-spacing:-.005em}
+.rosLanding *{box-sizing:border-box}
+.rosLanding h1,.rosLanding h2,.rosLanding h3{font-family:var(--font-serif);font-weight:600;letter-spacing:-.02em;margin:0;text-wrap:balance}
+.rosLanding a{color:inherit;text-decoration:none}
+.rosLanding section,.rosLanding header,.rosLanding footer{padding-left:clamp(16px,5vw,40px);padding-right:clamp(16px,5vw,40px)}
+.rosBtn{display:inline-flex;align-items:center;gap:8px;background:var(--ros-teal);color:#fff;border:0;border-radius:12px;padding:13px 22px;font:inherit;font-weight:800;font-size:14px;cursor:pointer;transition:.15s;white-space:nowrap}
+.rosBtn:hover{background:var(--ros-teal-deep);transform:translateY(-1px)}
+.rosBtnLg{padding:17px 30px;font-size:15px;border-radius:14px}
+.rosBtnOutline{background:transparent;border:1.6px solid var(--ros-teal);color:var(--ros-teal-deep)}
+.rosBtnOutline:hover{background:rgba(46,158,133,.08);transform:none}
+
+/* header */
+.rosHeader{position:sticky;top:0;z-index:30;height:72px;display:flex;align-items:center;gap:24px;background:rgba(246,243,236,.9);backdrop-filter:blur(10px);border-bottom:1px solid var(--ros-line)}
+.rosBrand{display:inline-flex;align-items:center;gap:9px;font-weight:800;font-size:18px;letter-spacing:-.02em}
+.rosBrandMark{display:grid;place-items:center;width:30px;height:30px;border-radius:9px;background:var(--ros-teal);color:#fff;font-size:15px}
+.rosNav{display:flex;gap:26px;margin:0 auto;font-size:14px;font-weight:600;color:#4a453f}
+.rosNav a:hover{color:var(--ros-teal-deep)}
+.rosHeaderActions{display:flex;align-items:center;gap:16px}
+.rosLogin{font-weight:700;font-size:14px}.rosLogin:hover{color:var(--ros-teal-deep)}
+
+/* hero */
+.rosHero{max-width:820px;margin:0 auto;text-align:center;padding-top:clamp(48px,8vw,96px);padding-bottom:clamp(40px,6vw,72px)}
+.rosEyebrow,.rosSectionEyebrow{display:inline-block;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ros-teal-deep)}
+.rosHero h1{font-size:clamp(34px,6vw,60px);line-height:1.06;margin:16px 0}
+.rosHero h1 em{font-style:normal;color:var(--ros-ink)}
+.rosHero>p{font-size:clamp(16px,2.2vw,19px);color:var(--ros-muted);max-width:620px;margin:0 auto;line-height:1.6}
+.rosHeroCta{margin:32px 0 14px}
+.rosHeroNote{font-size:14px;color:var(--ros-muted)}
+.rosHeroNote a{color:var(--ros-teal-deep);font-weight:700}
+
+/* integrations */
+.rosIntegr{background:var(--ros-bg2);text-align:center;padding-top:36px;padding-bottom:36px;border-top:1px solid var(--ros-line);border-bottom:1px solid var(--ros-line)}
+.rosIntegrCap{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:#8a8377;margin:0 0 18px}
+.rosIntegrChips{display:flex;flex-wrap:wrap;justify-content:center;gap:12px;max-width:1000px;margin:0 auto}
+.rosChip{display:inline-flex;align-items:center;gap:6px;background:#fff;border:1px solid var(--ros-line);border-radius:999px;padding:10px 20px;font-size:14px}
+.rosChip b{font-weight:800}.rosChip span{color:#9a9186}
+
+/* generic section */
+.rosSection{max-width:1140px;margin:0 auto;padding-top:clamp(56px,7vw,90px);padding-bottom:clamp(56px,7vw,90px);text-align:center}
+.rosSectionAlt{max-width:none;background:var(--ros-bg2)}
+.rosSectionAlt>*{max-width:1140px;margin-left:auto;margin-right:auto}
+.rosSection h2{font-size:clamp(28px,4.4vw,46px);line-height:1.08;margin:12px 0}
+.rosLead{color:var(--ros-muted);font-size:16px;max-width:620px;margin:0 auto 40px;line-height:1.6}
+
+/* features */
+.rosFeatureGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;text-align:left}
+.rosFeature{background:var(--ros-card);border:1px solid var(--ros-line);border-radius:16px;padding:24px;box-shadow:0 10px 26px rgba(43,38,33,.04)}
+.rosFeatureIcon{display:grid;place-items:center;width:42px;height:42px;border-radius:11px;background:rgba(46,158,133,.12);color:var(--ros-teal-deep);font-size:19px}
+.rosFeature h3{font-size:17px;margin:16px 0 8px}
+.rosFeature p{margin:0;color:var(--ros-muted);font-size:13.5px;line-height:1.55}
+
+/* calculator */
+.rosCalc{display:grid;grid-template-columns:1.1fr 1fr;gap:16px;text-align:left;max-width:940px;margin:0 auto}
+.rosCalcInputs{background:var(--ros-card);border:1px solid var(--ros-line);border-radius:16px;padding:26px;display:flex;flex-direction:column;gap:16px;box-shadow:0 10px 26px rgba(43,38,33,.04)}
+.rosCalcInputs label{display:block}
+.rosCalcInputs span{display:block;font-size:13px;font-weight:700;color:#4a453f;margin-bottom:7px}
+.rosCalcInputs input{width:100%;padding:13px 14px;border:1px solid var(--ros-line);border-radius:10px;font:inherit;font-size:16px;color:var(--ros-ink);background:#fdfcf9}
+.rosCalcInputs input:focus{outline:2px solid var(--ros-teal);outline-offset:1px;border-color:var(--ros-teal)}
+.rosCalcResult{background:var(--ros-footer);color:#f4efe6;border-radius:16px;padding:30px;display:flex;flex-direction:column;justify-content:center}
+.rosCalcResultCap{font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#a79f92}
+.rosCalcMonthly{font-family:var(--font-serif);font-size:clamp(34px,5vw,50px);line-height:1.05;margin:10px 0 2px;color:#fff}
+.rosCalcMonthly small{font-family:var(--font-sans);font-size:16px;color:#a79f92;margin-left:4px}
+.rosCalcYearly{font-size:15px;color:#cdbfa0}
+.rosCalcResult p{margin:16px 0 0;font-size:13px;line-height:1.55;color:#bcb3a4}
+
+/* audience */
+.rosAudienceGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;text-align:left}
+.rosAudience{background:var(--ros-card);border:1px solid var(--ros-line);border-radius:18px;padding:28px;display:flex;flex-direction:column;box-shadow:0 10px 26px rgba(43,38,33,.05)}
+.rosAudienceIcon{display:grid;place-items:center;width:46px;height:46px;border-radius:12px;font-size:22px;background:rgba(46,158,133,.12)}
+.rosAudience.tint-blue .rosAudienceIcon{background:rgba(60,107,166,.12)}
+.rosAudience.tint-orange .rosAudienceIcon{background:rgba(232,121,75,.14)}
+.rosAudience h3{font-size:21px;margin:18px 0 10px}
+.rosAudience>p{margin:0 0 16px;color:var(--ros-muted);font-size:14px;line-height:1.6}
+.rosAudience ul{list-style:none;margin:0 0 18px;padding:0;display:flex;flex-direction:column;gap:9px}
+.rosAudience li{position:relative;padding-left:24px;font-size:14px;color:#3f3a34}
+.rosAudience li::before{content:"✓";position:absolute;left:0;top:0;color:var(--ros-teal);font-weight:800}
+.rosAudience.tint-orange li::before{color:var(--ros-orange)}
+.rosAudienceCta{margin-top:auto;font-weight:800;font-size:14px;color:var(--ros-teal-deep)}
+.rosAudience.tint-orange .rosAudienceCta{color:var(--ros-orange)}
+.rosAudienceCta:hover{text-decoration:underline}
+
+/* pricing */
+.rosPricing{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:left;align-items:start}
+.rosTier{position:relative;background:var(--ros-card);border:1px solid var(--ros-line);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;box-shadow:0 10px 26px rgba(43,38,33,.05)}
+.rosTier.popular{background:var(--ros-teal);color:#fff;border-color:var(--ros-teal);transform:translateY(-8px);box-shadow:0 18px 40px rgba(37,111,96,.28)}
+.rosTierBadge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ros-orange);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:5px 14px;border-radius:999px;white-space:nowrap}
+.rosTierName{font-size:16px;font-weight:800}
+.rosTierWho{font-size:12.5px;color:var(--ros-muted);margin:4px 0 14px}
+.rosTier.popular .rosTierWho{color:#d8efe8}
+.rosTierPrice{display:flex;align-items:baseline;gap:6px}
+.rosTierPrice b{font-family:var(--font-serif);font-size:30px;line-height:1}
+.rosTierPrice span{font-size:12px;color:var(--ros-muted)}
+.rosTier.popular .rosTierPrice span{color:#d8efe8}
+.rosTierSeats{display:block;font-size:12.5px;font-weight:700;margin:6px 0 16px;color:#3f3a34}
+.rosTier.popular .rosTierSeats{color:#eaf6f2}
+.rosTier ul{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-direction:column;gap:9px;flex:1}
+.rosTier li{position:relative;padding-left:22px;font-size:13px;color:#3f3a34}
+.rosTier li::before{content:"✓";position:absolute;left:0;color:var(--ros-teal);font-weight:800}
+.rosTier.popular li{color:#eaf6f2}.rosTier.popular li::before{color:#fff}
+.rosTierBtn{justify-content:center;background:var(--ros-teal)}
+.rosTier.popular .rosTierBtn{background:#fff;color:var(--ros-teal-deep)}
+.rosTier.popular .rosTierBtn:hover{background:#eef7f4}
+.rosPricingNote{text-align:center;color:#9a9186;font-size:12.5px;margin:26px 0 0}
+
+/* faq */
+.rosFaq{max-width:820px;margin:0 auto;text-align:left;display:flex;flex-direction:column;gap:10px}
+.rosFaqItem{background:var(--ros-card);border:1px solid var(--ros-line);border-radius:14px;overflow:hidden;box-shadow:0 6px 18px rgba(43,38,33,.03)}
+.rosFaqQ{width:100%;display:flex;align-items:center;justify-content:space-between;gap:16px;background:transparent;border:0;padding:20px 22px;font:inherit;font-size:16px;font-weight:700;color:var(--ros-ink);cursor:pointer;text-align:left}
+.rosFaqSign{flex:0 0 auto;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#efeade;color:#6b655e;font-size:16px}
+.rosFaqItem.open .rosFaqSign{background:var(--ros-teal);color:#fff}
+.rosFaqA{margin:0;padding:0 22px 22px;color:var(--ros-muted);font-size:14.5px;line-height:1.65;max-width:70ch}
+
+/* final cta */
+.rosFinalCta{padding:clamp(40px,6vw,72px) clamp(16px,5vw,40px)}
+.rosFinalCard{max-width:720px;margin:0 auto;text-align:center;background:var(--ros-card);border:1px solid var(--ros-line);border-radius:20px;padding:clamp(30px,4vw,48px);box-shadow:0 16px 40px rgba(43,38,33,.06)}
+.rosFinalCard h2{font-size:clamp(24px,3.4vw,32px)}
+.rosFinalCard p{color:var(--ros-muted);font-size:15px;line-height:1.6;max-width:52ch;margin:12px auto 24px}
+
+/* footer */
+.rosFooter{background:var(--ros-footer);color:#cbc3b6;padding-top:56px;padding-bottom:34px}
+.rosFooterCols{max-width:1140px;margin:0 auto;display:grid;grid-template-columns:1.6fr 1fr 1fr 1fr;gap:30px}
+.rosFooter .rosBrand{color:#fff}
+.rosFooterBrand p{margin:14px 0 0;font-size:13.5px;color:#a79f92;max-width:32ch;line-height:1.6}
+.rosFooterCols>div>b{display:block;font-size:12px;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:#8a8377;margin-bottom:14px}
+.rosFooterCols>div>a,.rosFooterCols>div>span{display:block;font-size:14px;color:#cbc3b6;margin-bottom:11px}
+.rosFooterCols>div>a:hover{color:#fff}
+.rosFooterBottom{max-width:1140px;margin:36px auto 0;padding-top:20px;border-top:1px solid rgba(255,255,255,.1);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;font-size:12px;color:#8a8377}
+
+@media(max-width:960px){
+  .rosNav{display:none}
+  .rosFeatureGrid{grid-template-columns:1fr 1fr}
+  .rosAudienceGrid{grid-template-columns:1fr}
+  .rosPricing{grid-template-columns:1fr 1fr}
+  .rosTier.popular{transform:none}
+  .rosCalc{grid-template-columns:1fr}
+  .rosFooterCols{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .rosFeatureGrid,.rosPricing,.rosFooterCols{grid-template-columns:1fr}
+  .rosHeaderActions .rosLogin{display:none}
+}
