@@ -1,7 +1,59 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, sqliteTable, text, uniqueIndex } from "drizzle-orm/sqlite-core";
+
+// ── Tenant foundation ────────────────────────────────────────────────────────
+// Мультитенантність вводиться еволюційно: усі бізнес-сутності належать
+// організації (`organizationId`), який завжди береться з перевіреної серверної
+// сесії, а не з тіла запиту. Початковий tenant — Чернігівський військовий
+// госпіталь (див. drizzle/0015_tenant_foundation.sql).
+
+export const organizations = sqliteTable("organizations", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  slug: text("slug").notNull(),
+  name: text("name").notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [uniqueIndex("organizations_slug_idx").on(table.slug)]);
+
+export const organizationProfiles = sqliteTable("organization_profiles", {
+  organizationId: integer("organization_id").primaryKey(),
+  profileType: text("profile_type").notNull().default("hospital_radiology"),
+  settingsJson: text("settings_json").notNull().default("{}"),
+  featureFlagsJson: text("feature_flags_json").notNull().default("{}"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
+
+export const branches = sqliteTable("branches", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull(),
+  name: text("name").notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("branches_org_idx").on(table.organizationId)]);
+
+export const departments = sqliteTable("departments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull(),
+  branchId: integer("branch_id").notNull().default(0),
+  name: text("name").notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [index("departments_org_idx").on(table.organizationId, table.branchId)]);
+
+export const memberships = sqliteTable("memberships", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull(),
+  memberEmail: text("member_email").notNull(),
+  role: text("role").notNull(),
+  active: integer("active").notNull().default(1),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [
+  uniqueIndex("memberships_org_member_idx").on(table.organizationId, table.memberEmail),
+  index("memberships_member_idx").on(table.memberEmail),
+]);
 
 export const bookings = sqliteTable("bookings", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
@@ -47,6 +99,7 @@ export const bookings = sqliteTable("bookings", {
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   bookingId: integer("booking_id").notNull(),
   action: text("action").notNull(),
@@ -56,6 +109,7 @@ export const bookingEvents = sqliteTable("booking_events", {
 }, table => [index("booking_events_booking_idx").on(table.bookingId, table.createdAt)]);
 
 export const bookingStaffNotes = sqliteTable("booking_staff_notes", {
+  organizationId: integer("organization_id").notNull().default(1),
   bookingId: integer("booking_id").primaryKey(),
   note: text("note").notNull().default(""),
   updatedBy: text("updated_by").notNull(),
@@ -90,11 +144,13 @@ export const appSettings = sqliteTable("app_settings", {
 });
 
 export const servicePrices = sqliteTable("service_prices", {
+  organizationId: integer("organization_id").notNull().default(1),
   code: text("code").primaryKey(),
   price: integer("price").notNull(),
 });
 
 export const equipment = sqliteTable("equipment", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   slotMinutes: integer("slot_minutes").notNull(),
@@ -104,6 +160,7 @@ export const equipment = sqliteTable("equipment", {
 });
 
 export const equipmentBlocks = sqliteTable("equipment_blocks", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   equipmentId: text("equipment_id").notNull(),
   blockedDate: text("blocked_date").notNull(),
@@ -113,6 +170,7 @@ export const equipmentBlocks = sqliteTable("equipment_blocks", {
 }, table => [index("equipment_blocks_schedule_idx").on(table.equipmentId, table.blockedDate, table.startTime)]);
 
 export const protocols = sqliteTable("protocols", {
+  organizationId: integer("organization_id").notNull().default(1),
   bookingId: integer("booking_id").primaryKey(),
   templateKey: text("template_key").notNull().default("generic"),
   method: text("method").notNull().default(""),
@@ -130,6 +188,7 @@ export const protocols = sqliteTable("protocols", {
 }, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
 
 export const patientProfiles = sqliteTable("patient_profiles", {
+  organizationId: integer("organization_id").notNull().default(1),
   phoneNormalized: text("phone_normalized").primaryKey(),
   displayName: text("display_name").notNull().default(""),
   birthYear: integer("birth_year").notNull().default(0),
@@ -141,6 +200,7 @@ export const patientProfiles = sqliteTable("patient_profiles", {
 });
 
 export const patientCommunications = sqliteTable("patient_communications", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   phoneNormalized: text("phone_normalized").notNull(),
   channel: text("channel").notNull().default("call"),
@@ -151,6 +211,7 @@ export const patientCommunications = sqliteTable("patient_communications", {
 }, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
 
 export const patientNotifications = sqliteTable("patient_notifications", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   bookingId: integer("booking_id").notNull(),
   kind: text("kind").notNull(),
@@ -164,6 +225,7 @@ export const patientNotifications = sqliteTable("patient_notifications", {
 }, table => [index("patient_notifications_booking_idx").on(table.bookingId, table.createdAt)]);
 
 export const imagingStudies = sqliteTable("imaging_studies", {
+  organizationId: integer("organization_id").notNull().default(1),
   bookingId: integer("booking_id").primaryKey(),
   accessionNumber: text("accession_number").notNull().default(""),
   studyInstanceUid: text("study_instance_uid").notNull().default(""),
@@ -189,6 +251,7 @@ export const pacsSettings = sqliteTable("pacs_settings", {
 });
 
 export const reportExports = sqliteTable("report_exports", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   requestedBy: text("requested_by").notNull(),
   reportType: text("report_type").notNull(),
