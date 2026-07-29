@@ -528,6 +528,8 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .sysmapPr.hi{color:var(--sm-hi)}.sysmapPr.mid{color:var(--sm-mid)}.sysmapPr.lo{color:var(--sm-lo)}.sysmapPr.none{color:var(--sm-faint)}
 .sysmapPr.none::before{background:transparent;border:1px solid var(--sm-faint)}
 .sysmapPath{font-family:var(--sm-mono);font-size:11px;color:var(--sm-faint);word-break:break-word;line-height:1.5;padding-top:2px}
+.sysmapPathLink{color:var(--sm-accent);text-decoration:none;border-bottom:1px dotted var(--sm-accent)}
+.sysmapPathLink:hover{border-bottom-style:solid}
 .sysmapSep{opacity:.5;margin:0 3px}
 .sysmapEmpty{text-align:center;color:var(--sm-muted);padding:40px;font-size:14px}
 

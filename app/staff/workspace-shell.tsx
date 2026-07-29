@@ -15,33 +15,13 @@ type StaffWorkspaceShellProps = {
   children: ReactNode;
 };
 
-const navigation = [
-  { href:"/staff/dashboard", label:"Пульт", glyph:"▣", section:"dashboard" as WorkspaceSection },
-  { href:"/staff", label:"Головна", glyph:"⌂", section:"overview" as WorkspaceSection },
-  { href:"/staff#schedule", label:"Розклад", glyph:"◫" },
-  { href:"/staff#bookings", label:"Заявки", glyph:"≡" },
-  { href:"/staff/patients", label:"Пацієнти", glyph:"☺", section:"patients" as WorkspaceSection },
-  { href:"/staff#bookings", label:"Дослідження", glyph:"◎" },
-  { href:"/staff/protocols", label:"Протоколи", glyph:"▤", section:"protocols" as WorkspaceSection },
-  { href:"/staff/imaging", label:"Знімки DICOM", glyph:"▦", section:"imaging" as WorkspaceSection },
-  { href:"/staff/reports", label:"Звіти", glyph:"▥", section:"reports" as WorkspaceSection },
-  { href:"/staff/tariffs", label:"Тарифи", glyph:"₴", section:"tariffs" as WorkspaceSection },
-];
-
-const administration = [
-  { href:"/staff#staff-admin", label:"Персонал", glyph:"◉" },
-  { href:"/staff#equipment", label:"Обладнання", glyph:"◇" },
-  { href:"/staff/system-map", label:"Карта системи", glyph:"◑", section:"system-map" as WorkspaceSection },
-  { href:"/staff/settings", label:"Налаштування", glyph:"⚙", section:"settings" as WorkspaceSection },
-  { href:"/", label:"Публічний сайт", glyph:"↗" },
-];
-
-// Модулі цільової структури — у тому ж порядку, що й «Карта системи».
-// Кожен пункт веде до відповідного блоку в дереві (#mod-N).
+// Бічна панель = модулі цільової структури, у тому ж порядку, що й «Карта
+// системи». Кожен пункт веде до свого блоку в дереві (#mod-N), звідки можна
+// відкрити конкретну сторінку через клікабельні шляхи «Де в системі».
 const systemModules = [
-  { n:"1", label:"Головна / Продаж" },
+  { n:"1", label:"Головна / Продаж послуг" },
   { n:"2", label:"Запис і заявки" },
-  { n:"3", label:"CRM (пацієнти)" },
+  { n:"3", label:"CRM (пацієнти/клієнти)" },
   { n:"4", label:"Бухгалтерія / Фінанси" },
   { n:"5", label:"Персонал (HR)" },
   { n:"6", label:"Обладнання" },
@@ -111,28 +91,12 @@ export default function StaffWorkspaceShell({
         <span className="workspaceBrandCopy"><b>RadiologyOS</b><small>Променева діагностика</small></span>
       </Link>
 
-      <nav className="workspaceNavigation" aria-label="Розділи кабінету">
-        <p>Робоче місце</p>
-        {navigation.map((item)=><Link
-          href={item.href}
-          key={`${item.href}-${item.label}`}
-          className={item.section === active ? "active":""}
-          aria-current={item.section === active ? "page":undefined}
-          title={collapsed ? item.label:undefined}
-        ><span aria-hidden="true">{item.glyph}</span><b>{item.label}</b></Link>)}
-        <p>Керування</p>
-        {administration.map((item)=><Link
-          href={item.href}
-          key={item.label}
-          className={"section" in item && item.section === active ? "active":""}
-          aria-current={"section" in item && item.section === active ? "page":undefined}
-          title={collapsed ? item.label:undefined}
-        ><span aria-hidden="true">{item.glyph}</span><b>{item.label}</b></Link>)}
+      <nav className="workspaceNavigation" aria-label="Модулі системи">
         <p>Карта системи</p>
         {systemModules.map((item)=><Link
           href={`/staff/system-map#mod-${item.n}`}
           key={item.n}
-          className="workspaceModuleLink"
+          className={`workspaceModuleLink${active === "system-map" ? " active":""}`}
           title={collapsed ? item.label:undefined}
         ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>)}
       </nav>

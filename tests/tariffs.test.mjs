@@ -48,8 +48,12 @@ test("home page shows tariffs (military free / civilian priced) with booking", a
 });
 
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {
+  // Бічна панель тепер = модулі «Карти системи»; Тарифи доступні через блок
+  // модуля (клікабельний шлях /staff/tariffs у дереві структури).
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /href:"\/staff\/tariffs", label:"Тарифи"/);
+  assert.match(shell, /staff\/system-map#mod-/);
+  const map = await read("app/staff/system-map/page.tsx");
+  assert.match(map, /\/staff\/tariffs/);
   const page = await read("app/staff/tariffs/page.tsx");
   assert.match(page, /active="tariffs"/);
   const priceHtml = await read("public/site/price.html");
