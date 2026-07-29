@@ -82,9 +82,32 @@ const PH_CLASS: Record<Phase, string> = { "Готово": "ph-done", "Фаза 2
 type StatusFilter = "all" | Status;
 type PhaseFilter = "all" | Phase;
 
+// Публічні сторінки → їхні реальні URL. Службові /staff… лінкуються напряму.
+const PUBLIC_PAGES: Record<string, string> = {
+  "index.html": "/",
+  "price.html": "/site/price.html",
+  "military.html": "/site/military.html",
+  "cabinet.html": "/site/cabinet.html",
+  "about.html": "/site/about.html",
+};
+
+function hrefForToken(token: string): string | null {
+  if (token.startsWith("/staff")) return token;
+  return PUBLIC_PAGES[token] ?? null;
+}
+
 function renderPath(path: string) {
   const parts = path.split("·");
-  return parts.map((p, i) => <span key={i}>{i > 0 ? <span className="sysmapSep">·</span> : null}{p}</span>);
+  return parts.map((part, i) => {
+    const sep = i > 0 ? <span className="sysmapSep">·</span> : null;
+    const trimmed = part.trim();
+    const match = trimmed.match(/^(\S+)(.*)$/);
+    const href = match ? hrefForToken(match[1]) : null;
+    if (match && href) {
+      return <span key={i}>{sep}<a className="sysmapPathLink" href={href}>{match[1]}</a>{match[2]}</span>;
+    }
+    return <span key={i}>{sep}{part}</span>;
+  });
 }
 
 export default function SystemMapPage() {
