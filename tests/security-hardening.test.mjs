@@ -89,3 +89,13 @@ test("legacy browser data gateway and fake document uploads are absent", async (
   }
   assert.doesNotMatch(cart, /radiologyos_applications_v1/);
 });
+
+test("production deployment refuses to migrate without a secure active administrator", async () => {
+  const workflow = await read(".github/workflows/deploy.yml");
+  const guard = workflow.indexOf("Verify a secure active administrator exists");
+  const migrations = workflow.indexOf("Apply D1 migrations");
+  assert.ok(guard > -1);
+  assert.ok(migrations > guard);
+  assert.match(workflow, /secure_admins/);
+  assert.match(workflow, /count < 1/);
+});
