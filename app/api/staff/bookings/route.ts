@@ -1,6 +1,7 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../../lib/booking-rules";
 import { sendPatientReminder, type ReminderBooking } from "../../../../lib/notify";
+import { canTransition, isStudyState, stateLabel } from "../../../../lib/study-state";
 import {
   canManageBookings,
   canManageFinance,
@@ -345,10 +346,21 @@ export async function PATCH(request: Request) {
     return Response.json({ ok: true, status: "confirmed", reminder });
   }
 
-  const allowed = new Set(["new", "confirmed", "rescheduled", "completed", "cancelled"]);
-  if (!body.status || !allowed.has(body.status)) return Response.json({ error: "Некоректний статус" }, { status: 400 });
-  const updated = await db.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind(body.status, body.id).run();
-  if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+  // Зміна статусу проходить через єдину state machine дослідження
+  // (deny-by-default): цільовий стан має бути відомим і досяжним із поточного.
+  if (!body.status || !isStudyState(body.status)) {
+    return Response.json({ error: "Некоректний статус" }, { status: 400 });
+  }
+  const current = await db.prepare("SELECT status FROM bookings WHERE id = ?")
+    .bind(body.id).first<{ status: string }>();
+  if (!current) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+  if (!canTransition(current.status, body.status)) {
+    return Response.json(
+      { error: `Перехід «${stateLabel(current.status)}» → «${stateLabel(body.status)}» недопустимий` },
+      { status: 409 },
+    );
+  }
+  await db.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind(body.status, body.id).run();
   await db.prepare(
     "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'status_changed', ?, ?)"
   ).bind(body.id, body.status, member.email).run();
