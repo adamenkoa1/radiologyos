@@ -56,7 +56,7 @@ test("staff authorization scopes sensitive records and exports", async () => {
 
 test("protocols use optimistic concurrency and immutable revision history", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
-  const migration = await read("drizzle/0015_security_hardening.sql");
+  const migration = await read("drizzle/0016_security_hardening.sql");
   assert.match(route, /baseVersion/);
   assert.match(route, /existing\?\.status === "issued"/);
   assert.match(route, /INSERT INTO protocol_revisions/);
