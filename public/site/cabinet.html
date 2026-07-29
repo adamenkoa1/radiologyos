@@ -6,13 +6,13 @@
 <title>Особистий кабінет — RadiologyOS</title>
 <meta name="description" content="Особистий кабінет пацієнта відділення променевої діагностики: статус заявок, дата запису та протокол дослідження."/>
 <meta name="robots" content="noindex"/>
-<meta name="theme-color" content="#4f5d3e"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f5d3e'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23ead7ad'/%3E%3C/svg%3E"/>
+<meta name="theme-color" content="#0c7a85"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f5d3e'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%2325b4c0'/%3E%3C/svg%3E"/>
 <style>
 :root{
-  --bg:#f5f3ed;--ink:#141712;--muted:#667062;--line:#e0e4da;
-  --gold:#f4c64f;--olive:#556349;
-  --grad:linear-gradient(135deg,#4f5d3e,#6c7c59);
+  --bg:#eef2f5;--ink:#0e161c;--muted:#5c6c78;--line:#dbe3e8;
+  --gold:#25b4c0;--olive:#0c7a85;
+  --grad:linear-gradient(135deg,#0c7a85,#0e6b74);
   --shadow:0 16px 42px rgba(24,34,19,.12);
 }
 *{box-sizing:border-box}
@@ -24,68 +24,68 @@ header{padding:0 14px;margin-bottom:18px}
 .header-row{width:min(760px,100%);margin:0 auto;padding:18px 20px;border-radius:22px;background:var(--grad);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;color:#fff}
 .header-title{flex:1;min-width:0}
 .header-title strong{display:block;font-size:clamp(18px,3vw,24px);font-weight:700}
-.header-title span{display:block;font-size:13px;color:#e6eadf;margin-top:3px}
+.header-title span{display:block;font-size:13px;color:#e5ecf0;margin-top:3px}
 .back-link{flex-shrink:0;padding:9px 14px;border-radius:11px;background:rgba(255,255,255,.14);font-size:13px;font-weight:700;color:#fff}
 .back-link:hover{background:rgba(255,255,255,.22)}
 
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
 .gate p{color:var(--muted);font-size:14px;margin:6px 0 14px}
 .phone-wrap{display:flex}
-.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #cfd4c8;border-right:0;border-radius:11px 0 0 11px;background:#f1f3ed;font-weight:700;color:#4f5d3e}
-.phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #cfd4c8;border-radius:0 11px 11px 0;font:inherit}
+.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:11px 0 0 11px;background:#f2f6f8;font-weight:700;color:#0c7a85}
+.phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #dbe3e8;border-radius:0 11px 11px 0;font:inherit}
 .phone-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
 .gate .btn{margin-top:14px}
 .btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:13px;background:var(--olive);color:#fff;font:inherit;font-weight:800;cursor:pointer}
 .btn:disabled{opacity:.6}
-.btn.secondary{background:#eef1e9;color:#3c4a30}
-.btn.danger{background:#f4dcda;color:#8f2f27}
-.gate-error{display:none;color:#9b3b32;font-size:13px;margin-top:10px}
+.btn.secondary{background:#eef2f5;color:#0e454c}
+.btn.danger{background:#fbe9e6;color:#a5352a}
+.gate-error{display:none;color:#c0392b;font-size:13px;margin-top:10px}
 .gate-error.show{display:block}
 
 .cab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 14px}
 .cab-head h1{font-size:20px;margin:0}
 .cab-phone{font-size:13px;color:var(--muted)}
-.logout{border:0;background:none;color:#3c4a30;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
+.logout{border:0;background:none;color:#0e454c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
 
 .app-card{margin-bottom:14px}
 .app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .app-study{font-weight:800;font-size:16px}
 .app-meta{font-size:13px;color:var(--muted);margin-top:3px}
 .badge{flex-shrink:0;padding:5px 11px;border-radius:99px;font-size:12px;font-weight:800;white-space:nowrap}
-.badge.new{background:#fff3cd;color:#7a5b00}
-.badge.progress{background:#e3ecff;color:#274d8f}
-.badge.booked{background:#e2efe0;color:#2f5c2a}
+.badge.new{background:#e6f4f6;color:#0a5f68}
+.badge.progress{background:#e6eef7;color:#3c6ba6}
+.badge.booked{background:#e6f4ea;color:#1e7a3d}
 .badge.done{background:var(--olive);color:#fff}
-.badge.cancelled{background:#f4dcda;color:#8f2f27}
+.badge.cancelled{background:#fbe9e6;color:#a5352a}
 
 .stepper{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:16px 0 4px;counter-reset:step}
-.step{position:relative;text-align:center;font-size:12px;color:#9aa392;padding-top:26px}
-.step::before{content:'';position:absolute;top:9px;left:calc(50% + 12px);right:calc(-50% + 12px);height:2px;background:#dde2d6}
+.step{position:relative;text-align:center;font-size:12px;color:#9fb0bb;padding-top:26px}
+.step::before{content:'';position:absolute;top:9px;left:calc(50% + 12px);right:calc(-50% + 12px);height:2px;background:#e0e7ec}
 .step:last-child::before{display:none}
-.step::after{content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#dde2d6}
-.step.on{color:#3c4a30;font-weight:700}
+.step::after{content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#e0e7ec}
+.step.on{color:#0e454c;font-weight:700}
 .step.on::after{background:var(--olive)}
 .step.on::before{background:var(--olive)}
 
 .actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
 .actions .btn{width:auto;flex:1;min-width:150px;min-height:44px}
-.pay-row{display:flex;gap:10px;align-items:center;background:#fff8e8;border:1px solid #ead8b2;border-radius:13px;padding:12px 14px;margin-top:14px;font-size:14px;color:#5a4b25}
+.pay-row{display:flex;gap:10px;align-items:center;background:#eef7f8;border:1px solid #d9eef0;border-radius:13px;padding:12px 14px;margin-top:14px;font-size:14px;color:#0e454c}
 .pay-row strong{font-weight:800}
 
-.protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfdfb}
+.protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfefe}
 .protocol.open{display:block}
 .protocol h4{margin:0 0 2px;font-size:15px}
 .protocol .p-org{font-size:12px;color:var(--muted);margin-bottom:12px}
 .p-field{margin:10px 0}
-.p-field b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6c7562;margin-bottom:3px}
+.p-field b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6c7c86;margin-bottom:3px}
 .p-field div{font-size:14px;white-space:pre-wrap}
-.p-caveat{margin-top:12px;font-size:11px;color:#8a927f}
+.p-caveat{margin-top:12px;font-size:11px;color:#8a98a2}
 .print-btn{margin-top:14px}
 
 .empty{text-align:center;color:var(--muted);padding:30px 10px}
-.empty a{color:#3c4a30;font-weight:700}
+.empty a{color:#0e454c;font-weight:700}
 .hint{font-size:12px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5}
-.hint a{color:#3c4a30;font-weight:700}
+.hint a{color:#0e454c;font-weight:700}
 
 @media print{
   body{background:#fff;padding:0}
@@ -155,7 +155,7 @@ const statusMeta = {
   completed:   { badge: 'done',      label: 'Виконана',       step: 'done' },
   cancelled:   { badge: 'cancelled', label: 'Скасована',      step: 'cancelled' },
 };
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m]));
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#2f5aa0;' }[m]));
 const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
 const money = (n) => new Intl.NumberFormat('uk-UA').format(Number(n) || 0);
 const isPayUrl = (s) => /^https?:\/\//i.test(String(s || ''));

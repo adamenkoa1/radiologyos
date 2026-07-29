@@ -7,14 +7,14 @@
 <meta name="description" content="Відділення променевої діагностики Чернігівського військового госпіталю: КТ, рентгенографія, флюорографія. Безоплатні дослідження для військовослужбовців, онлайн-заявка для цивільних пацієнтів. м. Чернігів, вул. Полуботка, 40."/>
 <meta property="og:title" content="RadiologyOS — Відділення променевої діагностики"/>
 <meta property="og:description" content="КТ, рентгенографія, флюорографія у Чернігові. Запис онлайн."/>
-<meta name="theme-color" content="#4f5d3e"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23152011'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23ead7ad'/%3E%3C/svg%3E"/>
+<meta name="theme-color" content="#0c7a85"/>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e161c'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%2325b4c0'/%3E%3C/svg%3E"/>
 <style>
 /* ===== Токени ===== */
 :root{
-  --bg:#f5f3ed;--ink:#141712;--muted:#667062;--line:#e0e4da;
-  --gold:#f4c64f;--beige:#ead7ad;
-  --grad:linear-gradient(135deg,#4f5d3e,#6c7c59);
+  --bg:#eef2f5;--ink:#0e161c;--muted:#5c6c78;--line:#dbe3e8;
+  --gold:#25b4c0;--beige:#d9eef0;
+  --grad:linear-gradient(135deg,#0c7a85,#0e6b74);
   --shadow:0 16px 42px rgba(24,34,19,.12);
 }
 
@@ -35,7 +35,7 @@ header{position:sticky;top:10px;z-index:50;padding:0 14px}
 .brand{display:flex;align-items:center;gap:13px;flex:1;min-width:0}
 .hospital-brand-text{display:flex;flex-direction:column;gap:3px;min-width:0}
 .hospital-brand-title{font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.08;color:#fff;overflow-wrap:anywhere}
-.hospital-brand-subtitle{font-size:clamp(13px,1.8vw,17px);line-height:1.25;color:#e6eadf;margin-top:5px}
+.hospital-brand-subtitle{font-size:clamp(13px,1.8vw,17px);line-height:1.25;color:#e5ecf0;margin-top:5px}
 nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font-weight:800;font-size:14px}
 
 /* ===== Меню «Вхід» ===== */
@@ -46,15 +46,15 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .header-login-button:hover{background:rgba(255,255,255,.045);color:rgba(255,255,255,.9)}
 .header-login-button:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
 .header-login-icon{display:none}
-.login-menu{position:absolute;right:0;top:calc(100% + 10px);width:min(290px,calc(100vw - 28px));min-height:142px;padding:8px;border-radius:16px;background:#f7f8f4;border:1px solid #d7ddd1;box-shadow:0 18px 46px rgba(14,22,11,.24);opacity:0;visibility:hidden;transform:translateY(-6px);transition:.18s;z-index:120}
+.login-menu{position:absolute;right:0;top:calc(100% + 10px);width:min(290px,calc(100vw - 28px));min-height:142px;padding:8px;border-radius:16px;background:#f7fafb;border:1px solid #dbe3e8;box-shadow:0 18px 46px rgba(14,22,11,.24);opacity:0;visibility:hidden;transform:translateY(-6px);transition:.18s;z-index:120}
 .login-menu.open{opacity:1;visibility:visible;transform:translateY(0)}
-.login-choice{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:11px;padding:11px;border-radius:12px;color:#1d2419;border:0;background:transparent;width:100%;font:inherit;text-align:left;cursor:pointer}
-.login-choice + .login-choice{border-top:1px solid #e2e6de}
-.login-choice:hover{background:#f1f3ed}
-.login-choice-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#556349;color:#fff;font-size:18px}
+.login-choice{display:grid;grid-template-columns:42px 1fr auto;align-items:center;gap:11px;padding:11px;border-radius:12px;color:#0f1a20;border:0;background:transparent;width:100%;font:inherit;text-align:left;cursor:pointer}
+.login-choice + .login-choice{border-top:1px solid #e5ecf0}
+.login-choice:hover{background:#f2f6f8}
+.login-choice-icon{width:42px;height:42px;border-radius:12px;display:grid;place-items:center;background:#0c7a85;color:#fff;font-size:18px}
 .login-choice strong{display:block;font-size:15px}
-.login-choice small{display:block;margin-top:2px;color:#6c7568;font-size:12px}
-.login-choice-arrow{font-size:22px;color:#506148}
+.login-choice small{display:block;margin-top:2px;color:#6c7c86;font-size:12px}
+.login-choice-arrow{font-size:22px;color:#0a5f68}
 
 /* ===== Картки аудиторій ===== */
 .hero{padding:16px 0 0}
@@ -68,16 +68,16 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .promo-card:hover{transform:translateY(-2px);box-shadow:0 20px 48px rgba(24,34,19,.18)}
 .promo-card:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
 .promo-military{background:var(--grad);color:#fff}
-.promo-civil{background:linear-gradient(135deg,#f4e8cf,#e6cb95);color:#2a2417}
+.promo-civil{background:linear-gradient(135deg,#e2f4f5,#bfe0e4);color:#12303a}
 .promo-icon{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.14)}
 .promo-icon svg{width:28px;height:28px}
-.promo-military .promo-icon{color:#f0f3ea}
-.promo-civil .promo-icon{background:rgba(79,93,62,.1);color:#4f5d3e}
+.promo-military .promo-icon{color:#f2f6f8}
+.promo-civil .promo-icon{background:rgba(79,93,62,.1);color:#0c7a85}
 .promo-text{min-width:0}
 .promo-text strong{display:block;font-size:clamp(22px,3.3vw,29px);font-weight:600;line-height:1.12;letter-spacing:-.01em}
 .promo-text span{display:block;margin-top:7px;font-size:clamp(15px,2.1vw,18px)}
-.promo-military .promo-text span{color:#e9eee3}
-.promo-civil .promo-text span{color:#5a4c2c}
+.promo-military .promo-text span{color:#eef2f5}
+.promo-civil .promo-text span{color:#0e454c}
 .promo-arrow{font-size:44px;line-height:1;font-weight:400;opacity:.85}
 
 /* ===== Адреса ===== */
@@ -96,16 +96,16 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .cart-count{min-width:23px;height:23px;padding:0 6px;border-radius:99px;background:var(--gold);display:grid;place-items:center;font-size:12px}
 .cart-overlay{position:fixed;inset:0;background:rgba(8,12,7,.55);z-index:120;opacity:0;pointer-events:none;transition:.2s}
 .cart-overlay.open{opacity:1;pointer-events:auto}
-.cart-drawer{position:absolute;right:0;top:0;height:100%;width:min(520px,100%);background:#f7f5ef;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.22)}
+.cart-drawer{position:absolute;right:0;top:0;height:100%;width:min(520px,100%);background:#f7fafb;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.22)}
 .cart-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
-.cart-close{border:0;background:#e6e8df;width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer}
+.cart-close{border:0;background:#e5ecf0;width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer}
 .cart-empty{padding:35px 15px;text-align:center;color:var(--muted)}
 .cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;margin:10px 0}
 .cart-item small{display:block;color:var(--muted)}
-.remove-item{border:0;background:none;color:#9b3b32;cursor:pointer;font-weight:800}
+.remove-item{border:0;background:none;color:#c0392b;cursor:pointer;font-weight:800}
 .cart-total{display:flex;justify-content:space-between;padding:18px 4px;font-size:21px;font-weight:950}
 .cart-note{font-size:12px;color:var(--muted);margin:10px 0}
-.floating-cart{position:fixed;right:18px;bottom:20px;z-index:95;border:0;border-radius:999px;background:var(--beige);color:#1d2419;padding:14px 18px;font-weight:950;box-shadow:0 12px 30px rgba(0,0,0,.2);cursor:pointer}
+.floating-cart{position:fixed;right:18px;bottom:20px;z-index:95;border:0;border-radius:999px;background:var(--beige);color:#0f1a20;padding:14px 18px;font-weight:950;box-shadow:0 12px 30px rgba(0,0,0,.2);cursor:pointer}
 .floating-cart .cart-count{display:inline-grid;margin-left:6px}
 
 /* ===== Форма заявки ===== */
@@ -113,37 +113,37 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .form-step{padding:4px 0 14px}
 .form-step + .form-step{border-top:1px solid var(--line);padding-top:16px}
 .step-title{display:flex;align-items:center;gap:9px;font-weight:800;font-size:15px;margin-bottom:11px}
-.step-num{width:24px;height:24px;border-radius:50%;background:#556349;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
+.step-num{width:24px;height:24px;border-radius:50%;background:#0c7a85;color:#fff;display:grid;place-items:center;font-size:13px;font-weight:800}
 .field{margin:11px 0}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .field label{display:block;font-size:13px;font-weight:700;margin-bottom:5px}
-.req{color:#9b3b32}
-.opt{font-weight:500;color:#788175}
-.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #cfd4c8;border-radius:11px;font:inherit;background:#fff}
-.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid #556349;outline-offset:1px}
+.req{color:#c0392b}
+.opt{font-weight:500;color:#7c8a94}
+.field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:11px;font:inherit;background:#fff}
+.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:2px solid #0c7a85;outline-offset:1px}
 .field textarea{min-height:78px;resize:vertical}
 .phone-wrap{display:flex;align-items:stretch}
-.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #cfd4c8;border-right:0;border-radius:11px 0 0 11px;background:#f1f3ed;font-weight:700;color:#4f5d3e}
+.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:11px 0 0 11px;background:#f2f6f8;font-weight:700;color:#0c7a85}
 .phone-wrap input{border-radius:0 11px 11px 0}
-.field-error{display:none;font-size:12px;color:#9b3b32;margin-top:4px}
-.was-validated .field input:invalid,.was-validated .field select:invalid{border-color:#c66a5f;background:#fdf6f5}
+.field-error{display:none;font-size:12px;color:#c0392b;margin-top:4px}
+.was-validated .field input:invalid,.was-validated .field select:invalid{border-color:#d9705f;background:#fdf0ee}
 .was-validated .field input:invalid ~ .field-error,.was-validated .field:has(input:invalid) .field-error{display:block}
 .was-validated:has(#dataConsent:invalid) .consent-error{display:block}
-.btn.secondary{background:#eef1e9;color:#3c4a30}
-.send-request{width:100%;border:0;background:#556349;color:#fff;cursor:pointer}
-.upload-box{border:1.5px dashed #9ca893;border-radius:16px;padding:14px;background:#f7f8f4}
+.btn.secondary{background:#eef2f5;color:#0e454c}
+.send-request{width:100%;border:0;background:#0c7a85;color:#fff;cursor:pointer}
+.upload-box{border:1.5px dashed #9fb0bb;border-radius:16px;padding:14px;background:#f7fafb}
 .upload-help{font-size:13px;color:var(--muted);margin-bottom:10px}
 .file-input{width:100%;padding:11px;background:#fff;border:1px solid var(--line);border-radius:12px}
-.file-summary{margin-top:9px;font-size:13px;color:#4e5d46}
-.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#556050}
+.file-summary{margin-top:9px;font-size:13px;color:#0a5f68}
+.consent{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:#3a4a52}
 .consent input{margin-top:3px;width:18px;height:18px;flex:0 0 18px}
 .success-panel{background:#fff;border:1px solid var(--line);border-radius:18px;padding:28px 20px;text-align:center}
-.success-icon{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;background:#556349;color:#fff;display:grid;place-items:center;font-size:28px}
+.success-icon{width:56px;height:56px;margin:0 auto 12px;border-radius:50%;background:#0c7a85;color:#fff;display:grid;place-items:center;font-size:28px}
 .success-panel h3{margin:0 0 8px}
-.success-summary{background:#f4f5f0;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:13.5px;text-align:left}
+.success-summary{background:#f5f8fa;border:1px solid var(--line);border-radius:12px;padding:12px 14px;margin:0 0 12px;font-size:13.5px;text-align:left}
 .success-summary div{margin:3px 0}
-.offline-note{background:#fdf3e4;border:1px solid #e8cf9e;border-radius:11px;padding:10px 12px}
-.success-panel p{color:#4e5d46;font-size:14px;line-height:1.5;margin:0 0 16px}
+.offline-note{background:#eef7f8;border:1px solid #c9e6ea;border-radius:11px;padding:10px 12px}
+.success-panel p{color:#0a5f68;font-size:14px;line-height:1.5;margin:0 0 16px}
 @media(max-width:520px){.field-row{grid-template-columns:1fr}}
 
 
@@ -185,38 +185,38 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 }
 
 /* Вибір вільного часу */
-.slot-picker{border:1px solid #e0e4da;border-radius:14px;padding:12px;background:#fbfcf9;margin:10px 0}
+.slot-picker{border:1px solid #dbe3e8;border-radius:14px;padding:12px;background:#fbfdfe;margin:10px 0}
 .sp-head{font-weight:700;font-size:13.5px;margin-bottom:9px}
-.sp-note{font-weight:500;color:#8a927f;font-size:12px}
-.sp-loading,.sp-empty{color:#8a927f;font-size:13px;padding:8px 2px}
+.sp-note{font-weight:500;color:#8a98a2;font-size:12px}
+.sp-loading,.sp-empty{color:#8a98a2;font-size:13px;padding:8px 2px}
 .sp-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
-.sp-day{flex-shrink:0;padding:8px 11px;border-radius:10px;border:1.5px solid #cfd4c8;background:#fff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
-.sp-day.on{border-color:#556349;background:#eef1e9;color:#3c4a30}
+.sp-day{flex-shrink:0;padding:8px 11px;border-radius:10px;border:1.5px solid #dbe3e8;background:#fff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
+.sp-day.on{border-color:#0c7a85;background:#eef2f5;color:#0e454c}
 .sp-times{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:8px;max-height:150px;overflow:auto}
-.sp-time{padding:8px 4px;border-radius:9px;border:1.5px solid #cfd4c8;background:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
-.sp-time.on{border-color:#556349;background:#556349;color:#fff}
-.sp-picked{margin-top:9px;font-size:13px;color:#2f5c2a}
+.sp-time{padding:8px 4px;border-radius:9px;border:1.5px solid #dbe3e8;background:#fff;font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.sp-time.on{border-color:#0c7a85;background:#0c7a85;color:#fff}
+.sp-picked{margin-top:9px;font-size:13px;color:#1e7a3d}
 /* ===== Тарифи на головній ===== */
 .tariffs-home{padding:22px 0 0}
 .tariffs-head{margin-bottom:14px}
 .tariffs-head h2{font-size:clamp(24px,3.2vw,32px);font-weight:700;letter-spacing:-.02em;margin:6px 0}
 .tariffs-head p{color:var(--muted);max-width:760px;margin:0}
-.tariffs-head p b{color:#4f5d3e}
+.tariffs-head p b{color:#0c7a85}
 .ht-loading{padding:22px;color:var(--muted);background:#fff;border:1px solid var(--line);border-radius:18px}
 .ht-group{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;margin-bottom:14px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
-.ht-group>h3{margin:0;padding:15px 18px;background:linear-gradient(135deg,#4f5d3e,#6c7c59);color:#fff;font-size:17px;font-weight:700}
+.ht-group>h3{margin:0;padding:15px 18px;background:linear-gradient(135deg,#0c7a85,#0e6b74);color:#fff;font-size:17px;font-weight:700}
 .ht-table{width:100%;border-collapse:collapse}
 .ht-table th{text-align:left;padding:10px 16px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);border-bottom:1px solid var(--line);white-space:nowrap}
 .ht-table th.num,.ht-table td.num{text-align:right}
 .ht-table td{padding:13px 16px;border-bottom:1px solid var(--line);vertical-align:middle;font-size:14px}
 .ht-table tr:last-child td{border-bottom:0}
-.ht-title{font-weight:700;color:#1b2118}
+.ht-title{font-weight:700;color:#0e161c}
 .ht-help{margin-top:3px;color:var(--muted);font-size:12.5px;line-height:1.35}
-.ht-mil{color:#4f5d3e;font-weight:800;white-space:nowrap}
+.ht-mil{color:#0c7a85;font-weight:800;white-space:nowrap}
 .ht-civ{font-weight:800;white-space:nowrap;font-variant-numeric:tabular-nums}
-.ht-book{border:0;background:#556349;color:#fff;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
-.ht-book:hover{background:#465239}.ht-book.added{background:#75816d}
-.field-note{display:block;margin-top:6px;font-size:12px;color:#4f5d3e}
+.ht-book{border:0;background:#0c7a85;color:#fff;border-radius:10px;padding:9px 14px;font-weight:700;cursor:pointer;white-space:nowrap}
+.ht-book:hover{background:#12444b}.ht-book.added{background:#7c8a94}
+.field-note{display:block;margin-top:6px;font-size:12px;color:#0c7a85}
 @media(max-width:640px){
   .ht-table thead{display:none}
   .ht-table,.ht-table tbody,.ht-table tr,.ht-table td{display:block;width:100%}
@@ -287,7 +287,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   <section class="tariffs-home" id="tariffs">
     <div class="wrap">
       <div class="tariffs-head">
-        <div class="eyebrow" style="color:#4f5d3e">Тарифи</div>
+        <div class="eyebrow" style="color:#0c7a85">Тарифи</div>
         <h2>Дослідження та вартість</h2>
         <p>Військовослужбовцям — <b>безоплатно</b> за направленням. Цивільним особам — за тарифом. Оберіть дослідження, натисніть «Записатися» та вкажіть категорію.</p>
       </div>
@@ -316,7 +316,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   <aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog">
     <div class="cart-head">
       <div>
-        <div class="eyebrow" style="color:#596b4c">Попередній вибір</div>
+        <div class="eyebrow" style="color:#0c7a85">Попередній вибір</div>
         <h2 style="margin:5px 0">Моя заявка</h2>
       </div>
       <button class="cart-close" onclick="closeCart()" type="button" aria-label="Закрити">×</button>
@@ -409,14 +409,14 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
       <div class="success-summary" id="successSummary"></div>
       <p id="successText">Реєстратура опрацює заявку та зателефонує вам для підтвердження дати й часу. Стежити за статусом можна в особистому кабінеті за номером телефону.</p>
       <p class="cart-note offline-note" id="offlineNote" hidden><strong>Увага:</strong> онлайн-передача заявок тимчасово не працює. Будь ласка, зателефонуйте в реєстратуру: <a href="tel:+380972808899"><strong>+380 97 280 88 99</strong></a></p>
-      <div id="payBlock" hidden style="border:1px solid #e0d9b8;background:#fdfaf0;border-radius:14px;padding:14px;margin:0 0 12px;text-align:center">
+      <div id="payBlock" hidden style="border:1px solid #cfe9ec;background:#f3fafb;border-radius:14px;padding:14px;margin:0 0 12px;text-align:center">
         <div style="font-weight:700;font-size:14px;margin-bottom:8px">Оплата дослідження</div>
         <div id="payQr" style="display:flex;justify-content:center;margin-bottom:8px"></div>
-        <a id="payBtn" class="btn send-request" href="#" target="_blank" rel="noopener" style="background:#3f7a3a">Оплатити (ПриватБанк)</a>
-        <p style="font-size:12px;color:#8a8461;margin:8px 0 0">Скануйте QR або натисніть кнопку. Квитанцію збережіть чи покажіть у реєстратурі.</p>
+        <a id="payBtn" class="btn send-request" href="#" target="_blank" rel="noopener" style="background:#1e7a3d">Оплатити (ПриватБанк)</a>
+        <p style="font-size:12px;color:#7c8a94;margin:8px 0 0">Скануйте QR або натисніть кнопку. Квитанцію збережіть чи покажіть у реєстратурі.</p>
       </div>
       <a class="btn send-request" href="/site/cabinet.html" style="margin-bottom:8px">Особистий кабінет</a>
-      <button class="btn send-request" type="button" onclick="closeCart()" style="background:#eef1e9;color:#3c4a30">Готово</button>
+      <button class="btn send-request" type="button" onclick="closeCart()" style="background:#eef2f5;color:#0e454c">Готово</button>
     </div>
   </aside>
 </div>
