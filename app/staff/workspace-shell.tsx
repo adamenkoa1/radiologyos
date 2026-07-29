@@ -16,16 +16,15 @@ type StaffWorkspaceShellProps = {
 };
 
 // Бічна панель = модулі цільової структури, у тому ж порядку, що й «Карта
-// системи». Кожен пункт веде до свого блоку в дереві (#mod-N), звідки можна
-// відкрити конкретну сторінку через клікабельні шляхи «Де в системі».
-const systemModules = [
-  { n:"1", label:"Головна / Продаж послуг" },
-  { n:"2", label:"Запис і заявки" },
-  { n:"3", label:"CRM (пацієнти/клієнти)" },
-  { n:"4", label:"Бухгалтерія / Фінанси" },
-  { n:"5", label:"Персонал (HR)" },
-  { n:"6", label:"Обладнання" },
-  { n:"7", label:"Адмін / Наскрізне" },
+// системи». Кожен пункт веде одразу на відповідну робочу сторінку.
+const systemModules: Array<{ n:string; label:string; href:string; section?:WorkspaceSection }> = [
+  { n:"1", label:"Головна / Продаж послуг", href:"/" },
+  { n:"2", label:"Запис і заявки", href:"/staff", section:"overview" },
+  { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients" },
+  { n:"4", label:"Бухгалтерія / Фінанси", href:"/staff/reports", section:"reports" },
+  { n:"5", label:"Персонал (HR)", href:"/staff#staff-admin" },
+  { n:"6", label:"Обладнання", href:"/staff/imaging", section:"imaging" },
+  { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard" },
 ];
 
 function formatDateTime(value:Date) {
@@ -94,9 +93,10 @@ export default function StaffWorkspaceShell({
       <nav className="workspaceNavigation" aria-label="Модулі системи">
         <p>Карта системи</p>
         {systemModules.map((item)=><Link
-          href={`/staff/system-map#mod-${item.n}`}
+          href={item.href}
           key={item.n}
-          className={`workspaceModuleLink${active === "system-map" ? " active":""}`}
+          className={`workspaceModuleLink${item.section && item.section === active ? " active":""}`}
+          aria-current={item.section && item.section === active ? "page":undefined}
           title={collapsed ? item.label:undefined}
         ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>)}
       </nav>
