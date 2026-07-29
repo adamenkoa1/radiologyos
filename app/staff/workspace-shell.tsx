@@ -15,16 +15,74 @@ type StaffWorkspaceShellProps = {
   children: ReactNode;
 };
 
-// Бічна панель = модулі цільової структури, у тому ж порядку, що й «Карта
-// системи». Кожен пункт веде одразу на відповідну робочу сторінку.
-const systemModules: Array<{ n:string; label:string; href:string; section?:WorkspaceSection }> = [
-  { n:"1", label:"Головна / Продаж послуг", href:"/" },
-  { n:"2", label:"Запис і заявки", href:"/staff", section:"overview" },
-  { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients" },
-  { n:"4", label:"Бухгалтерія / Фінанси", href:"/staff/reports", section:"reports" },
-  { n:"5", label:"Персонал (HR)", href:"/staff#staff-admin" },
-  { n:"6", label:"Обладнання", href:"/staff/imaging", section:"imaging" },
-  { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard" },
+// Бічна панель = модулі цільової структури (у порядку «Карти системи»).
+// Кожен модуль веде на робочу сторінку й розгортається у підпункти-екрани;
+// кожен підпункт — на свою сторінку (нереалізовані ведуть у блок карти).
+type NavChild = { label:string; href:string };
+type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
+const systemModules: NavModule[] = [
+  { n:"1", label:"Головна / Продаж послуг", href:"/", items:[
+    { label:"Вітрина послуг", href:"/" },
+    { label:"Онлайн-запис", href:"/" },
+    { label:"Тарифи", href:"/staff/tariffs" },
+    { label:"Контакти", href:"/" },
+    { label:"Пакети / акції", href:"/staff/system-map#mod-1" },
+    { label:"Довіра", href:"/staff/system-map#mod-1" },
+    { label:"Зворотний дзвінок", href:"/staff/system-map#mod-1" },
+  ]},
+  { n:"2", label:"Запис і заявки", href:"/staff", section:"overview", items:[
+    { label:"Форма заявки", href:"/site/price.html" },
+    { label:"Вибір часу", href:"/staff/dashboard" },
+    { label:"Кабінет пацієнта", href:"/site/cabinet.html" },
+    { label:"Черга реєстратури", href:"/staff#bookings" },
+    { label:"Розклад дня", href:"/staff/dashboard" },
+    { label:"Нагадування", href:"/staff/settings" },
+    { label:"Повторний запис", href:"/staff/system-map#mod-2" },
+  ]},
+  { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients", items:[
+    { label:"Картка пацієнта", href:"/staff/patients" },
+    { label:"Комунікації", href:"/staff/patients" },
+    { label:"Сегменти", href:"/staff/patients" },
+    { label:"Експорт контактів", href:"/staff/patients" },
+    { label:"Розсилки", href:"/staff/system-map#mod-3" },
+    { label:"Воронка лідів", href:"/staff/system-map#mod-3" },
+    { label:"Лояльність", href:"/staff/system-map#mod-3" },
+  ]},
+  { n:"4", label:"Бухгалтерія / Фінанси", href:"/staff/reports", section:"reports", items:[
+    { label:"Оплати за заявками", href:"/staff#bookings" },
+    { label:"Тарифи / прайс", href:"/staff/tariffs" },
+    { label:"Квитанції / рахунки", href:"/staff/system-map#mod-4" },
+    { label:"Каса та зміни", href:"/staff/system-map#mod-4" },
+    { label:"Звірка з Приват24", href:"/staff/system-map#mod-4" },
+    { label:"Фінансові звіти", href:"/staff/reports" },
+    { label:"Договори / акти", href:"/staff/system-map#mod-4" },
+    { label:"Витрати", href:"/staff/system-map#mod-4" },
+    { label:"Податки / ФОП", href:"/staff/system-map#mod-4" },
+  ]},
+  { n:"5", label:"Персонал (HR)", href:"/staff#staff-admin", items:[
+    { label:"Співробітники й ролі", href:"/staff#staff-admin" },
+    { label:"Реєстрація за кодом", href:"/staff/register" },
+    { label:"Графік змін", href:"/staff/system-map#mod-5" },
+    { label:"Завантаженість", href:"/staff/system-map#mod-5" },
+    { label:"KPI / виробіток", href:"/staff/system-map#mod-5" },
+    { label:"Відпустки / лікарняні", href:"/staff/system-map#mod-5" },
+    { label:"Журнал дій (аудит)", href:"/staff/system-map#mod-5" },
+  ]},
+  { n:"6", label:"Обладнання", href:"/staff/imaging", section:"imaging", items:[
+    { label:"Реєстр апаратів", href:"/staff#equipment" },
+    { label:"Завантаженість", href:"/staff/dashboard" },
+    { label:"Знімки / PACS", href:"/staff/imaging" },
+    { label:"Обслуговування (ТО)", href:"/staff/system-map#mod-6" },
+    { label:"Простої / поломки", href:"/staff#equipment" },
+    { label:"Витратні матеріали", href:"/staff/system-map#mod-6" },
+  ]},
+  { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard", items:[
+    { label:"Пульт відділення", href:"/staff/dashboard" },
+    { label:"Налаштування", href:"/staff/settings" },
+    { label:"Ролі й права", href:"/staff#staff-admin" },
+    { label:"Календар", href:"/staff/settings" },
+    { label:"Резервне копіювання", href:"/staff/settings" },
+  ]},
 ];
 
 function formatDateTime(value:Date) {
@@ -54,6 +112,11 @@ export default function StaffWorkspaceShell({
   const [collapsed,setCollapsed] = useState(false);
   const [now,setNow] = useState<Date | null>(null);
   const [dark,setDark] = useState(false);
+  const [openModules,setOpenModules] = useState<Record<string,boolean>>({});
+
+  function toggleModule(n:string) {
+    setOpenModules((current)=>({ ...current, [n]:!current[n] }));
+  }
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
@@ -91,14 +154,38 @@ export default function StaffWorkspaceShell({
       </Link>
 
       <nav className="workspaceNavigation" aria-label="Модулі системи">
-        <p>Карта системи</p>
-        {systemModules.map((item)=><Link
-          href={item.href}
-          key={item.n}
-          className={`workspaceModuleLink${item.section && item.section === active ? " active":""}`}
-          aria-current={item.section && item.section === active ? "page":undefined}
-          title={collapsed ? item.label:undefined}
-        ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>)}
+        <p>Огляд</p>
+        <Link
+          href="/staff/system-map"
+          className={`workspaceModuleLink${active === "system-map" ? " active":""}`}
+          aria-current={active === "system-map" ? "page":undefined}
+          title={collapsed ? "Карта системи":undefined}
+        ><span aria-hidden="true">◑</span><b>Карта системи</b></Link>
+        <p>Модулі</p>
+        {systemModules.map((item)=>{
+          const isActive = !!item.section && item.section === active;
+          const isOpen = openModules[item.n] ?? isActive;
+          return <div className="workspaceModuleGroup" key={item.n}>
+            <div className="workspaceModuleRow">
+              <Link
+                href={item.href}
+                className={`workspaceModuleLink${isActive ? " active":""}`}
+                aria-current={isActive ? "page":undefined}
+                title={collapsed ? item.label:undefined}
+              ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>
+              <button
+                type="button"
+                className="workspaceSubToggle"
+                aria-label={isOpen ? "Згорнути підпункти":"Розгорнути підпункти"}
+                aria-expanded={isOpen}
+                onClick={()=>toggleModule(item.n)}
+              >▾</button>
+            </div>
+            {isOpen && <div className="workspaceSubList">
+              {item.items.map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
+            </div>}
+          </div>;
+        })}
       </nav>
 
       <div className="workspaceSidebarFoot">
