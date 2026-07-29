@@ -87,6 +87,29 @@ function todayInKyiv() {
   }).format(new Date());
 }
 
+const uaApptDay = new Intl.DateTimeFormat("uk-UA", { weekday:"long", day:"numeric", month:"long" });
+function formatApptDay(dateStr:string) {
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return dateStr || "Без дати";
+  const label = uaApptDay.format(date);
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+function pluralAppt(n:number) {
+  const m10 = n % 10, m100 = n % 100;
+  if (m10 === 1 && m100 !== 11) return "запис";
+  if (m10 >= 2 && m10 <= 4 && (m100 < 10 || m100 >= 20)) return "записи";
+  return "записів";
+}
+
+const STATUS_TABS: Array<{ v:string; l:string }> = [
+  { v:"all", l:"Усі" },
+  { v:"new", l:"Нові" },
+  { v:"confirmed", l:"Підтверджені" },
+  { v:"rescheduled", l:"Перенесені" },
+  { v:"completed", l:"Завершені" },
+  { v:"cancelled", l:"Скасовані" },
+];
+
 // Перенесення запису з реального розкладу: показує лише вільні слоти обраного
 // апарата на обрану дату (через /api/availability), як у формі для пацієнта.
 function RescheduleForm({ item, today, onSubmit }:{
@@ -317,13 +340,28 @@ export default function StaffPage() {
     await load();
   }
 
-  const visible = useMemo(() => items
-    .filter(item => filter === "all" || item.status === filter)
+  // Базові фільтри (апарат/дата/пошук) — від них рахуються лічильники на табах.
+  const baseFiltered = useMemo(() => items
     .filter(item => equipmentFilter === "all" || item.equipmentId === equipmentFilter)
     .filter(item => !dayFilter || item.desiredDate === dayFilter)
     .filter(item => !query.trim() || `${item.name} ${item.phone} ${item.code} ${item.service} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a,b)=>`${a.desiredDate} ${a.desiredTime}`.localeCompare(`${b.desiredDate} ${b.desiredTime}`)),
-  [items,filter,equipmentFilter,dayFilter,query]);
+  [items,equipmentFilter,dayFilter,query]);
+  const statusCounts = useMemo(() => {
+    const counts:Record<string,number> = { all:baseFiltered.length };
+    for (const item of baseFiltered) counts[item.status] = (counts[item.status] || 0) + 1;
+    return counts;
+  }, [baseFiltered]);
+  const visible = useMemo(() => baseFiltered.filter(item => filter === "all" || item.status === filter), [baseFiltered, filter]);
+  const groupedByDay = useMemo(() => {
+    const map = new Map<string, Booking[]>();
+    for (const item of visible) {
+      const key = item.desiredDate || "";
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(item);
+    }
+    return [...map.entries()];
+  }, [visible]);
   const today = todayInKyiv();
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
   const canProtocol = staff?.role === "admin" || staff?.role === "radiologist";
@@ -331,8 +369,8 @@ export default function StaffPage() {
 
   return <StaffWorkspaceShell
     active="overview"
-    title="Робочий кабінет"
-    description="Записи пацієнтів, виконання досліджень, протоколи та робота обладнання в одному просторі."
+    title="Записи"
+    description="Записи пацієнтів за статусами й днями. Керування кожним записом — протокол, оплата, виконання — у деталях запису."
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
@@ -356,14 +394,23 @@ export default function StaffPage() {
         <article><span>На сьогодні</span><b>{items.filter(i=>i.desiredDate===today).length}</b></article>
         <article><span>Підтверджені</span><b>{items.filter(i=>i.status==="confirmed").length}</b></article>
       </section>
-      <div className="staffTools" id="schedule">
-        <label>Статус <select value={filter} onChange={e=>setFilter(e.target.value)}><option value="all">Усі заявки</option>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select></label>
-        <label>Апарат <select value={equipmentFilter} onChange={e=>setEquipmentFilter(e.target.value)}><option value="all">Усе обладнання</option>{equipment.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-        <label>Дата <input type="date" value={dayFilter} onChange={e=>setDayFilter(e.target.value)}/></label>
-        <label>Пошук <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Код, ім’я, телефон"/></label>
-        <div className="toolButtons"><button onClick={()=>{setDayFilter(today);setFilter("all")}}>Сьогодні</button><button onClick={()=>window.print()}>Друк</button><button onClick={()=>void load()}>Оновити</button></div>
+      <div className="apptTabs" id="schedule" role="tablist" aria-label="Статус записів">
+        {STATUS_TABS.map(tab=><button
+          key={tab.v}
+          type="button"
+          role="tab"
+          aria-selected={filter===tab.v}
+          className={`apptTab${filter===tab.v?" active":""}`}
+          onClick={()=>setFilter(tab.v)}
+        >{tab.l}<span className="apptTabCount">{statusCounts[tab.v] || 0}</span></button>)}
       </div>
-      <p className="scheduleCaption">{dayFilter?`Розклад на ${dayFilter}`:"Усі дати"} · {visible.length} записів</p>
+      <div className="staffTools">
+        <label>Дата <input type="date" value={dayFilter} onChange={e=>setDayFilter(e.target.value)}/></label>
+        <label>Апарат <select value={equipmentFilter} onChange={e=>setEquipmentFilter(e.target.value)}><option value="all">Усе обладнання</option>{equipment.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
+        <label>Пошук <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Пацієнт, код, телефон…"/></label>
+        <div className="toolButtons"><button onClick={()=>{setDayFilter(today);setFilter("all")}}>Сьогодні</button><button onClick={()=>{setDayFilter("");setFilter("all");setEquipmentFilter("all");setQuery("");}}>Скинути</button><button onClick={()=>window.print()}>Друк</button><button onClick={()=>void load()}>Оновити</button></div>
+      </div>
+      <p className="scheduleCaption">{dayFilter?`Записи на ${dayFilter}`:"Усі дати"} · {visible.length} {pluralAppt(visible.length)}</p>
       {actionError&&<p className="staffError" role="alert">{actionError}</p>}
       {actionSuccess&&<p className="staffSuccess" role="status">{actionSuccess}</p>}
 
@@ -417,8 +464,10 @@ export default function StaffPage() {
       </section>}
 
       <section className="bookingList" id="bookings">
-        {visible.length === 0 && <p className="empty">Заявок у цій категорії немає.</p>}
-        {visible.map(item => <article className="bookingRow" key={item.id}>
+        {visible.length === 0 ? <div className="apptEmpty"><span className="apptEmptyIcon" aria-hidden="true">🗓</span><b>Записів немає</b><p>На обрані фільтри записів не знайдено. Змініть дату, статус або пошук.</p></div> :
+        groupedByDay.map(([groupDate, rows]) => <div className="apptDay" key={groupDate || "nodate"}>
+        <div className="apptDayHead"><b>{formatApptDay(groupDate)}</b><span>{rows.length} {pluralAppt(rows.length)}</span></div>
+        {rows.map(item => <article className="bookingRow appointmentRow" key={item.id}>
           <div className="bookingPrimary"><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span><b>{item.name}</b><small>{item.code} · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small></div>
           <div><small>Дослідження</small><b>{item.service}</b><span>Код {item.serviceCode} · {equipment.find(unit=>unit.id===item.equipmentId)?.name || item.equipmentId} · {item.durationMinutes} хв</span><span>{item.desiredDate} · {item.desiredTime}</span></div>
           <div><small>Контакт і маршрут</small><a href={`tel:${item.phone}`}>{item.phone}</a><a className="crmCardLink" href={`/staff/patients?phone=${encodeURIComponent(item.phone)}`}>Картка пацієнта →</a><span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
@@ -427,19 +476,15 @@ export default function StaffPage() {
             {canManage && (item.status==="new"||item.status==="rescheduled") && <button type="button" className="confirmBooking" onClick={()=>void confirmBooking(item.id)}>✓ Підтвердити й у розклад</button>}
             {(() => { const last = notifications.find(note=>note.bookingId===item.id); return last ? <span className={`reminderTag ${last.status}`}>Нагадування: {notificationStatusLabels[last.status]||last.status} · {notificationChannelLabels[last.channel]||last.channel}{last.status==="failed"&&last.error?` — ${last.error}`:""}</span> : null; })()}
           </div>
-          {canManage && <RescheduleForm item={item} today={today} onSubmit={(date,time)=>reschedule(item.id,date,time)}/>}
+          <details className="apptManage">
+            <summary>Керування записом · {item.performedAt ? "виконано" : "очікує виконання"} · протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus} · оплата: {paymentLabels[item.paymentStatus] || item.paymentStatus}</summary>
+          {canManage && <RescheduleForm item={item} today={today} onSubmit={(newDate,newTime)=>reschedule(item.id,newDate,newTime)}/>}
           {item.comment && <p className="bookingComment">{item.comment}</p>}
           <form className="staffNoteForm" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);void saveNote(item.id,String(data.get("note")));}}>
             <label><small>Внутрішня нотатка персоналу</small><textarea name="note" maxLength={1200} defaultValue={notes.find(note=>note.bookingId===item.id)?.note||""} placeholder="Підготовка, уточнення направлення, домовленості…"/></label>
             <button type="submit">Зберегти нотатку</button>
             {notes.find(note=>note.bookingId===item.id)&&<span>Оновлено: {new Date(notes.find(note=>note.bookingId===item.id)!.updatedAt).toLocaleString("uk-UA")}</span>}
           </form>
-          <details className="bookingOperations">
-            <summary>
-              {item.performedAt ? `Виконано: ${new Date(item.performedAt).toLocaleString("uk-UA")} · ` : "Очікує виконання · "}
-              Протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus} ·
-              Оплата: {paymentLabels[item.paymentStatus] || item.paymentStatus}
-            </summary>
             <div className="operationsGrid">
               <section>
                 <h3>Призначені виконавці</h3>
@@ -538,13 +583,14 @@ export default function StaffPage() {
               </section>
             </div>
             <p className="operationsNote">Це внутрішній облік. Фактичне списання коштів або перевірка в ЕСОЗ/НСЗУ відбуваються лише після підключення офіційного провайдера.</p>
-          </details>
           <details className="bookingHistory">
             <summary>Історія змін ({events.filter(event=>event.bookingId===item.id).length})</summary>
             {events.filter(event=>event.bookingId===item.id).length===0?<p>Змін ще не зафіксовано.</p>:
               <ol>{events.filter(event=>event.bookingId===item.id).map(event=><li key={event.id}><b>{eventLabels[event.action] || event.action}</b><span>{event.details}</span><small>{new Date(event.createdAt).toLocaleString("uk-UA")} · {event.actor==="patient"?"пацієнт":event.actor}</small></li>)}</ol>}
           </details>
+          </details>
         </article>)}
+        </div>)}
       </section>
     </>}
   </StaffWorkspaceShell>;
