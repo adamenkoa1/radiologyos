@@ -14,8 +14,10 @@ export async function GET(request: Request) {
   const blocks = await db.prepare(
     `SELECT id, equipment_id AS equipmentId, blocked_date AS blockedDate,
       start_time AS startTime, end_time AS endTime, reason
-     FROM equipment_blocks WHERE blocked_date >= date('now') ORDER BY blocked_date, start_time`
-  ).all();
+     FROM equipment_blocks
+     WHERE organization_id = ? AND blocked_date >= date('now')
+     ORDER BY blocked_date, start_time`
+  ).bind(member.organizationId).all();
   return Response.json({ equipment: Object.values(EQUIPMENT), blocks: blocks.results });
 }
 
@@ -31,8 +33,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Перевірте апарат, дату та час блокування" }, { status: 400 });
   }
   await db.prepare(
-    "INSERT INTO equipment_blocks (equipment_id, blocked_date, start_time, end_time, reason) VALUES (?, ?, ?, ?, ?)"
-  ).bind(body.equipmentId, body.blockedDate, body.startTime, body.endTime, (body.reason || "").trim().slice(0, 240)).run();
+    `INSERT INTO equipment_blocks
+      (organization_id, equipment_id, blocked_date, start_time, end_time, reason)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(
+    member.organizationId,
+    body.equipmentId,
+    body.blockedDate,
+    body.startTime,
+    body.endTime,
+    (body.reason || "").trim().slice(0, 240),
+  ).run();
   return Response.json({ ok: true }, { status: 201 });
 }
 
@@ -43,6 +54,8 @@ export async function DELETE(request: Request) {
   if (!member || member.role !== "admin") return Response.json({ error: "Доступ лише для адміністратора" }, { status: 403 });
   const id = Number(new URL(request.url).searchParams.get("id"));
   if (!Number.isInteger(id) || id < 1) return Response.json({ error: "Некоректний запис" }, { status: 400 });
-  await db.prepare("DELETE FROM equipment_blocks WHERE id = ?").bind(id).run();
+  await db.prepare(
+    "DELETE FROM equipment_blocks WHERE id = ? AND organization_id = ?"
+  ).bind(id, member.organizationId).run();
   return Response.json({ ok: true });
 }

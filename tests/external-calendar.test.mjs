@@ -22,7 +22,7 @@ test("ICS parser reads VEVENTs and formats Kyiv time", async () => {
 test("external-calendar endpoint fetches the configured feed for staff", async () => {
   const route = await read("app/api/staff/external-calendar/route.ts");
   assert.match(route, /requireStaff\(/);
-  assert.match(route, /getSetting\(db, "external_ics_url"\)/);
+  assert.match(route, /getSetting\(db, "external_ics_url", member\.organizationId\)/);
   assert.match(route, /parseIcs\(/);
   assert.match(route, /safeOutboundUrl\(url\)/);
   assert.match(route, /fetchLimited\(safeUrl/);

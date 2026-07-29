@@ -2,6 +2,7 @@
 // until an admin saves a bot token and chat id in /staff/settings.
 
 import { getSettings } from "./settings";
+import { DEFAULT_ORGANIZATION_ID } from "./tenant";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] as string));
@@ -28,9 +29,13 @@ export function bookingMessage(notice: BookingNotice): string {
 
 // Sends a message to the department chat and reports the outcome. Returns a
 // human-readable Ukrainian error on failure (used by the "send test" button).
-export async function sendTelegramResult(db: D1Database, text: string): Promise<{ ok: boolean; error?: string }> {
+export async function sendTelegramResult(
+  db: D1Database,
+  text: string,
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<{ ok: boolean; error?: string }> {
   const { telegram_bot_token: token, telegram_chat_id: chatId } =
-    await getSettings(db, ["telegram_bot_token", "telegram_chat_id"]);
+    await getSettings(db, ["telegram_bot_token", "telegram_chat_id"], organizationId);
   if (!token || !chatId) return { ok: false, error: "Спочатку збережіть токен бота та ID чату" };
   try {
     const controller = new AbortController();
@@ -51,6 +56,10 @@ export async function sendTelegramResult(db: D1Database, text: string): Promise<
 }
 
 // Best-effort variant for the booking path — never throws, ignores the reason.
-export async function sendTelegram(db: D1Database, text: string): Promise<boolean> {
-  return (await sendTelegramResult(db, text)).ok;
+export async function sendTelegram(
+  db: D1Database,
+  text: string,
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<boolean> {
+  return (await sendTelegramResult(db, text, organizationId)).ok;
 }

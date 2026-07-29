@@ -6,6 +6,7 @@ import {
 } from "../../../lib/patient-auth";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
+import { publicTenant } from "../../../lib/tenant";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -14,6 +15,7 @@ function dbBinding() {
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
+  const tenant = publicTenant();
   if (await isRateLimited(db, request, "booking-status", 8, 15)) {
     return Response.json({ error: "Забагато спроб. Повторіть перевірку пізніше." }, { status: 429 });
   }
@@ -26,11 +28,12 @@ export async function POST(request: Request) {
   const result = await db.prepare(
     `SELECT code, service, desired_date AS desiredDate, desired_time AS desiredTime,
       status, created_at AS createdAt
-     FROM bookings WHERE code = ? AND phone_normalized = ?
+     FROM bookings
+     WHERE organization_id = ? AND code = ? AND phone_normalized = ?
      LIMIT 1`
-  ).bind(code, phoneNormalized).first();
+  ).bind(tenant.organizationId, code, phoneNormalized).first();
   if (!result) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
-  const sessionToken = await createPatientSession(db, phoneNormalized);
+  const sessionToken = await createPatientSession(db, phoneNormalized, tenant.organizationId);
   return Response.json({ booking: result }, {
     headers: {
       "cache-control": "no-store",
@@ -55,17 +58,22 @@ export async function PATCH(request: Request) {
   }
   const booking = await db.prepare(
     `SELECT id, status FROM bookings
-     WHERE code = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(code, session.phoneNormalized).first<{ id: number; status: string }>();
+     WHERE organization_id = ? AND code = ? AND phone_normalized = ?
+     LIMIT 1`
+  ).bind(session.organizationId, code, session.phoneNormalized).first<{ id: number; status: string }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!["new", "confirmed", "rescheduled"].includes(booking.status)) {
     return Response.json({ error: "Цю заявку вже не можна скасувати онлайн" }, { status: 409 });
   }
   await db.batch([
-    db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").bind(booking.id),
     db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'cancelled', 'patient_self_service', 'patient')"
-    ).bind(booking.id),
+      "UPDATE bookings SET status = 'cancelled' WHERE id = ? AND organization_id = ?"
+    ).bind(booking.id, session.organizationId),
+    db.prepare(
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'cancelled', 'patient_self_service', 'patient')`
+    ).bind(booking.id, session.organizationId),
   ]);
   return Response.json({ ok: true, status: "cancelled" }, { headers: { "cache-control": "no-store" } });
 }

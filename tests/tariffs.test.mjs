@@ -18,17 +18,20 @@ test("tariffs API: all staff read, only admin writes", async () => {
   const route = await read("app/api/staff/tariffs/route.ts");
   assert.match(route, /tariffList\(/);
   assert.match(route, /member\.role !== "admin"/); // PUT is admin-only
-  assert.match(route, /INSERT INTO service_prices/);
-  assert.match(route, /DELETE FROM service_prices WHERE code = \?/); // reset to default
+  assert.match(route, /INSERT INTO organization_service_prices/);
+  assert.match(
+    route,
+    /DELETE FROM organization_service_prices WHERE organization_id = \? AND code = \?/,
+  ); // reset to default inside the current organization
 });
 
 test("bookings charge the effective (override-aware) price", async () => {
   const lib = await read("lib/tariffs.ts");
   assert.match(lib, /export async function effectivePrice/);
   const site = await read("app/api/site-booking/route.ts");
-  assert.match(site, /effectivePrice\(db, service!\.code\)/);
+  assert.match(site, /effectivePrice\(db, service!\.code, tenant\.organizationId\)/);
   const legacy = await read("app/api/bookings/route.ts");
-  assert.match(legacy, /effectivePrice\(db, service\.code\)/);
+  assert.match(legacy, /effectivePrice\(db, service\.code, tenant\.organizationId\)/);
 });
 
 test("home page shows tariffs (military free / civilian priced) with booking", async () => {

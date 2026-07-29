@@ -16,7 +16,10 @@ export async function GET(request: Request) {
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (member.role !== "admin") return Response.json({ error: "Налаштування PACS доступні лише адміністратору" }, { status: 403 });
 
-  const settings = await db.prepare(`SELECT ${SETTINGS_COLUMNS} FROM pacs_settings WHERE id = 1 LIMIT 1`).first();
+  const settings = await db.prepare(
+    `SELECT ${SETTINGS_COLUMNS} FROM organization_pacs_settings
+     WHERE organization_id = ? LIMIT 1`
+  ).bind(member.organizationId).first();
   return Response.json({ settings: settings || null, staff: member }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -35,9 +38,20 @@ export async function PUT(request: Request) {
   }
 
   await db.prepare(
-    `UPDATE pacs_settings SET dicomweb_base_url = ?, viewer_base_url = ?, ae_title = ?,
-       enabled = ?, notes = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
+    `INSERT INTO organization_pacs_settings
+      (organization_id, dicomweb_base_url, viewer_base_url, ae_title, enabled,
+       notes, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(organization_id) DO UPDATE SET
+       dicomweb_base_url=excluded.dicomweb_base_url,
+       viewer_base_url=excluded.viewer_base_url,
+       ae_title=excluded.ae_title,
+       enabled=excluded.enabled,
+       notes=excluded.notes,
+       updated_by=excluded.updated_by,
+       updated_at=CURRENT_TIMESTAMP`
   ).bind(
+    member.organizationId,
     settings.dicomwebBaseUrl, settings.viewerBaseUrl, settings.aeTitle,
     settings.enabled, settings.notes, member.email,
   ).run();

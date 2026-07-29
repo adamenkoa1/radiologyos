@@ -43,7 +43,7 @@ export async function GET(request: Request) {
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (member.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
 
-  const values = await getSettings(db, SETTING_KEYS);
+  const values = await getSettings(db, SETTING_KEYS, member.organizationId);
   return Response.json({
     settings: settingsView(values),
     staff: member,
@@ -100,20 +100,22 @@ export async function PUT(request: Request) {
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
-  if (token === "-") await setSetting(db, "telegram_bot_token", "");
-  else if (token) await setSetting(db, "telegram_bot_token", token);
-  await setSetting(db, "telegram_chat_id", chatId);
-  await setSetting(db, "pay_link", payLink);
-  await setSetting(db, "external_ics_url", externalIcsUrl);
-  await setSetting(db, "patient_reminders_enabled", body.remindersEnabled ? "1" : "");
-  await setSetting(db, "sms_gateway_url", smsGatewayUrl);
-  await setSetting(db, "email_gateway_url", emailGatewayUrl);
-  await setSetting(db, "email_gateway_from", emailGatewayFrom);
-  if (smsAuth === "-") await setSetting(db, "sms_gateway_auth", "");
-  else if (smsAuth) await setSetting(db, "sms_gateway_auth", smsAuth);
-  if (emailAuth === "-") await setSetting(db, "email_gateway_auth", "");
-  else if (emailAuth) await setSetting(db, "email_gateway_auth", emailAuth);
+  const save = (key: string, value: string) =>
+    setSetting(db, key, value, member.organizationId);
+  if (token === "-") await save("telegram_bot_token", "");
+  else if (token) await save("telegram_bot_token", token);
+  await save("telegram_chat_id", chatId);
+  await save("pay_link", payLink);
+  await save("external_ics_url", externalIcsUrl);
+  await save("patient_reminders_enabled", body.remindersEnabled ? "1" : "");
+  await save("sms_gateway_url", smsGatewayUrl);
+  await save("email_gateway_url", emailGatewayUrl);
+  await save("email_gateway_from", emailGatewayFrom);
+  if (smsAuth === "-") await save("sms_gateway_auth", "");
+  else if (smsAuth) await save("sms_gateway_auth", smsAuth);
+  if (emailAuth === "-") await save("email_gateway_auth", "");
+  else if (emailAuth) await save("email_gateway_auth", emailAuth);
 
-  const values = await getSettings(db, SETTING_KEYS);
+  const values = await getSettings(db, SETTING_KEYS, member.organizationId);
   return Response.json({ ok: true, settings: settingsView(values) });
 }

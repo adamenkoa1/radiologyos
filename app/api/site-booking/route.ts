@@ -4,6 +4,7 @@ import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
+import { publicTenant } from "../../../lib/tenant";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
@@ -26,14 +27,16 @@ const REFERRAL_TYPES = ["military_referral", "eh_referral", "paper_referral", "n
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс запису тимчасово недоступний" }, { status: 503 });
+  const tenant = publicTenant();
 
   const requestKey = idempotencyKey(request);
   if (!requestKey) {
     return Response.json({ error: "Оновіть сторінку та повторіть надсилання заявки" }, { status: 400 });
   }
   const previous = await db.prepare(
-    "SELECT response_json AS responseJson FROM booking_requests WHERE idempotency_key = ? LIMIT 1"
-  ).bind(requestKey).first<{ responseJson: string }>();
+    `SELECT response_json AS responseJson FROM booking_requests
+     WHERE organization_id = ? AND idempotency_key = ? LIMIT 1`
+  ).bind(tenant.organizationId, requestKey).first<{ responseJson: string }>();
   if (previous) {
     return Response.json(JSON.parse(previous.responseJson), { headers: { "cache-control": "no-store" } });
   }
@@ -84,7 +87,9 @@ export async function POST(request: Request) {
     }
 
     const codes = services.map(() => `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`);
-    const prices = await Promise.all(services.map((service) => effectivePrice(db, service!.code)));
+    const prices = await Promise.all(
+      services.map((service) => effectivePrice(db, service!.code, tenant.organizationId))
+    );
     const responseBody = { codes, code: codes[0] };
     const statements: D1PreparedStatement[] = [];
 
@@ -96,35 +101,45 @@ export async function POST(request: Request) {
       statements.push(
         db.prepare(
           `INSERT INTO bookings (
-            code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
+            organization_id, code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
             duration_minutes, desired_date, desired_time, referral, patient_category,
             referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment,
             consent_at, consent_version, consent_source
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
         ).bind(
+          tenant.organizationId,
           codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
           desiredDate, desiredTime, referral, category, referralType, marketingSource,
           paymentStatus, prices[index], nszuStatus, comment, consentVersion, "public_site",
         ),
         db.prepare(
-          `INSERT INTO booking_events (booking_id, action, details, actor)
-           SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
-        ).bind(`${verifiedService.code} ${desiredDate} ${desiredTime || "час не обрано"}`, codes[index]),
+          `INSERT INTO booking_events
+            (booking_id, organization_id, action, details, actor)
+           SELECT id, organization_id, 'created', ?, 'patient'
+           FROM bookings WHERE organization_id = ? AND code = ?`
+        ).bind(
+          `${verifiedService.code} ${desiredDate} ${desiredTime || "час не обрано"}`,
+          tenant.organizationId,
+          codes[index],
+        ),
       );
     });
     statements.push(
       db.prepare(
-        "INSERT INTO booking_requests (idempotency_key, response_json) VALUES (?, ?)"
-      ).bind(requestKey, JSON.stringify(responseBody)),
+        `INSERT INTO booking_requests
+          (organization_id, idempotency_key, response_json)
+         VALUES (?, ?, ?)`
+      ).bind(tenant.organizationId, requestKey, JSON.stringify(responseBody)),
     );
 
     try {
       await db.batch(statements);
     } catch (error) {
       const raced = await db.prepare(
-        "SELECT response_json AS responseJson FROM booking_requests WHERE idempotency_key = ? LIMIT 1"
-      ).bind(requestKey).first<{ responseJson: string }>();
+        `SELECT response_json AS responseJson FROM booking_requests
+         WHERE organization_id = ? AND idempotency_key = ? LIMIT 1`
+      ).bind(tenant.organizationId, requestKey).first<{ responseJson: string }>();
       if (raced) {
         return Response.json(JSON.parse(raced.responseJson), { headers: { "cache-control": "no-store" } });
       }
@@ -135,7 +150,7 @@ export async function POST(request: Request) {
       codes,
       desiredDate,
       desiredTime,
-    })).catch(() => false);
+    }), tenant.organizationId).catch(() => false);
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {

@@ -19,7 +19,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Календар доступний лише реєстратору або адміністратору" }, { status: 403 });
   }
 
-  const url = await getSetting(db, "external_ics_url");
+  const url = await getSetting(db, "external_ics_url", member.organizationId);
   if (!url) return Response.json({ configured: false, events: [] }, { headers: { "cache-control": "no-store" } });
   const safeUrl = safeOutboundUrl(url);
   if (!safeUrl) {

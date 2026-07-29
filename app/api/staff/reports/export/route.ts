@@ -23,17 +23,18 @@ export async function GET(request:Request) {
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректні параметри звіту" },{ status:400 });
-  const source = await fetchReportSource(db,filters);
+  const source = await fetchReportSource(db,filters,member.organizationId);
   const { template,columns,rows } = reportPayload(filters,source);
   const workbook = createXlsx(template.label,columns,rows);
   const containsPersonalData = ["studies","protocols","finance"].includes(filters.template) ? 1 : 0;
 
   await db.prepare(
     `INSERT INTO report_exports (
-      requested_by, report_type, filters_json, columns_json, format,
+      organization_id, requested_by, report_type, filters_json, columns_json, format,
       row_count, contains_personal_data
-    ) VALUES (?, ?, ?, ?, 'xlsx', ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, 'xlsx', ?, ?)`
   ).bind(
+    member.organizationId,
     member.email,
     filters.template,
     JSON.stringify(publicFilters(filters)),
@@ -43,6 +44,7 @@ export async function GET(request:Request) {
   ).run();
   await logSecurityEvent(db, {
     actorEmail: member.email,
+    organizationId: member.organizationId,
     action: "report_exported",
     resource: "report",
     targetId: filters.template,

@@ -18,6 +18,6 @@ export async function POST(request: Request) {
 
   const bytes = crypto.getRandomValues(new Uint8Array(24));
   const token = Array.from(bytes).map((b) => b.toString(16).padStart(2, "0")).join("");
-  await setSetting(db, "calendar_token_hash", await hashToken(token));
+  await setSetting(db, "calendar_token_hash", await hashToken(token), member.organizationId);
   return Response.json({ ok: true, calendarToken: token });
 }

@@ -20,8 +20,10 @@ export async function POST(request: Request) {
 
   const booking = await db.prepare(
     `SELECT id, name, service, protocol_status AS protocolStatus, protocol_issued_at AS issuedAt
-     FROM bookings WHERE code = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(code, session.phoneNormalized).first<{
+     FROM bookings
+     WHERE organization_id = ? AND code = ? AND phone_normalized = ?
+     LIMIT 1`
+  ).bind(session.organizationId, code, session.phoneNormalized).first<{
     id: number; name: string; service: string; protocolStatus: string; issuedAt: string;
   }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
@@ -31,8 +33,10 @@ export async function POST(request: Request) {
 
   const proto = await db.prepare(
     `SELECT number, method, findings, conclusion, recommendations
-     FROM protocols WHERE booking_id = ? AND status = 'issued' LIMIT 1`
-  ).bind(booking.id).first<{
+     FROM protocols
+     WHERE organization_id = ? AND booking_id = ? AND status = 'issued'
+     LIMIT 1`
+  ).bind(session.organizationId, booking.id).first<{
     number: string; method: string; findings: string; conclusion: string; recommendations: string;
   }>();
   if (!proto) return Response.json({ error: "Протокол ще не готовий" }, { status: 409 });

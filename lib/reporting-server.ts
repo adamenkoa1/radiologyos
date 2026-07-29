@@ -117,10 +117,14 @@ export function readReportFilters(url:URL):ReportFilters | null {
   };
 }
 
-export async function fetchReportSource(db:D1Database,filters:ReportFilters) {
+export async function fetchReportSource(
+  db:D1Database,
+  filters:ReportFilters,
+  organizationId:string,
+) {
   const reportDate = "COALESCE(NULLIF(substr(b.performed_at, 1, 10), ''), b.desired_date)";
-  const where = [`${reportDate} BETWEEN ? AND ?`];
-  const values:Array<string> = [filters.from,filters.to];
+  const where = ["b.organization_id = ?", `${reportDate} BETWEEN ? AND ?`];
+  const values:Array<string> = [organizationId,filters.from,filters.to];
   const add = (column:string,value:string) => {
     if (!value) return;
     where.push(`${column} = ?`);

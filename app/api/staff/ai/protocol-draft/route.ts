@@ -30,20 +30,30 @@ export async function POST(request: Request) {
 
   let priorStudies = 0;
   const booking = await db.prepare(
-    "SELECT phone_normalized AS phone FROM bookings WHERE id = ? LIMIT 1"
-  ).bind(bookingId).first<{ phone: string }>();
+    `SELECT phone_normalized AS phone FROM bookings
+     WHERE id = ? AND organization_id = ? LIMIT 1`
+  ).bind(bookingId, member.organizationId).first<{ phone: string }>();
   if (booking?.phone) {
     const prior = await db.prepare(
-      "SELECT COUNT(*) AS count FROM bookings WHERE phone_normalized = ? AND performed_at != '' AND id != ?"
-    ).bind(booking.phone, bookingId).first<{ count: number }>();
+      `SELECT COUNT(*) AS count FROM bookings
+       WHERE organization_id = ? AND phone_normalized = ?
+         AND performed_at != '' AND id != ?`
+    ).bind(member.organizationId, booking.phone, bookingId).first<{ count: number }>();
     priorStudies = Number(prior?.count || 0);
   }
 
   const draft = generateProtocolDraft(parsed.document, { priorStudies });
 
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'ai_draft_generated', ?, ?)"
-  ).bind(bookingId, `${draft.engine} · відхилень: ${draft.deviations.length}`, member.email).run();
+    `INSERT INTO booking_events
+      (booking_id, organization_id, action, details, actor)
+     VALUES (?, ?, 'ai_draft_generated', ?, ?)`
+  ).bind(
+    bookingId,
+    member.organizationId,
+    `${draft.engine} · відхилень: ${draft.deviations.length}`,
+    member.email,
+  ).run();
 
   return Response.json({ ok: true, draft }, { headers: { "cache-control": "no-store" } });
 }

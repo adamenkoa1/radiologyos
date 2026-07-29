@@ -1,21 +1,36 @@
-// Shared key/value access for the `app_settings` table — department-configurable
-// values such as the Telegram bot credentials and the payment link.
+// Organization-scoped values such as Telegram credentials and payment links.
 
-export async function getSetting(db: D1Database, key: string): Promise<string> {
-  const row = await db.prepare("SELECT value FROM app_settings WHERE key = ? LIMIT 1")
-    .bind(key).first<{ value: string }>();
+import { DEFAULT_ORGANIZATION_ID } from "./tenant";
+
+export async function getSetting(
+  db: D1Database,
+  key: string,
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<string> {
+  const row = await db.prepare(
+    "SELECT value FROM organization_settings WHERE organization_id = ? AND key = ? LIMIT 1"
+  ).bind(organizationId, key).first<{ value: string }>();
   return row?.value || "";
 }
 
-export async function getSettings(db: D1Database, keys: string[]): Promise<Record<string, string>> {
+export async function getSettings(
+  db: D1Database,
+  keys: string[],
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<Record<string, string>> {
   const out: Record<string, string> = {};
-  for (const key of keys) out[key] = await getSetting(db, key);
+  for (const key of keys) out[key] = await getSetting(db, key, organizationId);
   return out;
 }
 
-export async function setSetting(db: D1Database, key: string, value: string): Promise<void> {
+export async function setSetting(
+  db: D1Database,
+  key: string,
+  value: string,
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<void> {
   await db.prepare(
-    `INSERT INTO app_settings (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-  ).bind(key, value).run();
+    `INSERT INTO organization_settings (organization_id, key, value) VALUES (?, ?, ?)
+     ON CONFLICT(organization_id, key) DO UPDATE SET value = excluded.value`
+  ).bind(organizationId, key, value).run();
 }

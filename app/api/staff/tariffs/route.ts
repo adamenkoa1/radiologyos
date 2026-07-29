@@ -15,7 +15,10 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const member = await requireStaff(request, db);
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  return Response.json({ tariffs: await tariffList(db), staff: member }, { headers: { "cache-control": "no-store" } });
+  return Response.json(
+    { tariffs: await tariffList(db, member.organizationId), staff: member },
+    { headers: { "cache-control": "no-store" } },
+  );
 }
 
 export async function PUT(request: Request) {
@@ -36,14 +39,17 @@ export async function PUT(request: Request) {
       return Response.json({ error: `Некоректна ціна для послуги ${code}` }, { status: 400 });
     }
     if (value === service.price) {
-      await db.prepare("DELETE FROM service_prices WHERE code = ?").bind(code).run();
+      await db.prepare(
+        "DELETE FROM organization_service_prices WHERE organization_id = ? AND code = ?"
+      ).bind(member.organizationId, code).run();
     } else {
       await db.prepare(
-        `INSERT INTO service_prices (code, price) VALUES (?, ?)
-         ON CONFLICT(code) DO UPDATE SET price = excluded.price`
-      ).bind(code, value).run();
+        `INSERT INTO organization_service_prices (organization_id, code, price)
+         VALUES (?, ?, ?)
+         ON CONFLICT(organization_id, code) DO UPDATE SET price = excluded.price`
+      ).bind(member.organizationId, code, value).run();
     }
   }
 
-  return Response.json({ ok: true, tariffs: await tariffList(db) });
+  return Response.json({ ok: true, tariffs: await tariffList(db, member.organizationId) });
 }

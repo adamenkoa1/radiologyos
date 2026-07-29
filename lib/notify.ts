@@ -8,6 +8,7 @@
 
 import { getSettings } from "./settings";
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "./outbound";
+import { DEFAULT_ORGANIZATION_ID } from "./tenant";
 
 export type ReminderKind = "confirmed" | "rescheduled";
 
@@ -51,16 +52,34 @@ async function record(
   body: string,
   status: "sent" | "skipped" | "failed",
   error: string,
+  organizationId: string,
 ): Promise<void> {
   await db.prepare(
-    `INSERT INTO patient_notifications (booking_id, kind, channel, recipient, body, status, error, sent_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'sent' THEN CURRENT_TIMESTAMP ELSE '' END)`
-  ).bind(booking.id, kind, channel, recipient, body, status, error.slice(0, 240), status).run();
+    `INSERT INTO patient_notifications
+      (booking_id, organization_id, kind, channel, recipient, body, status, error, sent_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, CASE WHEN ? = 'sent' THEN CURRENT_TIMESTAMP ELSE '' END)`
+  ).bind(
+    booking.id,
+    organizationId,
+    kind,
+    channel,
+    recipient,
+    body,
+    status,
+    error.slice(0, 240),
+    status,
+  ).run();
   if (status === "sent" && booking.phoneNormalized) {
     await db.prepare(
-      `INSERT INTO patient_communications (phone_normalized, channel, direction, summary, actor)
-       VALUES (?, ?, 'outbound', ?, 'system')`
-    ).bind(booking.phoneNormalized, channel, `Автонагадування (${kind === "confirmed" ? "підтвердження" : "перенесення"}): ${body}`.slice(0, 500)).run();
+      `INSERT INTO patient_communications
+        (organization_id, phone_normalized, channel, direction, summary, actor)
+       VALUES (?, ?, ?, 'outbound', ?, 'system')`
+    ).bind(
+      organizationId,
+      booking.phoneNormalized,
+      channel,
+      `Автонагадування (${kind === "confirmed" ? "підтвердження" : "перенесення"}): ${body}`.slice(0, 500),
+    ).run();
   }
 }
 
@@ -86,6 +105,7 @@ export async function sendPatientReminder(
   db: D1Database,
   kind: ReminderKind,
   booking: ReminderBooking,
+  organizationId = DEFAULT_ORGANIZATION_ID,
 ): Promise<ReminderSummary> {
   const summary: ReminderSummary = { sent: 0, skipped: 0, failed: 0 };
   const body = reminderText(kind, booking);
@@ -94,16 +114,20 @@ export async function sendPatientReminder(
     "patient_reminders_enabled",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
-  ]);
+  ], organizationId);
   const enabled = truthy(cfg.patient_reminders_enabled || "");
 
   // Повага до позначки «не турбувати» у картці пацієнта.
   if (booking.phoneNormalized) {
     const profile = await db.prepare(
-      "SELECT do_not_contact AS dnc FROM patient_profiles WHERE phone_normalized = ?"
-    ).bind(booking.phoneNormalized).first<{ dnc: number }>().catch(() => null);
+      `SELECT do_not_contact AS dnc FROM organization_patient_profiles
+       WHERE organization_id = ? AND phone_normalized = ?`
+    ).bind(organizationId, booking.phoneNormalized).first<{ dnc: number }>().catch(() => null);
     if (profile?.dnc) {
-      await record(db, booking, kind, "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
+      await record(
+        db, booking, kind, "sms", booking.phone, body, "skipped",
+        "Пацієнт у списку «не турбувати»", organizationId,
+      );
       summary.skipped += 1;
       return summary;
     }
@@ -130,21 +154,30 @@ export async function sendPatientReminder(
 
   for (const ch of channels) {
     if (!enabled) {
-      await record(db, booking, kind, ch.channel, ch.recipient, body, "skipped", "Нагадування вимкнено в налаштуваннях");
+      await record(
+        db, booking, kind, ch.channel, ch.recipient, body, "skipped",
+        "Нагадування вимкнено в налаштуваннях", organizationId,
+      );
       summary.skipped += 1;
       continue;
     }
     if (!ch.url) {
-      await record(db, booking, kind, ch.channel, ch.recipient, body, "skipped", `Шлюз ${ch.channel.toUpperCase()} не налаштовано`);
+      await record(
+        db, booking, kind, ch.channel, ch.recipient, body, "skipped",
+        `Шлюз ${ch.channel.toUpperCase()} не налаштовано`, organizationId,
+      );
       summary.skipped += 1;
       continue;
     }
     try {
       await ch.send();
-      await record(db, booking, kind, ch.channel, ch.recipient, body, "sent", "");
+      await record(db, booking, kind, ch.channel, ch.recipient, body, "sent", "", organizationId);
       summary.sent += 1;
     } catch (error) {
-      await record(db, booking, kind, ch.channel, ch.recipient, body, "failed", error instanceof Error ? error.message : "Помилка відправлення");
+      await record(
+        db, booking, kind, ch.channel, ch.recipient, body, "failed",
+        error instanceof Error ? error.message : "Помилка відправлення", organizationId,
+      );
       summary.failed += 1;
     }
   }

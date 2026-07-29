@@ -45,7 +45,7 @@ test("patient cabinet lists bookings by phone and reads protocols from D1", asyn
 test("my-bookings lists every booking for a full phone number", async () => {
   const route = await read("app/api/my-bookings/route.ts");
   assert.match(route, /normalizeUkrainianPhone\(/);
-  assert.match(route, /WHERE phone_normalized = \?/);
+  assert.match(route, /WHERE organization_id = \? AND phone_normalized = \?/);
   assert.match(route, /protocol_status = 'issued'/); // exposes hasProtocol flag
   assert.match(route, /isRateLimited\(/);
 });
@@ -54,9 +54,9 @@ test("my-protocol only returns an issued protocol behind a verified patient sess
   const route = await read("app/api/my-protocol/route.ts");
   assert.match(route, /normalizeBookingCode\(/);
   assert.match(route, /requirePatientSession\(/);
-  assert.match(route, /phone_normalized = \?/);
+  assert.match(route, /organization_id = \? AND code = \? AND phone_normalized = \?/);
   assert.match(route, /protocolStatus !== "issued"/); // gated until issued
-  assert.match(route, /FROM protocols WHERE booking_id = \?/);
+  assert.match(route, /FROM protocols[\s\S]*WHERE organization_id = \? AND booking_id = \?/);
 });
 
 test("new bookings notify the registrar via Telegram (best-effort)", async () => {

@@ -31,7 +31,10 @@ test("calendar feed is gated by a hashed secret token and omits direct identifie
 test("admin can generate the calendar link from settings", async () => {
   const route = await read("app/api/staff/settings/calendar/route.ts");
   assert.match(route, /member\.role !== "admin"/);
-  assert.match(route, /setSetting\(db, "calendar_token_hash", await hashToken\(token\)\)/);
+  assert.match(
+    route,
+    /setSetting\(db, "calendar_token_hash", await hashToken\(token\), member\.organizationId\)/,
+  );
   const page = await read("app/staff/settings/page.tsx");
   assert.match(page, /\/api\/staff\/settings\/calendar/);
   assert.match(page, /\/api\/calendar\?token=/);

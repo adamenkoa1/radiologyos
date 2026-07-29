@@ -43,8 +43,9 @@ test("CRM API guards profile writes and validates before persisting", async () =
   assert.match(route, /logSecurityEvent\(/);
   assert.match(route, /sanitizeProfile\(/);
   assert.match(route, /sanitizeCommunication\(/);
-  assert.match(route, /INSERT INTO patient_profiles/);
+  assert.match(route, /INSERT INTO organization_patient_profiles/);
   assert.match(route, /INSERT INTO patient_communications/);
+  assert.match(route, /member\.organizationId/);
   assert.doesNotMatch(route, /CREATE\s+TABLE/i);
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
 });

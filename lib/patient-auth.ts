@@ -1,4 +1,5 @@
 import { hashToken, newSessionToken, readCookie } from "./auth";
+import { DEFAULT_ORGANIZATION_ID } from "./tenant";
 
 export const PATIENT_SESSION_COOKIE = "rid_patient";
 export const PATIENT_SESSION_TTL_SECONDS = 30 * 60;
@@ -8,13 +9,23 @@ export function normalizeBookingCode(value: unknown): string {
   return /^RD-[A-Z0-9]{8,16}$/.test(code) ? code : "";
 }
 
-export async function createPatientSession(db: D1Database, phoneNormalized: string): Promise<string> {
+export async function createPatientSession(
+  db: D1Database,
+  phoneNormalized: string,
+  organizationId = DEFAULT_ORGANIZATION_ID,
+): Promise<string> {
   const rawToken = newSessionToken();
   const tokenHash = await hashToken(rawToken);
   await db.prepare(
-    `INSERT INTO patient_sessions (token_hash, phone_normalized, expires_at)
-     VALUES (?, ?, datetime('now', ?))`
-  ).bind(tokenHash, phoneNormalized, `+${PATIENT_SESSION_TTL_SECONDS} seconds`).run();
+    `INSERT INTO patient_sessions
+      (token_hash, organization_id, phone_normalized, expires_at)
+     VALUES (?, ?, ?, datetime('now', ?))`
+  ).bind(
+    tokenHash,
+    organizationId,
+    phoneNormalized,
+    `+${PATIENT_SESSION_TTL_SECONDS} seconds`,
+  ).run();
   await db.prepare("DELETE FROM patient_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
   return rawToken;
 }
@@ -24,11 +35,11 @@ export async function requirePatientSession(request: Request, db: D1Database) {
   if (!rawToken) return null;
   const tokenHash = await hashToken(rawToken);
   return db.prepare(
-    `SELECT phone_normalized AS phoneNormalized
+    `SELECT organization_id AS organizationId, phone_normalized AS phoneNormalized
      FROM patient_sessions
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
      LIMIT 1`
-  ).bind(tokenHash).first<{ phoneNormalized: string }>();
+  ).bind(tokenHash).first<{ organizationId: string; phoneNormalized: string }>();
 }
 
 export async function destroyPatientSession(request: Request, db: D1Database): Promise<void> {

@@ -8,19 +8,27 @@ import {
   canAccessBooking,
   canWriteNotes,
   requireStaff,
-  type StaffRole,
+  type StaffIdentity,
 } from "../../../../lib/staff-auth";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
 }
 
-function bookingScope(member: { email: string; role: StaffRole }) {
-  if (member.role === "admin" || member.role === "registrar") return { sql: "1 = 1", values: [] as string[] };
-  if (member.role === "radiologist") {
-    return { sql: "assigned_radiologist_email = ?", values: [member.email] };
+function bookingScope(member: Pick<StaffIdentity, "email" | "role" | "organizationId">) {
+  if (member.role === "admin" || member.role === "registrar") {
+    return { sql: "organization_id = ?", values: [member.organizationId] };
   }
-  return { sql: "assigned_radiographer_email = ?", values: [member.email] };
+  if (member.role === "radiologist") {
+    return {
+      sql: "organization_id = ? AND assigned_radiologist_email = ?",
+      values: [member.organizationId, member.email],
+    };
+  }
+  return {
+    sql: "organization_id = ? AND assigned_radiographer_email = ?",
+    values: [member.organizationId, member.email],
+  };
 }
 
 function allowedStatusTransition(from: string, to: string) {
@@ -73,8 +81,14 @@ export async function GET(request: Request) {
     ).bind(...scope.values).all(),
     db.prepare(
       `SELECT email, display_name AS displayName, role
-       FROM staff_members WHERE active = 1 ORDER BY role, display_name, email`
-    ).all(),
+       FROM staff_members m
+       JOIN organization_memberships om
+         ON om.staff_email = m.email
+        AND om.organization_id = ?
+        AND om.active = 1
+       WHERE m.active = 1
+       ORDER BY om.role, m.display_name, m.email`
+    ).bind(member.organizationId).all(),
     db.prepare(
       `SELECT id, booking_id AS bookingId, kind, channel, recipient, status, error,
         created_at AS createdAt, sent_at AS sentAt
@@ -132,13 +146,16 @@ export async function PATCH(request: Request) {
     if (!canWriteNotes(member.role)) return Response.json({ error: "Недостатньо прав" }, { status: 403 });
     const note = body.note.trim().slice(0, 1200);
     await db.prepare(
-      `INSERT INTO booking_staff_notes (booking_id, note, updated_by, updated_at)
-       VALUES (?, ?, ?, CURRENT_TIMESTAMP)
+      `INSERT INTO booking_staff_notes
+        (booking_id, organization_id, note, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(booking_id) DO UPDATE SET note=excluded.note, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP`
-    ).bind(body.id, note, member.email).run();
+    ).bind(body.id, member.organizationId, note, member.email).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_note', 'updated', ?)"
-    ).bind(body.id, member.email).run();
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'staff_note', 'updated', ?)`
+    ).bind(body.id, member.organizationId, member.email).run();
     return Response.json({ ok: true });
   }
 
@@ -153,25 +170,40 @@ export async function PATCH(request: Request) {
     const radiographerEmail = String(body.assignedRadiographerEmail || "").trim().toLowerCase().slice(0, 254);
     if (radiologistEmail) {
       const radiologist = await db.prepare(
-        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiologist' AND active = 1"
-      ).bind(radiologistEmail).first();
+        `SELECT m.email FROM staff_members m
+         JOIN organization_memberships om
+           ON om.staff_email = m.email
+          AND om.organization_id = ?
+          AND om.role = 'radiologist'
+          AND om.active = 1
+         WHERE m.email = ? AND m.active = 1`
+      ).bind(member.organizationId, radiologistEmail).first();
       if (!radiologist) return Response.json({ error: "Оберіть активного лікаря-рентгенолога" }, { status: 400 });
     }
     if (radiographerEmail) {
       const radiographer = await db.prepare(
-        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiographer' AND active = 1"
-      ).bind(radiographerEmail).first();
+        `SELECT m.email FROM staff_members m
+         JOIN organization_memberships om
+           ON om.staff_email = m.email
+          AND om.organization_id = ?
+          AND om.role = 'radiographer'
+          AND om.active = 1
+         WHERE m.email = ? AND m.active = 1`
+      ).bind(member.organizationId, radiographerEmail).first();
       if (!radiographer) return Response.json({ error: "Оберіть активного рентгенолаборанта" }, { status: 400 });
     }
     const updated = await db.prepare(
       `UPDATE bookings SET assigned_radiologist_email = ?,
-       assigned_radiographer_email = ? WHERE id = ?`
-    ).bind(radiologistEmail, radiographerEmail, body.id).run();
+       assigned_radiographer_email = ? WHERE id = ? AND organization_id = ?`
+    ).bind(radiologistEmail, radiographerEmail, body.id, member.organizationId).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_assigned', ?, ?)"
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'staff_assigned', ?, ?)`
     ).bind(
       body.id,
+      member.organizationId,
       `radiologist=${radiologistEmail || "none"}; radiographer=${radiographerEmail || "none"}`,
       member.email
     ).run();
@@ -196,13 +228,23 @@ export async function PATCH(request: Request) {
     const updated = await db.prepare(
       `UPDATE bookings SET performed_at = ?, anatomical_regions_count = ?,
        external_reference = ?, status = CASE WHEN ? != '' THEN 'completed' ELSE status END
-       WHERE id = ?`
-    ).bind(performedAt, anatomicalRegionsCount, externalReference, performedAt, body.id).run();
+       WHERE id = ? AND organization_id = ?`
+    ).bind(
+      performedAt,
+      anatomicalRegionsCount,
+      externalReference,
+      performedAt,
+      body.id,
+      member.organizationId,
+    ).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'execution_recorded', ?, ?)"
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'execution_recorded', ?, ?)`
     ).bind(
       body.id,
+      member.organizationId,
       `${performedAt || "not performed"} · regions=${anatomicalRegionsCount}${externalReference ? ` · document=${externalReference}` : ""}`,
       member.email
     ).run();
@@ -229,8 +271,9 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Для готового або виданого протоколу вкажіть його номер" }, { status: 400 });
     }
     const current = await db.prepare(
-      "SELECT protocol_status AS protocolStatus FROM bookings WHERE id = ? LIMIT 1"
-    ).bind(body.id).first<{ protocolStatus: string }>();
+      `SELECT protocol_status AS protocolStatus FROM bookings
+       WHERE id = ? AND organization_id = ? LIMIT 1`
+    ).bind(body.id, member.organizationId).first<{ protocolStatus: string }>();
     const protocolTransitions: Record<string, string[]> = {
       not_started: ["in_progress"],
       in_progress: ["ready"],
@@ -253,15 +296,30 @@ export async function PATCH(request: Request) {
        protocol_issued_at = CASE
          WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
          ELSE protocol_issued_at END
-       WHERE id = ?`
-    ).bind(protocolNumber, protocolStatus, protocolStatus, protocolStatus, body.id).run();
+       WHERE id = ? AND organization_id = ?`
+    ).bind(
+      protocolNumber,
+      protocolStatus,
+      protocolStatus,
+      protocolStatus,
+      body.id,
+      member.organizationId,
+    ).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'protocol_updated', ?, ?)"
-    ).bind(body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'protocol_updated', ?, ?)`
+    ).bind(
+      body.id,
+      member.organizationId,
+      `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`,
+      member.email,
+    ).run();
     const protocolDates = await db.prepare(
-      "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ?"
-    ).bind(body.id).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
+      `SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt
+       FROM bookings WHERE id = ? AND organization_id = ?`
+    ).bind(body.id, member.organizationId).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
     return Response.json({ ok: true, protocolNumber, protocolStatus, ...protocolDates });
   }
 
@@ -310,15 +368,22 @@ export async function PATCH(request: Request) {
        military_verified_by = CASE
          WHEN patient_category = 'military' AND ? = 'not_required' THEN ?
          ELSE military_verified_by END
-       WHERE id = ?`
+       WHERE id = ? AND organization_id = ?`
     ).bind(
       paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference,
-      paymentStatus, paymentStatus, member.email, body.id,
+      paymentStatus, paymentStatus, member.email, body.id, member.organizationId,
     ).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'finance_updated', ?, ?)"
-    ).bind(body.id, `${paymentStatus} · paid=${paidAmount} грн · ${nszuStatus}`, member.email).run();
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'finance_updated', ?, ?)`
+    ).bind(
+      body.id,
+      member.organizationId,
+      `${paymentStatus} · paid=${paidAmount} грн · ${nszuStatus}`,
+      member.email,
+    ).run();
     return Response.json({ ok: true, paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference });
   }
 
@@ -328,36 +393,65 @@ export async function PATCH(request: Request) {
     const booking = await db.prepare(
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
         name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
-       FROM bookings WHERE id = ?`
-    ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
+       FROM bookings WHERE id = ? AND organization_id = ?`
+    ).bind(body.id, member.organizationId).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     const service = booking && serviceByCode(booking.serviceCode);
     if (!booking || !service || !isBookableDate(body.desiredDate) || !isTimeForService(body.desiredTime, booking.serviceCode)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
     }
     const endTime = addMinutes(body.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
-      `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+      `SELECT id FROM bookings
+       WHERE organization_id = ? AND equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-    ).bind(booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
+    ).bind(
+      member.organizationId,
+      booking.equipmentId,
+      body.desiredDate,
+      body.id,
+      endTime,
+      body.desiredTime,
+    ).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
     const blocked = await db.prepare(
-      `SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ?
+      `SELECT id FROM equipment_blocks
+       WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?
        AND start_time < ? AND end_time > ? LIMIT 1`
-    ).bind(booking.equipmentId, body.desiredDate, endTime, body.desiredTime).first();
+    ).bind(
+      member.organizationId,
+      booking.equipmentId,
+      body.desiredDate,
+      endTime,
+      body.desiredTime,
+    ).first();
     if (blocked) return Response.json({ error: "Апарат недоступний у цей період" }, { status: 409 });
     await db.prepare(
-      "UPDATE bookings SET desired_date = ?, desired_time = ?, status = 'rescheduled' WHERE id = ?"
-    ).bind(body.desiredDate, body.desiredTime, body.id).run();
+      `UPDATE bookings
+       SET desired_date = ?, desired_time = ?, status = 'rescheduled'
+       WHERE id = ? AND organization_id = ?`
+    ).bind(body.desiredDate, body.desiredTime, body.id, member.organizationId).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'rescheduled', ?, ?)"
-    ).bind(body.id, `${body.desiredDate} ${body.desiredTime}`, member.email).run();
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'rescheduled', ?, ?)`
+    ).bind(
+      body.id,
+      member.organizationId,
+      `${body.desiredDate} ${body.desiredTime}`,
+      member.email,
+    ).run();
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: body.desiredDate, desiredTime: body.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(
+      db,
+      "rescheduled",
+      reminderTarget,
+      member.organizationId,
+    ).catch(() => null);
     return Response.json({ ok: true, status: "rescheduled", reminder });
   }
 
@@ -366,8 +460,8 @@ export async function PATCH(request: Request) {
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
         desired_date AS desiredDate, desired_time AS desiredTime, status,
         name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
-       FROM bookings WHERE id = ?`
-    ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
+       FROM bookings WHERE id = ? AND organization_id = ?`
+    ).bind(body.id, member.organizationId).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     if (booking.status === "cancelled" || booking.status === "completed") {
       return Response.json({ error: "Заявку вже закрито — підтвердження недоступне" }, { status: 400 });
@@ -378,41 +472,70 @@ export async function PATCH(request: Request) {
     }
     const endTime = addMinutes(booking.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
-      `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+      `SELECT id FROM bookings
+       WHERE organization_id = ? AND equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-    ).bind(booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
+    ).bind(
+      member.organizationId,
+      booking.equipmentId,
+      booking.desiredDate,
+      body.id,
+      endTime,
+      booking.desiredTime,
+    ).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий — перенесіть запис на вільний слот" }, { status: 409 });
     const blocked = await db.prepare(
-      `SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ?
+      `SELECT id FROM equipment_blocks
+       WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?
        AND start_time < ? AND end_time > ? LIMIT 1`
-    ).bind(booking.equipmentId, booking.desiredDate, endTime, booking.desiredTime).first();
+    ).bind(
+      member.organizationId,
+      booking.equipmentId,
+      booking.desiredDate,
+      endTime,
+      booking.desiredTime,
+    ).first();
     if (blocked) return Response.json({ error: "Апарат недоступний у цей період — перенесіть запис" }, { status: 409 });
-    await db.prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ?").bind(body.id).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'status_changed', 'confirmed', ?)"
-    ).bind(body.id, member.email).run();
+      "UPDATE bookings SET status = 'confirmed' WHERE id = ? AND organization_id = ?"
+    ).bind(body.id, member.organizationId).run();
+    await db.prepare(
+      `INSERT INTO booking_events
+        (booking_id, organization_id, action, details, actor)
+       VALUES (?, ?, 'status_changed', 'confirmed', ?)`
+    ).bind(body.id, member.organizationId, member.email).run();
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: booking.desiredDate, desiredTime: booking.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "confirmed", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(
+      db,
+      "confirmed",
+      reminderTarget,
+      member.organizationId,
+    ).catch(() => null);
     return Response.json({ ok: true, status: "confirmed", reminder });
   }
 
   const allowed = new Set(["new", "confirmed", "rescheduled", "completed", "cancelled"]);
   if (!body.status || !allowed.has(body.status)) return Response.json({ error: "Некоректний статус" }, { status: 400 });
-  const current = await db.prepare("SELECT status FROM bookings WHERE id = ? LIMIT 1")
-    .bind(body.id).first<{ status: string }>();
+  const current = await db.prepare(
+    "SELECT status FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1"
+  ).bind(body.id, member.organizationId).first<{ status: string }>();
   if (!current) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!allowedStatusTransition(current.status, body.status)) {
     return Response.json({ error: "Недопустимий перехід між статусами заявки" }, { status: 409 });
   }
-  const updated = await db.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind(body.status, body.id).run();
+  const updated = await db.prepare(
+    "UPDATE bookings SET status = ? WHERE id = ? AND organization_id = ?"
+  ).bind(body.status, body.id, member.organizationId).run();
   if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'status_changed', ?, ?)"
-  ).bind(body.id, body.status, member.email).run();
+    `INSERT INTO booking_events
+      (booking_id, organization_id, action, details, actor)
+     VALUES (?, ?, 'status_changed', ?, ?)`
+  ).bind(body.id, member.organizationId, body.status, member.email).run();
   return Response.json({ ok: true });
 }

@@ -3,6 +3,7 @@ import { isBookableDate, isTimeForService } from "../../../lib/booking-rules";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { effectivePrice } from "../../../lib/tariffs";
+import { publicTenant } from "../../../lib/tenant";
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json() as Record<string, unknown>;
+    const tenant = publicTenant();
     const name = clean(body.name, 120);
     const phone = clean(body.phone, 40);
     const phoneNormalized = normalizeUkrainianPhone(phone);
@@ -50,34 +52,35 @@ export async function POST(request: Request) {
     const referral = referralType === "none" ? "Немає направлення" : referralType;
     const paymentStatus = patientCategory === "civilian" ? "pending" : "verification_required";
     const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
-    const price = await effectivePrice(db, service.code);
+    const price = await effectivePrice(db, service.code, tenant.organizationId);
     const result = await db.prepare(
       `INSERT INTO bookings (
-        code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
+        organization_id, code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
         duration_minutes, desired_date, desired_time, referral, patient_category,
         referral_type, referral_number, marketing_source, payment_status,
         payment_amount, nszu_status, comment, consent_at, consent_version, consent_source
       )
-      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?
       WHERE NOT EXISTS (
         SELECT 1 FROM bookings
-        WHERE equipment_id = ? AND desired_date = ?
+        WHERE organization_id = ? AND equipment_id = ? AND desired_date = ?
           AND status IN ('confirmed','rescheduled')
           AND desired_time < ?
           AND time(desired_time, '+' || duration_minutes || ' minutes') > ?
       )
       AND NOT EXISTS (
         SELECT 1 FROM equipment_blocks
-        WHERE equipment_id = ? AND blocked_date = ?
+        WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?
           AND start_time < ? AND end_time > ?
       )`
     ).bind(
+      tenant.organizationId,
       code, name, phone, phoneNormalized, patientEmail, service.title, service.code, service.equipmentId,
       service.durationMinutes, desiredDate, desiredTime, referral, patientCategory,
       referralType, referralNumber, marketingSource, paymentStatus,
       price, nszuStatus, comment, "2026-07-29", "booking_page",
-      service.equipmentId, desiredDate, endTime, desiredTime,
-      service.equipmentId, desiredDate, endTime, desiredTime,
+      tenant.organizationId, service.equipmentId, desiredDate, endTime, desiredTime,
+      tenant.organizationId, service.equipmentId, desiredDate, endTime, desiredTime,
     ).run();
 
     if (!result.meta.changes) {
@@ -85,8 +88,14 @@ export async function POST(request: Request) {
     }
     if (result.meta.last_row_id) {
       await db.prepare(
-        "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created', ?, 'patient')"
-      ).bind(result.meta.last_row_id, `${service.code} ${desiredDate} ${desiredTime}`).run();
+        `INSERT INTO booking_events
+          (booking_id, organization_id, action, details, actor)
+         VALUES (?, ?, 'created', ?, 'patient')`
+      ).bind(
+        result.meta.last_row_id,
+        tenant.organizationId,
+        `${service.code} ${desiredDate} ${desiredTime}`,
+      ).run();
     }
     return Response.json({ code }, { status: 201 });
   } catch (error) {

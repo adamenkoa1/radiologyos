@@ -44,8 +44,8 @@ test("confirm-in-one-move validates the slot and reminds the patient", async () 
   assert.match(src, /status = 'confirmed'/);
   assert.match(src, /перенесіть запис/); // конфлікт → підказка перенести
   // Нагадування шлються і при підтвердженні, і при перенесенні.
-  assert.match(src, /sendPatientReminder\(db, "confirmed"/);
-  assert.match(src, /sendPatientReminder\(db, "rescheduled"/);
+  assert.match(src, /"confirmed",[\s\S]*member\.organizationId/);
+  assert.match(src, /"rescheduled",[\s\S]*member\.organizationId/);
 });
 
 // Рушій нагадувань: канали, повага до «не турбувати», журнал відправлень.

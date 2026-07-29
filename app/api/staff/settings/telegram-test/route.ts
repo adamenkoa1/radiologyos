@@ -16,7 +16,7 @@ export async function POST(request: Request) {
   if (member.role !== "admin") return Response.json({ error: "Доступно лише адміністратору" }, { status: 403 });
 
   const text = "✅ <b>RadiologyOS</b>\nТестове повідомлення. Сповіщення про заявки налаштовано правильно.";
-  const result = await sendTelegramResult(db, text);
+  const result = await sendTelegramResult(db, text, member.organizationId);
   if (!result.ok) return Response.json({ error: result.error || "Не вдалося надіслати" }, { status: 400 });
   return Response.json({ ok: true });
 }

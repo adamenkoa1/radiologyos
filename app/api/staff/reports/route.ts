@@ -24,7 +24,7 @@ export async function GET(request:Request) {
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректний період або параметри звіту" },{ status:400 });
-  const source = await fetchReportSource(db,filters);
+  const source = await fetchReportSource(db,filters,member.organizationId);
   const activeRows = source.filter((row)=>row.status !== "cancelled");
   const completedRows = source.filter((row)=>row.status === "completed");
   const protocolReady = (status:string) => status === "ready" || status === "issued";
@@ -81,8 +81,12 @@ export async function GET(request:Request) {
 
   const [{ results:staffOptions },{ results:exportHistory }] = await Promise.all([
     db.prepare(
-      "SELECT email, display_name AS displayName, role FROM staff_members WHERE active = 1 ORDER BY role, display_name"
-    ).all(),
+      `SELECT m.email, m.display_name AS displayName, om.role
+       FROM organization_memberships om
+       JOIN staff_members m ON m.email = om.staff_email
+       WHERE om.organization_id = ? AND om.active = 1 AND m.active = 1
+       ORDER BY om.role, m.display_name`
+    ).bind(member.organizationId).all(),
     db.prepare(
       `SELECT e.id, e.requested_by AS requestedBy,
         COALESCE(NULLIF(s.display_name,''), e.requested_by) AS requestedByName,
@@ -91,12 +95,14 @@ export async function GET(request:Request) {
         e.created_at AS createdAt
        FROM report_exports e
        LEFT JOIN staff_members s ON s.email = e.requested_by
+       WHERE e.organization_id = ?
        ORDER BY e.created_at DESC LIMIT 20`
-    ).all(),
+    ).bind(member.organizationId).all(),
   ]);
   const report = reportPayload(filters,source);
   await logSecurityEvent(db, {
     actorEmail: member.email,
+    organizationId: member.organizationId,
     action: "report_viewed",
     resource: "report",
     targetId: filters.template,

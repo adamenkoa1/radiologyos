@@ -29,11 +29,14 @@ export async function GET(request: Request) {
        COALESCE(NULLIF(p.display_name, ''), b.name) AS name
      FROM bookings b
      JOIN (SELECT phone_normalized, MAX(id) AS mid FROM bookings
-           WHERE phone_normalized != '' GROUP BY phone_normalized) last ON last.mid = b.id
-     LEFT JOIN patient_profiles p ON p.phone_normalized = b.phone_normalized
-     WHERE COALESCE(p.do_not_contact, 0) = 0
+           WHERE organization_id = ? AND phone_normalized != ''
+           GROUP BY phone_normalized) last ON last.mid = b.id
+     LEFT JOIN organization_patient_profiles p
+       ON p.organization_id = b.organization_id
+      AND p.phone_normalized = b.phone_normalized
+     WHERE b.organization_id = ? AND COALESCE(p.do_not_contact, 0) = 0
      ORDER BY name`
-  ).all<{ phone: string; name: string }>();
+  ).bind(member.organizationId, member.organizationId).all<{ phone: string; name: string }>();
 
   const header = "Name,Phone 1 - Type,Phone 1 - Value,Notes";
   const lines = (rows.results || []).map((r) => {
@@ -44,6 +47,7 @@ export async function GET(request: Request) {
 
   await logSecurityEvent(db, {
     actorEmail: member.email,
+    organizationId: member.organizationId,
     action: "patient_contacts_exported",
     resource: "patient_registry",
     details: { format: "csv", rows: lines.length },
