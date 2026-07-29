@@ -70,8 +70,10 @@ export default function StaffWorkspaceShell({
   },[]);
 
   useEffect(()=>{
+    const stored = window.localStorage.getItem("ws-theme");
+    const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setDark(window.localStorage.getItem("ws-theme") === "dark");
+    setDark(stored ? stored === "dark" : prefersDark);
   },[]);
 
   function toggleTheme() {
