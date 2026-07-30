@@ -37,7 +37,7 @@ test("CRM library aggregates bookings into patient summaries by phone", async ()
 
 test("CRM API guards profile writes and validates before persisting", async () => {
   const route = await read("app/api/staff/patients/route.ts");
-  assert.match(route, /requireStaff\(request, db\)/);
+  assert.match(route, /requireOrgContext\(request, db\)/); // tenant-scoped доступ
   assert.match(route, /canManageBookings\(member\.role\)/);
   assert.match(route, /canViewPatientRegistry\(member\.role\)/);
   assert.match(route, /logSecurityEvent\(/);
@@ -51,7 +51,7 @@ test("CRM API guards profile writes and validates before persisting", async () =
 
 test("patient registry query is bounded (no unbounded profile scan)", async () => {
   const route = await read("app/api/staff/patients/route.ts");
-  assert.match(route, /FROM patient_profiles ORDER BY updated_at DESC LIMIT \d+/);
+  assert.match(route, /FROM patient_profiles WHERE organization_id = \? ORDER BY updated_at DESC LIMIT \d+/);
 });
 
 test("reminder and telegram send failures are logged, not silently swallowed", async () => {

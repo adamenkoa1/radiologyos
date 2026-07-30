@@ -1,4 +1,5 @@
-import { canManageBookings, canViewPatientRegistry, requireStaff } from "../../../../lib/staff-auth";
+import { canManageBookings, canViewPatientRegistry } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
@@ -27,8 +28,10 @@ const PROFILE_COLUMNS = `phone_normalized AS phoneNormalized, display_name AS di
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
+  const orgId = ctx.organizationId;
   if (!canViewPatientRegistry(member.role)) {
     return Response.json({ error: "Реєстр пацієнтів доступний лише реєстратору або адміністратору" }, { status: 403 });
   }
@@ -38,13 +41,13 @@ export async function GET(request: Request) {
   if (phone) {
     const [bookings, profileRow, communications] = await Promise.all([
       db.prepare(
-        `SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? ORDER BY desired_date DESC, desired_time DESC`
-      ).bind(phone).all(),
-      db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? LIMIT 1`).bind(phone).first<PatientProfile>(),
+        `SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY desired_date DESC, desired_time DESC`
+      ).bind(phone, orgId).all(),
+      db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ? LIMIT 1`).bind(phone, orgId).first<PatientProfile>(),
       db.prepare(
         `SELECT id, channel, direction, summary, actor, created_at AS createdAt
-         FROM patient_communications WHERE phone_normalized = ? ORDER BY created_at DESC LIMIT 200`
-      ).bind(phone).all(),
+         FROM patient_communications WHERE phone_normalized = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 200`
+      ).bind(phone, orgId).all(),
     ]);
     const rows = bookings.results as unknown as PatientBookingRow[];
     if (!rows.length && !profileRow) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
@@ -68,8 +71,8 @@ export async function GET(request: Request) {
   }
 
   const [bookings, profileRows] = await Promise.all([
-    db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized != '' LIMIT 3000`).all(),
-    db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles ORDER BY updated_at DESC LIMIT 5000`).all(),
+    db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized != '' AND organization_id = ? LIMIT 3000`).bind(orgId).all(),
+    db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? ORDER BY updated_at DESC LIMIT 5000`).bind(orgId).all(),
   ]);
   const profiles = new Map<string, PatientProfile>();
   for (const row of profileRows.results as unknown as PatientProfile[]) profiles.set(row.phoneNormalized, row);
@@ -86,8 +89,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageBookings(member.role)) {
     return Response.json({ error: "Картку пацієнта може змінювати лише реєстратор або адміністратор" }, { status: 403 });
   }
@@ -97,15 +101,15 @@ export async function PUT(request: Request) {
 
   await db.prepare(
     `INSERT INTO patient_profiles
-       (phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(phone_normalized) DO UPDATE SET
        display_name = excluded.display_name, birth_year = excluded.birth_year,
        birth_date = excluded.birth_date, email = excluded.email, address = excluded.address,
        tags = excluded.tags, notes = excluded.notes, do_not_contact = excluded.do_not_contact,
        updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
   ).bind(
-    profile.phoneNormalized, profile.displayName, profile.birthYear,
+    ctx.organizationId, profile.phoneNormalized, profile.displayName, profile.birthYear,
     profile.birthDate, profile.email, profile.address,
     profile.tags, profile.notes, profile.doNotContact, member.email,
   ).run();
@@ -116,8 +120,9 @@ export async function PUT(request: Request) {
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canViewPatientRegistry(member.role)) {
     return Response.json({ error: "Комунікації доступні лише реєстратору або адміністратору" }, { status: 403 });
   }
@@ -126,9 +131,9 @@ export async function POST(request: Request) {
   const { communication } = parsed;
 
   const inserted = await db.prepare(
-    `INSERT INTO patient_communications (phone_normalized, channel, direction, summary, actor)
-     VALUES (?, ?, ?, ?, ?)`
-  ).bind(communication.phoneNormalized, communication.channel, communication.direction, communication.summary, member.email).run();
+    `INSERT INTO patient_communications (organization_id, phone_normalized, channel, direction, summary, actor)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).bind(ctx.organizationId, communication.phoneNormalized, communication.channel, communication.direction, communication.summary, member.email).run();
 
   return Response.json({
     ok: true,

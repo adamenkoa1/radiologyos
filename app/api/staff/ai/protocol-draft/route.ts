@@ -1,4 +1,5 @@
-import { canAccessBooking, canManageProtocols, requireStaff } from "../../../../../lib/staff-auth";
+import { canAccessBooking, canManageProtocols } from "../../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../../lib/tenant";
 import { sanitizeDocument } from "../../../../../lib/protocols";
 import { generateProtocolDraft } from "../../../../../lib/ai";
 import { dbBinding } from "../../../../../lib/db";
@@ -6,8 +7,9 @@ import { dbBinding } from "../../../../../lib/db";
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageProtocols(member.role)) {
     return Response.json({ error: "AI-чернетку може формувати лише лікар або адміністратор" }, { status: 403 });
   }
@@ -17,7 +19,8 @@ export async function POST(request: Request) {
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
     return Response.json({ error: "Оберіть дослідження" }, { status: 400 });
   }
-  if (!await canAccessBooking(db, member, bookingId)) {
+  // Tenant-guard: admin/registrar не мають доступу до чужої організації.
+  if (!await canAccessBooking(db, member, bookingId, ctx.organizationId)) {
     return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
   }
   // Draft from whatever is currently in the editor; force draft status so the
@@ -27,12 +30,12 @@ export async function POST(request: Request) {
 
   let priorStudies = 0;
   const booking = await db.prepare(
-    "SELECT phone_normalized AS phone FROM bookings WHERE id = ? LIMIT 1"
-  ).bind(bookingId).first<{ phone: string }>();
+    "SELECT phone_normalized AS phone FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1"
+  ).bind(bookingId, ctx.organizationId).first<{ phone: string }>();
   if (booking?.phone) {
     const prior = await db.prepare(
-      "SELECT COUNT(*) AS count FROM bookings WHERE phone_normalized = ? AND performed_at != '' AND id != ?"
-    ).bind(booking.phone, bookingId).first<{ count: number }>();
+      "SELECT COUNT(*) AS count FROM bookings WHERE phone_normalized = ? AND performed_at != '' AND id != ? AND organization_id = ?"
+    ).bind(booking.phone, bookingId, ctx.organizationId).first<{ count: number }>();
     priorStudies = Number(prior?.count || 0);
   }
 
