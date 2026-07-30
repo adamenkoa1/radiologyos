@@ -59,3 +59,36 @@ test("landing pulls storefront config from the API and gates on published", asyn
   assert.match(html, /id="scSlogan"/);
   assert.match(html, /id="scAbout"/);
 });
+
+test("stage 2: color, logo and storefront type are validated", () => {
+  const ok = sanitizeSiteContent({ brandColor: "#2F8F46", logoUrl: "https://x.co/l.png", storefrontType: "paid_only" });
+  assert.equal(ok.brandColor, "#2f8f46"); // normalized lowercase
+  assert.equal(ok.logoUrl, "https://x.co/l.png");
+  assert.equal(ok.storefrontType, "paid_only");
+  const bad = sanitizeSiteContent({ brandColor: "red", logoUrl: "javascript:alert(1)", storefrontType: "weird" });
+  assert.equal(bad.brandColor, SITE_CONTENT_DEFAULTS.brandColor); // invalid hex → default
+  assert.equal(bad.logoUrl, ""); // unsafe url rejected
+  assert.equal(bad.storefrontType, "paid_and_free"); // unknown → default
+});
+
+test("landing themes via CSS variable and honors storefront type + logo", async () => {
+  const html = await read("public/site/index.html");
+  assert.match(html, /--brand:#0c7a85/); // змінна визначена
+  assert.match(html, /setProperty\('--brand',c\.brandColor\)/); // застосування кольору
+  assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
+  assert.match(html, /id="scMilCard"/);
+  assert.match(html, /id="scLogo"/);
+  // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
+  assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
+});
+
+test("editor is renamed to Вітрина with a schema and design controls", async () => {
+  const page = await read("app/staff/site/page.tsx");
+  assert.match(page, /title="Вітрина"/);
+  assert.match(page, /Схема вітрини/);
+  assert.match(page, /storefrontType/);
+  assert.match(page, /brandColor/);
+  assert.match(page, /logoUrl/);
+  const shell = await read("app/staff/workspace-shell.tsx");
+  assert.match(shell, /Вітрина \(редактор\)/);
+});

@@ -85,8 +85,24 @@ const DEFAULT_SITECONTENT = {
   milPageTitle: 'Дослідження для військовослужбовців',
   milPageSub: 'За направленням лікаря та відповідно до чинного законодавства України.',
   milNotice: 'Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.',
-  milLead: 'Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.'
+  milLead: 'Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.',
+  brandColor: '#0c7a85',
+  logoUrl: '',
+  storefrontType: 'paid_and_free'
 };
+
+// Фірмовий колір застосовується на всіх сторінках вітрини (з кешу
+// localStorage; свіже значення тягне головна через /api/site-content).
+function applyBrandColor(c) {
+  if (!c || !c.brandColor) return;
+  var m = /^#([0-9a-f]{6})$/i.exec(c.brandColor);
+  var dark = c.brandColor;
+  if (m) { var n = parseInt(m[1], 16); var p = function (x) { return ('0' + Math.round(x * 0.82).toString(16)).slice(-2); }; dark = '#' + p((n >> 16) & 255) + p((n >> 8) & 255) + p(n & 255); }
+  var r = document.documentElement;
+  r.style.setProperty('--brand', c.brandColor);
+  r.style.setProperty('--brand-dark', dark);
+}
+try { applyBrandColor(getSiteContent()); } catch (e) {}
 
 function getSiteContent() {
   try {

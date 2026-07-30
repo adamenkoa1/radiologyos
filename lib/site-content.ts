@@ -25,19 +25,27 @@ export type SiteContent = {
   milPageSub: string;
   milNotice: string;
   milLead: string;
+  brandColor: string;
+  logoUrl: string;
+  storefrontType: StorefrontType;
   published: boolean;
 };
 
+// Види вітрини: лише платні послуги, або платні + безкоштовні (військовим).
+export type StorefrontType = "paid_and_free" | "paid_only";
+export const STOREFRONT_TYPES: StorefrontType[] = ["paid_and_free", "paid_only"];
+
 export const SITE_CONTENT_KEY = "site_content";
 
-// Обмеження довжини для кожного текстового поля.
-const FIELD_MAX: Record<Exclude<keyof SiteContent, "published">, number> = {
+// Обмеження довжини для звичайних текстових полів (brandColor/logoUrl/
+// storefrontType валідуються окремо нижче).
+const FIELD_MAX = {
   brandTitle: 120, brandSubtitle: 160, slogan: 160,
   milTitle: 80, milSub: 200, civTitle: 80, civSub: 200,
   phone: 40, address: 200, workHours: 120, about: 800,
   pricePageTitle: 120, pricePageSub: 200, priceIntro: 800, priceListTitle: 160, priceLead: 300,
   milPageTitle: 120, milPageSub: 200, milNotice: 800, milLead: 300,
-};
+} as const;
 
 export const SITE_CONTENT_DEFAULTS: SiteContent = {
   brandTitle: "Чернігівський військовий госпіталь",
@@ -60,10 +68,13 @@ export const SITE_CONTENT_DEFAULTS: SiteContent = {
   milPageSub: "За направленням лікаря та відповідно до чинного законодавства України.",
   milNotice: "Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням.",
   milLead: "Відділення променевої діагностики Чернігівського військового госпіталю.",
+  brandColor: "#0c7a85",
+  logoUrl: "",
+  storefrontType: "paid_and_free",
   published: true,
 };
 
-const TEXT_FIELDS = Object.keys(FIELD_MAX) as Array<Exclude<keyof SiteContent, "published">>;
+const TEXT_FIELDS = Object.keys(FIELD_MAX) as Array<keyof typeof FIELD_MAX>;
 
 // Приводить довільний ввід до валідного SiteContent: обрізає тексти за
 // довжиною, published — булеве. Відсутні поля беруться з типових значень.
@@ -75,6 +86,14 @@ export function sanitizeSiteContent(input: unknown): SiteContent {
       out[field] = (src[field] as string).trim().slice(0, FIELD_MAX[field]);
     }
   }
+  // Фірмовий колір — лише валідний HEX (#RRGGBB), інакше типовий.
+  const color = String(src.brandColor ?? "").trim();
+  out.brandColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : SITE_CONTENT_DEFAULTS.brandColor;
+  // Логотип — лише безпечне посилання (https або data:image), інакше порожньо.
+  const logo = String(src.logoUrl ?? "").trim().slice(0, 500);
+  out.logoUrl = /^(https:\/\/|data:image\/)/.test(logo) ? logo : "";
+  // Вид вітрини.
+  out.storefrontType = src.storefrontType === "paid_only" ? "paid_only" : "paid_and_free";
   out.published = src.published === undefined ? SITE_CONTENT_DEFAULTS.published : Boolean(src.published);
   return out;
 }

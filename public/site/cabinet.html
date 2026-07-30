@@ -9,10 +9,11 @@
 <meta name="theme-color" content="#0c7a85"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f5d3e'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%2325b4c0'/%3E%3C/svg%3E"/>
 <style>
+:root{--brand:#0c7a85;--brand-dark:#0e6b74}
 :root{
   --bg:#eef2f5;--ink:#0e161c;--muted:#5c6c78;--line:#dbe3e8;
-  --gold:#25b4c0;--olive:#0c7a85;
-  --grad:linear-gradient(135deg,#0c7a85,#0e6b74);
+  --gold:#25b4c0;--olive:var(--brand);
+  --grad:linear-gradient(135deg,var(--brand),var(--brand-dark));
   --shadow:0 16px 42px rgba(24,34,19,.12);
 }
 *{box-sizing:border-box}
@@ -31,7 +32,7 @@ header{padding:0 14px;margin-bottom:18px}
 .card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:20px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
 .gate p{color:var(--muted);font-size:14px;margin:6px 0 14px}
 .phone-wrap{display:flex}
-.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:11px 0 0 11px;background:#f2f6f8;font-weight:700;color:#0c7a85}
+.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:11px 0 0 11px;background:#f2f6f8;font-weight:700;color:var(--brand)}
 .phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #dbe3e8;border-radius:0 11px 11px 0;font:inherit}
 .phone-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
 .code-wrap{margin-top:12px}
