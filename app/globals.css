@@ -946,3 +946,23 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .themeDark .studiesState.grp-done{background:#0f2f2a;color:#6fd0b5;border-color:#1d4a40}
 .themeDark .studiesState.grp-stopped{background:#3a1c14;color:#e6906f;border-color:#552d1e}
 .studiesTable select.studiesAssign{min-width:130px}
+
+/* Пульт: клінічна черга за станами (state machine) */
+.dashQueue{display:block;max-width:1500px;margin:0 auto 16px;padding:16px 18px;border:1px solid #dce4e3;border-radius:14px;background:#fff;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s}
+.dashQueue:hover{border-color:var(--ws-accent);box-shadow:0 6px 22px rgba(12,122,133,.1)}
+.dashQueueHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.dashQueueHead b{font-size:14px;color:var(--ink)}
+.dashQueueHead small{color:#5f716d;font-size:12px}
+.dashQueueRow{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dashQueueCell{padding:12px;border-radius:10px;background:#f4f8f6;text-align:center}
+.dashQueueCell b{display:block;font-size:26px;line-height:1;color:var(--ws-deep);font-variant-numeric:tabular-nums}
+.dashQueueCell b.muted{color:#b6c1bd}
+.dashQueueCell span{display:block;margin-top:6px;font-size:11px;color:#5f716d}
+.themeDark .dashQueue{background:#121a20;border-color:#22303a}
+.themeDark .dashQueue:hover{border-color:#25b4c0}
+.themeDark .dashQueueHead b{color:#e6edf1}
+.themeDark .dashQueueHead small,.themeDark .dashQueueCell span{color:#8b98a1}
+.themeDark .dashQueueCell{background:#0e151a}
+.themeDark .dashQueueCell b{color:#25b4c0}
+.themeDark .dashQueueCell b.muted{color:#3a4650}
+@media(max-width:760px){.dashQueueRow{grid-template-columns:repeat(2,1fr)}}

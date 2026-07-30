@@ -13,9 +13,11 @@ type Kpi = {
   patients:number; repeatPatients:number; doNotContact:number;
 };
 type ListItem = { id:number; code:string; name:string; serviceTitle:string; performedAt?:string; protocolNumber?:string; desiredDate?:string; desiredTime?:string };
+type QueueState = { v:string; l:string; count:number };
 type Data = {
   today:string; kpi:Kpi;
   equipmentToday:Array<{ id:string; c:number }>;
+  clinicalQueue:QueueState[];
   lists:{ needProtocol:ListItem[]; readyToIssue:ListItem[]; needImaging:ListItem[]; confirmQueue:ListItem[] };
   staff:StaffInfo;
 };
@@ -127,6 +129,15 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {data?.clinicalQueue?.length ? <a className="dashQueue" href="/staff/studies" aria-label="Відкрити реєстр досліджень">
+        <div className="dashQueueHead"><b>Клінічна черга</b><small>Активні стани дослідження · відкрити реєстр →</small></div>
+        <div className="dashQueueRow">
+          {data.clinicalQueue.map((q)=><div key={q.v} className="dashQueueCell">
+            <b className={q.count?"":"muted"}>{q.count}</b><span>{q.l}</span>
+          </div>)}
+        </div>
+      </a> : null}
 
       <div className="dashLists">
         <ActionList title="Потребують протоколу" items={data!.lists.needProtocol}

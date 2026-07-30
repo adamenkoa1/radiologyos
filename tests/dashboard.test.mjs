@@ -17,6 +17,22 @@ test("dashboard API aggregates across pillars and never mutates schema", async (
   assert.doesNotMatch(route, /UPDATE\s+bookings/i);
 });
 
+test("dashboard exposes a tenant-scoped clinical queue by machine state", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  // Черга рахує активні стани єдиної state machine.
+  assert.match(route, /CLINICAL_QUEUE_STATES/);
+  assert.match(route, /'queued','in_progress','images_ready','reporting','protocol_ready'/);
+  // Лічильники обмежені організацією зі серверного контексту.
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /organization_id = \?/);
+  assert.match(route, /clinicalQueue/);
+  // Сторінка показує чергу з переходом у реєстр досліджень.
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /dashQueue/);
+  assert.match(page, /clinicalQueue/);
+  assert.match(page, /\/staff\/studies/);
+});
+
 async function renderPath(path) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
