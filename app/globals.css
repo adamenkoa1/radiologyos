@@ -900,3 +900,48 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
   .rosFeatureGrid,.rosPricing,.rosFooterCols{grid-template-columns:1fr}
   .rosHeaderActions .rosLogin{display:none}
 }
+
+/* Реєстр досліджень (/staff/studies) — tenant + state machine */
+.studiesOrgBar{display:flex;align-items:center;gap:12px;flex-wrap:wrap;max-width:1500px;margin:0 auto 16px}
+.studiesOrgBadge{display:inline-flex;align-items:center;gap:8px;padding:7px 13px;border-radius:999px;background:var(--ws-soft);color:var(--ws-deep);font-size:12px;font-weight:800;border:1px solid rgba(12,122,133,.28)}
+.studiesOrgBar small{color:#5f716d;font-size:12px}
+.studiesTabs{display:flex;flex-wrap:wrap;gap:8px;max-width:1500px;margin:0 auto 16px}
+.studiesTabs button{display:inline-flex;align-items:center;gap:7px;padding:8px 13px;border:1px solid #d6ded9;border-radius:999px;background:#f7faf9;color:#41544f;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.studiesTabs button:hover{border-color:var(--ws-accent);color:var(--ws-accent)}
+.studiesTabs button.active{background:var(--ws-accent);border-color:var(--ws-accent);color:#fff}
+.studiesTabs button b{font-size:11px;padding:1px 7px;border-radius:999px;background:rgba(12,122,133,.12);color:inherit}
+.studiesTabs button.active b{background:rgba(255,255,255,.24)}
+.studiesTableWrap{max-width:1500px;margin:0 auto;overflow-x:auto;border:1px solid #dce4e3;border-radius:12px;background:#fff}
+.studiesTable{width:100%;border-collapse:collapse;min-width:900px}
+.studiesTable th{position:sticky;top:0;text-align:left;padding:12px 14px;background:#f4f8f6;color:#41544f;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid #dce4e3}
+.studiesTable td{padding:11px 14px;border-bottom:1px solid #eef2f0;font-size:13.5px;color:var(--ink);vertical-align:middle}
+.studiesTable tr:last-child td{border-bottom:0}
+.studiesTable tbody tr:hover{background:#f7faf9}
+.studiesCode{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ws-deep);font-weight:700}
+.studiesWhen{white-space:nowrap;font-variant-numeric:tabular-nums}
+.studiesState{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid transparent}
+.studiesState.grp-intake{background:#e6f1fb;color:#1f5c94;border-color:#c9e0f4}
+.studiesState.grp-active{background:#fdefe0;color:#a85b18;border-color:#f5d7b3}
+.studiesState.grp-reporting{background:#efe9fb;color:#5a3fa0;border-color:#dccff2}
+.studiesState.grp-done{background:#e3f3ed;color:#075246;border-color:#c2e4d7}
+.studiesState.grp-stopped{background:#fdece7;color:#a23c1d;border-color:#f4d1c5}
+.studiesLinked{color:#075246;font-size:12px;font-weight:700}
+.studiesUnlinked,.studiesTerminal{color:#93a19c;font-size:12px}
+.studiesTable select{min-width:150px;padding:8px 10px;border:1px solid #cbd8d6;border-radius:8px;background:#fff;font:inherit;font-size:12.5px;color:var(--ink)}
+.studiesTable select:focus{outline:2px solid var(--ws-accent);outline-offset:1px;border-color:var(--ws-accent)}
+
+.themeDark .studiesOrgBar small{color:#8b98a1}
+.themeDark .studiesTabs button{background:#121a20;border-color:#26333d;color:#aebeca}
+.themeDark .studiesTabs button:hover{border-color:#25b4c0;color:#25b4c0}
+.themeDark .studiesTabs button.active{background:#25b4c0;border-color:#25b4c0;color:#06131a}
+.themeDark .studiesTableWrap{background:#121a20;border-color:#22303a}
+.themeDark .studiesTable th{background:#0e151a;color:#9fb0bb;border-bottom-color:#22303a}
+.themeDark .studiesTable td{border-bottom-color:#1c2831;color:#e6edf1}
+.themeDark .studiesTable tbody tr:hover{background:#17212a}
+.themeDark .studiesTable select{background:#0e151a;border-color:#2a3843;color:#e6edf1}
+.themeDark .studiesCode{color:#7fd4dc}
+.themeDark .studiesState.grp-intake{background:#12283b;color:#8fc2ec;border-color:#1e3d55}
+.themeDark .studiesState.grp-active{background:#3a2a14;color:#e6b072;border-color:#553f1e}
+.themeDark .studiesState.grp-reporting{background:#241d3b;color:#b6a2e6;border-color:#392d55}
+.themeDark .studiesState.grp-done{background:#0f2f2a;color:#6fd0b5;border-color:#1d4a40}
+.themeDark .studiesState.grp-stopped{background:#3a1c14;color:#e6906f;border-color:#552d1e}

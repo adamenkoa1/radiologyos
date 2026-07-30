@@ -49,6 +49,38 @@ export async function countOrgBookings(db: D1Database, ctx: OrgContext): Promise
   return row?.n ?? 0;
 }
 
+export interface OrgStudyRow {
+  id: number;
+  code: string;
+  name: string;
+  service: string;
+  equipmentId: string;
+  desiredDate: string;
+  desiredTime: string;
+  status: string;
+  performedAt: string;
+  protocolStatus: string;
+  studyStatus: string | null;
+  accessionNumber: string | null;
+}
+
+// Реєстр досліджень організації: заявки, збагачені прив'язкою до DICOM-студії.
+// Строго tenant-scoped — фільтр organization_id зі серверного контексту.
+export async function listOrgStudies(db: D1Database, ctx: OrgContext, limit = 500): Promise<OrgStudyRow[]> {
+  const result = await db.prepare(
+    `SELECT b.id AS id, b.code AS code, b.name AS name, b.service AS service,
+       b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
+       b.status AS status, b.performed_at AS performedAt, b.protocol_status AS protocolStatus,
+       s.study_status AS studyStatus, s.accession_number AS accessionNumber
+     FROM bookings b
+     LEFT JOIN imaging_studies s ON s.booking_id = b.id AND s.organization_id = b.organization_id
+     WHERE b.organization_id = ?
+     ORDER BY b.desired_date DESC, b.desired_time DESC
+     LIMIT ?`
+  ).bind(ctx.organizationId, limit).all<OrgStudyRow>();
+  return result.results ?? [];
+}
+
 // Підрозділи (departments) організації контексту.
 export async function listOrgDepartments(db: D1Database, ctx: OrgContext): Promise<Array<{ id: number; name: string; branchId: number }>> {
   const result = await db.prepare(
