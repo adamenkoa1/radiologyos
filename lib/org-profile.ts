@@ -51,6 +51,20 @@ const PROFILE_DEFAULTS: Record<ProfileType, Partial<Record<FeatureFlag, boolean>
   outpatient_clinic: { protocols: true, patient_cabinet: true, reminders: true },
 };
 
+// Короткий опис призначення кожного профілю (для сторінки конструктора).
+export const PROFILE_DESCRIPTIONS: Record<ProfileType, string> = {
+  hospital_radiology: "Госпітальне відділення: безоплатні (військові/НСЗУ) і платні дослідження, DICOM/PACS, протоколи, черга виконання.",
+  private_ct: "Приватний КТ-центр: платний запис, контрастування, пакетні послуги, швидка видача результатів пацієнту.",
+  dental: "Стоматологічна діагностика: протоколи, пакетні послуги, кабінет пацієнта; PACS зазвичай не потрібен.",
+  outpatient_clinic: "Амбулаторна клініка: базові дослідження, протоколи, кабінет пацієнта й нагадування.",
+};
+
+// Рекомендовані (пресетні) прапорці профілю — дефолти профілю, розгорнуті у
+// повний набір можливостей. Застосовуються як явні override-и організації.
+export function profilePresetFlags(profileType: ProfileType): Record<FeatureFlag, boolean> {
+  return resolveFlags(profileType, {});
+}
+
 export function isProfileType(value: string): value is ProfileType {
   return (PROFILE_TYPES as readonly string[]).includes(value);
 }

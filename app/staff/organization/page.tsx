@@ -9,9 +9,11 @@ type Data = {
   canManage:boolean;
   profileType:string;
   profileLabel:string;
+  profileDescription:string;
   flags:Record<string,boolean>;
   overrides:Record<string,boolean>;
-  catalog:{ profiles:Option[]; features:Option[] };
+  presetFlags:Record<string,boolean>;
+  catalog:{ profiles:Array<Option & { d?:string }>; features:Option[] };
 };
 
 export default function OrganizationPage() {
@@ -32,7 +34,7 @@ export default function OrganizationPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
-  async function save(next:{ profileType?:string; flags?:Record<string,boolean> }) {
+  async function save(next:{ profileType?:string; flags?:Record<string,boolean>; applyPreset?:boolean }) {
     if (!data?.canManage) return;
     setSaving(true);
     try {
@@ -74,9 +76,15 @@ export default function OrganizationPage() {
             key={p.v} type="button"
             className={p.v===data.profileType ? "active" : ""}
             disabled={!data.canManage || saving}
+            title={p.d || ""}
             onClick={()=>void save({ profileType:p.v })}
           >{p.l}</button>)}
         </div>
+        {data.profileDescription ? <p className="orgProfileDesc">{data.profileDescription}</p> : null}
+        {data.canManage ? <button
+          type="button" className="orgPresetButton" disabled={saving}
+          onClick={()=>void save({ applyPreset:true })}
+        >Застосувати рекомендовані можливості пресета</button> : null}
       </section>
 
       <section className="orgProfileCard">

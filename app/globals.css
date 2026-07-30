@@ -997,3 +997,10 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .themeDark .orgFlagName{color:#e6edf1}
 .themeDark .orgFlagState.on{background:#0f2f2a;color:#6fd0b5}
 .themeDark .orgFlagState.off{background:#1c2831;color:#8b98a1}
+.orgProfileDesc{margin:14px 0 0;padding:12px 14px;border-radius:10px;background:#f4f8f6;color:#41544f;font-size:12.5px;line-height:1.55}
+.orgPresetButton{margin-top:12px;padding:11px 15px;border:1px solid var(--ws-accent);border-radius:10px;background:var(--ws-soft);color:var(--ws-deep);font:inherit;font-size:13px;font-weight:800;cursor:pointer;transition:background .12s,color .12s}
+.orgPresetButton:hover:not(:disabled){background:var(--ws-accent);color:#fff}
+.orgPresetButton:disabled{opacity:.6;cursor:not-allowed}
+.themeDark .orgProfileDesc{background:#0e151a;color:#9fb0bb}
+.themeDark .orgPresetButton{background:#123139;border-color:#25b4c0;color:#7fd4dc}
+.themeDark .orgPresetButton:hover:not(:disabled){background:#25b4c0;color:#06131a}
