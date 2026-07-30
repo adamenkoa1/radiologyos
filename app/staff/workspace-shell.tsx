@@ -38,6 +38,7 @@ const systemModules: NavModule[] = [
     { label:"Вибір часу", href:"/staff/dashboard" },
     { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
     { label:"Черга реєстратури", href:"/staff#bookings" },
+    { label:"Нова запис", href:"/staff/book" },
     { label:"Календар записів", href:"/staff/appointments" },
     { label:"Реєстр досліджень", href:"/staff/studies" },
     { label:"Розклад дня", href:"/staff/dashboard" },
