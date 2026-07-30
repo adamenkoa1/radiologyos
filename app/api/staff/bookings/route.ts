@@ -8,28 +8,32 @@ import {
   canManageProtocols,
   canAccessBooking,
   canWriteNotes,
-  requireStaff,
   type StaffRole,
 } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
 }
 
-function bookingScope(member: { email: string; role: StaffRole }) {
-  if (member.role === "admin" || member.role === "registrar") return { sql: "1 = 1", values: [] as string[] };
-  if (member.role === "radiologist") {
-    return { sql: "assigned_radiologist_email = ?", values: [member.email] };
-  }
-  return { sql: "assigned_radiographer_email = ?", values: [member.email] };
+// Область видимості заявок: спершу tenant (organization_id зі серверного
+// контексту), далі — рольове обмеження. Персонал не бачить чужих організацій.
+function bookingScope(member: { email: string; role: StaffRole }, organizationId: number) {
+  const role = (member.role === "admin" || member.role === "registrar")
+    ? { sql: "1 = 1", values: [] as Array<string | number> }
+    : member.role === "radiologist"
+      ? { sql: "assigned_radiologist_email = ?", values: [member.email] as Array<string | number> }
+      : { sql: "assigned_radiographer_email = ?", values: [member.email] as Array<string | number> };
+  return { sql: `organization_id = ? AND (${role.sql})`, values: [organizationId, ...role.values] };
 }
 
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  const scope = bookingScope(member);
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
+  const scope = bookingScope(member, ctx.organizationId);
 
   const [result, events, notes, staffOptions, notifications] = await Promise.all([
     db.prepare(
@@ -90,8 +94,9 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   const body = await request.json() as {
     id?: number;
     status?: string;
@@ -114,7 +119,7 @@ export async function PATCH(request: Request) {
     externalReference?: string;
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
-  if (!(await canAccessBooking(db, member, body.id!))) {
+  if (!(await canAccessBooking(db, member, body.id!, ctx.organizationId))) {
     return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
   }
 

@@ -73,16 +73,27 @@ export function canAccessAllBookings(role: StaffRole) {
   return role === "admin" || role === "registrar";
 }
 
+// Доступ до заявки. Коли передано organizationId — доступ обмежено ще й
+// організацією (tenant isolation): заявка іншої організації недосяжна навіть
+// для admin/registrar і навіть за прямим id.
 export async function canAccessBooking(
   db: D1Database,
   member: { email: string; role: StaffRole },
   bookingId: number,
+  organizationId?: number,
 ): Promise<boolean> {
-  if (canAccessAllBookings(member.role)) return true;
+  const orgClause = organizationId != null ? " AND organization_id = ?" : "";
+  const orgBind = organizationId != null ? [organizationId] : [];
+  if (canAccessAllBookings(member.role)) {
+    if (organizationId == null) return true;
+    const row = await db.prepare(`SELECT id FROM bookings WHERE id = ?${orgClause} LIMIT 1`)
+      .bind(bookingId, ...orgBind).first();
+    return Boolean(row);
+  }
   const column = member.role === "radiologist"
     ? "assigned_radiologist_email"
     : "assigned_radiographer_email";
-  const row = await db.prepare(`SELECT id FROM bookings WHERE id = ? AND ${column} = ? LIMIT 1`)
-    .bind(bookingId, member.email).first();
+  const row = await db.prepare(`SELECT id FROM bookings WHERE id = ? AND ${column} = ?${orgClause} LIMIT 1`)
+    .bind(bookingId, member.email, ...orgBind).first();
   return Boolean(row);
 }
