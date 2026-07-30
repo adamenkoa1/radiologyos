@@ -13,7 +13,7 @@ export default function Home() {
             <details className="landingLogin">
               <summary>Вхід</summary>
               <div>
-                <a href="/cabinet">Статус заявки</a>
+                <a href="/cabinet">Кабінет пацієнта</a>
                 <a href="/staff/login">Кабінет персоналу</a>
               </div>
             </details>

@@ -1,6 +1,7 @@
 import { addMinutes, serviceByCode } from "../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../lib/booking-rules";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
+import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { effectivePrice } from "../../../lib/tariffs";
 
@@ -20,6 +21,7 @@ export async function POST(request: Request) {
     const name = clean(body.name, 120);
     const phone = clean(body.phone, 40);
     const phoneNormalized = normalizeUkrainianPhone(phone);
+    const dob = normalizeDob(body.dob);
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const serviceCode = clean(body.serviceCode, 12);
@@ -34,6 +36,9 @@ export async function POST(request: Request) {
 
     if (!name || !phoneNormalized || !service || !desiredDate || !desiredTime || body.consent !== "yes") {
       return Response.json({ error: "Перевірте всі обов’язкові поля" }, { status: 400 });
+    }
+    if (!dob) {
+      return Response.json({ error: "Вкажіть коректну дату народження" }, { status: 400 });
     }
     if (!["military", "civilian"].includes(patientCategory)) {
       return Response.json({ error: "Оберіть категорію пацієнта" }, { status: 400 });
@@ -56,9 +61,9 @@ export async function POST(request: Request) {
         code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
         duration_minutes, desired_date, desired_time, referral, patient_category,
         referral_type, referral_number, marketing_source, payment_status,
-        payment_amount, nszu_status, comment, consent_at, consent_version, consent_source
+        payment_amount, nszu_status, comment, date_of_birth, consent_at, consent_version, consent_source
       )
-      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?
+      SELECT ?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?
       WHERE NOT EXISTS (
         SELECT 1 FROM bookings
         WHERE equipment_id = ? AND desired_date = ?
@@ -75,7 +80,7 @@ export async function POST(request: Request) {
       code, name, phone, phoneNormalized, patientEmail, service.title, service.code, service.equipmentId,
       service.durationMinutes, desiredDate, desiredTime, referral, patientCategory,
       referralType, referralNumber, marketingSource, paymentStatus,
-      price, nszuStatus, comment, "2026-07-29", "booking_page",
+      price, nszuStatus, comment, dob, "2026-07-29", "booking_page",
       service.equipmentId, desiredDate, endTime, desiredTime,
       service.equipmentId, desiredDate, endTime, desiredTime,
     ).run();

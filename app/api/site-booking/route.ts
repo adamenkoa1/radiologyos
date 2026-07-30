@@ -1,6 +1,7 @@
 import { isBookableDate } from "../../../lib/booking-rules";
 import { serviceByCode } from "../../../lib/catalog";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
+import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
@@ -46,6 +47,7 @@ export async function POST(request: Request) {
     const name = clean(body.name, 120);
     const phone = clean(body.phone, 40);
     const phoneNormalized = normalizeUkrainianPhone(phone);
+    const dob = normalizeDob(body.dob);
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const category = clean(body.category, 20) === "military" ? "military" : "civilian";
@@ -73,6 +75,9 @@ export async function POST(request: Request) {
     if (!name || !phoneNormalized) {
       return Response.json({ error: "Вкажіть ім’я та коректний телефон" }, { status: 400 });
     }
+    if (!dob) {
+      return Response.json({ error: "Вкажіть коректну дату народження" }, { status: 400 });
+    }
     if (!isBookableDate(desiredDate)) {
       return Response.json({ error: "Оберіть доступну майбутню дату" }, { status: 400 });
     }
@@ -99,13 +104,13 @@ export async function POST(request: Request) {
             code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
             duration_minutes, desired_date, desired_time, referral, patient_category,
             referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment,
-            consent_at, consent_version, consent_source
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
+            date_of_birth, consent_at, consent_version, consent_source
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
         ).bind(
           codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
           desiredDate, desiredTime, referral, category, referralType, marketingSource,
-          paymentStatus, prices[index], nszuStatus, comment, consentVersion, "public_site",
+          paymentStatus, prices[index], nszuStatus, comment, dob, consentVersion, "public_site",
         ),
         db.prepare(
           `INSERT INTO booking_events (booking_id, action, details, actor)

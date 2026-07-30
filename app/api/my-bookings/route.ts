@@ -2,10 +2,10 @@ import {
   clearedPatientSessionCookie,
   createPatientSession,
   destroyPatientSession,
-  normalizeBookingCode,
   patientSessionCookie,
 } from "../../../lib/patient-auth";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
+import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { stateLabel } from "../../../lib/study-state";
 
@@ -20,18 +20,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Забагато спроб. Повторіть перевірку пізніше." }, { status: 429 });
   }
 
-  const body = await request.json().catch(() => ({})) as { phone?: string; code?: string };
+  const body = await request.json().catch(() => ({})) as { phone?: string; dob?: string };
   const phoneNormalized = normalizeUkrainianPhone(String(body.phone || ""));
-  const code = normalizeBookingCode(body.code);
-  if (!phoneNormalized || !code) {
-    return Response.json({ error: "Введіть повний номер телефону та код заявки" }, { status: 400 });
+  const dob = normalizeDob(body.dob);
+  if (!phoneNormalized || !dob) {
+    return Response.json({ error: "Введіть повний номер телефону та дату народження" }, { status: 400 });
   }
 
+  // Підтвердження особи: збіг телефону і дати народження хоча б в одній заявці.
   const proof = await db.prepare(
-    "SELECT id FROM bookings WHERE code = ? AND phone_normalized = ? LIMIT 1"
-  ).bind(code, phoneNormalized).first();
+    "SELECT id FROM bookings WHERE phone_normalized = ? AND date_of_birth = ? LIMIT 1"
+  ).bind(phoneNormalized, dob).first();
   if (!proof) {
-    return Response.json({ error: "Не вдалося підтвердити номер телефону або код заявки" }, { status: 401 });
+    return Response.json({ error: "Не вдалося підтвердити номер телефону або дату народження" }, { status: 401 });
   }
 
   const rows = await db.prepare(
