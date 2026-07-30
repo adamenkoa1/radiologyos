@@ -125,6 +125,7 @@ export default function StaffAppointmentsPage() {
               <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Список</button>
               <button type="button" className={view === "day" ? "active" : ""} onClick={() => setView("day")}>День</button>
             </div>
+            <a className="apptNewBtn" href="/staff/book">+ Нова запис</a>
           </div>
           <div className="apptStatusRow">
             {TABS.map(t => (

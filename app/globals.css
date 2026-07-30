@@ -287,6 +287,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .apptViewToggle{display:inline-flex;background:#eef2f0;border-radius:8px;padding:3px}
 .apptViewToggle button{border:0;background:none;padding:8px 16px;border-radius:6px;font:inherit;font-weight:700;font-size:13px;color:#5c6c78;cursor:pointer}
 .apptViewToggle button.active{background:var(--green);color:#fff}
+.apptNewBtn{margin-left:auto;display:inline-flex;align-items:center;padding:9px 16px;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:13px;text-decoration:none}.apptNewBtn:hover{background:#0a4b42}
 .apptStatusRow{display:flex;flex-wrap:wrap;gap:8px}
 .apptStatusTab{display:inline-flex;align-items:center;gap:7px;border:1px solid #dce4e3;background:#fff;border-radius:99px;padding:7px 13px;font:inherit;font-size:13px;font-weight:700;color:#41544f;cursor:pointer}
 .apptStatusTab:hover{border-color:#b7c9c5}

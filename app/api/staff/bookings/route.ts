@@ -1,5 +1,8 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../../lib/booking-rules";
+import { normalizeUkrainianPhone } from "../../../../lib/phone";
+import { normalizeDob } from "../../../../lib/dob";
+import { effectivePrice } from "../../../../lib/tariffs";
 import { sendPatientReminder, type ReminderBooking } from "../../../../lib/notify";
 import { canTransition, isStudyState, stateLabel } from "../../../../lib/study-state";
 import {
@@ -14,6 +17,89 @@ import { requireOrgContext } from "../../../../lib/tenant";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
+}
+
+function clean(value: unknown, max: number) {
+  return typeof value === "string" ? value.trim().slice(0, max) : "";
+}
+
+const REFERRAL_TYPES = ["military_referral", "eh_referral", "paper_referral", "none", "other"];
+
+// Ручне створення запису персоналом («Нова запис»). Реєстратор/адмін.
+// Запис одразу підтверджений (status='confirmed'), тож займає слот на апараті.
+export async function POST(request: Request) {
+  const db = dbBinding();
+  if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
+  if (!canManageBookings(member.role)) {
+    return Response.json({ error: "Створювати записи може реєстратор або адміністратор" }, { status: 403 });
+  }
+
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const name = clean(body.name, 120);
+  const phone = clean(body.phone, 40);
+  const phoneNormalized = normalizeUkrainianPhone(phone);
+  const dob = normalizeDob(body.dob);
+  const serviceCode = clean(body.serviceCode, 12);
+  const service = serviceByCode(serviceCode);
+  const desiredDate = clean(body.date, 10);
+  const desiredTime = clean(body.time, 5);
+  const category = clean(body.patientCategory, 20) === "military" ? "military" : "civilian";
+  let referralType = clean(body.referralType, 30);
+  if (!REFERRAL_TYPES.includes(referralType)) referralType = "none";
+  const comment = clean(body.comment, 700);
+  const radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
+  const radiographer = clean(body.assignedRadiographerEmail, 254).toLowerCase();
+
+  if (!name || !phoneNormalized || !service) {
+    return Response.json({ error: "Вкажіть імʼя, телефон і послугу" }, { status: 400 });
+  }
+  if (!isBookableDate(desiredDate) || !isTimeForService(desiredTime, serviceCode)) {
+    return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
+  }
+
+  const endTime = addMinutes(desiredTime, service.durationMinutes);
+  const conflict = await db.prepare(
+    `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ?
+     AND status IN ('confirmed','rescheduled') AND desired_time < ?
+     AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+  ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
+  if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
+  const blocked = await db.prepare(
+    "SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
+  ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
+  if (blocked) return Response.json({ error: "Апарат недоступний у цей період" }, { status: 409 });
+
+  const code = `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`;
+  const price = await effectivePrice(db, service.code);
+  const paymentStatus = category === "civilian" ? "pending" : "verification_required";
+  const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
+  const referral = referralType === "none" ? "Немає направлення" : referralType;
+
+  const result = await db.prepare(
+    `INSERT INTO bookings (
+      organization_id, code, name, phone, phone_normalized, service, service_code, equipment_id,
+      duration_minutes, desired_date, desired_time, referral, patient_category, referral_type,
+      payment_status, payment_amount, nszu_status, comment, date_of_birth,
+      assigned_radiologist_email, assigned_radiographer_email, status,
+      consent_at, consent_version, consent_source
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
+  ).bind(
+    ctx.organizationId, code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
+    service.durationMinutes, desiredDate, desiredTime, referral, category, referralType,
+    paymentStatus, price, nszuStatus, comment, dob,
+    radiologist, radiographer, "2026-07-29", "staff",
+  ).run();
+
+  const bookingId = result.meta.last_row_id;
+  if (bookingId) {
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created', ?, ?)"
+    ).bind(bookingId, `${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
+  }
+  return Response.json({ ok: true, code }, { status: 201 });
 }
 
 // Область видимості заявок: спершу tenant (organization_id зі серверного
