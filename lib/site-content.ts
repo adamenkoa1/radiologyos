@@ -89,9 +89,11 @@ export function sanitizeSiteContent(input: unknown): SiteContent {
   // Фірмовий колір — лише валідний HEX (#RRGGBB), інакше типовий.
   const color = String(src.brandColor ?? "").trim();
   out.brandColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : SITE_CONTENT_DEFAULTS.brandColor;
-  // Логотип — лише безпечне посилання (https або data:image), інакше порожньо.
-  const logo = String(src.logoUrl ?? "").trim().slice(0, 500);
-  out.logoUrl = /^(https:\/\/|data:image\/)/.test(logo) ? logo : "";
+  // Логотип — https-посилання або data:image (файл, зменшений у браузері).
+  // Обмежуємо розмір, щоб не роздувати конфіг у базі.
+  const logo = String(src.logoUrl ?? "").trim();
+  const logoOk = (/^https:\/\//.test(logo) || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/.test(logo)) && logo.length <= 300000;
+  out.logoUrl = logoOk ? logo : "";
   // Вид вітрини.
   out.storefrontType = src.storefrontType === "paid_only" ? "paid_only" : "paid_and_free";
   out.published = src.published === undefined ? SITE_CONTENT_DEFAULTS.published : Boolean(src.published);

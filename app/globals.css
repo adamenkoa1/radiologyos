@@ -271,6 +271,9 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .colorSwatches{display:inline-flex;gap:8px;flex-wrap:wrap}
 .colorSwatch{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #cbd8d6;cursor:pointer;padding:0}
 .colorSwatch.active{box-shadow:0 0 0 2px var(--green)}
+.logoPreview{display:flex;align-items:center;gap:12px;margin:6px 0 8px}
+.logoPreview img{height:46px;width:auto;max-width:160px;border-radius:8px;border:1px solid #dce4e3;background:#fff;padding:3px;object-fit:contain}
+.logoPreview button{border:1px solid #d5ddd9;background:#fff;color:#a23c1d;border-radius:6px;padding:6px 12px;font:inherit;font-size:12px;font-weight:700;cursor:pointer}
 @media(max-width:600px){.siteSchema .ssRow{flex-direction:column}}
 .settingsCard .siteToggleRow{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .settingsCard .siteToggleRow>div{margin:0}.settingsCard .siteToggleRow b{font-size:14px}.settingsCard .siteToggleRow p{margin:4px 0 0;color:#66756f;font-size:12px}
