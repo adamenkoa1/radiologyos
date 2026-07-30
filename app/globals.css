@@ -257,6 +257,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .settingsCard input[readonly]{background:#f4f8f6;color:#41544f}
 .settingsCard textarea{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);resize:vertical;min-height:72px;margin-top:6px}.settingsCard textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .settingsCard select{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);background:#fff}.settingsCard select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.importErrors{margin:8px 0 0;padding-left:18px;color:#a23c1d;font-size:12.5px;line-height:1.6}
 .settingsBlock h3{font-size:15px;font-weight:700;margin:0 0 6px}
 .settingsBlock h3 .ssNum{margin-right:8px}
 .ssNum{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand,#0c7a85);color:#fff;font-size:11px;font-weight:800;flex-shrink:0}
