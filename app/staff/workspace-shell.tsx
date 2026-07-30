@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -23,7 +23,8 @@ type StaffWorkspaceShellProps = {
 type NavChild = { label:string; href:string; flag?:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
 const systemModules: NavModule[] = [
-  { n:"1", label:"Головна / Продаж послуг", href:"/", items:[
+  { n:"1", label:"Головна / Продаж послуг", href:"/staff/site", section:"site", items:[
+    { label:"Сайт клініки (редактор)", href:"/staff/site" },
     { label:"Вітрина послуг", href:"/" },
     { label:"Онлайн-запис", href:"/" },
     { label:"Тарифи", href:"/staff/tariffs" },
