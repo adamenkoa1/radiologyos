@@ -10,15 +10,20 @@ import { getOrgProfile } from "../org-profile";
 import type { OrgContext } from "../tenant";
 import { createMessagingProvider } from "./messaging";
 import { createCalendarProvider } from "./calendar";
-import type {
-  PacsProvider, PaymentProvider, ResolvedProviders,
-} from "./types";
+import { createPaymentProvider, type PaymentConfig } from "./payment";
+import type { PacsProvider, ResolvedProviders } from "./types";
 
-const nullPayment: PaymentProvider = {
-  name: "none",
-  configured: false,
-  async createCharge() { throw new Error("Платіжний провайдер не налаштовано"); },
-};
+// Дістає конфіг оплат із settings_json профілю організації (безпечно).
+function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
+  const raw = settings.payment;
+  if (!raw || typeof raw !== "object") return {};
+  const p = raw as Record<string, unknown>;
+  return {
+    provider: typeof p.provider === "string" ? p.provider : undefined,
+    currency: typeof p.currency === "string" ? p.currency : undefined,
+    liqpayPublicKey: typeof p.liqpayPublicKey === "string" ? p.liqpayPublicKey : undefined,
+  };
+}
 
 export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise<ResolvedProviders> {
   const [cfg, profile, pacsRow, icsUrl] = await Promise.all([
@@ -52,5 +57,8 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
 
   const calendar = createCalendarProvider(icsUrl);
 
-  return { messaging, payment: nullPayment, pacs, calendar };
+  // Платіжний провайдер добирається з профілю організації (per-org).
+  const payment = createPaymentProvider(paymentConfig(profile.settings));
+
+  return { messaging, payment, pacs, calendar };
 }

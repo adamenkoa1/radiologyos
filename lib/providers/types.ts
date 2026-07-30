@@ -11,10 +11,21 @@ export interface MessagingProvider {
   sendEmail(to: string, subject: string, text: string): Promise<void>;
 }
 
+export const PAYMENT_PROVIDERS = ["none", "manual", "liqpay"] as const;
+export type PaymentProviderName = (typeof PAYMENT_PROVIDERS)[number];
+
+export interface PaymentDescribe {
+  name: string;
+  configured: boolean;
+  currency: string;
+  capabilities: { onlineCharge: boolean; manualReconciliation: boolean };
+}
+
 export interface PaymentProvider {
   readonly name: string;
   readonly configured: boolean;
-  // Контракт для майбутніх реалізацій (LiqPay/Приват24 тощо).
+  describe(): PaymentDescribe;
+  // Контракт для реалізацій (manual / LiqPay / Приват24 тощо).
   createCharge(input: { amount: number; currency: string; reference: string }): Promise<{ id: string; url?: string }>;
 }
 
