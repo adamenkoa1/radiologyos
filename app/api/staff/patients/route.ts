@@ -22,7 +22,8 @@ const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, se
   performed_at AS performedAt, created_at AS createdAt`;
 
 const PROFILE_COLUMNS = `phone_normalized AS phoneNormalized, display_name AS displayName,
-  birth_year AS birthYear, tags, notes, do_not_contact AS doNotContact,
+  birth_year AS birthYear, birth_date AS birthDate, email, address,
+  tags, notes, do_not_contact AS doNotContact,
   updated_by AS updatedBy, updated_at AS updatedAt`;
 
 export async function GET(request: Request) {
@@ -98,14 +99,16 @@ export async function PUT(request: Request) {
 
   await db.prepare(
     `INSERT INTO patient_profiles
-       (phone_normalized, display_name, birth_year, tags, notes, do_not_contact, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+       (phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(phone_normalized) DO UPDATE SET
        display_name = excluded.display_name, birth_year = excluded.birth_year,
+       birth_date = excluded.birth_date, email = excluded.email, address = excluded.address,
        tags = excluded.tags, notes = excluded.notes, do_not_contact = excluded.do_not_contact,
        updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
   ).bind(
     profile.phoneNormalized, profile.displayName, profile.birthYear,
+    profile.birthDate, profile.email, profile.address,
     profile.tags, profile.notes, profile.doNotContact, member.email,
   ).run();
 
