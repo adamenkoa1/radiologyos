@@ -21,7 +21,7 @@ export async function GET(request: Request) {
     organization: { id: ctx.organizationId, name: ctx.organizationName },
     providers: {
       messaging: { name: providers.messaging.name, ...providers.messaging.capabilities },
-      payment: { name: providers.payment.name, configured: providers.payment.configured },
+      payment: providers.payment.describe(),
       pacs: { name: providers.pacs.name, ...providers.pacs.describe() },
       calendar: { name: providers.calendar.name, configured: providers.calendar.configured },
     },
