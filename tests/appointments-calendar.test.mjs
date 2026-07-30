@@ -23,6 +23,20 @@ test("status filter tabs map to real booking statuses", async () => {
   assert.match(page, /"new"|new,/); // legacy-статус у групі «Заплановані»
 });
 
+test("calendar offers a Google-style week grid with navigation", async () => {
+  const page = await read("app/staff/appointments/page.tsx");
+  assert.match(page, /view === "week"/);
+  assert.match(page, /apptWeek/); // сітка тижня
+  assert.match(page, /weekDates\(/); // тиждень від понеділка
+  assert.match(page, /Тиждень/);
+  assert.match(page, /Сьогодні/); // навігація
+});
+
+test("confirming a booking opens the week schedule on its date", async () => {
+  const page = await read("app/staff/page.tsx");
+  assert.match(page, /\/staff\/appointments\?view=week&date=/);
+});
+
 test("calendar is wired into the staff shell and nav", async () => {
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/appointments"/);
