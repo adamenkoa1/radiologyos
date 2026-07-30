@@ -4,7 +4,7 @@ import { SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "Променева діагностика — Чернігівський військовий госпіталь",
+  title: "RadiologyOS — кабінет персоналу",
   description: "КТ, цифрова рентгенографія та флюорографія у Чернігові. Онлайн-запис на дослідження.",
   other: {
     "codex-preview": "development",
