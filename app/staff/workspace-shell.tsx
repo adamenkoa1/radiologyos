@@ -18,7 +18,9 @@ type StaffWorkspaceShellProps = {
 // Бічна панель = модулі цільової структури (у порядку «Карти системи»).
 // Кожен модуль веде на робочу сторінку й розгортається у підпункти-екрани;
 // кожен підпункт — на свою сторінку (нереалізовані ведуть у блок карти).
-type NavChild = { label:string; href:string };
+// Підпункт може залежати від feature flag профілю організації: якщо
+// відповідну можливість вимкнено, пункт ховається (конструктор).
+type NavChild = { label:string; href:string; flag?:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
 const systemModules: NavModule[] = [
   { n:"1", label:"Головна / Продаж послуг", href:"/", items:[
@@ -33,11 +35,11 @@ const systemModules: NavModule[] = [
   { n:"2", label:"Запис і заявки", href:"/staff", section:"overview", items:[
     { label:"Форма заявки", href:"/site/price.html" },
     { label:"Вибір часу", href:"/staff/dashboard" },
-    { label:"Кабінет пацієнта", href:"/site/cabinet.html" },
+    { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
     { label:"Черга реєстратури", href:"/staff#bookings" },
     { label:"Реєстр досліджень", href:"/staff/studies" },
     { label:"Розклад дня", href:"/staff/dashboard" },
-    { label:"Нагадування", href:"/staff/settings" },
+    { label:"Нагадування", href:"/staff/settings", flag:"reminders" },
     { label:"Повторний запис", href:"/staff/system-map#mod-2" },
   ]},
   { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients", items:[
@@ -72,7 +74,7 @@ const systemModules: NavModule[] = [
   { n:"6", label:"Обладнання", href:"/staff/imaging", section:"imaging", items:[
     { label:"Реєстр апаратів", href:"/staff#equipment" },
     { label:"Завантаженість", href:"/staff/dashboard" },
-    { label:"Знімки / PACS", href:"/staff/imaging" },
+    { label:"Знімки / PACS", href:"/staff/imaging", flag:"dicom_pacs" },
     { label:"Обслуговування (ТО)", href:"/staff/system-map#mod-6" },
     { label:"Простої / поломки", href:"/staff#equipment" },
     { label:"Витратні матеріали", href:"/staff/system-map#mod-6" },
@@ -115,10 +117,29 @@ export default function StaffWorkspaceShell({
   const [now,setNow] = useState<Date | null>(null);
   const [dark,setDark] = useState(false);
   const [openModules,setOpenModules] = useState<Record<string,boolean>>({});
+  // Ефективні feature flags організації; null — ще не завантажено (показуємо все).
+  const [flags,setFlags] = useState<Record<string,boolean> | null>(null);
 
   function toggleModule(n:string) {
     setOpenModules((current)=>({ ...current, [n]:!current[n] }));
   }
+
+  // Пункт видимий, доки прапорці не завантажені; після — лише якщо його
+  // можливість увімкнена (пункти без flag завжди видимі).
+  function childVisible(child:NavChild) {
+    if (!child.flag) return true;
+    if (!flags) return true;
+    return flags[child.flag] !== false;
+  }
+
+  useEffect(()=>{
+    let active = true;
+    fetch("/api/staff/org-profile", { cache:"no-store" })
+      .then((r)=>r.ok ? r.json() : null)
+      .then((d)=>{ if (active && d?.flags) setFlags(d.flags as Record<string,boolean>); })
+      .catch(()=>{});
+    return ()=>{ active = false; };
+  },[]);
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
@@ -184,7 +205,7 @@ export default function StaffWorkspaceShell({
               >▾</button>
             </div>
             {isOpen && <div className="workspaceSubList">
-              {item.items.map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
+              {item.items.filter(childVisible).map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
             </div>}
           </div>;
         })}
