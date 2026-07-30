@@ -424,7 +424,7 @@ export default function StaffPage() {
           <label><span>Робочий email</span><input name="email" type="email" required placeholder="name@example.com"/></label>
           <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
           <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-          <label><span>Пароль для входу</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Мінімум 8 символів"/></label>
+          <label><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
           <input name="active" type="hidden" value="true"/>
           <button type="submit">Додати працівника</button>
         </form>
@@ -435,7 +435,7 @@ export default function StaffPage() {
             <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
             <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>
-            <label><span>Новий пароль</span><input name="password" type="password" minLength={8} autoComplete="new-password" placeholder="Залиште порожнім, щоб не змінювати"/></label>
+            <label><span>Новий PIN-код</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр (порожньо — без змін)"/></label>
             <button type="submit">Зберегти</button>
           </form>)}
         </div>
