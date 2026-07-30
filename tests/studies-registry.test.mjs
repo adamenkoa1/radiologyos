@@ -24,6 +24,34 @@ test("listOrgStudies filters by organization_id", async () => {
   assert.match(repo, /WHERE b\.organization_id = \?/);
   // JOIN зі студіями теж обмежений тим самим tenant.
   assert.match(repo, /s\.organization_id = b\.organization_id/);
+  // Реєстр несе призначених виконавців.
+  assert.match(repo, /assigned_radiologist_email AS assignedRadiologistEmail/);
+});
+
+// Виконавці для призначення — лише учасники цього tenant.
+test("listOrgClinicians is tenant-scoped to radiologists/radiographers", async () => {
+  const repo = await read("lib/tenant-repo.ts");
+  assert.match(repo, /export async function listOrgClinicians/);
+  assert.match(repo, /FROM memberships m/);
+  assert.match(repo, /m\.organization_id = \?/);
+  assert.match(repo, /IN \('radiologist','radiographer'\)/);
+});
+
+// Призначення виконавців у реєстрі: API віддає список виконавців (лише
+// керівникам), сторінка призначає через єдиний PATCH бронювань.
+test("studies registry supports tenant-scoped assignment", async () => {
+  const route = await read("app/api/staff/studies/route.ts");
+  assert.match(route, /listOrgClinicians\(db, ctx\)/);
+  assert.match(route, /radiologists:/);
+  assert.match(route, /radiographers:/);
+  // Список виконавців тягнеться лише коли є право вести заявки.
+  assert.match(route, /canManage \? listOrgClinicians/);
+
+  const page = await read("app/staff/studies/page.tsx");
+  assert.match(page, /function assign\(/);
+  assert.match(page, /assignedRadiologistEmail/);
+  assert.match(page, /assignedRadiographerEmail/);
+  assert.match(page, /\/api\/staff\/bookings/);
 });
 
 // Сторінка реєстру: shell-секція, transition-aware керування, tenant-бейдж.

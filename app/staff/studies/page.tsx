@@ -5,17 +5,20 @@ import StaffWorkspaceShell from "../workspace-shell";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
-type NextState = { v:string; l:string };
+type Option = { v:string; l:string };
 type Study = {
   id:number; code:string; name:string; service:string; equipmentId:string;
   desiredDate:string; desiredTime:string; status:string; stateLabel:string;
   terminal:boolean; performedAt:string; protocolStatus:string;
-  studyStatus:string|null; accessionNumber:string|null; nextStates:NextState[];
+  studyStatus:string|null; accessionNumber:string|null; nextStates:Option[];
+  assignedRadiologistEmail:string; assignedRadiographerEmail:string;
+  radiologistName:string; radiographerName:string;
 };
 type StateInfo = { v:string; l:string; count:number };
 type Data = {
   organization:{ id:number; name:string; slug:string };
   role:StaffRole; canManage:boolean; states:StateInfo[]; studies:Study[];
+  radiologists:Option[]; radiographers:Option[];
 };
 
 const roleLabels: Record<StaffRole,string> = {
@@ -74,6 +77,29 @@ export default function StudiesPage() {
     }
   }
 
+  // Призначення виконавця: reg/admin шлють оновлення на той самий PATCH
+  // /api/staff/bookings, що валідує роль виконавця й фіксує подію.
+  async function assign(study:Study, field:"radiologist"|"radiographer", email:string) {
+    setBusy(study.id);
+    try {
+      const body = field === "radiologist"
+        ? { id:study.id, assignedRadiologistEmail:email, assignedRadiographerEmail:study.assignedRadiographerEmail }
+        : { id:study.id, assignedRadiologistEmail:study.assignedRadiologistEmail, assignedRadiographerEmail:email };
+      const response = await fetch("/api/staff/bookings", {
+        method:"PATCH", headers:{"content-type":"application/json"},
+        body:JSON.stringify(body),
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(()=>({})) as { error?:string };
+        window.alert(payload.error || "Не вдалося призначити виконавця");
+      } else {
+        await load();
+      }
+    } finally {
+      setBusy(0);
+    }
+  }
+
   const visible = useMemo(() => {
     if (!data) return [];
     return filter === "all" ? data.studies : data.studies.filter((s)=>s.status===filter);
@@ -119,7 +145,7 @@ export default function StudiesPage() {
         <table className="studiesTable">
           <thead><tr>
             <th>Код</th><th>Пацієнт</th><th>Дослідження</th><th>Дата / час</th>
-            <th>Апарат</th><th>Стан</th><th>Знімки</th><th>Дія</th>
+            <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th><th>Знімки</th><th>Дія</th>
           </tr></thead>
           <tbody>
             {visible.map((s)=><tr key={s.id}>
@@ -129,6 +155,22 @@ export default function StudiesPage() {
               <td className="studiesWhen">{s.desiredDate}{s.desiredTime ? ` ${s.desiredTime}` : ""}</td>
               <td>{equipmentNames[s.equipmentId] || s.equipmentId}</td>
               <td><span className={`studiesState grp-${STATE_GROUP[s.status] || "intake"}`}>{s.stateLabel}</span></td>
+              <td>{data.canManage
+                ? <select className="studiesAssign" aria-label={`Лікар для ${s.code}`} disabled={busy===s.id}
+                    value={s.assignedRadiologistEmail}
+                    onChange={(e)=>void assign(s, "radiologist", e.target.value)}>
+                    <option value="">— не призначено —</option>
+                    {data.radiologists.map((o)=><option key={o.v} value={o.v}>{o.l}</option>)}
+                  </select>
+                : <span className={s.radiologistName ? "" : "studiesUnlinked"}>{s.radiologistName || "—"}</span>}</td>
+              <td>{data.canManage
+                ? <select className="studiesAssign" aria-label={`Лаборант для ${s.code}`} disabled={busy===s.id}
+                    value={s.assignedRadiographerEmail}
+                    onChange={(e)=>void assign(s, "radiographer", e.target.value)}>
+                    <option value="">— не призначено —</option>
+                    {data.radiographers.map((o)=><option key={o.v} value={o.v}>{o.l}</option>)}
+                  </select>
+                : <span className={s.radiographerName ? "" : "studiesUnlinked"}>{s.radiographerName || "—"}</span>}</td>
               <td>{s.studyStatus && s.studyStatus !== "not_linked"
                 ? <span className="studiesLinked" title={s.accessionNumber || ""}>прив’язано</span>
                 : <span className="studiesUnlinked">—</span>}</td>

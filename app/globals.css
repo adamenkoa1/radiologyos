@@ -945,3 +945,4 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .themeDark .studiesState.grp-reporting{background:#241d3b;color:#b6a2e6;border-color:#392d55}
 .themeDark .studiesState.grp-done{background:#0f2f2a;color:#6fd0b5;border-color:#1d4a40}
 .themeDark .studiesState.grp-stopped{background:#3a1c14;color:#e6906f;border-color:#552d1e}
+.studiesTable select.studiesAssign{min-width:130px}

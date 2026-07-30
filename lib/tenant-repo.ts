@@ -62,15 +62,20 @@ export interface OrgStudyRow {
   protocolStatus: string;
   studyStatus: string | null;
   accessionNumber: string | null;
+  assignedRadiologistEmail: string;
+  assignedRadiographerEmail: string;
 }
 
-// Реєстр досліджень організації: заявки, збагачені прив'язкою до DICOM-студії.
-// Строго tenant-scoped — фільтр organization_id зі серверного контексту.
+// Реєстр досліджень організації: заявки, збагачені прив'язкою до DICOM-студії
+// та призначеними виконавцями. Строго tenant-scoped — фільтр organization_id
+// зі серверного контексту.
 export async function listOrgStudies(db: D1Database, ctx: OrgContext, limit = 500): Promise<OrgStudyRow[]> {
   const result = await db.prepare(
     `SELECT b.id AS id, b.code AS code, b.name AS name, b.service AS service,
        b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
        b.status AS status, b.performed_at AS performedAt, b.protocol_status AS protocolStatus,
+       b.assigned_radiologist_email AS assignedRadiologistEmail,
+       b.assigned_radiographer_email AS assignedRadiographerEmail,
        s.study_status AS studyStatus, s.accession_number AS accessionNumber
      FROM bookings b
      LEFT JOIN imaging_studies s ON s.booking_id = b.id AND s.organization_id = b.organization_id
@@ -78,6 +83,26 @@ export async function listOrgStudies(db: D1Database, ctx: OrgContext, limit = 50
      ORDER BY b.desired_date DESC, b.desired_time DESC
      LIMIT ?`
   ).bind(ctx.organizationId, limit).all<OrgStudyRow>();
+  return result.results ?? [];
+}
+
+export interface OrgClinician {
+  email: string;
+  displayName: string;
+  role: string;
+}
+
+// Виконавці організації, яких можна призначати на дослідження: активні
+// лікарі-рентгенологи та рентгенолаборанти — учасники цього tenant.
+export async function listOrgClinicians(db: D1Database, ctx: OrgContext): Promise<OrgClinician[]> {
+  const result = await db.prepare(
+    `SELECT sm.email AS email, sm.display_name AS displayName, sm.role AS role
+     FROM memberships m
+     JOIN staff_members sm ON sm.email = m.member_email AND sm.active = 1
+     WHERE m.organization_id = ? AND m.active = 1
+       AND sm.role IN ('radiologist','radiographer')
+     ORDER BY sm.role, sm.display_name, sm.email`
+  ).bind(ctx.organizationId).all<OrgClinician>();
   return result.results ?? [];
 }
 
