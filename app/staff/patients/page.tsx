@@ -212,6 +212,7 @@ export default function PatientsPage() {
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ПІБ, телефон, тег"/>
           {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelectedPhone(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
           <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
+          {canManage && <a className="crmExport" href="/staff/patients/import" title="Імпорт пацієнтів із CSV">↥ Імпорт із CSV</a>}
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Пацієнтів у цій категорії немає.</p> : visible.map((item)=><button
