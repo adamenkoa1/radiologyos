@@ -256,7 +256,21 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .settingsCard .linkBtn{border:0;background:none;color:var(--green);font:inherit;font-weight:700;cursor:pointer;padding:0;text-decoration:underline}.settingsCard .linkBtn:hover{color:#0a4b42}
 .settingsCard input[readonly]{background:#f4f8f6;color:#41544f}
 .settingsCard textarea{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);resize:vertical;min-height:72px;margin-top:6px}.settingsCard textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.settingsCard select{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);background:#fff}.settingsCard select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .settingsBlock h3{font-size:15px;font-weight:700;margin:0 0 6px}
+.settingsBlock h3 .ssNum{margin-right:8px}
+.ssNum{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand,#0c7a85);color:#fff;font-size:11px;font-weight:800;flex-shrink:0}
+.siteSchema{--brand:#0c7a85;display:flex;flex-direction:column;gap:8px;margin-top:8px}
+.siteSchema .ssZone{display:flex;align-items:center;gap:8px;border:1px solid #dce4e3;border-radius:8px;padding:12px 14px;font-size:13px;font-weight:600;color:#41544f;background:#fff}
+.siteSchema .ssRow{display:flex;gap:8px}.siteSchema .ssRow .ssZone{flex:1}
+.siteSchema .ssHeader,.siteSchema .ssContact{background:var(--brand);border-color:var(--brand);color:#fff}
+.siteSchema .ssHeader .ssNum,.siteSchema .ssContact .ssNum{background:rgba(255,255,255,.28)}
+.colorRow{display:flex;align-items:center;gap:12px;margin-top:6px}
+.colorRow input[type="color"]{width:46px;height:38px;padding:0;border:1px solid #cbd8d6;border-radius:8px;background:none;cursor:pointer}
+.colorSwatches{display:inline-flex;gap:8px;flex-wrap:wrap}
+.colorSwatch{width:28px;height:28px;border-radius:50%;border:2px solid #fff;box-shadow:0 0 0 1px #cbd8d6;cursor:pointer;padding:0}
+.colorSwatch.active{box-shadow:0 0 0 2px var(--green)}
+@media(max-width:600px){.siteSchema .ssRow{flex-direction:column}}
 .settingsCard .siteToggleRow{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .settingsCard .siteToggleRow>div{margin:0}.settingsCard .siteToggleRow b{font-size:14px}.settingsCard .siteToggleRow p{margin:4px 0 0;color:#66756f;font-size:12px}
 .settingsCard .switch{display:inline-flex;align-items:center;gap:8px;margin:0;white-space:nowrap}

@@ -24,8 +24,8 @@ type NavChild = { label:string; href:string; flag?:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
 const systemModules: NavModule[] = [
   { n:"1", label:"Головна / Продаж послуг", href:"/staff/site", section:"site", items:[
-    { label:"Сайт клініки (редактор)", href:"/staff/site" },
-    { label:"Вітрина послуг", href:"/" },
+    { label:"Вітрина (редактор)", href:"/staff/site" },
+    { label:"Відкрити вітрину", href:"/" },
     { label:"Онлайн-запис", href:"/" },
     { label:"Тарифи", href:"/staff/tariffs" },
     { label:"Контакти", href:"/" },
@@ -258,7 +258,7 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Вітрина":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
