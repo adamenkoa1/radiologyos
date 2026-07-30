@@ -98,6 +98,25 @@ test("editor uploads a logo file (browser-side resize to data URI)", async () =>
   assert.match(page, /toDataURL/); // зменшення в canvas
 });
 
+test("paid_only storefront rejects military bookings server-side", async () => {
+  const route = await read("app/api/site-booking/route.ts");
+  // Читає режим вітрини й відхиляє військову категорію при paid_only.
+  assert.match(route, /parseSiteContent\(await getSetting\(db, SITE_CONTENT_KEY\)\)/);
+  assert.match(route, /category === "military"/);
+  assert.match(route, /storefrontType === "paid_only"/);
+  assert.match(route, /status: 403/);
+});
+
+test("paid_only storefront redirects the military page to the price page", async () => {
+  const worker = await read("worker/index.ts");
+  assert.match(worker, /storefrontPaidOnly/); // хелпер читання режиму
+  assert.match(worker, /storefrontType === "paid_only"/);
+  // Прямий вхід на military.html і /booking?category=military → прайс.
+  assert.match(worker, /url\.pathname === "\/site\/military\.html"/);
+  assert.match(worker, /category"\) === "military"/);
+  assert.match(worker, /\/site\/price\.html/);
+});
+
 test("editor is renamed to Вітрина with a schema and design controls", async () => {
   const page = await read("app/staff/site/page.tsx");
   assert.match(page, /title="Вітрина"/);
