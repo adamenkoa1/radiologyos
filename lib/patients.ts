@@ -1,5 +1,6 @@
 import { serviceByCode } from "./catalog";
 import { normalizeUkrainianPhone } from "./phone";
+import { normalizeDob } from "./dob";
 
 // CRM layer. A "patient" is the set of bookings that share one normalized
 // phone number; a profile row and a communications log are overlaid on top.
@@ -17,6 +18,7 @@ export type PatientBookingRow = {
 
 export type PatientProfile = {
   phoneNormalized:string; displayName:string; birthYear:number;
+  birthDate:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
 };
 
@@ -104,7 +106,20 @@ export function buildPatientSummaries(
     });
   }
 
-  return summaries.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || ""));
+  // Пацієнти, доданих вручну (профіль без жодної заявки) — теж у списку.
+  for (const [phone, profile] of profiles) {
+    if (groups.has(phone)) continue;
+    summaries.push({
+      phoneNormalized:phone,
+      name:(profile.displayName || "").trim(),
+      category:"", visits:0, completed:0, cancelled:0, upcoming:0,
+      firstVisit:"", lastVisit:"",
+      awaitingProtocol:0, outstanding:0, dueTotal:0, paidTotal:0,
+      marketingSource:"", tags:profile.tags || "", doNotContact:!!profile.doNotContact, hasProfile:true,
+    });
+  }
+
+  return summaries.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name));
 }
 
 export function matchesSegment(summary:PatientSummary, segment:PatientSegment):boolean {
@@ -126,7 +141,7 @@ export function segmentCounts(summaries:PatientSummary[]):Record<PatientSegment,
 }
 
 export type ProfileValidation =
-  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; tags:string; notes:string; doNotContact:number } }
+  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; birthDate:string; email:string; address:string; tags:string; notes:string; doNotContact:number } }
   | { ok:false; error:string };
 
 export function sanitizeProfile(input:unknown):ProfileValidation {
@@ -137,13 +152,21 @@ export function sanitizeProfile(input:unknown):ProfileValidation {
   const displayName = String(raw.displayName ?? "").trim().slice(0, 120);
   const tags = String(raw.tags ?? "").trim().slice(0, 200);
   const notes = String(raw.notes ?? "").trim().slice(0, 2000);
+  const address = String(raw.address ?? "").trim().slice(0, 200);
+  const emailRaw = String(raw.email ?? "").trim().toLowerCase().slice(0, 254);
+  if (emailRaw && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailRaw)) {
+    return { ok:false, error:"Некоректний email пацієнта" };
+  }
   const doNotContact = raw.doNotContact === true || raw.doNotContact === 1 || raw.doNotContact === "true" ? 1 : 0;
-  let birthYear = Number(raw.birthYear) || 0;
+  // Повна дата народження (необовʼязково); рік для сумісності похідний від неї.
+  const birthDate = normalizeDob(raw.birthDate);
+  if (raw.birthDate && !birthDate) return { ok:false, error:"Некоректна дата народження" };
+  let birthYear = birthDate ? Number(birthDate.slice(0, 4)) : (Number(raw.birthYear) || 0);
   if (birthYear !== 0 && (!Number.isInteger(birthYear) || birthYear < 1900 || birthYear > 2100)) {
     return { ok:false, error:"Рік народження вкажіть у форматі РРРР" };
   }
   birthYear = birthYear || 0;
-  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, tags, notes, doNotContact } };
+  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, birthDate, email:emailRaw, address, tags, notes, doNotContact } };
 }
 
 export type CommunicationValidation =

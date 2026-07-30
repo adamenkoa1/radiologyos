@@ -18,6 +18,7 @@ type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type PatientProfile = {
   phoneNormalized:string; displayName:string; birthYear:number;
+  birthDate:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
 };
 type PatientBooking = {
@@ -71,6 +72,7 @@ export default function PatientsPage() {
   const [query,setQuery] = useState("");
   const [selectedPhone,setSelectedPhone] = useState<string | null>(null);
   const [card,setCard] = useState<PatientCard | null>(null);
+  const [creating,setCreating] = useState(false);
   const [error,setError] = useState("");
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
@@ -101,7 +103,7 @@ export default function PatientsPage() {
   }, [patients]);
 
   async function openPatient(phone:string) {
-    setActionError(""); setActionSuccess(""); setSelectedPhone(phone); setCard(null);
+    setActionError(""); setActionSuccess(""); setCreating(false); setSelectedPhone(phone); setCard(null);
     const response = await fetch(`/api/staff/patients?phone=${encodeURIComponent(phone)}`, { cache:"no-store" });
     const data = await response.json() as PatientCard & { error?:string };
     if (!response.ok) { setActionError(data.error || "Не вдалося відкрити картку"); return; }
@@ -117,7 +119,9 @@ export default function PatientsPage() {
       body:JSON.stringify({
         phone:card.phone,
         displayName:String(data.get("displayName") || ""),
-        birthYear:Number(data.get("birthYear")) || 0,
+        birthDate:String(data.get("birthDate") || ""),
+        email:String(data.get("email") || ""),
+        address:String(data.get("address") || ""),
         tags:String(data.get("tags") || ""),
         notes:String(data.get("notes") || ""),
         doNotContact:data.get("doNotContact") === "on",
@@ -132,6 +136,31 @@ export default function PatientsPage() {
       ...item, name:profile.displayName || item.name, tags:profile.tags, doNotContact:!!profile.doNotContact, hasProfile:true,
     } : item));
     setActionSuccess("Картку пацієнта збережено.");
+  }
+
+  async function createPatient(form:HTMLFormElement) {
+    setActionError(""); setActionSuccess(""); setSaving(true);
+    const data = new FormData(form);
+    const response = await fetch("/api/staff/patients", {
+      method:"PUT", headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        phone:String(data.get("phone") || ""),
+        displayName:String(data.get("displayName") || ""),
+        birthDate:String(data.get("birthDate") || ""),
+        email:String(data.get("email") || ""),
+        address:String(data.get("address") || ""),
+        tags:String(data.get("tags") || ""),
+        notes:String(data.get("notes") || ""),
+        doNotContact:data.get("doNotContact") === "on",
+      }),
+    });
+    const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
+    setSaving(false);
+    if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося додати пацієнта"); return; }
+    setCreating(false);
+    await loadList();
+    setActionSuccess("Пацієнта додано.");
+    void openPatient(result.profile.phoneNormalized);
   }
 
   async function logCommunication(form:HTMLFormElement) {
@@ -181,6 +210,7 @@ export default function PatientsPage() {
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ПІБ, телефон, тег"/>
+          {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelectedPhone(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
           <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
         </div>
         <div className="protocolQueueList">
@@ -204,16 +234,33 @@ export default function PatientsPage() {
         {actionError && <p className="staffError" role="alert">{actionError}</p>}
         {actionSuccess && <p className="staffSuccess" role="status">{actionSuccess}</p>}
 
-        {!card || !selectedPhone ? <div className="protocolPlaceholder">
+        {creating ? <div className="crmCreate">
+          <header className="protocolEditorHead"><div><p className="eyebrow">Новий пацієнт</p><h2>Картка пацієнта</h2><p>Створіть картку вручну. Обовʼязкові — імʼя та телефон.</p></div></header>
+          <form className="crmCreateForm" onSubmit={(e)=>{e.preventDefault();void createPatient(e.currentTarget);}}>
+            <label><span>ПІБ *</span><input name="displayName" maxLength={120} required placeholder="Прізвище Імʼя По батькові"/></label>
+            <label><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00"/></label>
+            <label><span>Дата народження</span><input name="birthDate" type="date" max="2100-12-31" min="1900-01-01"/></label>
+            <label><span>Email</span><input name="email" type="email" placeholder="name@example.com"/></label>
+            <label className="crmWide"><span>Адреса</span><input name="address" maxLength={200} placeholder="Місто, вулиця, будинок"/></label>
+            <label><span>Теги (через кому)</span><input name="tags" maxLength={200} placeholder="VIP, потребує супроводу"/></label>
+            <label className="crmWide"><span>Нотатки</span><textarea name="notes" maxLength={2000} placeholder="Алергії, особливі вказівки, домовленості"/></label>
+            <label className="crmCheck"><input name="doNotContact" type="checkbox"/><span>Не турбувати</span></label>
+            <div className="crmCreateActions">
+              <button type="submit" disabled={saving}>{saving?"Зберігаємо…":"Додати пацієнта"}</button>
+              <button type="button" className="crmCancel" onClick={()=>setCreating(false)}>Скасувати</button>
+            </div>
+          </form>
+        </div> : !card || !selectedPhone ? <div className="protocolPlaceholder">
           <span aria-hidden="true">☺</span>
           <b>Оберіть пацієнта зі списку</b>
-          <p>Картка з історією візитів, протоколів, оплат і комунікацій відкриється тут. Пацієнти формуються за номером телефону із заявок.</p>
+          <p>Картка з історією візитів, протоколів, оплат і комунікацій відкриється тут. Або натисніть «Додати пацієнта», щоб створити картку вручну.</p>
         </div> : <>
           <header className="protocolEditorHead">
             <div>
-              <p className="eyebrow">CRM · {card.patient?.visits || card.bookings.length} візит(и){card.profile?.birthYear ? ` · ${card.profile.birthYear} р.н.` : ""}</p>
+              <p className="eyebrow">CRM · {card.patient?.visits || card.bookings.length} візит(и){card.profile?.birthDate ? ` · нар. ${formatDate(card.profile.birthDate)}` : card.profile?.birthYear ? ` · ${card.profile.birthYear} р.н.` : ""}</p>
               <h2>{card.profile?.displayName || card.patient?.name || "Без імені"}</h2>
-              <p><a href={`tel:${card.phone}`}>{displayPhone(card.phone)}</a> · {categoryLabels[card.patient?.category || ""] || card.patient?.category}</p>
+              <p><a href={`tel:${card.phone}`}>{displayPhone(card.phone)}</a>{card.patient?.category ? ` · ${categoryLabels[card.patient.category] || card.patient.category}` : ""}</p>
+              {(card.profile?.email || card.profile?.address) && <p className="crmContactLine">{card.profile?.email}{card.profile?.email && card.profile?.address ? " · " : ""}{card.profile?.address}</p>}
               {(card.profile?.tags || card.patient?.marketingSource) && <p className="crmTagRow">
                 {parseTags(card.profile?.tags || "").map((tag)=><span className="crmTag" key={tag}>{tag}</span>)}
                 {card.patient?.marketingSource && <span className="crmTag muted">Джерело: {card.patient.marketingSource}</span>}
@@ -234,7 +281,9 @@ export default function PatientsPage() {
             <summary>Дані картки пацієнта</summary>
             <form onSubmit={(e)=>{e.preventDefault();void saveProfile(e.currentTarget);}}>
               <label><span>ПІБ</span><input name="displayName" maxLength={120} defaultValue={card.profile?.displayName || card.patient?.name || ""}/></label>
-              <label><span>Рік народження</span><input name="birthYear" type="number" min={1900} max={2100} defaultValue={card.profile?.birthYear || ""} placeholder="РРРР"/></label>
+              <label><span>Дата народження</span><input name="birthDate" type="date" max="2100-12-31" min="1900-01-01" defaultValue={card.profile?.birthDate || ""}/></label>
+              <label><span>Email</span><input name="email" type="email" defaultValue={card.profile?.email || ""} placeholder="name@example.com"/></label>
+              <label className="crmWide"><span>Адреса</span><input name="address" maxLength={200} defaultValue={card.profile?.address || ""} placeholder="Місто, вулиця, будинок"/></label>
               <label><span>Теги (через кому)</span><input name="tags" maxLength={200} defaultValue={card.profile?.tags || ""} placeholder="VIP, потребує супроводу"/></label>
               <label className="crmWide"><span>Нотатки</span><textarea name="notes" maxLength={2000} defaultValue={card.profile?.notes || ""} placeholder="Особливості, алергії, домовленості"/></label>
               <label className="crmCheck"><input name="doNotContact" type="checkbox" defaultChecked={!!card.profile?.doNotContact}/><span>Не турбувати (пацієнт відмовився від дзвінків/розсилок)</span></label>
