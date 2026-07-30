@@ -9,7 +9,7 @@ test("staff can create a booking via POST, guarded and conflict-checked", async 
   assert.match(route, /export async function POST/);
   assert.match(route, /canManageBookings\(member\.role\)/);
   assert.match(route, /normalizeUkrainianPhone\(/);
-  assert.match(route, /isBookableDate\(desiredDate\) \|\| !isTimeForService/);
+  assert.match(route, /isBookableDate\(desiredDate\) \|\| !isDayOpen\(desiredDate, schedule\) \|\| !validTimes\.includes/);
   assert.match(route, /Цей час уже зайнятий/); // перевірка конфлікту слота
   assert.match(route, /INSERT INTO bookings/);
   assert.match(route, /'confirmed',CURRENT_TIMESTAMP/); // персональний запис одразу підтверджений

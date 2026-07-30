@@ -258,6 +258,20 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .settingsCard textarea{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);resize:vertical;min-height:72px;margin-top:6px}.settingsCard textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .settingsCard select{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);background:#fff}.settingsCard select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .importErrors{margin:8px 0 0;padding-left:18px;color:#a23c1d;font-size:12.5px;line-height:1.6}
+.weekdayRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.weekdayChip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #cbd8d6;border-radius:99px;font-size:13px;font-weight:700;color:#5c6c78;cursor:pointer;background:#fff}
+.weekdayChip.on{background:var(--green);border-color:var(--green);color:#fff}
+.weekdayChip input{width:14px;height:14px;margin:0;accent-color:#fff}
+.equipHoursRow{display:flex;flex-wrap:wrap;align-items:end;gap:12px;padding:10px 0;border-top:1px solid #eef2f0}
+.equipHoursRow:first-of-type{border-top:0}
+.equipHoursRow>b{flex:1 1 100%;font-size:13.5px;margin-bottom:2px}
+.equipHoursRow label{display:flex;flex-direction:column;gap:4px}.equipHoursRow label>span{font-size:11px;font-weight:800;color:#41544f;text-transform:uppercase;letter-spacing:.05em}
+.equipHoursRow input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit}.equipHoursRow input[type="number"]{width:92px}
+.dayOffAdd{display:flex;gap:10px;align-items:center;margin-top:6px}
+.dayOffAdd input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit}
+.dayOffList{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}
+.dayOffList li{display:inline-flex;align-items:center;gap:8px;background:#f2f6f4;border:1px solid #dce4e3;border-radius:8px;padding:6px 8px 6px 12px;font-size:13px}
+.dayOffList button{border:0;background:#e5ecea;color:#a23c1d;width:22px;height:22px;border-radius:50%;font-size:15px;line-height:1;cursor:pointer}
 .settingsBlock h3{font-size:15px;font-weight:700;margin:0 0 6px}
 .settingsBlock h3 .ssNum{margin-right:8px}
 .ssNum{display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--brand,#0c7a85);color:#fff;font-size:11px;font-weight:800;flex-shrink:0}

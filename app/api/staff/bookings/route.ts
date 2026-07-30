@@ -1,5 +1,7 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
-import { isBookableDate, isTimeForService } from "../../../../lib/booking-rules";
+import { isBookableDate } from "../../../../lib/booking-rules";
+import { candidateTimesFor, hoursFor, isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
+import { getSetting } from "../../../../lib/settings";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { normalizeDob } from "../../../../lib/dob";
 import { effectivePrice } from "../../../../lib/tariffs";
@@ -56,7 +58,9 @@ export async function POST(request: Request) {
   if (!name || !phoneNormalized || !service) {
     return Response.json({ error: "Вкажіть імʼя, телефон і послугу" }, { status: 400 });
   }
-  if (!isBookableDate(desiredDate) || !isTimeForService(desiredTime, serviceCode)) {
+  const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+  const validTimes = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes);
+  if (!isBookableDate(desiredDate) || !isDayOpen(desiredDate, schedule) || !validTimes.includes(desiredTime)) {
     return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
   }
 
@@ -412,7 +416,9 @@ export async function PATCH(request: Request) {
        FROM bookings WHERE id = ?`
     ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     const service = booking && serviceByCode(booking.serviceCode);
-    if (!booking || !service || !isBookableDate(body.desiredDate) || !isTimeForService(body.desiredTime, booking.serviceCode)) {
+    const rSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    if (!booking || !service || !isBookableDate(body.desiredDate) || !isDayOpen(body.desiredDate, rSched)
+        || !candidateTimesFor(hoursFor(rSched, service.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
     }
     const endTime = addMinutes(body.desiredTime, booking.durationMinutes);
@@ -454,7 +460,9 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Заявку вже закрито — підтвердження недоступне" }, { status: 400 });
     }
     const service = serviceByCode(booking.serviceCode);
-    if (!service || !isBookableDate(booking.desiredDate) || !isTimeForService(booking.desiredTime, booking.serviceCode)) {
+    const cSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    if (!service || !isBookableDate(booking.desiredDate) || !isDayOpen(booking.desiredDate, cSched)
+        || !candidateTimesFor(hoursFor(cSched, service.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
       return Response.json({ error: "Бажаний час поза розкладом — перенесіть запис на вільний слот" }, { status: 400 });
     }
     const endTime = addMinutes(booking.desiredTime, booking.durationMinutes);
