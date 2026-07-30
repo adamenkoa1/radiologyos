@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site" | "appointments";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -38,6 +38,7 @@ const systemModules: NavModule[] = [
     { label:"Вибір часу", href:"/staff/dashboard" },
     { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
     { label:"Черга реєстратури", href:"/staff#bookings" },
+    { label:"Календар записів", href:"/staff/appointments" },
     { label:"Реєстр досліджень", href:"/staff/studies" },
     { label:"Розклад дня", href:"/staff/dashboard" },
     { label:"Нагадування", href:"/staff/settings", flag:"reminders" },
@@ -255,14 +256,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
