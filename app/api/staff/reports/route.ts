@@ -1,5 +1,6 @@
 import { EQUIPMENT, SERVICES, serviceByCode } from "../../../../lib/catalog";
-import { canViewReports, requireStaff } from "../../../../lib/staff-auth";
+import { canViewReports } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { REPORT_TEMPLATES } from "../../../../lib/reporting";
 import {
@@ -16,15 +17,16 @@ function dbBinding() {
 export async function GET(request:Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
-  const member = await requireStaff(request,db);
-  if (!member) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const ctx = await requireOrgContext(request,db);
+  if (!ctx) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const member = ctx.member;
   if (!canViewReports(member.role)) {
     return Response.json({ error:"Звіти з медичними та фінансовими даними доступні лише адміністратору" },{ status:403 });
   }
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректний період або параметри звіту" },{ status:400 });
-  const source = await fetchReportSource(db,filters);
+  const source = await fetchReportSource(db,filters,ctx.organizationId);
   const activeRows = source.filter((row)=>row.status !== "cancelled");
   const completedRows = source.filter((row)=>row.status === "completed");
   const protocolReady = (status:string) => status === "ready" || status === "issued";

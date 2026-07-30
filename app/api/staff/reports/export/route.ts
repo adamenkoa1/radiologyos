@@ -1,5 +1,6 @@
 import { logSecurityEvent } from "../../../../../lib/audit";
-import { canViewReports, requireStaff } from "../../../../../lib/staff-auth";
+import { canViewReports } from "../../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../../lib/tenant";
 import {
   fetchReportSource,
   publicFilters,
@@ -15,25 +16,27 @@ function dbBinding() {
 export async function GET(request:Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
-  const member = await requireStaff(request,db);
-  if (!member) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const ctx = await requireOrgContext(request,db);
+  if (!ctx) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const member = ctx.member;
   if (!canViewReports(member.role)) {
     return Response.json({ error:"Експорт звітів доступний лише адміністратору" },{ status:403 });
   }
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректні параметри звіту" },{ status:400 });
-  const source = await fetchReportSource(db,filters);
+  const source = await fetchReportSource(db,filters,ctx.organizationId);
   const { template,columns,rows } = reportPayload(filters,source);
   const workbook = createXlsx(template.label,columns,rows);
   const containsPersonalData = ["studies","protocols","finance"].includes(filters.template) ? 1 : 0;
 
   await db.prepare(
     `INSERT INTO report_exports (
-      requested_by, report_type, filters_json, columns_json, format,
+      organization_id, requested_by, report_type, filters_json, columns_json, format,
       row_count, contains_personal_data
-    ) VALUES (?, ?, ?, ?, 'xlsx', ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, 'xlsx', ?, ?)`
   ).bind(
+    ctx.organizationId,
     member.email,
     filters.template,
     JSON.stringify(publicFilters(filters)),
