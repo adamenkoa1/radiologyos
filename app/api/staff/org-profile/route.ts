@@ -1,7 +1,7 @@
 import { requireOrgContext } from "../../../../lib/tenant";
 import {
-  FEATURE_FLAGS, FEATURE_LABELS, PROFILE_LABELS, PROFILE_TYPES,
-  getOrgProfile, isFeatureFlag, isProfileType, resolveFlags,
+  FEATURE_FLAGS, FEATURE_LABELS, PROFILE_DESCRIPTIONS, PROFILE_LABELS, PROFILE_TYPES,
+  getOrgProfile, isFeatureFlag, isProfileType, profilePresetFlags, resolveFlags,
   type FeatureFlag,
 } from "../../../../lib/org-profile";
 
@@ -24,10 +24,13 @@ export async function GET(request: Request) {
     canManage: ctx.role === "admin",
     profileType: profile.profileType,
     profileLabel: profile.profileLabel,
+    profileDescription: PROFILE_DESCRIPTIONS[profile.profileType],
     flags: profile.flags,
     overrides: profile.overrides,
+    // Рекомендовані можливості пресета для поточного профілю.
+    presetFlags: profilePresetFlags(profile.profileType),
     catalog: {
-      profiles: PROFILE_TYPES.map((v) => ({ v, l: PROFILE_LABELS[v] })),
+      profiles: PROFILE_TYPES.map((v) => ({ v, l: PROFILE_LABELS[v], d: PROFILE_DESCRIPTIONS[v] })),
       features: FEATURE_FLAGS.map((v) => ({ v, l: FEATURE_LABELS[v] })),
     },
   });
@@ -45,6 +48,7 @@ export async function PATCH(request: Request) {
   const body = await request.json().catch(() => ({})) as {
     profileType?: string;
     flags?: Record<string, unknown>;
+    applyPreset?: boolean;
   };
 
   const current = await getOrgProfile(db, ctx);
@@ -53,11 +57,18 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Невідомий профіль організації" }, { status: 400 });
   }
 
-  // Прапорці зберігаємо лише як явні override-и відомих можливостей.
-  const overrides: Partial<Record<FeatureFlag, boolean>> = { ...current.overrides };
-  if (body.flags && typeof body.flags === "object") {
-    for (const [key, value] of Object.entries(body.flags)) {
-      if (isFeatureFlag(key)) overrides[key] = Boolean(value);
+  // Застосування пресета: рекомендовані можливості профілю стають явними
+  // override-ами (усі решта наявних override-ів скидаються до пресета).
+  // Інакше — точкове оновлення окремих прапорців.
+  let overrides: Partial<Record<FeatureFlag, boolean>>;
+  if (body.applyPreset) {
+    overrides = { ...profilePresetFlags(profileType) };
+  } else {
+    overrides = { ...current.overrides };
+    if (body.flags && typeof body.flags === "object") {
+      for (const [key, value] of Object.entries(body.flags)) {
+        if (isFeatureFlag(key)) overrides[key] = Boolean(value);
+      }
     }
   }
 
