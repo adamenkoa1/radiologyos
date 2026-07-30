@@ -19,14 +19,25 @@ test("ICS parser reads VEVENTs and formats Kyiv time", async () => {
   assert.match(lib, /DTSTART/);
 });
 
-test("external-calendar endpoint fetches the configured feed for staff", async () => {
+test("external-calendar endpoint serves the tenant feed via the calendar provider", async () => {
   const route = await read("app/api/staff/external-calendar/route.ts");
-  assert.match(route, /requireStaff\(/);
-  assert.match(route, /getSetting\(db, "external_ics_url"\)/);
-  assert.match(route, /parseIcs\(/);
-  assert.match(route, /safeOutboundUrl\(url\)/);
-  assert.match(route, /fetchLimited\(safeUrl/);
-  assert.match(route, /canAccessAllBookings\(member\.role\)/);
+  // Маршрут тонкий: tenant-контекст + провайдер календаря.
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /canAccessAllBookings\(ctx\.member\.role\)/);
+  assert.match(route, /resolveProviders\(db, ctx\)/);
+  assert.match(route, /calendar\.listUpcoming\(\)/);
+
+  // Реальна доставка живе у провайдері, через політику вихідних зʼєднань.
+  const provider = await read("lib/providers/calendar.ts");
+  assert.match(provider, /export function createCalendarProvider/);
+  assert.match(provider, /parseIcs\(/);
+  assert.match(provider, /safeOutboundUrl\(url\)/);
+  assert.match(provider, /fetchLimited\(safeUrl/);
+
+  // Резолвер добирає джерело (external_ics_url) у tenant-контексті.
+  const resolver = await read("lib/providers/index.ts");
+  assert.match(resolver, /external_ics_url/);
+  assert.match(resolver, /createCalendarProvider\(icsUrl\)/);
 });
 
 test("settings expose the external calendar URL and the dashboard shows events", async () => {

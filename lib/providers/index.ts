@@ -9,8 +9,9 @@ import { getSettings } from "../settings";
 import { getOrgProfile } from "../org-profile";
 import type { OrgContext } from "../tenant";
 import { createMessagingProvider } from "./messaging";
+import { createCalendarProvider } from "./calendar";
 import type {
-  CalendarProvider, PacsProvider, PaymentProvider, ResolvedProviders,
+  PacsProvider, PaymentProvider, ResolvedProviders,
 } from "./types";
 
 const nullPayment: PaymentProvider = {
@@ -49,10 +50,7 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     }),
   };
 
-  const calendar: CalendarProvider = {
-    name: icsUrl ? "ics" : "none",
-    configured: Boolean(icsUrl),
-  };
+  const calendar = createCalendarProvider(icsUrl);
 
   return { messaging, payment: nullPayment, pacs, calendar };
 }

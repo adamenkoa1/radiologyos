@@ -24,9 +24,23 @@ export interface PacsProvider {
   describe(): { enabled: boolean; viewerConfigured: boolean; dicomwebConfigured: boolean };
 }
 
+export interface CalendarEvent {
+  summary: string;
+  display: string;
+  allDay: boolean;
+}
+
+export interface CalendarUpcoming {
+  configured: boolean;
+  events: CalendarEvent[];
+  error?: string;
+}
+
 export interface CalendarProvider {
   readonly name: string;
   readonly configured: boolean;
+  // Найближчі події календаря організації (best-effort, ніколи не кидає).
+  listUpcoming(): Promise<CalendarUpcoming>;
 }
 
 export interface ResolvedProviders {
