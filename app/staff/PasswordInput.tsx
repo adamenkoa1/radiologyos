@@ -7,12 +7,14 @@ interface PasswordInputProps {
   autoComplete: string;
   placeholder?: string;
   minLength?: number;
+  maxLength?: number;
+  inputMode?: "numeric" | "text";
   autoFocus?: boolean;
 }
 
-// Password field with a show/hide (eye) toggle. Kept as its own client
+// Password / PIN field with a show/hide (eye) toggle. Kept as its own client
 // component so the login, registration and reset forms share one control.
-export function PasswordInput({ name, autoComplete, placeholder, minLength, autoFocus }: PasswordInputProps) {
+export function PasswordInput({ name, autoComplete, placeholder, minLength, maxLength, inputMode, autoFocus }: PasswordInputProps) {
   const [visible, setVisible] = useState(false);
   return (
     <div className="passwordField">
@@ -23,6 +25,8 @@ export function PasswordInput({ name, autoComplete, placeholder, minLength, auto
         autoComplete={autoComplete}
         placeholder={placeholder}
         minLength={minLength}
+        maxLength={maxLength}
+        inputMode={inputMode}
         autoFocus={autoFocus}
       />
       <button

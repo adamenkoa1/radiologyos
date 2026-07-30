@@ -38,12 +38,12 @@ export default function StaffLoginPage() {
       <p>Кабінет персоналу відділення променевої діагностики</p>
       <label><span>Робочий email</span><input name="email" type="email" required autoComplete="username" placeholder="name@example.com" autoFocus /></label>
       <label>
-        <span className="labelRow">Пароль</span>
-        <PasswordInput name="password" autoComplete="current-password" placeholder="Ваш пароль" />
+        <span className="labelRow">PIN-код</span>
+        <PasswordInput name="password" autoComplete="current-password" placeholder="6-значний PIN" inputMode="numeric" maxLength={6} />
       </label>
       {error && <p className="loginError" role="alert">{error}</p>}
       <button type="submit" disabled={status === "sending"}>{status === "sending" ? "Вхід…" : "Увійти"}</button>
-      <p className="loginAlt">Доступ і відновлення пароля надає адміністратор системи.</p>
+      <p className="loginAlt">Доступ і відновлення PIN-коду надає адміністратор системи.</p>
       <Link className="loginBack" href="/">← На головну</Link>
     </form>
   </main>;

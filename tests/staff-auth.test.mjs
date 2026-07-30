@@ -78,7 +78,7 @@ test("the self-managed login page renders", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Кабінет персоналу/);
-  assert.match(html, /Пароль/);
+  assert.match(html, /PIN-код/);
 });
 
 test("self-service migration creates settings without a shared access code or active default admin", async () => {
@@ -95,7 +95,8 @@ test("account helpers enforce administrator-owned roles, email and password rule
   assert.match(source, /export async function registerStaff/);
   assert.match(source, /export async function resetStaffPassword/);
   assert.match(source, /export function passwordProblem/);
-  assert.match(source, /MIN_PASSWORD_LENGTH = 12/);
+  assert.match(source, /MIN_PASSWORD_LENGTH = 6/);
+  assert.match(source, /PIN_RE = \/\^\\d\{6\}\$\//); // 6-значний PIN приймається
   assert.match(source, /role: StaffRole/);
   assert.doesNotMatch(source, /verifyAccessCode/);
   assert.match(source, /await hashPassword\(/);

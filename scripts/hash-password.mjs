@@ -1,14 +1,10 @@
 import { pbkdf2Sync, randomBytes } from "node:crypto";
 
 const password = process.env.RADIOLOGYOS_BOOTSTRAP_PASSWORD || "";
-if (
-  password.length < 12
-  || password.length > 200
-  || !/[A-Za-zА-Яа-яЇїІіЄєҐґ]/u.test(password)
-  || !/\d/.test(password)
-) {
+// Спрощено: 6-значний PIN або пароль 6–200 символів.
+if (!(/^\d{6}$/.test(password) || (password.length >= 6 && password.length <= 200))) {
   console.error(
-    "Set RADIOLOGYOS_BOOTSTRAP_PASSWORD to a 12–200 character password containing a letter and a digit.",
+    "Set RADIOLOGYOS_BOOTSTRAP_PASSWORD to a 6-digit PIN (e.g. 428193) or a 6–200 character password.",
   );
   process.exit(1);
 }

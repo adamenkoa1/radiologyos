@@ -44,7 +44,7 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
   const member = await requireStaff(request, db);
   if (!member) return null;
 
-  const row = await db.prepare(
+  let row = await db.prepare(
     `SELECT o.id AS organizationId, o.slug AS slug, o.name AS organizationName, m.role AS role
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id AND o.active = 1
@@ -57,7 +57,21 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     organizationName: string;
     role: string;
   }>();
-  if (!row) return null;
+
+  // Онбординг без ручних кроків: якщо у співробітника ще немає членства,
+  // автоматично привʼязуємо його до початкової організації (найменший id).
+  // Спрощує додавання персоналу — не треба вручну вписувати memberships.
+  if (!row) {
+    const org = await db.prepare(
+      "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
+    ).first<{ organizationId: number; slug: string; organizationName: string }>();
+    if (!org) return null;
+    await db.prepare(
+      `INSERT INTO memberships (organization_id, member_email, role, active) VALUES (?, ?, ?, 1)
+       ON CONFLICT(organization_id, member_email) DO UPDATE SET active = 1`
+    ).bind(org.organizationId, member.email, member.role).run();
+    row = { ...org, role: member.role };
+  }
 
   return {
     organizationId: row.organizationId,
