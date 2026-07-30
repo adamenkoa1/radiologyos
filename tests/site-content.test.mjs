@@ -82,6 +82,22 @@ test("landing themes via CSS variable and honors storefront type + logo", async 
   assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
 });
 
+test("logo accepts a data:image URI within the size cap, rejects oversized/unsafe", () => {
+  const small = "data:image/png;base64," + "A".repeat(1000);
+  assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, small);
+  assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "https://x.co/l.svg");
+  assert.equal(sanitizeSiteContent({ logoUrl: "data:text/html;base64,xxx" }).logoUrl, ""); // не зображення
+  const huge = "data:image/png;base64," + "A".repeat(300001);
+  assert.equal(sanitizeSiteContent({ logoUrl: huge }).logoUrl, ""); // завеликий
+});
+
+test("editor uploads a logo file (browser-side resize to data URI)", async () => {
+  const page = await read("app/staff/site/page.tsx");
+  assert.match(page, /type="file"/);
+  assert.match(page, /onLogoFile/);
+  assert.match(page, /toDataURL/); // зменшення в canvas
+});
+
 test("editor is renamed to Вітрина with a schema and design controls", async () => {
   const page = await read("app/staff/site/page.tsx");
   assert.match(page, /title="Вітрина"/);

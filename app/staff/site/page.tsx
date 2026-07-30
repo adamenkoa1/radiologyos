@@ -1,6 +1,7 @@
 "use client";
 
 import { type CSSProperties, FormEvent, useEffect, useState } from "react";
+import Image from "next/image";
 import StaffWorkspaceShell from "../workspace-shell";
 import { SITE_CONTENT_DEFAULTS, type SiteContent } from "../../../lib/site-content";
 
@@ -71,6 +72,36 @@ export default function StaffSitePage() {
 
   function update(key: keyof SiteContent, value: string | boolean) {
     setContent(prev => ({ ...prev, [key]: value }));
+  }
+
+  // Логотип: SVG беремо як є, растр зменшуємо в браузері до висоти 200px і
+  // зберігаємо як компактний data-URI (без бекенду й сховища).
+  async function onLogoFile(file: File | null) {
+    setError("");
+    if (!file) return;
+    if (!file.type.startsWith("image/")) { setError("Оберіть файл зображення."); return; }
+    try {
+      if (file.type === "image/svg+xml") {
+        const uri = await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(String(fr.result)); fr.onerror = rej; fr.readAsDataURL(file); });
+        if (uri.length > 300000) { setError("SVG завеликий — спростіть логотип."); return; }
+        update("logoUrl", uri); return;
+      }
+      const url = URL.createObjectURL(file);
+      const img = new window.Image();
+      await new Promise<void>((res, rej) => { img.onload = () => res(); img.onerror = () => rej(new Error("read")); img.src = url; });
+      const scale = Math.min(1, 200 / img.height);
+      const w = Math.max(1, Math.round(img.width * scale)), h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas"); canvas.width = w; canvas.height = h;
+      canvas.getContext("2d")?.drawImage(img, 0, 0, w, h);
+      URL.revokeObjectURL(url);
+      let uri = canvas.toDataURL("image/webp", 0.85);
+      if (!uri.startsWith("data:image/webp")) uri = canvas.toDataURL("image/png");
+      if (uri.length > 300000) uri = canvas.toDataURL("image/jpeg", 0.7);
+      if (uri.length > 300000) { setError("Логотип завеликий — оберіть менше зображення."); return; }
+      update("logoUrl", uri);
+    } catch {
+      setError("Не вдалося прочитати зображення.");
+    }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -153,9 +184,11 @@ export default function StaffSitePage() {
               <small className="settingsHint">Колір застосовується до шапки, кнопок і карток вітрини.</small>
             </label>
             <label className="settingsField">
-              <span>Логотип (посилання на зображення)</span>
-              <input type="url" value={content.logoUrl} onChange={e => update("logoUrl", e.target.value)} placeholder="https://…/logo.png" />
-              <small className="settingsHint">Необовʼязково. Посилання на PNG/JPG/SVG (https). Зʼявиться у шапці.</small>
+              <span>Логотип</span>
+              {content.logoUrl && <span className="logoPreview"><Image src={content.logoUrl} alt="Логотип" width={120} height={46} unoptimized /><button type="button" onClick={() => update("logoUrl", "")}>Прибрати</button></span>}
+              <input type="file" accept="image/*" onChange={e => void onLogoFile(e.target.files?.[0] || null)} />
+              <small className="settingsHint">Завантажте PNG/JPG/SVG — зображення зменшиться автоматично. Або вставте посилання (https):</small>
+              <input type="url" value={/^https:\/\//.test(content.logoUrl) ? content.logoUrl : ""} onChange={e => update("logoUrl", e.target.value)} placeholder="https://…/logo.png" />
             </label>
           </section>
 
