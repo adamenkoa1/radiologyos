@@ -6,6 +6,7 @@ import {
 } from "../../../lib/patient-auth";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isRateLimited } from "../../../lib/rate-limit";
+import { stateLabel } from "../../../lib/study-state";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -24,14 +25,17 @@ export async function POST(request: Request) {
     return Response.json({ error: "Перевірте код і повний номер телефону" }, { status: 400 });
   }
   const result = await db.prepare(
-    `SELECT code, service, desired_date AS desiredDate, desired_time AS desiredTime,
-      status, created_at AS createdAt
-     FROM bookings WHERE code = ? AND phone_normalized = ?
+    `SELECT b.code, b.service, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
+      b.status, b.created_at AS createdAt, COALESCE(o.name, '') AS organization
+     FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
+     WHERE b.code = ? AND b.phone_normalized = ?
      LIMIT 1`
-  ).bind(code, phoneNormalized).first();
+  ).bind(code, phoneNormalized).first<{ status: string }>();
   if (!result) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+  // Людський підпис стану дослідження (єдина state machine).
+  const booking = { ...result, statusLabel: stateLabel(result.status) };
   const sessionToken = await createPatientSession(db, phoneNormalized);
-  return Response.json({ booking: result }, {
+  return Response.json({ booking }, {
     headers: {
       "cache-control": "no-store",
       "set-cookie": patientSessionCookie(sessionToken),

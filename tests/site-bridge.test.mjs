@@ -45,7 +45,7 @@ test("patient cabinet lists bookings by phone and reads protocols from D1", asyn
 test("my-bookings lists every booking for a full phone number", async () => {
   const route = await read("app/api/my-bookings/route.ts");
   assert.match(route, /normalizeUkrainianPhone\(/);
-  assert.match(route, /WHERE phone_normalized = \?/);
+  assert.match(route, /WHERE b\.phone_normalized = \?/);
   assert.match(route, /protocol_status = 'issued'/); // exposes hasProtocol flag
   assert.match(route, /isRateLimited\(/);
 });

@@ -156,11 +156,23 @@ const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
 
 const statusMeta = {
-  new:         { badge: 'new',       label: 'Нова',           step: 'new' },
-  confirmed:   { badge: 'booked',    label: 'Підтверджена',   step: 'booked' },
-  rescheduled: { badge: 'booked',    label: 'Перенесена',     step: 'booked' },
-  completed:   { badge: 'done',      label: 'Виконана',       step: 'done' },
-  cancelled:   { badge: 'cancelled', label: 'Скасована',      step: 'cancelled' },
+  new:               { badge: 'new',       label: 'Нова',              step: 'new' },
+  requested:         { badge: 'new',       label: 'Заявка',            step: 'new' },
+  needs_verification:{ badge: 'new',       label: 'Потребує перевірки',step: 'new' },
+  scheduled:         { badge: 'booked',    label: 'Заплановано',       step: 'booked' },
+  confirmed:         { badge: 'booked',    label: 'Підтверджена',      step: 'booked' },
+  rescheduled:       { badge: 'booked',    label: 'Перенесена',        step: 'booked' },
+  arrived:           { badge: 'booked',    label: 'Прибуття',          step: 'booked' },
+  queued:            { badge: 'booked',    label: 'У черзі',           step: 'booked' },
+  in_progress:       { badge: 'booked',    label: 'Виконується',       step: 'booked' },
+  performed:         { badge: 'booked',    label: 'Виконано',          step: 'done' },
+  images_ready:      { badge: 'booked',    label: 'Зображення готові', step: 'done' },
+  reporting:         { badge: 'booked',    label: 'Готуємо висновок',  step: 'done' },
+  protocol_ready:    { badge: 'done',      label: 'Протокол готовий',  step: 'done' },
+  issued:            { badge: 'done',      label: 'Видано',            step: 'done' },
+  completed:         { badge: 'done',      label: 'Виконана',          step: 'done' },
+  cancelled:         { badge: 'cancelled', label: 'Скасована',         step: 'cancelled' },
+  no_show:           { badge: 'cancelled', label: 'Неявка',            step: 'cancelled' },
 };
 const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#2f5aa0;' }[m]));
 const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
@@ -192,6 +204,8 @@ function stepper(status) {
 
 function cardHtml(b) {
   const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
+  const badgeLabel = b.statusLabel || meta.label;
+  const org = b.organization ? ' · ' + esc(b.organization) : '';
   const when = b.desiredDate ? `бажана дата: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
@@ -199,9 +213,9 @@ function cardHtml(b) {
     <div class="app-top">
       <div>
         <div class="app-study">${esc(b.service)}</div>
-        <div class="app-meta">Код ${esc(b.code)}${when ? ' · ' + when : ''}</div>
+        <div class="app-meta">Код ${esc(b.code)}${org}${when ? ' · ' + when : ''}</div>
       </div>
-      <span class="badge ${meta.badge}">${esc(meta.label)}</span>
+      <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
     ${awaitingPayment ? `<div class="pay-row">💳 <span>Очікує оплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>` : ''}
