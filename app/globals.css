@@ -342,6 +342,28 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .apptEvent.grp-inroom{background:#eef5ec;border-left-color:#3f8a37}
 .apptEvent.grp-done{background:#eef1ef;border-left-color:#7a8b88}
 .apptEvent.grp-cancelled{background:#fdefeb;border-left-color:#c85a38}
+/* Календар: навігація і тижневий вигляд (як Google Calendar) */
+.apptNav{display:inline-flex;align-items:center;gap:6px}
+.apptNav button{border:1px solid #cbd8d6;background:#fff;border-radius:7px;min-width:34px;height:38px;font-size:18px;line-height:1;cursor:pointer;color:#41544f;padding:0 10px}
+.apptNav button:hover{background:#f2f6f4}
+.apptNav .apptToday{font-size:13px;font-weight:700}
+.apptRange{font-weight:800;font-size:14px;color:var(--ink);margin-left:4px;white-space:nowrap}
+.apptWeek{display:flex;flex-direction:column}
+.apptWeekHead{display:grid;grid-template-columns:56px repeat(7,1fr);background:#fff;border:1px solid #dce4e3;border-radius:10px 10px 0 0}
+.apptWeekCorner{border-right:1px solid #eef2f0}
+.apptWeekHeadCell{border:0;border-left:1px solid #eef2f0;background:none;padding:9px 4px;text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
+.apptWeekHeadCell small{font-size:10.5px;color:#98a6a2;text-transform:uppercase;font-weight:800}
+.apptWeekHeadCell b{font-size:15px;color:var(--ink)}
+.apptWeekHeadCell:hover{background:#f2f6f4}
+.apptWeekHeadCell.sel{background:#eef5f2}
+.apptWeekHeadCell.today b{background:var(--green);color:#fff;border-radius:50%;width:26px;height:26px;display:inline-grid;place-items:center}
+.apptWeekBody{position:relative;display:grid;grid-template-columns:56px repeat(7,1fr);background:#fff;border:1px solid #dce4e3;border-top:0;border-radius:0 0 10px 10px;overflow:hidden}
+.apptWeek .apptHours{position:relative;top:auto;left:auto;width:auto;height:auto;border-right:1px solid #eef2f0}
+.apptWeekCol{position:relative;border-left:1px solid #eef2f0}
+.apptWeek .apptEvent{left:2px;right:2px;padding:3px 6px;border-left-width:3px}
+.apptWeek .apptEvent b{font-size:10.5px}
+.apptWeek .apptEvent span{font-size:9.5px}
+@media(max-width:820px){.apptWeekHeadCell b{font-size:13px}.apptWeek .apptEvent b{font-size:9px}.apptWeek .apptEvent span{display:none}}
 /* WhatsApp сторінка */
 .waSteps{margin:6px 0 0;padding-left:20px;color:#41544f;font-size:13px;line-height:1.6}.waSteps li{margin-bottom:6px}
 .waBotList{margin:6px 0 10px;padding-left:18px;color:#41544f;font-size:13px;line-height:1.7}

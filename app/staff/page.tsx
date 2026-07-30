@@ -259,8 +259,9 @@ export default function StaffPage() {
     const data = await response.json() as { error?:string; reminder?:ReminderResult };
     if (!response.ok) { setActionError(data.error || "Не вдалося підтвердити запис"); return; }
     setItems(current => current.map(item => item.id === id ? {...item,status:"confirmed"} : item));
-    setActionSuccess(`Запис підтверджено та поставлено в розклад.${reminderNote(data.reminder)}`);
-    void load();
+    // Одразу відкриваємо розклад (тиждень) на даті цього запису.
+    const target = items.find(item => item.id === id)?.desiredDate;
+    window.location.assign(`/staff/appointments?view=week&date=${target || ""}`);
   }
 
   async function saveNote(id:number,note:string) {
