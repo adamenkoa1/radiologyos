@@ -36,7 +36,11 @@ export default function StaffLoginPage() {
       <span className="loginMark">R</span>
       <h1>RadiologyOS</h1>
       <p>Кабінет персоналу відділення променевої діагностики</p>
-      <label><span>Номер телефону</span><input name="phone" type="tel" required autoComplete="username" inputMode="tel" placeholder="+380..." autoFocus /></label>
+      <label>
+        <span>Номер телефону</span>
+        <input name="phone" type="tel" required autoComplete="username" inputMode="tel" placeholder="0XX XXX XX XX" autoFocus />
+        <span className="fieldHint">Просто ваш номер — без +38. Напр.: 0972808899</span>
+      </label>
       <label>
         <span className="labelRow">PIN-код</span>
         <PasswordInput name="password" autoComplete="current-password" placeholder="6-значний PIN" inputMode="numeric" maxLength={6} />
