@@ -7,7 +7,7 @@
 // підтвердження / перенесення не має падати через недоступний шлюз.
 
 import { getSettings } from "./settings";
-import { fetchLimited, readLimitedText, safeOutboundUrl } from "./outbound";
+import { createMessagingProvider } from "./providers/messaging";
 
 export type ReminderKind = "confirmed" | "rescheduled";
 
@@ -64,22 +64,6 @@ async function record(
   }
 }
 
-async function postJson(url: string, auth: string, payload: Record<string, string>): Promise<void> {
-  const outbound = safeOutboundUrl(url);
-  if (!outbound) throw new Error("Адреса шлюзу заборонена політикою зовнішніх підключень");
-  const headers: Record<string, string> = { "content-type": "application/json" };
-  if (auth) headers.authorization = auth;
-  const response = await fetchLimited(outbound, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  }, 5000);
-  if (!response.ok) {
-    const detail = await readLimitedText(response).catch(() => "");
-    throw new Error(`Шлюз відповів ${response.status}${detail ? `: ${detail.slice(0, 120)}` : ""}`);
-  }
-}
-
 // Ставить нагадування в чергу і намагається відправити наявними каналами.
 // Повертає зведення для UI; помилки каналів не пробрасуються.
 export async function sendPatientReminder(
@@ -97,6 +81,12 @@ export async function sendPatientReminder(
   ]);
   const enabled = truthy(cfg.patient_reminders_enabled || "");
 
+  // Доставлення абстраговане месенджинг-провайдером (див. lib/providers).
+  const messaging = createMessagingProvider({
+    sms: { url: cfg.sms_gateway_url || "", auth: cfg.sms_gateway_auth || "" },
+    email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
+  });
+
   // Повага до позначки «не турбувати» у картці пацієнта.
   if (booking.phoneNormalized) {
     const profile = await db.prepare(
@@ -113,18 +103,17 @@ export async function sendPatientReminder(
   if (booking.phone) {
     channels.push({
       channel: "sms", recipient: booking.phone, url: cfg.sms_gateway_url || "",
-      send: () => postJson(cfg.sms_gateway_url, cfg.sms_gateway_auth || "", { to: booking.phone, text: body }),
+      send: () => messaging.sendSms(booking.phone, body),
     });
   }
   if (booking.patientEmail) {
     channels.push({
       channel: "email", recipient: booking.patientEmail, url: cfg.email_gateway_url || "",
-      send: () => postJson(cfg.email_gateway_url, cfg.email_gateway_auth || "", {
-        to: booking.patientEmail,
-        from: cfg.email_gateway_from || "",
-        subject: kind === "confirmed" ? "Запис підтверджено" : "Запис перенесено",
-        text: body,
-      }),
+      send: () => messaging.sendEmail(
+        booking.patientEmail,
+        kind === "confirmed" ? "Запис підтверджено" : "Запис перенесено",
+        body,
+      ),
     });
   }
 

@@ -66,15 +66,17 @@ test("protocols use optimistic concurrency and immutable revision history", asyn
 
 test("server-side integrations block SSRF and oversized responses", async () => {
   const outbound = await read("lib/outbound.ts");
-  const notifications = await read("lib/notify.ts");
+  // Доставлення нагадувань перенесено у месенджинг-провайдер; захист від SSRF
+  // лишається на кожному зовнішньому виклику (safeOutboundUrl + fetchLimited).
+  const messaging = await read("lib/providers/messaging.ts");
   const telegram = await read("lib/telegram.ts");
   assert.match(outbound, /privateHostname/);
   assert.match(outbound, /url\.protocol !== "https:"/);
   assert.match(outbound, /redirect: "error"/);
   assert.match(outbound, /MAX_RESPONSE_BYTES/);
   assert.match(outbound, /AbortController/);
-  assert.match(notifications, /safeOutboundUrl\(url\)/);
-  assert.match(notifications, /fetchLimited\(/);
+  assert.match(messaging, /safeOutboundUrl\(url\)/);
+  assert.match(messaging, /fetchLimited\(/);
   assert.doesNotMatch(telegram, /notice\.category|notice\.services/);
 });
 
