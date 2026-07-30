@@ -253,6 +253,51 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .settingsCard .switch input{width:auto}
 .settingsActions{display:flex;align-items:center;gap:16px;margin-top:4px}
 .settingsActions button{min-height:44px;padding:0 20px;border:0;border-radius:7px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.settingsActions button:hover:not(:disabled){background:#0a4b42}.settingsActions button:disabled{opacity:.5;cursor:not-allowed}
+/* Календар записів */
+.apptCal{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.apptCalBar{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.apptCalBar input[type="date"]{padding:10px 12px;border:1px solid #cbd8d6;border-radius:8px;font:inherit;color:var(--ink)}
+.apptCalBar input[type="search"]{flex:1;min-width:180px;padding:10px 12px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}
+.apptCalBar input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.apptViewToggle{display:inline-flex;background:#eef2f0;border-radius:8px;padding:3px}
+.apptViewToggle button{border:0;background:none;padding:8px 16px;border-radius:6px;font:inherit;font-weight:700;font-size:13px;color:#5c6c78;cursor:pointer}
+.apptViewToggle button.active{background:var(--green);color:#fff}
+.apptStatusRow{display:flex;flex-wrap:wrap;gap:8px}
+.apptStatusTab{display:inline-flex;align-items:center;gap:7px;border:1px solid #dce4e3;background:#fff;border-radius:99px;padding:7px 13px;font:inherit;font-size:13px;font-weight:700;color:#41544f;cursor:pointer}
+.apptStatusTab:hover{border-color:#b7c9c5}
+.apptStatusTab.active{background:var(--green);border-color:var(--green);color:#fff}
+.apptStatusCount{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:99px;background:#eef2f0;color:#41544f;font-size:11px;font-weight:800}
+.apptStatusTab.active .apptStatusCount{background:rgba(255,255,255,.28);color:#fff}
+.apptEmpty{background:#fff;border:1px solid #dce4e3;border-radius:10px;padding:56px 20px;text-align:center;color:#7a8b88}
+.apptEmpty span{font-size:34px;display:block;margin-bottom:10px;opacity:.6}
+.apptEmpty p{margin:0;font-size:14px}
+.apptListWrap{display:flex;flex-direction:column;gap:8px}
+.apptCardRow{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #dce4e3;border-radius:10px;padding:12px 16px}
+.apptCardTime{font-weight:800;font-size:15px;color:var(--ink);min-width:52px}
+.apptCardBody{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
+.apptCardBody b{font-size:14px}.apptCardBody span{font-size:12.5px;color:#66756f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apptBadge{flex-shrink:0;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;white-space:nowrap}
+.apptBadge.grp-planned{background:#fdf2df;color:#8a5a12}
+.apptBadge.grp-confirmed{background:#e0eef3;color:#1d5a72}
+.apptBadge.grp-arrived{background:#efe6fa;color:#5b3a99}
+.apptBadge.grp-inroom{background:#e2efe0;color:#2f5c2a}
+.apptBadge.grp-done{background:#e8ece9;color:#48584f}
+.apptBadge.grp-cancelled{background:#fdece7;color:#a23c1d}
+.apptTimeline{position:relative;background:#fff;border:1px solid #dce4e3;border-radius:10px;overflow:hidden}
+.apptHours{position:absolute;top:0;left:0;width:56px;height:100%}
+.apptHour{position:relative;border-bottom:1px solid #eef2f0}
+.apptHour span{position:absolute;top:-8px;left:8px;font-size:11px;font-weight:700;color:#98a6a2;background:#fff;padding:0 3px}
+.apptLane{position:absolute;top:0;left:56px;right:8px;height:100%}
+.apptLaneLine{position:absolute;left:0;right:0;height:1px;background:#eef2f0}
+.apptEvent{position:absolute;left:0;right:0;border-radius:8px;padding:6px 10px;overflow:hidden;border-left:4px solid #b7c9c5;background:#f4f8f6;box-shadow:0 1px 3px rgba(23,54,52,.06)}
+.apptEvent b{display:block;font-size:12.5px;line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apptEvent span{font-size:11px;color:#5c6c78;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.apptEvent.grp-planned{background:#fdf7ec;border-left-color:#e0a638}
+.apptEvent.grp-confirmed{background:#eef5f8;border-left-color:#2f7d99}
+.apptEvent.grp-arrived{background:#f3edfb;border-left-color:#7a53c0}
+.apptEvent.grp-inroom{background:#eef5ec;border-left-color:#3f8a37}
+.apptEvent.grp-done{background:#eef1ef;border-left-color:#7a8b88}
+.apptEvent.grp-cancelled{background:#fdefeb;border-left-color:#c85a38}
 .settingsCard .notice{margin:0;padding:11px 13px;border-radius:7px;font-size:13px}.settingsCard .notice.success{background:#eef4e6;color:#33632c}.settingsCard .notice.error{background:#fdf1ee;color:#a23c1d}
 .dashLists{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .dashList{padding:0;background:#fff;border:1px solid #e7ece9;border-radius:18px;box-shadow:0 1px 2px rgba(24,40,30,.04),0 8px 24px rgba(24,40,30,.05);overflow:hidden}
