@@ -29,7 +29,7 @@ type EquipmentBlock = {
   id:number; equipmentId:string; blockedDate:string; startTime:string; endTime:string; reason:string;
 };
 type StaffMember = {
-  email:string; displayName:string; role:StaffRole; active:number; createdAt:string;
+  email:string; phone:string; displayName:string; role:StaffRole; active:number; createdAt:string;
 };
 
 const labels: Record<string,string> = {
@@ -324,7 +324,7 @@ export default function StaffPage() {
     const response = await fetch("/api/staff/members", {
       method:"POST", headers:{"content-type":"application/json"},
       body:JSON.stringify({
-        email:String(data.get("email")),
+        phone:String(data.get("phone")),
         displayName:String(data.get("displayName")),
         role:String(data.get("role")),
         active:String(data.get("active")) !== "false",
@@ -421,7 +421,7 @@ export default function StaffPage() {
           <p>Додавайте реєстраторів, лікарів і лаборантів без зміни програмного коду.</p>
         </div>
         <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-          <label><span>Робочий email</span><input name="email" type="email" required placeholder="name@example.com"/></label>
+          <label><span>Номер телефону</span><input name="phone" type="tel" inputMode="tel" required placeholder="+380..."/></label>
           <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
           <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           <label><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
@@ -430,8 +430,8 @@ export default function StaffPage() {
         </form>
         <div className="staffMemberList">
           {members.map(member=><form key={member.email} onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-            <input name="email" type="hidden" value={member.email}/>
-            <label><span>Email</span><b>{member.email}</b></label>
+            <input name="phone" type="hidden" value={member.phone}/>
+            <label><span>Телефон</span><b>{member.phone || member.email}</b></label>
             <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
             <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>

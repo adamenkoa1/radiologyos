@@ -2,6 +2,7 @@ import { requireStaff, type StaffRole } from "../../../../lib/staff-auth";
 import { hashPassword } from "../../../../lib/auth";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { passwordProblem } from "../../../../lib/staff-accounts";
+import { normalizeUkrainianPhone } from "../../../../lib/phone";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Доступ лише для адміністратора" }, { status: 403 });
   }
   const result = await db.prepare(
-    `SELECT email, display_name AS displayName, role, active, created_at AS createdAt
+    `SELECT email, phone, display_name AS displayName, role, active, created_at AS createdAt
      FROM staff_members ORDER BY active DESC, display_name, email`
   ).all();
   return Response.json({ members: result.results });
@@ -30,32 +31,34 @@ export async function POST(request: Request) {
   if (!member || member.role !== "admin") {
     return Response.json({ error: "Доступ лише для адміністратора" }, { status: 403 });
   }
-  const body = await request.json() as { email?:string; displayName?:string; role?:StaffRole; active?:boolean; password?:string };
-  const email = (body.email || "").trim().toLowerCase().slice(0, 254);
+  const body = await request.json() as { phone?:string; displayName?:string; role?:StaffRole; active?:boolean; password?:string };
+  const phone = normalizeUkrainianPhone(String(body.phone || ""));
+  // email лишається внутрішнім id акаунта, похідним від номера телефону.
+  const email = phone ? `${phone}@phone.local` : "";
   const displayName = (body.displayName || "").trim().slice(0, 120);
   const role = body.role;
   const active = body.active === false ? 0 : 1;
   const password = typeof body.password === "string" ? body.password : "";
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !role || !roles.has(role)) {
-    return Response.json({ error: "Перевірте email і роль працівника" }, { status: 400 });
+  if (!phone || !role || !roles.has(role)) {
+    return Response.json({ error: "Перевірте номер телефону і роль працівника" }, { status: 400 });
   }
   if (email === member.email && (role !== "admin" || active !== 1)) {
     return Response.json({ error: "Не можна забрати власний адміністративний доступ" }, { status: 409 });
   }
   const existing = await db.prepare("SELECT email FROM staff_members WHERE email = ? LIMIT 1").bind(email).first();
   if (!existing && !password) {
-    return Response.json({ error: "Для нового працівника потрібно задати тимчасовий пароль" }, { status: 400 });
+    return Response.json({ error: "Для нового працівника потрібно задати PIN-код" }, { status: 400 });
   }
   if (password) {
     const problem = passwordProblem(password);
     if (problem) return Response.json({ error: problem }, { status: 400 });
   }
   await db.prepare(
-    `INSERT INTO staff_members (email, display_name, role, active)
-     VALUES (?, ?, ?, ?)
+    `INSERT INTO staff_members (email, phone, display_name, role, active)
+     VALUES (?, ?, ?, ?, ?)
      ON CONFLICT(email) DO UPDATE SET
-       display_name=excluded.display_name, role=excluded.role, active=excluded.active`
-  ).bind(email, displayName, role, active).run();
+       phone=excluded.phone, display_name=excluded.display_name, role=excluded.role, active=excluded.active`
+  ).bind(email, phone, displayName, role, active).run();
 
   if (password) {
     await db.batch([

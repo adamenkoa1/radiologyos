@@ -24,7 +24,7 @@ test("auth library stores PBKDF2 hashes and hashed session tokens", async () => 
   }
   assert.match(source, /PBKDF2/);
   assert.match(source, /HttpOnly; Secure; SameSite=Strict/);
-  assert.match(source, /PBKDF2_ITERATIONS = 600000/);
+  assert.match(source, /PBKDF2_ITERATIONS = 100000/);
 });
 
 test("requireStaff resolves the member from a session cookie, not an external header", async () => {
@@ -44,7 +44,8 @@ test("login and logout endpoints verify credentials, rate-limit and manage the c
   assert.match(login, /createSession\(/);
   assert.match(login, /isRateLimited\(/);
   assert.match(login, /set-cookie/i);
-  assert.match(login, /Невірний email або пароль/);
+  assert.match(login, /Невірний номер телефону або PIN-код/);
+  assert.match(login, /WHERE phone = \?/); // вхід за телефоном
   assert.match(logout, /destroySession\(/);
   assert.match(logout, /clearedSessionCookie\(/);
 });

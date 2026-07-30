@@ -5,7 +5,10 @@
 // here depends on an external identity provider — the application owns the
 // whole flow. Runs on the Cloudflare Workers Web Crypto API.
 
-const PBKDF2_ITERATIONS = 600000;
+// 100k — робочий баланс для безкоштовного Cloudflare Worker (600k перевищував
+// CPU-ліміт запиту → логін падав з 500). Верифікація читає кількість ітерацій
+// зі збереженого хеша, тож старі хеші теж перевіряються коректно.
+const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEYLEN = 32;
 
 export const SESSION_COOKIE = "rid_session";
