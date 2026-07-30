@@ -129,12 +129,13 @@ export const requestLimits = sqliteTable("request_limits", {
 
 export const staffMembers = sqliteTable("staff_members", {
   email: text("email").primaryKey(),
+  phone: text("phone").notNull().default(""),
   displayName: text("display_name").notNull().default(""),
   role: text("role").notNull(),
   active: integer("active").notNull().default(1),
   passwordHash: text("password_hash").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, table => [uniqueIndex("staff_members_phone_idx").on(table.phone)]);
 
 export const staffSessions = sqliteTable("staff_sessions", {
   tokenHash: text("token_hash").primaryKey(),

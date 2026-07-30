@@ -20,7 +20,7 @@ export default function StaffLoginPage() {
     const data = new FormData(event.currentTarget);
     const response = await fetch("/api/staff/login", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: String(data.get("email") || ""), password: String(data.get("password") || "") }),
+      body: JSON.stringify({ phone: String(data.get("phone") || ""), password: String(data.get("password") || "") }),
     });
     const result = await response.json().catch(() => ({})) as { ok?: boolean; error?: string };
     if (!response.ok || !result.ok) {
@@ -36,7 +36,7 @@ export default function StaffLoginPage() {
       <span className="loginMark">R</span>
       <h1>RadiologyOS</h1>
       <p>Кабінет персоналу відділення променевої діагностики</p>
-      <label><span>Робочий email</span><input name="email" type="email" required autoComplete="username" placeholder="name@example.com" autoFocus /></label>
+      <label><span>Номер телефону</span><input name="phone" type="tel" required autoComplete="username" inputMode="tel" placeholder="+380..." autoFocus /></label>
       <label>
         <span className="labelRow">PIN-код</span>
         <PasswordInput name="password" autoComplete="current-password" placeholder="6-значний PIN" inputMode="numeric" maxLength={6} />
