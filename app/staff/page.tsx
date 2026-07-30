@@ -421,7 +421,7 @@ export default function StaffPage() {
           <p>Додавайте реєстраторів, лікарів і лаборантів без зміни програмного коду.</p>
         </div>
         <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-          <label><span>Номер телефону</span><input name="phone" type="tel" inputMode="tel" required placeholder="+380..."/></label>
+          <label><span>Номер телефону</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/><span className="fieldHint">Без +38, напр.: 0972808899</span></label>
           <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
           <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
           <label><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
