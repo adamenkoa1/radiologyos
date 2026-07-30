@@ -19,6 +19,8 @@ type Data = {
   organization:{ id:number; name:string; slug:string };
   role:StaffRole; canManage:boolean; states:StateInfo[]; studies:Study[];
   radiologists:Option[]; radiographers:Option[];
+  profile:{ type:string; label:string };
+  features:{ dicomPacs:boolean };
 };
 
 const roleLabels: Record<StaffRole,string> = {
@@ -126,7 +128,7 @@ export default function StudiesPage() {
     <>
       <div className="studiesOrgBar">
         <span className="studiesOrgBadge">{data.organization.name}</span>
-        <small>{data.studies.length} досліджень · роль: {roleLabels[data.role]}{data.canManage ? "" : " · лише перегляд"}</small>
+        <small>{data.profile?.label ? `${data.profile.label} · ` : ""}{data.studies.length} досліджень · роль: {roleLabels[data.role]}{data.canManage ? "" : " · лише перегляд"}</small>
       </div>
 
       <div className="studiesTabs" role="tablist" aria-label="Фільтр за станом">
@@ -145,7 +147,7 @@ export default function StudiesPage() {
         <table className="studiesTable">
           <thead><tr>
             <th>Код</th><th>Пацієнт</th><th>Дослідження</th><th>Дата / час</th>
-            <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th><th>Знімки</th><th>Дія</th>
+            <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th>{data.features?.dicomPacs ? <th>Знімки</th> : null}<th>Дія</th>
           </tr></thead>
           <tbody>
             {visible.map((s)=><tr key={s.id}>
@@ -171,9 +173,9 @@ export default function StudiesPage() {
                     {data.radiographers.map((o)=><option key={o.v} value={o.v}>{o.l}</option>)}
                   </select>
                 : <span className={s.radiographerName ? "" : "studiesUnlinked"}>{s.radiographerName || "—"}</span>}</td>
-              <td>{s.studyStatus && s.studyStatus !== "not_linked"
+              {data.features?.dicomPacs ? <td>{s.studyStatus && s.studyStatus !== "not_linked"
                 ? <span className="studiesLinked" title={s.accessionNumber || ""}>прив’язано</span>
-                : <span className="studiesUnlinked">—</span>}</td>
+                : <span className="studiesUnlinked">—</span>}</td> : null}
               <td>
                 {data.canManage && s.nextStates.length > 0 ?
                   <select

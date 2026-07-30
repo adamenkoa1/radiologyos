@@ -966,3 +966,34 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .themeDark .dashQueueCell b{color:#25b4c0}
 .themeDark .dashQueueCell b.muted{color:#3a4650}
 @media(max-width:760px){.dashQueueRow{grid-template-columns:repeat(2,1fr)}}
+
+/* Організація та профіль (/staff/organization) — конструктор */
+.orgProfile{max-width:1000px;margin:0 auto;display:grid;gap:16px}
+.orgProfileHead{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.orgProfileHead small{color:#5f716d;font-size:12px}
+.orgProfileCard{border:1px solid #dce4e3;border-radius:14px;background:#fff;padding:18px 20px}
+.orgProfileCard h3{margin:0 0 4px;font-size:15px;color:var(--ink)}
+.orgProfileHint{margin:0 0 14px;color:#5f716d;font-size:12.5px;line-height:1.5}
+.orgProfilePicker{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.orgProfilePicker button{padding:14px;border:1px solid #d6ded9;border-radius:10px;background:#f7faf9;color:var(--ink);font:inherit;font-size:13.5px;font-weight:700;text-align:left;cursor:pointer;transition:border-color .12s,background .12s,color .12s}
+.orgProfilePicker button:hover:not(:disabled){border-color:var(--ws-accent);color:var(--ws-accent)}
+.orgProfilePicker button.active{background:var(--ws-accent);border-color:var(--ws-accent);color:#fff}
+.orgProfilePicker button:disabled{opacity:.65;cursor:not-allowed}
+.orgFlagList{display:grid;gap:8px}
+.orgFlag{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid #e6ece9;border-radius:10px;background:#fbfdfc}
+.orgFlag input{width:18px;height:18px;margin:0;flex:0 0 18px;accent-color:var(--ws-accent)}
+.orgFlagName{font-size:13.5px;color:var(--ink);font-weight:600;flex:1}
+.orgFlagState{font-size:11px;font-weight:800;padding:3px 9px;border-radius:999px}
+.orgFlagState.on{background:#e3f3ed;color:#075246}
+.orgFlagState.off{background:#eef2f0;color:#8a968f}
+.orgFlagBadge{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#a85b18;background:#fdefe0;border:1px solid #f5d7b3;padding:2px 7px;border-radius:999px}
+.themeDark .orgProfileHead small,.themeDark .orgProfileHint{color:#8b98a1}
+.themeDark .orgProfileCard{background:#121a20;border-color:#22303a}
+.themeDark .orgProfileCard h3{color:#e6edf1}
+.themeDark .orgProfilePicker button{background:#0e151a;border-color:#26333d;color:#cdd8de}
+.themeDark .orgProfilePicker button:hover:not(:disabled){border-color:#25b4c0;color:#25b4c0}
+.themeDark .orgProfilePicker button.active{background:#25b4c0;border-color:#25b4c0;color:#06131a}
+.themeDark .orgFlag{background:#0e151a;border-color:#22303a}
+.themeDark .orgFlagName{color:#e6edf1}
+.themeDark .orgFlagState.on{background:#0f2f2a;color:#6fd0b5}
+.themeDark .orgFlagState.off{background:#1c2831;color:#8b98a1}
