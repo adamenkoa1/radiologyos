@@ -16,10 +16,7 @@ import {
   type StaffRole,
 } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -444,7 +441,8 @@ export async function PATCH(request: Request) {
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: body.desiredDate, desiredTime: body.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget)
+      .catch((error) => { console.error("reminder_failed", "rescheduled", body.id, error); return null; });
     return Response.json({ ok: true, status: "rescheduled", reminder });
   }
 
@@ -486,7 +484,8 @@ export async function PATCH(request: Request) {
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: booking.desiredDate, desiredTime: booking.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "confirmed", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(db, "confirmed", reminderTarget)
+      .catch((error) => { console.error("reminder_failed", "confirmed", body.id, error); return null; });
     return Response.json({ ok: true, status: "confirmed", reminder });
   }
 

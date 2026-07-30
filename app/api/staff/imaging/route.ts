@@ -8,10 +8,7 @@ import {
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { getOrgProfile } from "../../../../lib/org-profile";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 type PacsRow = {
   dicomwebBaseUrl:string; viewerBaseUrl:string; aeTitle:string; enabled:number;

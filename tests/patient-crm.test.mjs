@@ -49,6 +49,18 @@ test("CRM API guards profile writes and validates before persisting", async () =
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
 });
 
+test("patient registry query is bounded (no unbounded profile scan)", async () => {
+  const route = await read("app/api/staff/patients/route.ts");
+  assert.match(route, /FROM patient_profiles ORDER BY updated_at DESC LIMIT \d+/);
+});
+
+test("reminder and telegram send failures are logged, not silently swallowed", async () => {
+  const bookings = await read("app/api/staff/bookings/route.ts");
+  assert.match(bookings, /console\.error\("reminder_failed"/);
+  const site = await read("app/api/site-booking/route.ts");
+  assert.match(site, /console\.error\("telegram_notify_failed"/);
+});
+
 async function renderPath(path) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);

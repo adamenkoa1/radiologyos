@@ -102,7 +102,26 @@ function applyBrandColor(c) {
   r.style.setProperty('--brand', c.brandColor);
   r.style.setProperty('--brand-dark', dark);
 }
-try { applyBrandColor(getSiteContent()); } catch (e) {}
+// Застосовуємо контент вітрини на сторінках прайсу/військових/про нас:
+// колір теми + тексти груп «Сторінка цивільних» і «Сторінка військових»
+// з редактора. Спершу з кешу localStorage (миттєво), потім свіже значення
+// з /api/site-content (єдине джерело, як на головній).
+function applySiteContent(c) {
+  if (!c || typeof c !== 'object') return;
+  applyBrandColor(c);
+  var set = function (id, v) { var el = document.getElementById(id); if (el && v) { el.textContent = v; } };
+  var logo = document.getElementById('scLogo'); if (logo && c.logoUrl) { logo.src = c.logoUrl; logo.style.display = ''; }
+  set('scPriceTitle', c.pricePageTitle); set('scPriceSub', c.pricePageSub);
+  set('scPriceIntro', c.priceIntro); set('scPriceListTitle', c.priceListTitle); set('scPriceLead', c.priceLead);
+  set('scMilPageTitle', c.milPageTitle); set('scMilPageSub', c.milPageSub);
+  set('scMilNotice', c.milNotice); set('scMilLead', c.milLead);
+}
+try { applySiteContent(getSiteContent()); } catch (e) {}
+try {
+  fetch('/api/site-content').then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.content) { applySiteContent(d.content); try { saveSiteContent(d.content); } catch (e) {} }
+  }).catch(function () {});
+} catch (e) {}
 
 function getSiteContent() {
   try {

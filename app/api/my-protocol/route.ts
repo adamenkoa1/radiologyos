@@ -1,9 +1,6 @@
 import { normalizeBookingCode, requirePatientSession } from "../../../lib/patient-auth";
 import { isRateLimited } from "../../../lib/rate-limit";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();

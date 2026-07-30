@@ -9,10 +9,7 @@ import {
 } from "../../../../lib/auth";
 import { isRateLimited } from "../../../../lib/rate-limit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();

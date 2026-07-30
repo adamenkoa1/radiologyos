@@ -1,6 +1,7 @@
 import { canManageBookings, canViewPatientRegistry, requireStaff } from "../../../../lib/staff-auth";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
+import { dbBinding } from "../../../../lib/db";
 import {
   PatientBookingRow,
   PatientProfile,
@@ -9,9 +10,6 @@ import {
   sanitizeProfile,
 } from "../../../../lib/patients";
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, service,
   service_code AS serviceCode, equipment_id AS equipmentId, desired_date AS desiredDate,
@@ -71,7 +69,7 @@ export async function GET(request: Request) {
 
   const [bookings, profileRows] = await Promise.all([
     db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized != '' LIMIT 3000`).all(),
-    db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles`).all(),
+    db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles ORDER BY updated_at DESC LIMIT 5000`).all(),
   ]);
   const profiles = new Map<string, PatientProfile>();
   for (const row of profileRows.results as unknown as PatientProfile[]) profiles.set(row.phoneNormalized, row);

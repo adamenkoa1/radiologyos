@@ -4,10 +4,7 @@
 import { requireStaff } from "../../../../lib/staff-auth";
 import { getSetting, setSetting } from "../../../../lib/settings";
 import { SITE_CONTENT_KEY, parseSiteContent, sanitizeSiteContent } from "../../../../lib/site-content";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 export async function GET(request: Request) {
   const db = dbBinding();

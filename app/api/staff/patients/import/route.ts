@@ -5,10 +5,7 @@
 import { canManageBookings, requireStaff } from "../../../../../lib/staff-auth";
 import { sanitizeProfile } from "../../../../../lib/patients";
 import { logSecurityEvent } from "../../../../../lib/audit";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../../lib/db";
 
 const MAX_ROWS = 5000;
 

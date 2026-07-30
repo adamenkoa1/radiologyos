@@ -5,10 +5,8 @@
 import { requireStaff } from "../../../../lib/staff-auth";
 import { getSetting, getSettings, setSetting } from "../../../../lib/settings";
 import { whatsappConfig, whatsappConfigured } from "../../../../lib/whatsapp";
+import { dbBinding } from "../../../../lib/db";
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
 }

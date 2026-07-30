@@ -36,10 +36,13 @@ test("admin site route is admin-only and persists to app_settings", async () => 
   assert.match(route, /sanitizeSiteContent\(body\.content\)/);
 });
 
-test("public site-content endpoint returns merged content", async () => {
+test("public site-content endpoint returns merged content with short caching", async () => {
   const route = await read("app/api/site-content/route.ts");
   assert.match(route, /parseSiteContent\(/);
-  assert.match(route, /cache-control.*no-store/);
+  assert.match(route, /max-age=60/); // коротке кешування замість no-store
+  // Worker робить виняток, щоб не перезаписати кеш на no-store.
+  const worker = await read("worker/index.ts");
+  assert.match(worker, /pathname === "\/api\/site-content"/);
 });
 
 test("editor page and nav item exist", async () => {
@@ -96,6 +99,16 @@ test("editor uploads a logo file (browser-side resize to data URI)", async () =>
   assert.match(page, /type="file"/);
   assert.match(page, /onLogoFile/);
   assert.match(page, /toDataURL/); // зменшення в canvas
+});
+
+test("price/military pages pull content and theme from the editor via the API", async () => {
+  const dept = await read("public/site/assets/department.js");
+  assert.match(dept, /fetch\('\/api\/site-content'\)/); // єдине джерело, як на головній
+  assert.match(dept, /applySiteContent/);
+  // Тексти груп «Сторінка цивільних» і «Сторінка військових» застосовуються.
+  for (const id of ["scPriceTitle", "scPriceIntro", "scPriceLead", "scMilPageTitle", "scMilNotice", "scMilLead"]) {
+    assert.match(dept, new RegExp(`'${id}'`), `${id} applied`);
+  }
 });
 
 test("paid_only storefront rejects military bookings server-side", async () => {

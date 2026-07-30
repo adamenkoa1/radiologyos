@@ -3,10 +3,7 @@
 
 import { logSecurityEvent } from "../../../../../lib/audit";
 import { canExportPatientData, requireStaff } from "../../../../../lib/staff-auth";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../../lib/db";
 
 function csvCell(value: string, neutralizeFormula = false): string {
   let v = String(value ?? "");

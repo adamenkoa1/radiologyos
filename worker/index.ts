@@ -49,7 +49,10 @@ function secure(response: Response, request?: Request): Response {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
   if (request) {
     const pathname = new URL(request.url).pathname;
-    if (pathname.startsWith("/api/") || pathname.startsWith("/staff")) {
+    // /api/site-content — публічний контент вітрини, кешується самим маршрутом
+    // (short max-age); решта /api та /staff лишаються no-store.
+    const publicCacheable = pathname === "/api/site-content";
+    if (!publicCacheable && (pathname.startsWith("/api/") || pathname.startsWith("/staff"))) {
       headers.set("cache-control", "no-store");
     }
   }

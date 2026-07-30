@@ -5,10 +5,7 @@
 import { canAccessAllBookings } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { resolveProviders } from "../../../../lib/providers";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 export async function GET(request: Request) {
   const db = dbBinding();

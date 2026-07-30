@@ -3,10 +3,7 @@ import { requireOrgContext } from "../../../../lib/tenant";
 import { getOrgProfile } from "../../../../lib/org-profile";
 import { listOrgClinicians, listOrgStudies } from "../../../../lib/tenant-repo";
 import { STUDY_STATES, STUDY_STATE_LABELS, isTerminal, nextStates, stateLabel } from "../../../../lib/study-state";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 // Реєстр досліджень організації — tenant-scoped (organization_id зі серверної
 // сесії) і machine-aware: кожен запис несе підпис поточного стану й перелік

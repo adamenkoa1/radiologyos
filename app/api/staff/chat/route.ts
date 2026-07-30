@@ -5,10 +5,7 @@
 import { canViewPatientRegistry, requireStaff } from "../../../../lib/staff-auth";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { sendWhatsApp } from "../../../../lib/whatsapp";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 export async function GET(request: Request) {
   const db = dbBinding();

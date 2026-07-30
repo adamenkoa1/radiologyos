@@ -7,13 +7,11 @@ import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
+import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -154,7 +152,7 @@ export async function POST(request: Request) {
       codes,
       desiredDate,
       desiredTime,
-    })).catch(() => false);
+    })).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {

@@ -3,10 +3,7 @@ import { hashPassword } from "../../../../lib/auth";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { passwordProblem } from "../../../../lib/staff-accounts";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 const roles = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
 

@@ -1,9 +1,6 @@
 import { requireOrgContext } from "../../../../lib/tenant";
 import { countOrgBookings, listOrgDepartments } from "../../../../lib/tenant-repo";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 // Повертає організацію активного співробітника разом із базовими tenant-даними.
 // organizationId походить лише із серверної сесії (див. requireOrgContext) —
