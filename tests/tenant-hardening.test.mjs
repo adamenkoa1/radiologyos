@@ -81,6 +81,21 @@ test("protocols route is tenant-scoped", async () => {
   assert.doesNotMatch(route, /requireStaff/);
 });
 
+// Аналітика: джерело звіту й експорт org-scoped.
+test("reports are tenant-scoped", async () => {
+  const source = await read("lib/reporting-server.ts");
+  assert.match(source, /fetchReportSource\(db:D1Database,filters:ReportFilters,organizationId:number\)/);
+  assert.match(source, /b\.organization_id = \?/);
+  for (const path of ["app/api/staff/reports/route.ts", "app/api/staff/reports/export/route.ts"]) {
+    const route = await read(path);
+    assert.match(route, /requireOrgContext\(request,db\)/);
+    assert.match(route, /fetchReportSource\(db,filters,ctx\.organizationId\)/);
+    assert.doesNotMatch(route, /requireStaff/);
+  }
+  const exportRoute = await read("app/api/staff/reports/export/route.ts");
+  assert.match(exportRoute, /INSERT INTO report_exports \(\s*\n?\s*organization_id/);
+});
+
 // Знімки: доступ, worklist і запис студії org-scoped.
 test("imaging route is tenant-scoped end-to-end", async () => {
   const route = await read("app/api/staff/imaging/route.ts");

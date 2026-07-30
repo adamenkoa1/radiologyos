@@ -69,8 +69,8 @@ test("report builder provides five protected Excel templates without patient ide
   const exportRoute = await readFile(new URL("../app/api/staff/reports/export/route.ts", import.meta.url), "utf8");
   const reporting = await readFile(new URL("../lib/reporting.ts", import.meta.url), "utf8");
   const reportingServer = await readFile(new URL("../lib/reporting-server.ts", import.meta.url), "utf8");
-  assert.match(route, /requireStaff\(request,\s*db\)/);
-  assert.match(exportRoute, /requireStaff\(request,\s*db\)/);
+  assert.match(route, /requireOrgContext\(request,\s*db\)/);
+  assert.match(exportRoute, /requireOrgContext\(request,\s*db\)/);
   assert.match(exportRoute, /application\/vnd\.openxmlformats-officedocument\.spreadsheetml\.sheet/);
   assert.match(exportRoute, /INSERT INTO report_exports/);
   for (const template of ["studies", "protocols", "staff", "equipment", "finance"]) {
