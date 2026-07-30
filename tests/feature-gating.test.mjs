@@ -7,13 +7,11 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 // Модуль DICOM/PACS гейтиться сервером за feature flag профілю організації.
 test("imaging API is gated by the dicom_pacs feature flag", async () => {
   const route = await read("app/api/staff/imaging/route.ts");
-  assert.match(route, /pacsModuleEnabled/);
-  assert.match(route, /getOrgProfile\(db, ctx\)/);
   assert.match(route, /requireOrgContext\(request, db\)/);
-  assert.match(route, /profile\.flags\.dicom_pacs/);
+  assert.match(route, /\.flags\.dicom_pacs/);
   assert.match(route, /Модуль DICOM \/ PACS вимкнено/);
   // Гейт застосовано і на читання (GET), і на прив'язку (PUT).
-  const guards = route.match(/pacsModuleEnabled\(request, db\)/g) || [];
+  const guards = route.match(/getOrgProfile\(db, ctx\)\)\.flags\.dicom_pacs/g) || [];
   assert.ok(guards.length >= 2, "both GET and PUT are gated");
 });
 

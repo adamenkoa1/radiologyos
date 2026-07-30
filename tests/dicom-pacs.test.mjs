@@ -37,7 +37,7 @@ test("DICOM library validates identifiers and builds DICOMweb URLs", async () =>
 test("imaging API guards writes, keeps PACS calls best-effort, no runtime DDL", async () => {
   const route = await read("app/api/staff/imaging/route.ts");
   const settingsRoute = await read("app/api/staff/imaging/settings/route.ts");
-  assert.match(route, /requireStaff\(request, db\)/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /canManageImaging\(member\.role\)/);
   assert.match(route, /sanitizeImagingStudy\(/);
   assert.match(route, /imaging_linked/);

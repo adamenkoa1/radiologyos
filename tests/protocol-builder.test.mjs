@@ -37,7 +37,7 @@ test("protocol library ships structured templates for every modality", async () 
 
 test("protocol API guards writes and never defines schema at runtime", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
-  assert.match(route, /requireStaff\(request, db\)/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /canManageProtocols\(member\.role\)/);
   assert.match(route, /sanitizeDocument\(body\)/);
   assert.match(route, /INSERT INTO booking_events/);

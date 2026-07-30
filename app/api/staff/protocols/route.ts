@@ -1,6 +1,7 @@
 import { serviceByCode } from "../../../../lib/catalog";
 import { logSecurityEvent } from "../../../../lib/audit";
-import { canAccessBooking, canManageProtocols, requireStaff } from "../../../../lib/staff-auth";
+import { canAccessBooking, canManageProtocols } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import {
   ProtocolSectionValues,
   bookingProtocolStatus,
@@ -37,15 +38,16 @@ function parseSections(raw: string): ProtocolSectionValues {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageProtocols(member.role)) {
     return Response.json({ error: "Протоколи доступні лише лікарю або адміністратору" }, { status: 403 });
   }
 
   const bookingId = Number(new URL(request.url).searchParams.get("bookingId"));
   if (Number.isInteger(bookingId) && bookingId > 0) {
-    if (!(await canAccessBooking(db, member, bookingId))) {
+    if (!(await canAccessBooking(db, member, bookingId, ctx.organizationId))) {
       return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
     }
     const booking = await db.prepare(
@@ -98,16 +100,15 @@ export async function GET(request: Request) {
     );
   }
 
-  const queueSql = member.role === "admin"
-    ? QUEUE_SQL
-    : QUEUE_SQL.replace(
-        "WHERE b.status != 'cancelled'",
-        "WHERE b.status != 'cancelled' AND b.assigned_radiologist_email = ?",
-      );
-  const queueStatement = db.prepare(queueSql);
-  const queue = member.role === "admin"
-    ? await queueStatement.all()
-    : await queueStatement.bind(member.email).all();
+  // Черга протоколів обмежена організацією (tenant), далі — роллю лікаря.
+  const roleClause = member.role === "admin"
+    ? "WHERE b.organization_id = ? AND b.status != 'cancelled'"
+    : "WHERE b.organization_id = ? AND b.status != 'cancelled' AND b.assigned_radiologist_email = ?";
+  const queueSql = QUEUE_SQL.replace("WHERE b.status != 'cancelled'", roleClause);
+  const queueBinds: Array<string | number> = member.role === "admin"
+    ? [ctx.organizationId]
+    : [ctx.organizationId, member.email];
+  const queue = await db.prepare(queueSql).bind(...queueBinds).all();
   const items = (queue.results as Array<Record<string, unknown>>).map((item) => ({
     ...item,
     serviceTitle: serviceByCode(String(item.serviceCode))?.title || String(item.service),
@@ -118,8 +119,9 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageProtocols(member.role)) {
     return Response.json({ error: "Протоколи може змінювати лише лікар або адміністратор" }, { status: 403 });
   }
@@ -133,7 +135,7 @@ export async function PUT(request: Request) {
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { document } = parsed;
 
-  if (!(await canAccessBooking(db, member, bookingId))) {
+  if (!(await canAccessBooking(db, member, bookingId, ctx.organizationId))) {
     return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
   }
   const booking = await db.prepare(
