@@ -1,5 +1,5 @@
 import { serviceByCode } from "../../../../lib/catalog";
-import { canAccessBooking, canManageImaging, requireStaff } from "../../../../lib/staff-auth";
+import { canAccessBooking, canManageImaging } from "../../../../lib/staff-auth";
 import {
   parseQidoSeries,
   qidoSeriesUrl,
@@ -11,15 +11,6 @@ import { getOrgProfile } from "../../../../lib/org-profile";
 
 function dbBinding() {
   return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
-
-// Модуль DICOM/PACS доступний лише коли профіль організації вмикає його
-// (feature flag dicom_pacs). organizationId — лише зі серверної сесії.
-async function pacsModuleEnabled(request: Request, db: D1Database): Promise<boolean> {
-  const ctx = await requireOrgContext(request, db);
-  if (!ctx) return true; // немає членства — не гейтимо (сумісність)
-  const profile = await getOrgProfile(db, ctx);
-  return profile.flags.dicom_pacs;
 }
 
 type PacsRow = {
@@ -68,12 +59,13 @@ async function querySeries(pacs:PacsRow, studyInstanceUid:string) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageImaging(member.role)) {
     return Response.json({ error: "Доступ до знімків має лише залучений медичний персонал" }, { status: 403 });
   }
-  if (!await pacsModuleEnabled(request, db)) {
+  if (!(await getOrgProfile(db, ctx)).flags.dicom_pacs) {
     return Response.json({ error: "Модуль DICOM / PACS вимкнено для цієї організації" }, { status: 403 });
   }
 
@@ -81,7 +73,7 @@ export async function GET(request: Request) {
   const bookingId = Number(new URL(request.url).searchParams.get("bookingId"));
 
   if (Number.isInteger(bookingId) && bookingId > 0) {
-    if (!await canAccessBooking(db, member, bookingId)) {
+    if (!await canAccessBooking(db, member, bookingId, ctx.organizationId)) {
       return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
     }
     const [booking, study] = await Promise.all([
@@ -127,14 +119,15 @@ export async function GET(request: Request) {
        COALESCE(i.series_count, 0) AS seriesCount
      FROM bookings b
      LEFT JOIN imaging_studies i ON i.booking_id = b.id
-     WHERE b.status != 'cancelled' AND (b.performed_at != '' OR i.booking_id IS NOT NULL)
+     WHERE b.organization_id = ? AND b.status != 'cancelled' AND (b.performed_at != '' OR i.booking_id IS NOT NULL)
      ${assignmentClause}
      ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
      LIMIT 300`
   );
-  const worklist = assignmentClause
-    ? await worklistStatement.bind(member.email).all()
-    : await worklistStatement.all();
+  const worklistBinds: Array<string | number> = assignmentClause
+    ? [ctx.organizationId, member.email]
+    : [ctx.organizationId];
+  const worklist = await worklistStatement.bind(...worklistBinds).all();
   const items = (worklist.results as Array<Record<string, unknown>>).map((item) => ({
     ...item,
     serviceTitle: serviceByCode(String(item.serviceCode))?.title || String(item.service),
@@ -145,38 +138,41 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageImaging(member.role)) {
     return Response.json({ error: "Прив’язувати дослідження може лаборант, лікар або адміністратор" }, { status: 403 });
   }
-  if (!await pacsModuleEnabled(request, db)) {
+  if (!(await getOrgProfile(db, ctx)).flags.dicom_pacs) {
     return Response.json({ error: "Модуль DICOM / PACS вимкнено для цієї організації" }, { status: 403 });
   }
 
   const body = await request.json() as Record<string, unknown>;
   const bookingId = Number(body.bookingId);
   if (!Number.isInteger(bookingId) || bookingId <= 0) return Response.json({ error: "Некоректні дані" }, { status: 400 });
-  if (!await canAccessBooking(db, member, bookingId)) {
+  if (!await canAccessBooking(db, member, bookingId, ctx.organizationId)) {
     return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
   }
   const parsed = sanitizeImagingStudy(body);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { study } = parsed;
 
-  const booking = await db.prepare("SELECT id FROM bookings WHERE id = ? LIMIT 1").bind(bookingId).first();
+  const booking = await db.prepare("SELECT id FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1")
+    .bind(bookingId, ctx.organizationId).first();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
 
+  // Нова студія успадковує організацію заявки (tenant tag на запис).
   await db.prepare(
     `INSERT INTO imaging_studies
-       (booking_id, accession_number, study_instance_uid, modality, study_status, study_datetime, source, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, 'manual', ?, CURRENT_TIMESTAMP)
+       (organization_id, booking_id, accession_number, study_instance_uid, modality, study_status, study_datetime, source, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, CURRENT_TIMESTAMP)
      ON CONFLICT(booking_id) DO UPDATE SET
        accession_number = excluded.accession_number, study_instance_uid = excluded.study_instance_uid,
        modality = excluded.modality, study_status = excluded.study_status,
        study_datetime = excluded.study_datetime, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
   ).bind(
-    bookingId, study.accessionNumber, study.studyInstanceUid, study.modality,
+    ctx.organizationId, bookingId, study.accessionNumber, study.studyInstanceUid, study.modality,
     study.studyStatus, study.studyDatetime, member.email,
   ).run();
 

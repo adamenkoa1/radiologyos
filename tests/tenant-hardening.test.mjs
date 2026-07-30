@@ -70,3 +70,26 @@ test("canAccessBooking enforces organization when provided", async () => {
   assert.match(src, /organizationId\?: number/);
   assert.match(src, /AND organization_id = \?/);
 });
+
+// Протоколи: доступ і черга org-scoped.
+test("protocols route is tenant-scoped", async () => {
+  const route = await read("app/api/staff/protocols/route.ts");
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /canAccessBooking\(db, member, bookingId, ctx\.organizationId\)/);
+  // Черга протоколів фільтрує організацію.
+  assert.match(route, /b\.organization_id = \?/);
+  assert.doesNotMatch(route, /requireStaff/);
+});
+
+// Знімки: доступ, worklist і запис студії org-scoped.
+test("imaging route is tenant-scoped end-to-end", async () => {
+  const route = await read("app/api/staff/imaging/route.ts");
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /canAccessBooking\(db, member, bookingId, ctx\.organizationId\)/);
+  // worklist і перевірка заявки обмежені організацією.
+  assert.match(route, /b\.organization_id = \?/);
+  assert.match(route, /FROM bookings WHERE id = \? AND organization_id = \?/);
+  // Нова студія несе organization_id.
+  assert.match(route, /INSERT INTO imaging_studies\s*\n?\s*\(organization_id, booking_id/);
+  assert.doesNotMatch(route, /requireStaff/);
+});
