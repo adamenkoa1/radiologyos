@@ -8,6 +8,7 @@
 
 import { getSettings } from "./settings";
 import { createMessagingProvider } from "./providers/messaging";
+import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "./whatsapp";
 
 export type ReminderKind = "confirmed" | "rescheduled";
 
@@ -46,7 +47,7 @@ async function record(
   db: D1Database,
   booking: ReminderBooking,
   kind: ReminderKind,
-  channel: "sms" | "email",
+  channel: "sms" | "email" | "whatsapp",
   recipient: string,
   body: string,
   status: "sent" | "skipped" | "failed",
@@ -99,7 +100,14 @@ export async function sendPatientReminder(
     }
   }
 
-  const channels: Array<{ channel: "sms" | "email"; recipient: string; url: string; send: () => Promise<void> }> = [];
+  const channels: Array<{ channel: "sms" | "email" | "whatsapp"; recipient: string; url: string; send: () => Promise<void> }> = [];
+  const wa = await whatsappConfig(db);
+  if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
+    channels.push({
+      channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
+      send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
+    });
+  }
   if (booking.phone) {
     channels.push({
       channel: "sms", recipient: booking.phone, url: cfg.sms_gateway_url || "",

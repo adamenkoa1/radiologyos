@@ -246,6 +246,7 @@ export const patientCommunications = sqliteTable("patient_communications", {
   direction: text("direction").notNull().default("outbound"),
   summary: text("summary").notNull().default(""),
   actor: text("actor").notNull(),
+  externalId: text("external_id").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
 

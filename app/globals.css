@@ -309,6 +309,33 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .apptEvent.grp-inroom{background:#eef5ec;border-left-color:#3f8a37}
 .apptEvent.grp-done{background:#eef1ef;border-left-color:#7a8b88}
 .apptEvent.grp-cancelled{background:#fdefeb;border-left-color:#c85a38}
+/* WhatsApp сторінка */
+.waSteps{margin:6px 0 0;padding-left:20px;color:#41544f;font-size:13px;line-height:1.6}.waSteps li{margin-bottom:6px}
+.waBotList{margin:6px 0 10px;padding-left:18px;color:#41544f;font-size:13px;line-height:1.7}
+.settingsCard input[readonly]{background:#f4f8f6}
+/* Чат з пацієнтами */
+.chatShell{display:grid;grid-template-columns:320px 1fr;gap:14px;max-width:1100px;margin:0 auto;height:calc(100vh - 220px);min-height:440px}
+.chatList{background:#fff;border:1px solid #dce4e3;border-radius:10px;overflow-y:auto;padding:6px}
+.chatList .empty{padding:20px;color:#7a8b88;font-size:13px;text-align:center}
+.chatListItem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:11px 12px;cursor:pointer;position:relative}
+.chatListItem:hover{background:#f2f6f4}.chatListItem.active{background:#e6f0ec}
+.chatListItem b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
+.chatListItem small{display:block;font-size:12px;color:#66756f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
+.chatListTime{position:absolute;top:11px;right:12px;font-size:10.5px;color:#98a6a2}
+.chatThread{background:#fff;border:1px solid #dce4e3;border-radius:10px;display:flex;flex-direction:column;overflow:hidden}
+.chatEmpty{margin:auto;text-align:center;color:#7a8b88}.chatEmpty span{font-size:34px;display:block;margin-bottom:8px;opacity:.6}
+.chatThreadHead{padding:14px 16px;border-bottom:1px solid #eef2f0}.chatThreadHead b{display:block;font-size:14px}.chatThreadHead small{color:#7a8b88;font-size:12px}
+.chatMessages{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:8px;background:#f7faf9}
+.chatMessages .empty{margin:auto;color:#98a6a2;font-size:13px}
+.chatMsg{max-width:76%;padding:8px 12px;border-radius:12px;font-size:13.5px;line-height:1.45}
+.chatMsg p{margin:0;white-space:pre-wrap;word-break:break-word}
+.chatMsg span{display:block;margin-top:3px;font-size:10.5px;opacity:.7}
+.chatMsg.in{align-self:flex-start;background:#fff;border:1px solid #e4e9e6;border-bottom-left-radius:3px}
+.chatMsg.out{align-self:flex-end;background:#d6f0dd;border-bottom-right-radius:3px}
+.chatReply{display:flex;gap:8px;padding:12px 14px;border-top:1px solid #eef2f0}
+.chatReply input{flex:1;padding:11px 13px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}.chatReply input:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.chatReply button{padding:0 18px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.chatReply button:disabled{opacity:.5;cursor:not-allowed}
+@media(max-width:720px){.chatShell{grid-template-columns:1fr;height:auto}.chatThread{min-height:420px}}
 .settingsCard .notice{margin:0;padding:11px 13px;border-radius:7px;font-size:13px}.settingsCard .notice.success{background:#eef4e6;color:#33632c}.settingsCard .notice.error{background:#fdf1ee;color:#a23c1d}
 .dashLists{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .dashList{padding:0;background:#fff;border:1px solid #e7ece9;border-radius:18px;box-shadow:0 1px 2px rgba(24,40,30,.04),0 8px 24px rgba(24,40,30,.05);overflow:hidden}

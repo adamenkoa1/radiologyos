@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site" | "appointments";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site" | "appointments" | "whatsapp" | "chat";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -46,6 +46,7 @@ const systemModules: NavModule[] = [
   ]},
   { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients", items:[
     { label:"Картка пацієнта", href:"/staff/patients" },
+    { label:"Чат з пацієнтами", href:"/staff/chat" },
     { label:"Комунікації", href:"/staff/patients" },
     { label:"Сегменти", href:"/staff/patients" },
     { label:"Експорт контактів", href:"/staff/patients" },
@@ -84,6 +85,7 @@ const systemModules: NavModule[] = [
   { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard", items:[
     { label:"Пульт відділення", href:"/staff/dashboard" },
     { label:"Організація та профіль", href:"/staff/organization" },
+    { label:"WhatsApp", href:"/staff/whatsapp" },
     { label:"Налаштування", href:"/staff/settings" },
     { label:"Ролі й права", href:"/staff#staff-admin" },
     { label:"Календар", href:"/staff/settings" },
@@ -256,14 +258,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments" || active === "whatsapp" || active === "chat"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
