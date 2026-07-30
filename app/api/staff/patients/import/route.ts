@@ -39,8 +39,11 @@ export async function POST(request: Request) {
          (phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(phone_normalized) DO UPDATE SET
-         display_name = excluded.display_name, birth_year = excluded.birth_year,
-         birth_date = excluded.birth_date, email = excluded.email, address = excluded.address,
+         display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE patient_profiles.display_name END,
+         birth_year = CASE WHEN excluded.birth_year != 0 THEN excluded.birth_year ELSE patient_profiles.birth_year END,
+         birth_date = CASE WHEN excluded.birth_date != '' THEN excluded.birth_date ELSE patient_profiles.birth_date END,
+         email = CASE WHEN excluded.email != '' THEN excluded.email ELSE patient_profiles.email END,
+         address = CASE WHEN excluded.address != '' THEN excluded.address ELSE patient_profiles.address END,
          notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE patient_profiles.notes END,
          updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
     ).bind(

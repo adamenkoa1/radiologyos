@@ -136,7 +136,7 @@ export const staffMembers = sqliteTable("staff_members", {
   active: integer("active").notNull().default(1),
   passwordHash: text("password_hash").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [uniqueIndex("staff_members_phone_idx").on(table.phone)]);
+}, table => [uniqueIndex("staff_members_phone_idx").on(table.phone).where(sql`phone != ''`)]);
 
 export const staffSessions = sqliteTable("staff_sessions", {
   tokenHash: text("token_hash").primaryKey(),
@@ -248,7 +248,10 @@ export const patientCommunications = sqliteTable("patient_communications", {
   actor: text("actor").notNull(),
   externalId: text("external_id").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt)]);
+}, table => [
+  index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt),
+  uniqueIndex("patient_comm_external_idx").on(table.externalId).where(sql`external_id != ''`),
+]);
 
 export const patientNotifications = sqliteTable("patient_notifications", {
   organizationId: integer("organization_id").notNull().default(1),

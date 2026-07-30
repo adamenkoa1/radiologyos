@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   const conflict = await db.prepare(
     `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ?
      AND status IN ('confirmed','rescheduled') AND desired_time < ?
-     AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+     AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
   ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
   if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
   const blocked = await db.prepare(
@@ -425,7 +425,7 @@ export async function PATCH(request: Request) {
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
-       AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+       AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
     const blocked = await db.prepare(
@@ -469,7 +469,7 @@ export async function PATCH(request: Request) {
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
-       AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+       AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий — перенесіть запис на вільний слот" }, { status: 409 });
     const blocked = await db.prepare(
