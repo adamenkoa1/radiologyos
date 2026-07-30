@@ -114,17 +114,17 @@ header{padding:0 14px;margin-bottom:18px}
 
 <main class="wrap">
 
-  <!-- Вхід за номером телефону та індивідуальним кодом заявки -->
+  <!-- Вхід за номером телефону та датою народження -->
   <div class="card gate" id="gate">
     <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-    <p>Введіть номер телефону та код однієї зі своїх заявок. Код надруковано на екрані після надсилання заявки.</p>
+    <p>Введіть номер телефону та дату народження, які ви вказали під час запису.</p>
     <div class="phone-wrap">
       <span class="phone-prefix">+380</span>
       <input id="gatePhone" inputmode="numeric" maxlength="9" placeholder="97 000 00 00" aria-label="Номер телефону"/>
     </div>
     <div class="code-wrap">
-      <label for="gateCode">Код заявки</label>
-      <input id="gateCode" maxlength="19" placeholder="RD-XXXXXXXX" aria-label="Код заявки" autocomplete="off"/>
+      <label for="gateDob">Дата народження</label>
+      <input id="gateDob" type="date" max="2100-12-31" min="1920-01-01" aria-label="Дата народження" autocomplete="bday"/>
     </div>
     <span class="gate-error" id="gateError"></span>
     <button class="btn" id="gateBtn" type="button">Переглянути заявки</button>
@@ -188,7 +188,7 @@ const gate = document.getElementById('gate');
 const cabinet = document.getElementById('cabinet');
 const errorBox = document.getElementById('gateError');
 let phoneDigits = '';
-let bookingCode = '';
+let dobValue = '';
 let payLink = '';
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
@@ -237,7 +237,7 @@ async function loadBookings() {
   } catch (e) { payLink = ''; }
   const res = await fetch(MY_BOOKINGS, {
     method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ phone: '+380' + phoneDigits, code: bookingCode }),
+    body: JSON.stringify({ phone: '+380' + phoneDigits, dob: dobValue }),
   });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) { showError(data.error || 'Не вдалося завантажити заявки'); return false; }
@@ -250,9 +250,9 @@ async function loadBookings() {
   return true;
 }
 
-async function enter(digits, code) {
+async function enter(digits, dob) {
   phoneDigits = digits;
-  bookingCode = code;
+  dobValue = dob;
   document.getElementById('cabPhone').textContent = '+380 ' + digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
   const loaded = await loadBookings();
   if (loaded) { gate.hidden = true; cabinet.hidden = false; }
@@ -310,21 +310,21 @@ function printProtocol(code) {
 
 document.getElementById('gateBtn').addEventListener('click', () => {
   const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
-  const code = document.getElementById('gateCode').value.trim().toUpperCase();
+  const dob = document.getElementById('gateDob').value.trim();
   errorBox.classList.remove('show');
   if (digits.length !== 9) { showError('Введіть 9 цифр номера'); return; }
-  if (!/^RD-[A-Z0-9]{8,16}$/.test(code)) { showError('Введіть код заявки у форматі RD-XXXXXXXX'); return; }
-  enter(digits, code);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) { showError('Вкажіть дату народження'); return; }
+  enter(digits, dob);
 });
 document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
-document.getElementById('gateCode').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
+document.getElementById('gateDob').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
   phoneDigits = '';
-  bookingCode = '';
+  dobValue = '';
   cabinet.hidden = true; gate.hidden = false;
   document.getElementById('gatePhone').value = '';
-  document.getElementById('gateCode').value = '';
+  document.getElementById('gateDob').value = '';
 });
 </script>
 </body>

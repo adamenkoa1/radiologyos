@@ -60,6 +60,7 @@ export const bookings = sqliteTable("bookings", {
   phone: text("phone").notNull(),
   phoneNormalized: text("phone_normalized").notNull().default(""),
   patientEmail: text("patient_email").notNull().default(""),
+  dateOfBirth: text("date_of_birth").notNull().default(""),
   service: text("service").notNull(),
   serviceCode: text("service_code").notNull().default("legacy"),
   equipmentId: text("equipment_id").notNull().default("ct"),

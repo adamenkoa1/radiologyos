@@ -374,6 +374,11 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
           </div>
           <span class="field-error">Введіть 9 цифр після +380</span>
         </div>
+        <div class="field">
+          <label for="militaryPatientDob">Дата народження <span class="req">*</span></label>
+          <input id="militaryPatientDob" type="date" max="2100-12-31" min="1920-01-01" required autocomplete="bday"/>
+          <span class="field-error">Вкажіть дату народження</span>
+        </div>
       </div>
       <div class="form-step">
         <div class="step-title"><span class="step-num">2</span>Деталі візиту</div>

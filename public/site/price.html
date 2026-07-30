@@ -446,6 +446,11 @@ header .brand{flex:1;min-width:0}
           </div>
           <span class="field-error">Введіть 9 цифр після +380</span>
         </div>
+        <div class="field">
+          <label for="patientDob">Дата народження <span class="req">*</span></label>
+          <input id="patientDob" type="date" max="2100-12-31" min="1920-01-01" required autocomplete="bday"/>
+          <span class="field-error">Вкажіть дату народження</span>
+        </div>
       </div>
 
       <div class="form-step">

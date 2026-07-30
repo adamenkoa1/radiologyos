@@ -176,6 +176,7 @@ export default function BookingPage() {
               <div className="formGrid">
                 <label><span>Ім’я та прізвище *</span><input name="name" required minLength={2} autoComplete="name" placeholder="Як до вас звертатися" value={name} onChange={event=>setName(event.target.value)} /></label>
                 <label><span>Телефон *</span><input name="phone" required inputMode="tel" autoComplete="tel" placeholder="+380 __ ___ __ __" value={phone} onChange={event=>setPhone(formatPhone(event.target.value))} /></label>
+                <label><span>Дата народження *</span><input name="dob" type="date" required max={todayInKyiv()} min="1920-01-01" autoComplete="bday" /><small className="slotDetails">Знадобиться для входу в кабінет пацієнта.</small></label>
                 <label className="wide"><span>E-mail (для нагадувань)</span><input name="email" type="email" autoComplete="email" placeholder="name@example.com" /><small className="slotDetails">Необовʼязково. Надішлемо нагадування про підтвердження чи перенесення запису.</small></label>
                 <label className="wide"><span>Категорія пацієнта *</span><select name="patientCategory" required value={patientCategory} onChange={event=>setPatientCategory(event.target.value)}><option value="" disabled>Оберіть категорію</option><option value="military">Військовослужбовець</option><option value="civilian">Цивільний пацієнт</option></select></label>
               </div>

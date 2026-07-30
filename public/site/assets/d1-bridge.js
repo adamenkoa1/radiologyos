@@ -71,6 +71,7 @@
 
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
+      const dob = (document.getElementById('patientDob') || {}).value || '';
       const picked = (typeof pickedSlot !== 'undefined') ? pickedSlot : { date: '', time: '' };
       const desiredDate = picked.date || document.getElementById('desiredDate').value || '';
       const desiredTime = picked.time || document.getElementById('desiredTime').value || '';
@@ -88,7 +89,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const codes = await postBooking({
-          name, phone, category, referralType, comment, desiredDate, desiredTime, source,
+          name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
@@ -120,6 +121,7 @@
 
       const name = document.getElementById('militaryPatientName').value.trim();
       const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
+      const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
       const picked = window.milPickedSlot || { date: '', time: '' };
       const desiredDate = picked.date || document.getElementById('militaryDesiredDate').value || '';
       const desiredTime = picked.time || document.getElementById('militaryDesiredTime').value || '';
@@ -136,7 +138,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const codes = await postBooking({
-          name, phone, category: 'military', referralType: 'military_referral',
+          name, phone, dob, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
