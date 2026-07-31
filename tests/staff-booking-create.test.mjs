@@ -31,7 +31,7 @@ test("new-booking form gathers patient, service, slot and staff, and posts", asy
 test("new-booking is reachable from nav and the calendar", async () => {
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/book"/);
-  const cal = await read("app/staff/appointments/page.tsx");
+  const cal = await read("app/staff/week-calendar.tsx");
   assert.match(cal, /apptNewBtn/);
   assert.match(cal, /\/staff\/book/);
 });

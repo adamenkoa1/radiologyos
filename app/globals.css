@@ -240,6 +240,42 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 .dashKpi>small{display:block;color:#71807c;font-size:11px;line-height:1.5}
 .dashKpi.dashHero{background:linear-gradient(150deg,#eef7e8,#ffffff);border-color:rgba(79,157,58,.28)}.dashKpi.dashHero>span{color:#3f7d38}.dashKpi.dashHero>b{color:#2f7d33}.dashKpi.dashHero>small{color:#5f7a58}
 .dashKpi.equipment>span{margin-bottom:14px}.dashEquip{display:flex;gap:10px}.dashEquip>div{flex:1;padding:10px;background:#f4f8f6;border-radius:6px;text-align:center}.dashEquip b{display:block;font-family:var(--font-serif);font-size:19px;color:#123d3a}.dashEquip small{display:block;margin-top:3px;color:#71807c;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em}
+/* Пульт — компактна стрічка показників (замість великих блоків) */
+.dashToast{max-width:1500px;margin:0 auto 12px;padding:10px 14px;background:#e6f4ec;border:1px solid #bfe0cc;border-radius:10px;color:#1f5c39;font-size:13px;font-weight:600;cursor:pointer}
+.dashKpiStrip{max-width:1500px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:.15s}
+a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
+.dashStat>b{display:block;font-size:22px;font-weight:750;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
+.dashStat>b.warn{color:#b5761a}
+.dashStat>span{display:block;margin-top:4px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#687773;font-weight:800}
+.dashStat>small{display:block;margin-top:2px;color:#8a9995;font-size:10.5px}
+.dashStat.hero{background:linear-gradient(150deg,#eef7e8,#fff);border-color:rgba(79,157,58,.28)}.dashStat.hero>b{color:#2f7d33}
+.dashStat.equip>span{margin-bottom:6px}.dashStatEquip{display:flex;gap:6px}.dashStatEquip>span{flex:1;text-align:center;font-size:9.5px;font-weight:800;text-transform:uppercase;color:#71807c}.dashStatEquip b{display:block;font-size:16px;color:#123d3a;font-weight:750}
+@media(max-width:1000px){.dashKpiStrip{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:620px){.dashKpiStrip{grid-template-columns:repeat(2,1fr)}}
+/* Пульт — нові заявки з миготінням і підтвердженням у 1 клік */
+.dashPending{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
+.dashPendingHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
+.dashPendingHead h2{font-size:16px;font-weight:750;margin:0}
+.dashPendingHead small{color:#71807c;font-size:12px}
+.dashPendingBadge{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:99px;background:#b5761a;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}
+.dashPendingList{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.dashPendingRow{display:flex;align-items:center;gap:12px;padding:11px 13px;border:1px solid #f0d9b6;background:#fffaf1;border-radius:10px;animation:dashBlink 1.6s ease-in-out infinite}
+.dashPendingRow:hover{animation-play-state:paused}
+@keyframes dashBlink{0%,100%{box-shadow:0 0 0 0 rgba(181,118,26,0)}50%{box-shadow:0 0 0 4px rgba(181,118,26,.16)}}
+.dashPendingDot{flex:none;width:9px;height:9px;border-radius:50%;background:#e08a1e}
+.dashPendingDot.rescheduled{background:#2f7db0}
+.dashPendingWho{flex:1;min-width:0}.dashPendingWho b{display:block;font-size:14px;color:#1b211e}.dashPendingWho small{display:block;color:#7a8b88;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dashPendingPhone{flex:none;color:#0c7a85;font-weight:700;font-size:13px;white-space:nowrap}
+.dashPendingTag{flex:none;color:#8a9995;font-size:12px;font-weight:700}
+.dashConfirmBtn{flex:none;min-height:40px;padding:0 16px;border:0;border-radius:8px;background:var(--green,#0c7a85);color:#fff;font-weight:800;font-size:13px;cursor:pointer;white-space:nowrap}
+.dashConfirmBtn:hover:not(:disabled){background:#0a4b42}.dashConfirmBtn:disabled{opacity:.55;cursor:progress}
+@media(prefers-reduced-motion:reduce){.dashPendingRow{animation:none;box-shadow:0 0 0 3px rgba(181,118,26,.14)}}
+/* Пульт — вбудований календар */
+.dashCalendar{max-width:1500px;margin:0 auto 16px}
+.dashCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.dashCalendarHead h2{font-size:16px;font-weight:750;margin:0}
+.dashCalNew{font-size:13px;font-weight:800;color:var(--green,#0c7a85)}
 /* Department settings page */
 .settingsCard{max-width:760px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
 .settingsBlock{background:#fff;border:1px solid #dce4e3;border-radius:8px;padding:20px;box-shadow:0 8px 24px rgba(23,54,52,.035)}
