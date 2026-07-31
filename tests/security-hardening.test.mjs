@@ -102,12 +102,11 @@ test("production deployment refuses to migrate without a secure active administr
   assert.match(workflow, /count < 1/);
 });
 
-test("Cloudflare custom domains remain root-level before the triggers table", async () => {
+test("Cloudflare deployment uses custom domains only", async () => {
   const config = await read("wrangler.cloudflare.toml");
-  const routes = config.indexOf("\nroutes = [");
-  const triggers = config.indexOf("\n[triggers]");
-  const crons = config.indexOf("\ncrons = [\"*/15 * * * *\"]");
-  assert.ok(routes > -1, "custom-domain routes are configured");
-  assert.ok(triggers > routes, "routes must be declared before [triggers] to stay root-level");
-  assert.ok(crons > triggers, "cron schedule must remain inside [triggers]");
+  assert.match(config, /\nworkers_dev = false\n/);
+  assert.match(config, /pattern = "radiologyos\\.tech", custom_domain = true/);
+  assert.match(config, /pattern = "www\\.radiologyos\\.tech", custom_domain = true/);
+  assert.doesNotMatch(config, /\n\[triggers\]\n/);
+  assert.doesNotMatch(config, /\ncrons\s*=/);
 });
