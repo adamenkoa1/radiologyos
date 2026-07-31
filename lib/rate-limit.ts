@@ -1,9 +1,10 @@
 type Database = D1Database;
 
 async function fingerprint(request: Request, scope: string) {
-  const source = request.headers.get("cf-connecting-ip")
-    || request.headers.get("x-forwarded-for")?.split(",")[0]
-    || "unknown";
+  // Лише cf-connecting-ip (за Cloudflare встановлюється завжди й не
+  // підробляється клієнтом). Без нього — єдиний спільний кошик, а не
+  // клієнтський проксі-заголовок, який дозволяв би обхід ліміту через підміну.
+  const source = request.headers.get("cf-connecting-ip") || "no-ip";
   const bytes = new TextEncoder().encode(`${scope}:${source.trim()}`);
   const digest = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(digest)).map(byte => byte.toString(16).padStart(2, "0")).join("");

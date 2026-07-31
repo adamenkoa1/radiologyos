@@ -7,6 +7,7 @@ import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
+import { isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
@@ -92,6 +93,13 @@ export async function POST(request: Request) {
     }
     if (!isBookableDate(desiredDate)) {
       return Response.json({ error: "Оберіть доступну майбутню дату" }, { status: 400 });
+    }
+    // Публічний запис теж поважає графік клініки (робочі дні / вихідні), а не
+    // лише staff-підтвердження — інакше у чергу потрапляли б заявки на закриті
+    // дні. Час у межах годин звіряється при підтвердженні запису персоналом.
+    const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    if (!isDayOpen(desiredDate, schedule)) {
+      return Response.json({ error: "У цей день клініка не працює — оберіть інший день" }, { status: 400 });
     }
     if (desiredTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(desiredTime)) {
       return Response.json({ error: "Вкажіть коректний бажаний час" }, { status: 400 });
