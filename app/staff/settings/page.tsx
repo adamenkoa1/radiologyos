@@ -7,7 +7,7 @@ type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = {
   telegramConfigured: boolean; telegramChatId: string; payLink: string;
   calendarConfigured: boolean; calendarToken?: string; externalIcsUrl: string;
-  remindersEnabled: boolean; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
+  remindersEnabled: boolean; reminderLeadHours: string; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
   emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
 };
 
@@ -20,6 +20,7 @@ export default function StaffSettingsPage() {
   const [token, setToken] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
+  const [reminderLeadHours, setReminderLeadHours] = useState("3, 1");
   const [smsGatewayUrl, setSmsGatewayUrl] = useState("");
   const [smsGatewayAuth, setSmsGatewayAuth] = useState("");
   const [emailGatewayUrl, setEmailGatewayUrl] = useState("");
@@ -42,6 +43,7 @@ export default function StaffSettingsPage() {
       if (data.settings) {
         setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || "");
         setRemindersEnabled(Boolean(data.settings.remindersEnabled));
+        setReminderLeadHours(data.settings.reminderLeadHours || "3, 1");
         setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
         setEmailGatewayUrl(data.settings.emailGatewayUrl || "");
         setEmailGatewayFrom(data.settings.emailGatewayFrom || "");
@@ -59,7 +61,7 @@ export default function StaffSettingsPage() {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({
           telegramBotToken: token, telegramChatId: chatId, payLink, externalIcsUrl,
-          remindersEnabled, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
+          remindersEnabled, reminderLeadHours, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
         }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
@@ -164,6 +166,10 @@ export default function StaffSettingsPage() {
         <label className="consent" style={{ margin: "6px 0 10px" }}>
           <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
           <span>Надсилати пацієнтам автонагадування про підтвердження та перенесення запису</span>
+        </label>
+        <label><span>Нагадування у WhatsApp за (годин до візиту)</span>
+          <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="3, 1" inputMode="numeric" />
+          <small>Через кому — за скільки годин до візиту слати нагадування (напр. «3, 1»). Працює, коли підключено WhatsApp і увімкнено нагадування вище. Розсилає планувальник кожні ~15 хв.</small>
         </label>
         <label><span>Адреса SMS-шлюзу (HTTP POST)</span>
           <input value={smsGatewayUrl} onChange={(e) => setSmsGatewayUrl(e.target.value)} placeholder="https://sms-провайдер/api/send" autoComplete="off" inputMode="url" />
