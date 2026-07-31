@@ -2,6 +2,7 @@ import { serviceByCode } from "../../../../lib/catalog";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { canAccessBooking, canManageProtocols } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
+import { dbBinding } from "../../../../lib/db";
 import {
   ProtocolSectionValues,
   bookingProtocolStatus,
@@ -9,9 +10,6 @@ import {
   sanitizeDocument,
 } from "../../../../lib/protocols";
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 const QUEUE_SQL = `SELECT b.id, b.code, b.name, b.service, b.service_code AS serviceCode,
     b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,

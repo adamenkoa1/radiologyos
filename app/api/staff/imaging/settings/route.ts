@@ -1,10 +1,7 @@
 import { requireStaff } from "../../../../../lib/staff-auth";
 import { sanitizePacsSettings } from "../../../../../lib/dicom";
 import { safeOutboundUrl } from "../../../../../lib/outbound";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../../lib/db";
 
 const SETTINGS_COLUMNS = `dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
   ae_title AS aeTitle, enabled, notes, updated_by AS updatedBy, updated_at AS updatedAt`;

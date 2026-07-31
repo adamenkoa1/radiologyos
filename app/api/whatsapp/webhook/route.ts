@@ -6,13 +6,27 @@ import { getSetting } from "../../../../lib/settings";
 import { isRateLimited } from "../../../../lib/rate-limit";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../../lib/site-content";
 import { interpretBotCommand, menuText, parseIncomingWebhook, sendWhatsApp } from "../../../../lib/whatsapp";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 function todayKyiv(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+}
+
+// Порівняння токена за сталий час: хешуємо обидва значення й звіряємо дайджести
+// (32 байти незалежно від довжини входу), тож ані значення, ані довжина секрета
+// не витікають через тайминг.
+async function tokenMatches(provided: string, expected: string): Promise<boolean> {
+  if (!expected) return false;
+  const enc = new TextEncoder();
+  const [a, b] = await Promise.all([
+    crypto.subtle.digest("SHA-256", enc.encode(provided)),
+    crypto.subtle.digest("SHA-256", enc.encode(expected)),
+  ]);
+  const x = new Uint8Array(a);
+  const y = new Uint8Array(b);
+  let diff = 0;
+  for (let i = 0; i < x.length; i += 1) diff |= x[i] ^ y[i];
+  return diff === 0;
 }
 
 async function botReply(db: D1Database, phone: string, text: string, origin: string): Promise<string | null> {
@@ -42,10 +56,14 @@ export async function POST(request: Request) {
   if (!db) return Response.json({ ok: false }, { status: 503 });
 
   const url = new URL(request.url);
-  const token = url.searchParams.get("token") || "";
+  // Токен приймаємо із заголовка (не тече в логи/Referer), із сумісним
+  // фолбеком на ?token= для наявних налаштувань green-api.
+  const token = request.headers.get("x-webhook-token") || url.searchParams.get("token") || "";
   const expected = await getSetting(db, "whatsapp_webhook_token");
-  if (!expected || token !== expected) return Response.json({ ok: false }, { status: 401 });
-  if (await isRateLimited(db, request, "whatsapp-webhook", 120, 15)) return Response.json({ ok: true });
+  if (!(await tokenMatches(token, expected))) return Response.json({ ok: false }, { status: 401 });
+  // Нижча стеля: обмежує спровокований зловмисником вихідний трафік (платні
+  // green-api надсилання) навіть якщо токен витік.
+  if (await isRateLimited(db, request, "whatsapp-webhook", 60, 15)) return Response.json({ ok: true });
 
   const body = await request.json().catch(() => null);
   const msg = parseIncomingWebhook(body);

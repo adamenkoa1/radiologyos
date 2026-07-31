@@ -5,13 +5,14 @@ import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
+import { getSetting } from "../../../lib/settings";
+import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
+import { isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -51,6 +52,18 @@ export async function POST(request: Request) {
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const category = clean(body.category, 20) === "military" ? "military" : "civilian";
+    // Режим вітрини «лише платні»: безкоштовні військові заявки не приймаються
+    // на сервері (не лише ховаються в UI), інакше форму military.html можна
+    // було б надіслати напряму.
+    if (category === "military") {
+      const storefront = parseSiteContent(await getSetting(db, SITE_CONTENT_KEY));
+      if (storefront.storefrontType === "paid_only") {
+        return Response.json(
+          { error: "Безкоштовні дослідження для військовослужбовців зараз недоступні на цій вітрині" },
+          { status: 403 },
+        );
+      }
+    }
     let referralType = clean(body.referralType, 30);
     if (!REFERRAL_TYPES.includes(referralType)) referralType = "other";
     const comment = clean(body.comment, 700);
@@ -80,6 +93,13 @@ export async function POST(request: Request) {
     }
     if (!isBookableDate(desiredDate)) {
       return Response.json({ error: "Оберіть доступну майбутню дату" }, { status: 400 });
+    }
+    // Публічний запис теж поважає графік клініки (робочі дні / вихідні), а не
+    // лише staff-підтвердження — інакше у чергу потрапляли б заявки на закриті
+    // дні. Час у межах годин звіряється при підтвердженні запису персоналом.
+    const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    if (!isDayOpen(desiredDate, schedule)) {
+      return Response.json({ error: "У цей день клініка не працює — оберіть інший день" }, { status: 400 });
     }
     if (desiredTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(desiredTime)) {
       return Response.json({ error: "Вкажіть коректний бажаний час" }, { status: 400 });
@@ -140,7 +160,7 @@ export async function POST(request: Request) {
       codes,
       desiredDate,
       desiredTime,
-    })).catch(() => false);
+    })).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {

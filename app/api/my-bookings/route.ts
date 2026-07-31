@@ -8,10 +8,7 @@ import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { stateLabel } from "../../../lib/study-state";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -42,10 +39,10 @@ export async function POST(request: Request) {
        COALESCE(o.name, '') AS organization,
        CASE WHEN b.protocol_status = 'issued' THEN 1 ELSE 0 END AS hasProtocol
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
-     WHERE b.phone_normalized = ?
+     WHERE b.phone_normalized = ? AND b.date_of_birth = ?
      ORDER BY b.created_at DESC, b.id DESC
      LIMIT 50`
-  ).bind(phoneNormalized).all();
+  ).bind(phoneNormalized, dob).all();
 
   const bookings = (rows.results || []).map((row) => ({
     ...row,

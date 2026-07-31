@@ -1,6 +1,8 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { getSetting } from "../lib/settings";
+import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
 
 interface Env {
   ASSETS: Fetcher;
@@ -47,11 +49,25 @@ function secure(response: Response, request?: Request): Response {
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
   if (request) {
     const pathname = new URL(request.url).pathname;
-    if (pathname.startsWith("/api/") || pathname.startsWith("/staff")) {
+    // /api/site-content — публічний контент вітрини, кешується самим маршрутом
+    // (short max-age); решта /api та /staff лишаються no-store.
+    const publicCacheable = pathname === "/api/site-content";
+    if (!publicCacheable && (pathname.startsWith("/api/") || pathname.startsWith("/staff"))) {
       headers.set("cache-control", "no-store");
     }
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+// Чи вітрина в режимі «лише платні»: читаємо site_content з D1. Помилка/
+// відсутність налаштування = типовий режим (paid_and_free), тож військова
+// сторінка лишається доступною за замовчуванням.
+async function storefrontPaidOnly(db: D1Database): Promise<boolean> {
+  try {
+    return parseSiteContent(await getSetting(db, SITE_CONTENT_KEY)).storefrontType === "paid_only";
+  } catch {
+    return false;
+  }
 }
 
 function unsafeCrossSiteRequest(request: Request): boolean {
@@ -100,6 +116,14 @@ const worker = {
           headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
         }), request);
       }
+    }
+
+    // Режим вітрини «лише платні»: сторінка військових недоступна — і прямий
+    // вхід на military.html, і /booking?category=military ведуть на прайс.
+    const wantsMilitary = url.pathname === "/site/military.html"
+      || (url.pathname === "/booking" && url.searchParams.get("category") === "military");
+    if (wantsMilitary && await storefrontPaidOnly(env.DB)) {
+      return secure(Response.redirect(new URL("/site/price.html", request.url).toString(), 302), request);
     }
 
     // Legacy Next public routes → v22 static pages, so nobody lands on the old

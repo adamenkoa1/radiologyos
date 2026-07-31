@@ -52,10 +52,12 @@ test("whatsapp send is a guarded no-op until configured", async () => {
   assert.match(lib, /@c\.us/);
 });
 
-test("webhook route is token-guarded, deduped and rate-limited", async () => {
+test("webhook route is token-guarded (constant-time + header), deduped and rate-limited", async () => {
   const route = await read("app/api/whatsapp/webhook/route.ts");
-  assert.match(route, /token !== expected/);
-  assert.match(route, /isRateLimited\(db, request, "whatsapp-webhook"/);
+  assert.match(route, /tokenMatches\(token, expected\)/); // звірка за сталий час
+  assert.match(route, /crypto\.subtle\.digest\("SHA-256"/); // хеш-порівняння
+  assert.match(route, /x-webhook-token/); // токен приймається із заголовка
+  assert.match(route, /isRateLimited\(db, request, "whatsapp-webhook", 60, 15\)/); // нижча стеля
   assert.match(route, /INSERT OR IGNORE INTO patient_communications/);
   assert.match(route, /interpretBotCommand|botReply/);
 });

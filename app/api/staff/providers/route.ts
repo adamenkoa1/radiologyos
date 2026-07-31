@@ -1,9 +1,6 @@
 import { requireOrgContext } from "../../../../lib/tenant";
 import { resolveProviders } from "../../../../lib/providers";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 // Стан провайдер-адаптерів організації (діагностика). organizationId — лише зі
 // серверної сесії; перегляд для адміністратора.

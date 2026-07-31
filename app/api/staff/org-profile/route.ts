@@ -1,13 +1,11 @@
 import { requireOrgContext } from "../../../../lib/tenant";
+import { dbBinding } from "../../../../lib/db";
 import {
   FEATURE_FLAGS, FEATURE_LABELS, PROFILE_DESCRIPTIONS, PROFILE_LABELS, PROFILE_TYPES,
   getOrgProfile, isFeatureFlag, isProfileType, profilePresetFlags, resolveFlags,
   type FeatureFlag,
 } from "../../../../lib/org-profile";
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 // Профіль організації та ефективні feature flags. organizationId — лише зі
 // серверної сесії (requireOrgContext). Читання доступне всьому персоналу,

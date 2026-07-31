@@ -6,7 +6,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("patients export is staff-gated and emits a Google Contacts CSV", async () => {
   const route = await read("app/api/staff/patients/export/route.ts");
-  assert.match(route, /requireStaff\(/);
+  assert.match(route, /requireOrgContext\(/); // tenant-scoped експорт
   assert.match(route, /text\/csv/);
   assert.match(route, /Phone 1 - Value/);
   assert.match(route, /content-disposition/);

@@ -3,13 +3,11 @@ import { todayInKyiv } from "../../../../lib/booking-rules";
 import { requireStaff } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { stateLabel } from "../../../../lib/study-state";
+import { dbBinding } from "../../../../lib/db";
 
 // Клінічна черга пульта — активні стани дослідження за єдиною state machine.
 const CLINICAL_QUEUE_STATES = ["queued", "in_progress", "images_ready", "reporting", "protocol_ready"] as const;
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
 
 const num = (row: Record<string, unknown> | null, key = "c") => Number(row?.[key] || 0);
 

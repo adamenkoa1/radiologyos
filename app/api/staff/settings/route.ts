@@ -4,10 +4,7 @@
 import { requireStaff } from "../../../../lib/staff-auth";
 import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";

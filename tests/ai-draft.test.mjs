@@ -19,7 +19,7 @@ test("AI library exposes a deterministic draft engine behind a stable contract",
 
 test("AI draft API guards generation and audits it", async () => {
   const route = await read("app/api/staff/ai/protocol-draft/route.ts");
-  assert.match(route, /requireStaff\(request, db\)/);
+  assert.match(route, /requireOrgContext\(request, db\)/); // tenant-scoped доступ
   assert.match(route, /canManageProtocols\(member\.role\)/);
   assert.match(route, /sanitizeDocument\(/);
   assert.match(route, /generateProtocolDraft\(/);

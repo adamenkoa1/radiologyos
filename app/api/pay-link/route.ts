@@ -2,10 +2,7 @@
 // booking confirmation screen and the patient cabinet for civilian patients.
 
 import { getSetting } from "../../../lib/settings";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function GET() {
   const db = dbBinding();

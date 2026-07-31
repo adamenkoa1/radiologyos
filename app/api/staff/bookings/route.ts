@@ -16,10 +16,7 @@ import {
   type StaffRole,
 } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -68,7 +65,7 @@ export async function POST(request: Request) {
   const conflict = await db.prepare(
     `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ?
      AND status IN ('confirmed','rescheduled') AND desired_time < ?
-     AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+     AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
   ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
   if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
   const blocked = await db.prepare(
@@ -425,7 +422,7 @@ export async function PATCH(request: Request) {
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
-       AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+       AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
     const blocked = await db.prepare(
@@ -444,7 +441,8 @@ export async function PATCH(request: Request) {
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: body.desiredDate, desiredTime: body.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget)
+      .catch((error) => { console.error("reminder_failed", "rescheduled", body.id, error); return null; });
     return Response.json({ ok: true, status: "rescheduled", reminder });
   }
 
@@ -469,7 +467,7 @@ export async function PATCH(request: Request) {
     const conflict = await db.prepare(
       `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
-       AND time(desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+       AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
     ).bind(booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий — перенесіть запис на вільний слот" }, { status: 409 });
     const blocked = await db.prepare(
@@ -486,7 +484,8 @@ export async function PATCH(request: Request) {
       patientEmail: booking.patientEmail, service: booking.service,
       desiredDate: booking.desiredDate, desiredTime: booking.desiredTime,
     };
-    const reminder = await sendPatientReminder(db, "confirmed", reminderTarget).catch(() => null);
+    const reminder = await sendPatientReminder(db, "confirmed", reminderTarget)
+      .catch((error) => { console.error("reminder_failed", "confirmed", body.id, error); return null; });
     return Response.json({ ok: true, status: "confirmed", reminder });
   }
 

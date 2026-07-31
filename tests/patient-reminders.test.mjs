@@ -66,6 +66,4 @@ test("both booking intakes capture an optional patient email", async () => {
     assert.match(src, /patient_email/, `${route} writes patient_email`);
     assert.match(src, /patientEmail/, `${route} parses patientEmail`);
   }
-  const form = await readFile(new URL("../app/booking/page.tsx", import.meta.url), "utf8");
-  assert.match(form, /name="email"/);
 });

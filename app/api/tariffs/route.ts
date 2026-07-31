@@ -2,10 +2,7 @@
 // returned; the page keeps its built-in defaults for everything else.
 
 import { priceOverrides } from "../../../lib/tariffs";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function GET() {
   const db = dbBinding();
