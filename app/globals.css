@@ -276,6 +276,25 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .dashCalendarHead h2{font-size:16px;font-weight:750;margin:0}
 .dashCalNew{font-size:13px;font-weight:800;color:var(--green,#0c7a85)}
+/* Журнал дій (аудит) */
+.auditWrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+.auditFilters{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
+.auditFilters label{display:flex;flex-direction:column;gap:4px}
+.auditFilters span{font-size:11px;font-weight:800;color:#41544f;text-transform:uppercase;letter-spacing:.05em}
+.auditFilters select,.auditFilters input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;min-width:220px}
+.auditEmpty{color:#5b6a66;font-size:13px;background:#fff;border:1px solid #e7ece9;border-radius:12px;padding:18px}
+.auditTableWrap{overflow-x:auto;background:#fff;border:1px solid #e7ece9;border-radius:12px}
+.auditTable{width:100%;border-collapse:collapse;font-size:12.5px}
+.auditTable th{text-align:left;font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a9995;padding:10px 12px;border-bottom:1px solid #eef2f0;white-space:nowrap}
+.auditTable td{padding:9px 12px;border-bottom:1px solid #f2f5f4;vertical-align:top;color:#2b3a36}
+.auditTable tr:last-child td{border-bottom:0}
+.auditTime{white-space:nowrap;color:#5b6a66}
+.auditTarget{color:#5b6a66}
+.auditDetails{color:#71807c;max-width:320px}
+.auditTag{display:inline-block;font-weight:700;font-size:11px;padding:2px 8px;border-radius:99px;background:#eef2f0;color:#3a5a54;white-space:nowrap}
+.auditTag.r-auth{background:#e5eef9;color:#2f5c9a}.auditTag.r-settings{background:#fbf1e2;color:#9a6b1a}.auditTag.r-staff{background:#f3ecf9;color:#6b4b9a}
+.auditDanger{background:#fdf3f3}.auditDanger .auditTag{background:#f7dede;color:#9a3b3b}
+.auditMore{display:flex;justify-content:center;padding:4px}
 /* Структура відділення (довідник) */
 .structTree{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .structNode{position:relative;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px 18px}
@@ -341,6 +360,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .equipHoursRow>b{flex:1 1 100%;font-size:13.5px;margin-bottom:2px}
 .equipHoursRow label{display:flex;flex-direction:column;gap:4px}.equipHoursRow label>span{font-size:11px;font-weight:800;color:#41544f;text-transform:uppercase;letter-spacing:.05em}
 .equipHoursRow input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit}.equipHoursRow input[type="number"]{width:92px}
+.breakClear{align-self:end;padding:9px 11px;border:1px solid #d9c2c2;background:#fbf3f3;color:#9a4b4b;border-radius:7px;font:inherit;font-size:12px;cursor:pointer}.breakClear:hover{background:#f6e8e8}
 .dayOffAdd{display:flex;gap:10px;align-items:center;margin-top:6px}
 .dayOffAdd input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit}
 .dayOffList{list-style:none;margin:12px 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px}

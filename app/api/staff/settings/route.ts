@@ -6,6 +6,7 @@ import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
 import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
 import { dbBinding } from "../../../../lib/db";
+import { audit } from "../../../../lib/audit";
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -115,6 +116,7 @@ export async function PUT(request: Request) {
   if (emailAuth === "-") await setSetting(db, "email_gateway_auth", "");
   else if (emailAuth) await setSetting(db, "email_gateway_auth", emailAuth);
 
+  await audit(db, { organizationId: 1, actorEmail: member.email, action: "settings_update", resource: "settings" });
   const values = await getSettings(db, SETTING_KEYS);
   return Response.json({ ok: true, settings: settingsView(values) });
 }

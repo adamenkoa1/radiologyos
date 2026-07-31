@@ -14,6 +14,43 @@ test("candidateTimesFor honours start/end/step and study duration", () => {
   assert.deepEqual(t2, ["08:00"]); // лише один слот на 60 хв
 });
 
+test("candidateTimesFor skips slots overlapping the lunch break", () => {
+  // Обід 13:00–14:00: слоти, що його перетинають, не пропонуються.
+  const t = candidateTimesFor({ start: "12:30", end: "14:30", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" }, 15);
+  assert.deepEqual(t, ["12:30", "12:45", "14:00", "14:15"]);
+  // 30-хв дослідження: 12:45+30 перетинає обід → відкидається, 12:30 закінчується рівно о 13:00.
+  const t30 = candidateTimesFor({ start: "12:30", end: "15:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" }, 30);
+  assert.deepEqual(t30, ["12:30", "14:00", "14:15", "14:30"]);
+});
+
+test("default schedule matches the real outpatient reception windows", () => {
+  // Флюорографія: 9:30–13:00 та 14:00–16:00.
+  const fluoro = candidateTimesFor(SCHEDULE_DEFAULTS.equipment.fluoro, 15);
+  assert.equal(fluoro[0], "09:30");
+  assert.ok(fluoro.includes("12:45") && !fluoro.includes("13:00"));
+  assert.ok(fluoro.includes("14:00") && fluoro.at(-1) === "15:45");
+  // Рентгенографія: 10:00–13:00 та 14:00–15:00.
+  const xray = candidateTimesFor(SCHEDULE_DEFAULTS.equipment.xray, 15);
+  assert.equal(xray[0], "10:00");
+  assert.ok(xray.includes("12:45") && !xray.includes("13:00") && !xray.includes("13:30"));
+  assert.ok(xray.includes("14:00") && xray.at(-1) === "14:45");
+});
+
+test("sanitizeSchedule keeps a valid break, drops an out-of-range one, inherits default", () => {
+  const kept = sanitizeSchedule({ equipment: { ct: { start: "08:00", end: "17:00", slotMinutes: 30, breakStart: "12:00", breakEnd: "13:00" } } });
+  assert.equal(kept.equipment.ct.breakStart, "12:00");
+  assert.equal(kept.equipment.ct.breakEnd, "13:00");
+  // Перерва поза межами робочих годин відкидається.
+  const dropped = sanitizeSchedule({ equipment: { ct: { start: "08:00", end: "12:00", slotMinutes: 30, breakStart: "13:00", breakEnd: "14:00" } } });
+  assert.equal(dropped.equipment.ct.breakStart, undefined);
+  // Явне очищення (порожні поля) прибирає перерву.
+  const cleared = sanitizeSchedule({ equipment: { xray: { start: "10:00", end: "15:00", slotMinutes: 15, breakStart: "", breakEnd: "" } } });
+  assert.equal(cleared.equipment.xray.breakStart, undefined);
+  // Без ключів перерви — успадковується типова.
+  const inherited = sanitizeSchedule({ equipment: { fluoro: { start: "09:30", end: "16:00", slotMinutes: 15 } } });
+  assert.equal(inherited.equipment.fluoro.breakStart, "13:00");
+});
+
 test("isDayOpen respects weekdays and specific days-off", () => {
   const cfg = sanitizeSchedule({ weekdays: [1, 2, 3, 4, 5], daysOff: ["2026-08-04"] });
   assert.equal(isDayOpen("2026-08-02", cfg), false); // неділя

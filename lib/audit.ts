@@ -1,23 +1,92 @@
-export async function logSecurityEvent(
-  db: D1Database,
-  event: {
-    actorEmail: string;
-    action: string;
-    resource: string;
-    targetId?: string | number;
-    details?: Record<string, unknown>;
-  },
-): Promise<void> {
+// Журнал дій (аудит безпеки): хто, що і коли зробив. Пишеться для чутливих
+// подій; читає лише адміністратор. Записи скоупляться за організацією.
+
+export type AuditEvent = {
+  organizationId?: number; // за замовчуванням 1 (єдина організація)
+  actorEmail: string;
+  action: string;   // машинний код події, напр. "login", "booking_confirm"
+  resource: string; // домен, напр. "auth", "booking", "settings", "staff"
+  targetId?: string | number;
+  details?: Record<string, unknown>;
+};
+
+export type AuditRow = {
+  id: number;
+  actorEmail: string;
+  action: string;
+  resource: string;
+  targetId: string;
+  detailsJson: string;
+  createdAt: string;
+};
+
+// Людські підписи подій — спільні для сервера й UI (через /api/staff/audit).
+export const AUDIT_LABELS: Record<string, string> = {
+  login: "Вхід у систему",
+  login_failed: "Невдала спроба входу",
+  logout: "Вихід із системи",
+  schedule_update: "Змінено графік і слоти",
+  settings_update: "Змінено налаштування",
+  org_profile_update: "Змінено профіль організації",
+  pacs_update: "Змінено налаштування PACS",
+  booking_confirm: "Підтверджено запис",
+  booking_cancel: "Скасовано запис",
+  booking_reschedule: "Перенесено запис",
+  member_add: "Додано співробітника",
+  member_role: "Змінено роль співробітника",
+  member_password: "Скинуто PIN співробітника",
+  // Події, що вже писалися в інших маршрутах (доступ до персональних даних).
+  patient_record_viewed: "Переглянуто картку пацієнта",
+  patient_registry_viewed: "Переглянуто реєстр пацієнтів",
+  patients_imported: "Імпортовано пацієнтів",
+  protocol_viewed: "Переглянуто протокол",
+  report_viewed: "Переглянуто звіт",
+  report_exported: "Експортовано звіт",
+};
+
+export function auditLabel(action: string): string {
+  return AUDIT_LABELS[action] || action;
+}
+
+export async function logSecurityEvent(db: D1Database, event: AuditEvent): Promise<void> {
   const details = JSON.stringify(event.details || {}).slice(0, 4000);
   await db.prepare(
     `INSERT INTO security_audit_log
-       (actor_email, action, resource, target_id, details_json)
-     VALUES (?, ?, ?, ?, ?)`
+       (organization_id, actor_email, action, resource, target_id, details_json)
+     VALUES (?, ?, ?, ?, ?, ?)`
   ).bind(
-    event.actorEmail.slice(0, 254),
+    event.organizationId || 1,
+    String(event.actorEmail || "").slice(0, 254),
     event.action.slice(0, 80),
     event.resource.slice(0, 80),
-    String(event.targetId || "").slice(0, 120),
+    String(event.targetId ?? "").slice(0, 120),
     details,
   ).run();
+}
+
+// Безпечна обгортка: аудит НІКОЛИ не валить основну операцію — помилки
+// запису журналу ковтаються всередині.
+export async function audit(db: D1Database, event: AuditEvent): Promise<void> {
+  try { await logSecurityEvent(db, event); } catch { /* аудит не блокує дію */ }
+}
+
+export type AuditQuery = { action?: string; actor?: string; limit?: number; beforeId?: number };
+
+// Читання журналу для організації з фільтрами й keyset-пагінацією за id.
+export async function listAuditEvents(db: D1Database, organizationId: number, q: AuditQuery = {}): Promise<AuditRow[]> {
+  const where: string[] = ["organization_id = ?"];
+  const binds: (string | number)[] = [organizationId];
+  if (q.action) { where.push("action = ?"); binds.push(q.action.slice(0, 80)); }
+  if (q.actor) { where.push("actor_email LIKE ?"); binds.push(`%${q.actor.slice(0, 120)}%`); }
+  if (q.beforeId && Number.isFinite(q.beforeId)) { where.push("id < ?"); binds.push(q.beforeId); }
+  const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
+  const rows = await db.prepare(
+    `SELECT id, actor_email AS actorEmail, action, resource, target_id AS targetId,
+            details_json AS detailsJson, created_at AS createdAt
+     FROM security_audit_log
+     WHERE ${where.join(" AND ")}
+     ORDER BY id DESC
+     LIMIT ?`
+  ).bind(...binds, limit).all<AuditRow>();
+  return rows.results;
 }

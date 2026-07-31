@@ -4,7 +4,9 @@
 // Типові значення дублюють EQUIPMENT з lib/catalog, тож без конфігу поведінка
 // не змінюється. Чистий модуль без залежностей (тестований).
 
-export type EquipHours = { start: string; end: string; slotMinutes: number };
+// Обідня перерва (breakStart/breakEnd) — необов'язкова: якщо задана, слоти,
+// що її перетинають, не пропонуються (дає два вікна прийому: до і після обіду).
+export type EquipHours = { start: string; end: string; slotMinutes: number; breakStart?: string; breakEnd?: string };
 export type ScheduleConfig = {
   equipment: Record<string, EquipHours>;
   weekdays: number[]; // відкриті дні тижня, 1=Пн … 6=Сб (неділя завжди закрита)
@@ -17,11 +19,15 @@ export const EQUIP_LABELS: Record<string, string> = {
   ct: "Комп’ютерний томограф", xray: "Цифровий рентген", fluoro: "Флюорограф",
 };
 
+// Типові години прийому амбулаторних пацієнтів (з внутрішнього розпорядку
+// відділення). Флюорографія 9:30–13:00 та 14:00–16:00; рентгенографія
+// 10:00–13:00 та 14:00–15:00; обід у відділенні 13:00–14:00. КТ — робочий день
+// з тією ж обідньою перервою (адміністратор може змінити у «Графік і слоти»).
 export const SCHEDULE_DEFAULTS: ScheduleConfig = {
   equipment: {
-    ct: { start: "08:00", end: "17:00", slotMinutes: 30 },
-    xray: { start: "08:00", end: "17:00", slotMinutes: 15 },
-    fluoro: { start: "08:00", end: "17:00", slotMinutes: 15 },
+    ct: { start: "08:00", end: "17:00", slotMinutes: 30, breakStart: "13:00", breakEnd: "14:00" },
+    xray: { start: "10:00", end: "15:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" },
+    fluoro: { start: "09:30", end: "16:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" },
   },
   weekdays: [1, 2, 3, 4, 5, 6],
   daysOff: [],
@@ -36,7 +42,17 @@ export function candidateTimesFor(hours: EquipHours, durationMinutes: number): s
   const out: string[] = [];
   const end = toMin(hours.end);
   const step = hours.slotMinutes > 0 ? hours.slotMinutes : 15;
-  for (let t = toMin(hours.start); t + durationMinutes <= end; t += step) out.push(fromMin(t));
+  // Обідня перерва: валідна лише якщо обидві межі коректні й breakEnd > breakStart.
+  const hasBreak = !!hours.breakStart && !!hours.breakEnd
+    && HHMM.test(hours.breakStart) && HHMM.test(hours.breakEnd)
+    && toMin(hours.breakEnd) > toMin(hours.breakStart);
+  const bStart = hasBreak ? toMin(hours.breakStart as string) : 0;
+  const bEnd = hasBreak ? toMin(hours.breakEnd as string) : 0;
+  for (let t = toMin(hours.start); t + durationMinutes <= end; t += step) {
+    // Слот, що перетинається з обідньою перервою, не пропонуємо.
+    if (hasBreak && t < bEnd && t + durationMinutes > bStart) continue;
+    out.push(fromMin(t));
+  }
   return out;
 }
 
@@ -55,7 +71,7 @@ export function hoursFor(cfg: ScheduleConfig, equipmentId: string): EquipHours {
 
 export function sanitizeSchedule(input: unknown): ScheduleConfig {
   const src = (input && typeof input === "object") ? input as Record<string, unknown> : {};
-  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown }> : {};
+  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown; breakStart?: unknown; breakEnd?: unknown }> : {};
   const equipment: Record<string, EquipHours> = {};
   for (const key of EQUIP_KEYS) {
     const d = SCHEDULE_DEFAULTS.equipment[key];
@@ -64,7 +80,20 @@ export function sanitizeSchedule(input: unknown): ScheduleConfig {
     const end = typeof e.end === "string" && HHMM.test(e.end) ? e.end : d.end;
     let step = Number(e.slotMinutes);
     if (!Number.isInteger(step) || step < 5 || step > 240) step = d.slotMinutes;
-    equipment[key] = toMin(end) > toMin(start) ? { start, end, slotMinutes: step } : { ...d };
+    const eh: EquipHours = toMin(end) > toMin(start) ? { start, end, slotMinutes: step } : { ...d };
+    // Обідня перерва: якщо у вводі є ключі перерви — беремо їх (валідні) або
+    // очищаємо (порожні/некоректні); якщо ключів немає — успадковуємо типову.
+    let bs = d.breakStart, be = d.breakEnd;
+    if ("breakStart" in e || "breakEnd" in e) {
+      const inS = e.breakStart, inE = e.breakEnd;
+      bs = typeof inS === "string" && HHMM.test(inS) ? inS : undefined;
+      be = typeof inE === "string" && HHMM.test(inE) ? inE : undefined;
+    }
+    // Перерва має бути в межах [start, end] і мати додатну тривалість.
+    if (bs && be && toMin(be) > toMin(bs) && toMin(bs) >= toMin(eh.start) && toMin(be) <= toMin(eh.end)) {
+      eh.breakStart = bs; eh.breakEnd = be;
+    } else { delete eh.breakStart; delete eh.breakEnd; }
+    equipment[key] = eh;
   }
   const rawWk = Array.isArray(src.weekdays) ? src.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
   const weekdays = rawWk.length ? Array.from(new Set(rawWk)).sort((a, b) => a - b) : [...SCHEDULE_DEFAULTS.weekdays];

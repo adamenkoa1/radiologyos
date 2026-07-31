@@ -1,6 +1,6 @@
 import { requireStaff, type StaffRole } from "../../../../lib/staff-auth";
 import { hashPassword } from "../../../../lib/auth";
-import { logSecurityEvent } from "../../../../lib/audit";
+import { audit } from "../../../../lib/audit";
 import { passwordProblem } from "../../../../lib/staff-accounts";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
@@ -64,11 +64,12 @@ export async function POST(request: Request) {
       db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email),
     ]);
   }
-  await logSecurityEvent(db, {
+  await audit(db, {
+    organizationId: 1,
     actorEmail: member.email,
-    action: existing ? "staff_member_updated" : "staff_member_created",
-    resource: "staff_member",
-    targetId: email,
+    action: existing ? "member_role" : "member_add",
+    resource: "staff",
+    targetId: phone,
     details: { role, active: Boolean(active), passwordChanged: Boolean(password) },
   });
   return Response.json({ ok:true, needsPassword:false }, { status:201 });

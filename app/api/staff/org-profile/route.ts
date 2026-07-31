@@ -1,5 +1,6 @@
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
+import { audit } from "../../../../lib/audit";
 import {
   FEATURE_FLAGS, FEATURE_LABELS, PROFILE_DESCRIPTIONS, PROFILE_LABELS, PROFILE_TYPES,
   getOrgProfile, isFeatureFlag, isProfileType, profilePresetFlags, resolveFlags,
@@ -78,6 +79,11 @@ export async function PATCH(request: Request) {
        feature_flags_json = excluded.feature_flags_json,
        updated_at = CURRENT_TIMESTAMP`
   ).bind(ctx.organizationId, profileType, JSON.stringify(overrides)).run();
+
+  await audit(db, {
+    organizationId: ctx.organizationId, actorEmail: ctx.member.email,
+    action: "org_profile_update", resource: "settings", details: { profileType, applyPreset: !!body.applyPreset },
+  });
 
   return Response.json({
     ok: true,
