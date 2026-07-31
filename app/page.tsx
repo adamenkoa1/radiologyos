@@ -233,31 +233,20 @@ export default function Home() {
         </article>
       </section>
 
-      <section className="hospitalStats" aria-labelledby="stats-title">
-        <div className="hospitalStatsHero">
-          <span>Підсумки відділення</span>
-          <strong>{formatCount(profile.totalStudies2025)}</strong>
-          <h2 id="stats-title">{profile.statistics2025.title}</h2>
-          <p>Щоденна діагностична робота для військових і цивільних пацієнтів.</p>
-        </div>
-        <div className="hospitalStatsBreakdown">
-          {profile.statistics2025.breakdown.map(item => <div key={item.id}><strong>{formatCount(item.value)}</strong><span>{item.label}</span></div>)}
-          <div className="highlight"><strong>{profile.statistics2025.complexShare}%</strong><span>складні дослідження</span></div>
-          <div className="highlight"><strong>{formatCount(profile.statistics2025.militaryExamined)}</strong><span>учасників АТО обстежено</span></div>
-        </div>
-      </section>
-
       <section className="hospitalSection hospitalDepartment" id="department">
         <div className="hospitalSectionIntro">
           <span className="hospitalKicker">Про відділення</span>
           <h2>Спеціалізована діагностика в структурі госпіталю</h2>
         </div>
         <div className="hospitalDepartmentGrid">
-          <p className="hospitalLead">{siteContent.about || profile.department.about}</p>
+          <p className="hospitalLead">
+            <b>{formatCount(profile.totalStudies2025)} — {profile.statistics2025.title}.</b>{" "}
+            {siteContent.about || profile.department.about}
+          </p>
           <div className="hospitalFacts">
-            <div><b>КТ</b><span>без контрасту, з контрастуванням, ангіографія</span></div>
-            <div><b>Рентген</b><span>цифрові знімки та рентгеноскопія</span></div>
-            <div><b>ФЛГ</b><span>цифрова флюорографія грудної клітки</span></div>
+            {profile.statistics2025.breakdown.map(item => (
+              <div key={item.id}><b>{formatCount(item.value)}</b><span>{item.label}</span></div>
+            ))}
           </div>
         </div>
       </section>
