@@ -5,6 +5,7 @@ import { requireStaff } from "../../../../lib/staff-auth";
 import { getSetting, setSetting } from "../../../../lib/settings";
 import { parseSchedule, sanitizeSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
 import { dbBinding } from "../../../../lib/db";
+import { audit } from "../../../../lib/audit";
 
 export async function GET(request: Request) {
   const db = dbBinding();
@@ -27,5 +28,6 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => ({})) as { schedule?: unknown };
   const schedule = sanitizeSchedule(body.schedule);
   await setSetting(db, SCHEDULE_KEY, JSON.stringify(schedule));
+  await audit(db, { organizationId: 1, actorEmail: member.email, action: "schedule_update", resource: "settings" });
   return Response.json({ ok: true, schedule }, { headers: { "cache-control": "no-store" } });
 }

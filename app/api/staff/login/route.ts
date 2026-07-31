@@ -10,6 +10,7 @@ import {
 import { isRateLimited } from "../../../../lib/rate-limit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
+import { audit } from "../../../../lib/audit";
 
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -38,6 +39,12 @@ export async function POST(request: Request) {
   const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
   const ok = member && !compromised ? await verifyPassword(password, member.passwordHash) : false;
   if (!member || !ok) {
+    await audit(db, {
+      organizationId: 1,
+      actorEmail: member?.email || phone || email || "невідомо",
+      action: "login_failed", resource: "auth",
+      details: { reason: compromised ? "compromised" : member ? "wrong_password" : "unknown_account" },
+    });
     return Response.json({
       error: compromised
         ? "Початковий PIN заблоковано. Зверніться до адміністратора для безпечної заміни."
@@ -50,6 +57,10 @@ export async function POST(request: Request) {
       .bind(await hashPassword(password), member.email).run();
   }
 
+  await audit(db, {
+    organizationId: 1, actorEmail: member.email,
+    action: "login", resource: "auth", details: { via: phone ? "phone" : "email" },
+  });
   const rawToken = await createSession(db, member.email);
   return Response.json(
     { ok: true, staff: { email: member.email, displayName: member.displayName, role: member.role } },

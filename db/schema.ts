@@ -301,6 +301,7 @@ export const reportExports = sqliteTable("report_exports", {
 }, table => [index("report_exports_created_idx").on(table.createdAt, table.requestedBy)]);
 
 export const securityAuditLog = sqliteTable("security_audit_log", {
+  organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
   actorEmail: text("actor_email").notNull(),
   action: text("action").notNull(),
@@ -308,4 +309,4 @@ export const securityAuditLog = sqliteTable("security_audit_log", {
   targetId: text("target_id").notNull().default(""),
   detailsJson: text("details_json").notNull().default("{}"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [index("security_audit_created_idx").on(table.createdAt, table.actorEmail)]);
+}, table => [index("security_audit_created_idx").on(table.organizationId, table.createdAt, table.actorEmail)]);
