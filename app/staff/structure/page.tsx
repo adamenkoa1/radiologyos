@@ -57,7 +57,10 @@ export default function StructurePage() {
                     {room.devices.map((d, i) => (
                       <li key={i}>
                         <b>{d.name}</b>
-                        <span className="structDevMeta"><span className={`structKind k-${room.id}`}>{d.kind}</span>{d.kv}</span>
+                        <span className="structDevMeta">
+                          <span className={`structKind k-${d.status === "stored" ? "stored" : room.id}`}>{d.kind}</span>
+                          {d.details}
+                        </span>
                       </li>
                     ))}
                   </ul>
