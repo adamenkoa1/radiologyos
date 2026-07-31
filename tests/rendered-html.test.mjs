@@ -74,7 +74,9 @@ test("home combines patient categories, services, booking and staff login", asyn
   const html = await response.text();
   assert.match(html, /Чернігівський військовий госпіталь/);
   assert.match(html, /Військовослужбовцям/);
-  assert.match(html, /Цивільним пацієнтам/);
+  assert.match(html, /Цивільним особам/);
+  assert.match(html, /39(?:&nbsp;|\s| )*814/);
+  assert.match(html, /Усього досліджень за 2025 рік/);
   assert.match(html, /id=["']booking["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
