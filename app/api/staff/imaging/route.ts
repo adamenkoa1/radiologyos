@@ -7,7 +7,6 @@ import {
 } from "../../../../lib/dicom";
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 import { requireOrgContext } from "../../../../lib/tenant";
-import { getOrgProfile } from "../../../../lib/org-profile";
 import { dbBinding } from "../../../../lib/db";
 
 type PacsRow = {
@@ -61,9 +60,6 @@ export async function GET(request: Request) {
   const member = ctx.member;
   if (!canManageImaging(member.role)) {
     return Response.json({ error: "Доступ до знімків має лише залучений медичний персонал" }, { status: 403 });
-  }
-  if (!(await getOrgProfile(db, ctx)).flags.dicom_pacs) {
-    return Response.json({ error: "Модуль DICOM / PACS вимкнено для цієї організації" }, { status: 403 });
   }
 
   const pacs = await loadPacs(db);
@@ -140,9 +136,6 @@ export async function PUT(request: Request) {
   const member = ctx.member;
   if (!canManageImaging(member.role)) {
     return Response.json({ error: "Прив’язувати дослідження може лаборант, лікар або адміністратор" }, { status: 403 });
-  }
-  if (!(await getOrgProfile(db, ctx)).flags.dicom_pacs) {
-    return Response.json({ error: "Модуль DICOM / PACS вимкнено для цієї організації" }, { status: 403 });
   }
 
   const body = await request.json() as Record<string, unknown>;

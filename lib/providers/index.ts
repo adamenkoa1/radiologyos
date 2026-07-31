@@ -42,9 +42,8 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
-  // PACS доступний лише коли профіль вмикає dicom_pacs і PACS увімкнено в
-  // налаштуваннях — інтеграція під контролем feature flag.
-  const pacsEnabled = Boolean(profile.flags.dicom_pacs) && Boolean(pacsRow?.enabled);
+  // PACS доступний, коли його увімкнено в налаштуваннях PACS.
+  const pacsEnabled = Boolean(pacsRow?.enabled);
   const pacs: PacsProvider = {
     name: pacsEnabled ? "dicomweb" : "none",
     enabled: pacsEnabled,

@@ -15,12 +15,11 @@ type StaffWorkspaceShellProps = {
   children: ReactNode;
 };
 
-// Бічна панель = модулі цільової структури (у порядку «Карти системи»).
-// Кожен модуль веде на робочу сторінку й розгортається у підпункти-екрани;
-// кожен підпункт — на свою сторінку (нереалізовані ведуть у блок карти).
-// Підпункт може залежати від feature flag профілю організації: якщо
-// відповідну можливість вимкнено, пункт ховається (конструктор).
-type NavChild = { label:string; href:string; flag?:string };
+// Бічна панель = модулі системи (у порядку «Карти системи»). Кожен модуль веде
+// на робочу сторінку й розгортається у підпункти-екрани; кожен підпункт — на
+// свою сторінку (нереалізовані ведуть у блок карти). Продукт обслуговує єдиний
+// заклад, тож усі пункти показуються завжди.
+type NavChild = { label:string; href:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
 const systemModules: NavModule[] = [
   { n:"1", label:"Головна / Продаж послуг", href:"/staff/site", section:"site", items:[
@@ -36,13 +35,13 @@ const systemModules: NavModule[] = [
   { n:"2", label:"Запис і заявки", href:"/staff", section:"overview", items:[
     { label:"Форма заявки", href:"/site/price.html" },
     { label:"Вибір часу", href:"/staff/dashboard" },
-    { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
+    { label:"Кабінет пацієнта", href:"/site/cabinet.html" },
     { label:"Черга реєстратури", href:"/staff#bookings" },
     { label:"Нова запис", href:"/staff/book" },
     { label:"Календар записів", href:"/staff/appointments" },
     { label:"Реєстр досліджень", href:"/staff/studies" },
     { label:"Розклад дня", href:"/staff/dashboard" },
-    { label:"Нагадування", href:"/staff/settings", flag:"reminders" },
+    { label:"Нагадування", href:"/staff/settings" },
     { label:"Повторний запис", href:"/staff/system-map#mod-2" },
   ]},
   { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients", items:[
@@ -79,14 +78,14 @@ const systemModules: NavModule[] = [
     { label:"Реєстр апаратів", href:"/staff#equipment" },
     { label:"Графік і слоти", href:"/staff/schedule" },
     { label:"Завантаженість", href:"/staff/dashboard" },
-    { label:"Знімки / PACS", href:"/staff/imaging", flag:"dicom_pacs" },
+    { label:"Знімки / PACS", href:"/staff/imaging" },
     { label:"Обслуговування (ТО)", href:"/staff/system-map#mod-6" },
     { label:"Простої / поломки", href:"/staff#equipment" },
     { label:"Витратні матеріали", href:"/staff/system-map#mod-6" },
   ]},
   { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard", items:[
     { label:"Пульт відділення", href:"/staff/dashboard" },
-    { label:"Організація та профіль", href:"/staff/organization" },
+    { label:"Організація", href:"/staff/organization" },
     { label:"WhatsApp", href:"/staff/whatsapp" },
     { label:"Налаштування", href:"/staff/settings" },
     { label:"Ролі й права", href:"/staff#staff-admin" },
@@ -124,29 +123,10 @@ export default function StaffWorkspaceShell({
   const [now,setNow] = useState<Date | null>(null);
   const [dark,setDark] = useState(false);
   const [openModules,setOpenModules] = useState<Record<string,boolean>>({});
-  // Ефективні feature flags організації; null — ще не завантажено (показуємо все).
-  const [flags,setFlags] = useState<Record<string,boolean> | null>(null);
 
   function toggleModule(n:string) {
     setOpenModules((current)=>({ ...current, [n]:!current[n] }));
   }
-
-  // Пункт видимий, доки прапорці не завантажені; після — лише якщо його
-  // можливість увімкнена (пункти без flag завжди видимі).
-  function childVisible(child:NavChild) {
-    if (!child.flag) return true;
-    if (!flags) return true;
-    return flags[child.flag] !== false;
-  }
-
-  useEffect(()=>{
-    let active = true;
-    fetch("/api/staff/org-profile", { cache:"no-store" })
-      .then((r)=>r.ok ? r.json() : null)
-      .then((d)=>{ if (active && d?.flags) setFlags(d.flags as Record<string,boolean>); })
-      .catch(()=>{});
-    return ()=>{ active = false; };
-  },[]);
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
@@ -218,7 +198,7 @@ export default function StaffWorkspaceShell({
               >▾</button>
             </div>
             {isOpen && <div className="workspaceSubList">
-              {item.items.filter(childVisible).map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
+              {item.items.map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
             </div>}
           </div>;
         })}

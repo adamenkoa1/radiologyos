@@ -34,7 +34,7 @@ test("structure carries NO personal data (no names/addresses/DOB/phones)", async
 test("structure page is staff-gated and wired into the shell nav", async () => {
   const page = await read("app/staff/structure/page.tsx");
   assert.match(page, /active="structure"/);
-  assert.match(page, /\/api\/staff\/org-profile/); // гейт доступу
+  assert.match(page, /\/api\/staff\/org\b/); // гейт доступу
   assert.match(page, /Захищений розділ/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href="\/staff\/structure"/);

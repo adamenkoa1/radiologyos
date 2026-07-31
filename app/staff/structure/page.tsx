@@ -10,8 +10,8 @@ export default function StructurePage() {
 
   useEffect(() => {
     let active = true;
-    // Гейт доступу: сторінка лише для персоналу (org-profile 403 для чужих).
-    fetch("/api/staff/org-profile", { cache: "no-store" })
+    // Гейт доступу: сторінка лише для персоналу (org 403 для чужих).
+    fetch("/api/staff/org", { cache: "no-store" })
       .then((r) => { if (!active) return; if (r.status === 401 || r.status === 403) setForbidden(true); setLoaded(true); })
       .catch(() => { if (active) setLoaded(true); });
     return () => { active = false; };

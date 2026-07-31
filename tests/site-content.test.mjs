@@ -9,6 +9,14 @@ import {
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
+test("storefront ships a number-forward slogan and description within limits", () => {
+  assert.match(SITE_CONTENT_DEFAULTS.slogan, /досліджень/);
+  assert.ok(SITE_CONTENT_DEFAULTS.slogan.length > 0 && SITE_CONTENT_DEFAULTS.slogan.length <= 160);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /35 видів досліджень/);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /6 напрямками/);
+  assert.ok(SITE_CONTENT_DEFAULTS.about.length <= 800);
+});
+
 test("sanitizeSiteContent clamps text, coerces published and keeps defaults", () => {
   const out = sanitizeSiteContent({ brandTitle: "  Нова назва  ", published: 0, unknown: "x" });
   assert.equal(out.brandTitle, "Нова назва"); // trimmed
