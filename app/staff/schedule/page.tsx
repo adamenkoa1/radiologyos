@@ -31,8 +31,15 @@ export default function StaffSchedulePage() {
     return () => { active = false; window.clearTimeout(t); };
   }, []);
 
-  function setHours(key: string, field: "start" | "end" | "slotMinutes", value: string) {
+  function setHours(key: string, field: "start" | "end" | "slotMinutes" | "breakStart" | "breakEnd", value: string) {
     setCfg(prev => ({ ...prev, equipment: { ...prev.equipment, [key]: { ...prev.equipment[key], [field]: field === "slotMinutes" ? Number(value) : value } } }));
+  }
+  function clearBreak(key: string) {
+    setCfg(prev => {
+      const rest = { ...prev.equipment[key] };
+      delete rest.breakStart; delete rest.breakEnd;
+      return { ...prev, equipment: { ...prev.equipment, [key]: rest } };
+    });
   }
   function toggleWeekday(d: number) {
     setCfg(prev => ({ ...prev, weekdays: prev.weekdays.includes(d) ? prev.weekdays.filter(x => x !== d) : [...prev.weekdays, d].sort((a, b) => a - b) }));
@@ -78,13 +85,17 @@ export default function StaffSchedulePage() {
 
           <section className="settingsBlock">
             <h3>Години прийому та крок слота</h3>
-            <p className="settingsHint">Для кожного апарата окремо. Крок — інтервал між слотами у хвилинах.</p>
+            <p className="settingsHint">Для кожного апарата окремо. Крок — інтервал між слотами у хвилинах. Обідня перерва (необов’язкова) ділить день на два вікна: слоти, що її перетинають, на записі не пропонуються.</p>
             {EQUIP_KEYS.map(key => (
               <div className="equipHoursRow" key={key}>
                 <b>{EQUIP_LABELS[key]}</b>
                 <label><span>З</span><input type="time" value={cfg.equipment[key].start} onChange={e => setHours(key, "start", e.target.value)} /></label>
                 <label><span>До</span><input type="time" value={cfg.equipment[key].end} onChange={e => setHours(key, "end", e.target.value)} /></label>
                 <label><span>Крок, хв</span><input type="number" min={5} max={240} step={5} value={cfg.equipment[key].slotMinutes} onChange={e => setHours(key, "slotMinutes", e.target.value)} /></label>
+                <label><span>Обід з</span><input type="time" value={cfg.equipment[key].breakStart ?? ""} onChange={e => setHours(key, "breakStart", e.target.value)} /></label>
+                <label><span>Обід до</span><input type="time" value={cfg.equipment[key].breakEnd ?? ""} onChange={e => setHours(key, "breakEnd", e.target.value)} /></label>
+                {(cfg.equipment[key].breakStart || cfg.equipment[key].breakEnd) &&
+                  <button type="button" className="breakClear" onClick={() => clearBreak(key)} title="Прибрати обідню перерву">Без перерви</button>}
               </div>
             ))}
           </section>
