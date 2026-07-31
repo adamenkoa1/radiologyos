@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { DEPARTMENT_STRUCTURE as S } from "../lib/department-structure.ts";
+import {
+  DEPARTMENT_STRUCTURE as S,
+  sanitizeDepartmentStructure,
+  totalStudies2025,
+} from "../lib/department-structure.ts";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -28,6 +32,19 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   // Режим роботи — амбулаторні і стаціонарні.
   assert.equal(S.hours.outpatient.rows.length, 2);
   assert.equal(S.hours.inpatient.rows.length, 2);
+  assert.equal(totalStudies2025(S), 39814);
+  assert.equal(S.statistics2025.breakdown.find((item) => item.id === "ct")?.value, 2861);
+  assert.equal(S.statistics2025.complexShare, 45);
+});
+
+test("structure content is editable, sanitized and persisted with public site text", async () => {
+  const changed = sanitizeDepartmentStructure({ statistics2025: { ...S.statistics2025, complexShare: 999 } });
+  assert.equal(changed.statistics2025.complexShare, 100);
+  const route = await read("app/api/staff/structure/route.ts");
+  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /DEPARTMENT_STRUCTURE_KEY/);
+  assert.match(route, /SITE_CONTENT_KEY/);
+  assert.match(route, /Promise\.all/);
 });
 
 test("structure carries NO personal data (no names/addresses/DOB/phones)", async () => {
@@ -42,8 +59,10 @@ test("structure carries NO personal data (no names/addresses/DOB/phones)", async
 test("structure page is staff-gated and wired into the shell nav", async () => {
   const page = await read("app/staff/structure/page.tsx");
   assert.match(page, /active="structure"/);
-  assert.match(page, /\/api\/staff\/org-profile/); // гейт доступу
+  assert.match(page, /\/api\/staff\/structure/); // гейт і єдине джерело даних
   assert.match(page, /Захищений розділ/);
+  assert.match(page, /Редагувати структуру/);
+  assert.match(page, /type="file"/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href="\/staff\/structure"/);
   assert.match(shell, /Структура відділення/);
