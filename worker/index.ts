@@ -105,10 +105,12 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // The Next app owns the unified public homepage. Legacy storefront files
-    // remain reachable under `/site/*`, but may no longer replace `/`.
-    if (url.pathname === "/index.html") {
-      return secure(Response.redirect(new URL("/", request.url).toString(), 308), request);
+    // The established teal storefront is the public homepage. Keep its URL at
+    // `/` while serving the same tested document that also remains available
+    // under `/site/index.html`.
+    if (url.pathname === "/" || url.pathname === "/index.html") {
+      const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
+      return secure(await env.ASSETS.fetch(storefrontRequest), request);
     }
 
     // Режим вітрини «лише платні»: сторінка військових недоступна — і прямий
