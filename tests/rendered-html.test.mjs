@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const developmentPreviewMeta =
@@ -15,7 +16,16 @@ async function renderPath(path) {
     }),
     {
       ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
+        fetch: async (req) => {
+          const href = typeof req === "string" ? req : req instanceof URL ? req.href : req.url;
+          if (new URL(href).pathname === "/site/index.html") {
+            return new Response(await readFile(new URL("../public/site/index.html", import.meta.url), "utf8"), {
+              status: 200,
+              headers: { "content-type": "text/html; charset=utf-8" },
+            });
+          }
+          return new Response("Not found", { status: 404 });
+        },
       },
     },
     {
@@ -27,7 +37,7 @@ async function renderPath(path) {
 
 const renderHome = () => renderPath("/");
 
-// Legacy static files remain in ASSETS, but may not replace the unified home.
+// Static storefront files are served at the clean public root URL.
 async function renderWithAssets(path, assetBodies) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-a`);
@@ -49,13 +59,12 @@ async function renderWithAssets(path, assetBodies) {
   );
 }
 
-test("the worker keeps the unified homepage at / when a legacy landing is present", async () => {
+test("the worker serves the established teal storefront at /", async () => {
   const marker = "<main>v22-landing</main>";
   const response = await renderWithAssets("/", { "/site/index.html": marker });
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Дослідження, запис і результат/);
-  assert.doesNotMatch(html, /v22-landing/);
+  assert.match(html, /v22-landing/);
 });
 
 test("renders development preview metadata", async () => {
@@ -75,9 +84,8 @@ test("home combines patient categories, services, booking and staff login", asyn
   assert.match(html, /Чернігівський військовий госпіталь/);
   assert.match(html, /Військовослужбовцям/);
   assert.match(html, /Цивільним особам/);
-  assert.match(html, /39(?:&nbsp;|\s| )*814/);
-  assert.match(html, /Усього досліджень за 2025 рік/);
-  assert.match(html, /id=["']booking["']/);
+  assert.match(html, /Дослідження та вартість/);
+  assert.match(html, /id=["']homeTariffs["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });
