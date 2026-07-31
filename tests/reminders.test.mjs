@@ -52,14 +52,15 @@ test("kyivNow converts a UTC instant to Kyiv date and minutes", () => {
   assert.equal(minutes, 15 * 60);
 });
 
-test("worker runs due reminders on a cron schedule", async () => {
+test("worker retains reminder support while production cron is disabled", async () => {
   const worker = await read("worker/index.ts");
   assert.match(worker, /async scheduled\(/);
   assert.match(worker, /runDueReminders\(env\.DB, Date\.now\(\)\)/);
   assert.match(worker, /ctx\.waitUntil/);
   const wrangler = await read("wrangler.cloudflare.toml");
-  assert.match(wrangler, /\[triggers\]/);
-  assert.match(wrangler, /crons = \[/);
+  assert.match(wrangler, /workers_dev = false/);
+  assert.doesNotMatch(wrangler, /\[triggers\]/);
+  assert.doesNotMatch(wrangler, /crons = \[/);
 });
 
 test("runner sends WhatsApp, dedupes by kind and respects do-not-contact", async () => {
