@@ -45,14 +45,16 @@ test("public site-content endpoint returns merged content with short caching", a
   assert.match(worker, /pathname === "\/api\/site-content"/);
 });
 
-test("editor page and nav item exist", async () => {
-  const page = await read("app/staff/site/page.tsx");
-  assert.match(page, /\/api\/staff\/site/);
-  assert.match(page, /active="site"/);
-  assert.match(page, /published/);
+test("site content editor is merged into the editable structure", async () => {
+  const legacy = await read("app/staff/site/page.tsx");
+  const page = await read("app/staff/structure/page.tsx");
+  assert.match(legacy, /redirect\("\/staff\/structure"\)/);
+  assert.match(page, /\/api\/staff\/structure/);
+  assert.match(page, /active="structure"/);
+  assert.match(page, /siteContent/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /href:"\/staff\/site"/);
-  assert.match(shell, /"site"/); // section in the union
+  assert.match(shell, /href:"\/staff\/structure"/);
+  assert.doesNotMatch(shell, /Вітрина/);
 });
 
 test("landing pulls storefront config from the API and gates on published", async () => {
@@ -70,7 +72,7 @@ test("stage 2: color, logo and storefront type are validated", () => {
   assert.equal(ok.storefrontType, "paid_only");
   const bad = sanitizeSiteContent({ brandColor: "red", logoUrl: "javascript:alert(1)", storefrontType: "weird" });
   assert.equal(bad.brandColor, SITE_CONTENT_DEFAULTS.brandColor); // invalid hex → default
-  assert.equal(bad.logoUrl, ""); // unsafe url rejected
+  assert.equal(bad.logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // unsafe url → verified local emblem
   assert.equal(bad.storefrontType, "paid_and_free"); // unknown → default
 });
 
@@ -89,13 +91,13 @@ test("logo accepts a data:image URI within the size cap, rejects oversized/unsaf
   const small = "data:image/png;base64," + "A".repeat(1000);
   assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, small);
   assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "https://x.co/l.svg");
-  assert.equal(sanitizeSiteContent({ logoUrl: "data:text/html;base64,xxx" }).logoUrl, ""); // не зображення
+  assert.equal(sanitizeSiteContent({ logoUrl: "data:text/html;base64,xxx" }).logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // не зображення
   const huge = "data:image/png;base64," + "A".repeat(300001);
-  assert.equal(sanitizeSiteContent({ logoUrl: huge }).logoUrl, ""); // завеликий
+  assert.equal(sanitizeSiteContent({ logoUrl: huge }).logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // завеликий
 });
 
 test("editor uploads a logo file (browser-side resize to data URI)", async () => {
-  const page = await read("app/staff/site/page.tsx");
+  const page = await read("app/staff/structure/page.tsx");
   assert.match(page, /type="file"/);
   assert.match(page, /onLogoFile/);
   assert.match(page, /toDataURL/); // зменшення в canvas
@@ -130,13 +132,15 @@ test("paid_only storefront redirects the military page to the price page", async
   assert.match(worker, /\/site\/price\.html/);
 });
 
-test("editor is renamed to Вітрина with a schema and design controls", async () => {
-  const page = await read("app/staff/site/page.tsx");
-  assert.match(page, /title="Вітрина"/);
-  assert.match(page, /Схема вітрини/);
-  assert.match(page, /storefrontType/);
-  assert.match(page, /brandColor/);
+test("structure editor contains public content but no appearance controls", async () => {
+  const page = await read("app/staff/structure/page.tsx");
+  assert.match(page, /title="Структура відділення"/);
+  assert.match(page, /Показники 2025 року/);
+  assert.match(page, /siteContent/);
+  assert.doesNotMatch(page, /storefrontType/);
+  assert.doesNotMatch(page, /brandColor/);
   assert.match(page, /logoUrl/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /Вітрина \(редактор\)/);
+  assert.match(shell, /Структура і контент/);
+  assert.doesNotMatch(shell, /Вітрина/);
 });
