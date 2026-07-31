@@ -9,12 +9,15 @@ test("the public homepage combines hospital information, services and booking", 
   for (const marker of [
     "hospital-emblem.jpg",
     "Кабінети й обладнання",
-    "Дмитро Адаменко",
-    "Військовослужбовцям",
-    "Цивільним пацієнтам",
+    "hospitalStats",
+    "totalStudies2025",
+    "siteContent.milTitle",
+    "siteContent.civTitle",
     "Онлайн-запис",
     "Кабінет пацієнта",
   ]) assert.match(page, new RegExp(marker));
+  assert.match(page, /\/api\/department-profile/);
+  assert.match(page, /\/api\/site-content/);
 });
 
 test("public booking collects phone, email and result delivery preference", async () => {
