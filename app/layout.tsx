@@ -4,18 +4,18 @@ import { SITE_URL } from "../lib/site";
 
 export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
-  title: "RadiologyOS — кабінет персоналу",
-  description: "КТ, цифрова рентгенографія та флюорографія у Чернігові. Онлайн-запис на дослідження.",
+  title: "Променева діагностика | Чернігівський військовий госпіталь",
+  description: "Відділення променевої діагностики Чернігівського військового госпіталю: КТ, цифровий рентген, флюорографія, тарифи й онлайн-запис.",
   other: {
     "codex-preview": "development",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/hospital-emblem.jpg",
+    shortcut: "/hospital-emblem.jpg",
   },
   openGraph: {
     title: "Променева діагностика — Чернігівський військовий госпіталь",
-    description: "КТ, цифрова рентгенографія та флюорографія у Чернігові. Онлайн-запис на дослідження.",
+    description: "КТ, цифрова рентгенографія та флюорографія для військовослужбовців і цивільних пацієнтів. Онлайн-запис.",
     locale: "uk_UA",
     type: "website",
   },

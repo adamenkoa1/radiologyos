@@ -4,15 +4,14 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("tab title leads with the brand (so it does not truncate to «Пром»)", async () => {
+test("tab title identifies the public radiology department", async () => {
   const layout = await read("app/layout.tsx");
-  assert.match(layout, /title:\s*"RadiologyOS/);
+  assert.match(layout, /title:\s*"Променева діагностика \| Чернігівський військовий госпіталь/);
 });
 
-test("favicon is the RadiologyOS mark, not the placeholder blue blocks", async () => {
-  const svg = await read("public/favicon.svg");
-  assert.match(svg, /#25b4c0/); // фірмовий бірюзовий гліф
-  assert.doesNotMatch(svg, /#68C4FF|#0C79D8/); // прибрано типову блакитну заглушку
+test("the hospital emblem is used as the public favicon", async () => {
+  const layout = await read("app/layout.tsx");
+  assert.match(layout, /icon:\s*"\/hospital-emblem\.jpg"/);
 });
 
 test("patient-card link sits on its own line (not glued to the phone)", async () => {

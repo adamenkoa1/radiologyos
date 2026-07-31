@@ -27,7 +27,7 @@ async function renderPath(path) {
 
 const renderHome = () => renderPath("/");
 
-// When the static v22 landing exists in ASSETS, the worker serves it at "/".
+// Legacy static files remain in ASSETS, but may not replace the unified home.
 async function renderWithAssets(path, assetBodies) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-a`);
@@ -49,11 +49,13 @@ async function renderWithAssets(path, assetBodies) {
   );
 }
 
-test("the worker serves the static v22 landing at / when present", async () => {
+test("the worker keeps the unified homepage at / when a legacy landing is present", async () => {
   const marker = "<main>v22-landing</main>";
   const response = await renderWithAssets("/", { "/site/index.html": marker });
   assert.equal(response.status, 200);
-  assert.equal(await response.text(), marker);
+  const html = await response.text();
+  assert.match(html, /Дослідження, запис і результат/);
+  assert.doesNotMatch(html, /v22-landing/);
 });
 
 test("renders development preview metadata", async () => {
@@ -67,12 +69,13 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
-test("home is a card landing that routes into booking and staff login", async () => {
+test("home combines patient categories, services, booking and staff login", async () => {
   const response = await renderHome();
   const html = await response.text();
   assert.match(html, /Чернігівський військовий госпіталь/);
-  assert.match(html, /href=["']\/booking\?category=military["']/);
-  assert.match(html, /href=["']\/booking\?category=civilian["']/);
+  assert.match(html, /Військовослужбовцям/);
+  assert.match(html, /Цивільним пацієнтам/);
+  assert.match(html, /id=["']booking["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });
