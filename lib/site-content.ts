@@ -1,5 +1,5 @@
-// Налаштовуваний контент публічної вітрини (сайту клініки). Редагується
-// адміністратором у кабінеті (/staff/site), зберігається у app_settings під
+// Налаштовуваний контент публічного сайту клініки. Редагується разом зі
+// структурою відділення (/staff/structure), зберігається у app_settings під
 // ключем `site_content` (єдиний JSON), застосовується на статичному лендингу
 // через /api/site-content. Порожнє текстове поле означає «лишити типове
 // значення з HTML» — застосування на сторінці ставить текст лише коли він є.
@@ -50,7 +50,7 @@ const FIELD_MAX = {
 export const SITE_CONTENT_DEFAULTS: SiteContent = {
   brandTitle: "Чернігівський військовий госпіталь",
   brandSubtitle: "Відділення променевої діагностики",
-  slogan: "",
+  slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
   milTitle: "Військовослужбовцям",
   milSub: "Безоплатні дослідження за направленням",
   civTitle: "Цивільним особам",
@@ -58,7 +58,7 @@ export const SITE_CONTENT_DEFAULTS: SiteContent = {
   phone: "+380 97 280 88 99",
   address: "м. Чернігів, вул. Полуботка, 40",
   workHours: "Пн–Сб · 08:00–17:00",
-  about: "",
+  about: "Відділення променевої діагностики працює цілодобово та об’єднує кабінет комп’ютерної томографії й рентгенологічні кабінети лікувального корпусу. Обладнання регулярно проходить технічне обслуговування, а у 2025 році вдосконалено проведення КТ із контрастуванням.",
   pricePageTitle: "Платні дослідження",
   pricePageSub: "Вартість указана відповідно до чинних тарифів.",
   priceIntro: "Цивільним особам — платні послуги. Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані.",
@@ -69,7 +69,7 @@ export const SITE_CONTENT_DEFAULTS: SiteContent = {
   milNotice: "Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням.",
   milLead: "Відділення променевої діагностики Чернігівського військового госпіталю.",
   brandColor: "#0c7a85",
-  logoUrl: "",
+  logoUrl: "/hospital-emblem.jpg",
   storefrontType: "paid_and_free",
   published: true,
 };
@@ -89,11 +89,11 @@ export function sanitizeSiteContent(input: unknown): SiteContent {
   // Фірмовий колір — лише валідний HEX (#RRGGBB), інакше типовий.
   const color = String(src.brandColor ?? "").trim();
   out.brandColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : SITE_CONTENT_DEFAULTS.brandColor;
-  // Логотип — https-посилання або data:image (файл, зменшений у браузері).
+  // Логотип — локальний герб, https-посилання або data:image (файл, зменшений у браузері).
   // Обмежуємо розмір, щоб не роздувати конфіг у базі.
   const logo = String(src.logoUrl ?? "").trim();
-  const logoOk = (/^https:\/\//.test(logo) || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/.test(logo)) && logo.length <= 300000;
-  out.logoUrl = logoOk ? logo : "";
+  const logoOk = (logo === "/hospital-emblem.jpg" || /^https:\/\//.test(logo) || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/.test(logo)) && logo.length <= 300000;
+  out.logoUrl = logoOk ? logo : SITE_CONTENT_DEFAULTS.logoUrl;
   // Вид вітрини.
   out.storefrontType = src.storefrontType === "paid_only" ? "paid_only" : "paid_and_free";
   out.published = src.published === undefined ? SITE_CONTENT_DEFAULTS.published : Boolean(src.published);
