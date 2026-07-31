@@ -9,13 +9,13 @@ import {
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("storefront ships a throughput-forward slogan and description within limits", () => {
-  // Наголос на обсязі: за робочий день і за рік (розрахунок за графіком).
+test("storefront ships a volume-forward slogan and description within limits", () => {
+  // Наголос на реальному обсязі: за рік і за робочий день (дані відділення 2024).
+  assert.match(SITE_CONTENT_DEFAULTS.slogan, /30 000 досліджень на рік/);
   assert.match(SITE_CONTENT_DEFAULTS.slogan, /за робочий день/);
-  assert.match(SITE_CONTENT_DEFAULTS.slogan, /16 000/);
   assert.ok(SITE_CONTENT_DEFAULTS.slogan.length > 0 && SITE_CONTENT_DEFAULTS.slogan.length <= 160);
-  assert.match(SITE_CONTENT_DEFAULTS.about, /54 досліджень за робочий день/);
-  assert.match(SITE_CONTENT_DEFAULTS.about, /16 000 на рік/);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /понад 30 000 досліджень на рік/);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /флюорографія — 16 778/);
   assert.ok(SITE_CONTENT_DEFAULTS.about.length <= 800);
 });
 
