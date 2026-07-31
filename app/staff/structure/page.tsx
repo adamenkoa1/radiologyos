@@ -5,7 +5,6 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
   cloneDepartmentStructure,
-  DEPARTMENT_STRUCTURE_DEFAULTS,
   type DepartmentStructure,
   totalStudies2025,
 } from "../../../lib/department-structure";
