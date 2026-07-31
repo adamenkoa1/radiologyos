@@ -10,6 +10,7 @@ name = "radiologyos"
 main = "dist/server/index.js"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = false
 
 # Custom domains. The radiologyos.tech zone is already on Cloudflare (its
 # nameservers point to Cloudflare), so `wrangler deploy` provisions these
@@ -18,12 +19,6 @@ routes = [
   { pattern = "radiologyos.tech", custom_domain = true },
   { pattern = "www.radiologyos.tech", custom_domain = true },
 ]
-
-# Cron-тригер планових нагадувань пацієнтам (за N годин до візиту). Кожні
-# 15 хв worker.scheduled перевіряє записи на сьогодні й надсилає WhatsApp.
-# Доступно на безкоштовному плані Cloudflare Workers.
-[triggers]
-crons = ["*/15 * * * *"]
 
 # Static client bundle (JS/CSS, self-hosted fonts, favicon). Served directly by
 # Cloudflare; the Worker handles every dynamic / server-rendered route.
