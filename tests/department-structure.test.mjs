@@ -10,13 +10,21 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   assert.equal(S.hospital.edrpou, "08296098");
   assert.match(S.license.number, /ОВ 011260/);
   assert.equal(S.license.validUntil, "08.11.2027");
-  // Усі 9 апаратів ліцензії присутні (по кабінетах).
-  const devices = S.rooms.flatMap((r) => r.devices.map((d) => d.name));
-  assert.equal(devices.length, 9);
-  for (const name of ["SOMATOM AR-TX", "Somatom go.Up", "SHIMADZU UD 150L-30EX", "SERISCOP CX",
-    "9Л5", "PLX 102", "М32", "WHA-50N Opescope", "Серикс-71"]) {
-    assert.ok(devices.some((d) => d.includes(name)), `device ${name} present`);
+  const devices = S.rooms.flatMap((r) => r.devices);
+  const activeDevices = devices.filter((d) => d.status !== "stored").map((d) => d.name);
+  const storedDevices = devices.filter((d) => d.status === "stored").map((d) => d.name);
+  assert.equal(activeDevices.length, 10);
+  for (const name of ["SOMATOM go.Up", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
+    "IMAX 6000", "12Ф9-Україна", "9Л5Ф", "PLX 102", "М32"]) {
+    assert.ok(activeDevices.some((d) => d.includes(name)), `active device ${name} present`);
   }
+  for (const name of ["SHIMADZU UD 150L-30EX", "12Ф7Ц"]) {
+    assert.ok(storedDevices.some((d) => d.includes(name)), `stored device ${name} present`);
+  }
+  for (const name of ["SOMATOM AR-TX", "Серикс-71", "WHA-50N Opescope"]) {
+    assert.ok(!devices.some((d) => d.name.includes(name)), `unconfirmed device ${name} absent`);
+  }
+  assert.ok(devices.every((d) => !("kv" in d)), "unverified kV values are not published");
   // Режим роботи — амбулаторні і стаціонарні.
   assert.equal(S.hours.outpatient.rows.length, 2);
   assert.equal(S.hours.inpatient.rows.length, 2);
