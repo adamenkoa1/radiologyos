@@ -1321,20 +1321,6 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .hospitalAudienceCard>a{grid-column:2;align-self:end;display:flex;justify-content:space-between;gap:15px;padding-top:18px;border-top:1px solid rgba(255,255,255,.22);color:#fff;font-size:13px;font-weight:850}
 .hospitalAudienceCard>a span{font-size:20px;line-height:.8}
 
-.hospitalStats{display:grid;grid-template-columns:.78fr 1.22fr;max-width:1240px;margin:88px auto 0;border:1px solid #ded4c6;background:#fff;box-shadow:0 18px 60px rgba(74,48,24,.08)}
-.hospitalStatsHero{display:flex;flex-direction:column;justify-content:center;padding:45px 42px;background:var(--hospital-brown);color:#fff}
-.hospitalStatsHero>span{font-size:10px;font-weight:900;letter-spacing:.14em;text-transform:uppercase;color:#dbc09c}
-.hospitalStatsHero>strong{display:block;margin:20px 0 8px;font-family:Lora,Georgia,serif;font-size:clamp(56px,7vw,88px);font-weight:500;line-height:.9;color:#fff}
-.hospitalStatsHero h2{margin:8px 0 0;font-family:Lora,Georgia,serif;font-size:25px;font-weight:550;line-height:1.25}
-.hospitalStatsHero p{margin:16px 0 0;color:rgba(255,255,255,.64);font-size:12px;line-height:1.6}
-.hospitalStatsBreakdown{display:grid;grid-template-columns:repeat(3,1fr)}
-.hospitalStatsBreakdown>div{display:flex;min-height:145px;flex-direction:column;justify-content:center;padding:24px;border-right:1px solid #e7dfd4;border-bottom:1px solid #e7dfd4}
-.hospitalStatsBreakdown>div:nth-child(3n){border-right:0}
-.hospitalStatsBreakdown>div:nth-last-child(-n+3){border-bottom:0}
-.hospitalStatsBreakdown strong{font-family:Lora,Georgia,serif;color:var(--hospital-red);font-size:29px;font-weight:600}
-.hospitalStatsBreakdown span{margin-top:7px;color:#6b6c67;font-size:11px;line-height:1.45;text-transform:uppercase;letter-spacing:.04em}
-.hospitalStatsBreakdown .highlight{background:#faf4eb}.hospitalStatsBreakdown .highlight strong{color:var(--hospital-brown)}
-
 .hospitalSection{max-width:1240px;margin:0 auto;padding:112px 0}
 .hospitalSectionIntro{max-width:730px;margin-bottom:50px}
 .hospitalSectionIntro.split{display:grid;grid-template-columns:1.2fr .8fr;align-items:end;gap:55px;max-width:none}
@@ -1444,7 +1430,6 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
   .hospitalHero h1{font-size:55px}
   .hospitalMarkRing{width:270px;height:270px;min-width:0;min-height:0}
   .hospitalAudience{margin-left:24px;margin-right:24px}
-  .hospitalStats{margin-left:24px;margin-right:24px;grid-template-columns:1fr}
   .hospitalSection{padding-left:24px;padding-right:24px}
   .hospitalRoomGrid{grid-template-columns:1fr 1fr}
   .hospitalServiceGrid{grid-template-columns:1fr 1fr}
@@ -1470,12 +1455,6 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
   .hospitalAudience{grid-template-columns:1fr;margin:-28px 16px 0}
   .hospitalAudienceCard{min-height:235px;padding:30px 24px;gap:18px}
   .hospitalAudienceCard h2{font-size:25px}
-  .hospitalStats{margin:60px 16px 0}
-  .hospitalStatsHero{padding:36px 25px}
-  .hospitalStatsBreakdown{grid-template-columns:1fr 1fr}
-  .hospitalStatsBreakdown>div,.hospitalStatsBreakdown>div:nth-child(3n),.hospitalStatsBreakdown>div:nth-last-child(-n+3){min-height:120px;border-right:1px solid #e7dfd4;border-bottom:1px solid #e7dfd4}
-  .hospitalStatsBreakdown>div:nth-child(2n){border-right:0}
-  .hospitalStatsBreakdown>div:nth-last-child(-n+2){border-bottom:0}
   .hospitalSection{padding:78px 20px}
   .hospitalSectionIntro.split,.hospitalDepartmentGrid{grid-template-columns:1fr;gap:28px}
   .hospitalSectionIntro{margin-bottom:36px}
