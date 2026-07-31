@@ -9,11 +9,13 @@ import {
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("storefront ships a number-forward slogan and description within limits", () => {
-  assert.match(SITE_CONTENT_DEFAULTS.slogan, /досліджень/);
+test("storefront ships a throughput-forward slogan and description within limits", () => {
+  // Наголос на обсязі: за робочий день і за рік (розрахунок за графіком).
+  assert.match(SITE_CONTENT_DEFAULTS.slogan, /за робочий день/);
+  assert.match(SITE_CONTENT_DEFAULTS.slogan, /16 000/);
   assert.ok(SITE_CONTENT_DEFAULTS.slogan.length > 0 && SITE_CONTENT_DEFAULTS.slogan.length <= 160);
-  assert.match(SITE_CONTENT_DEFAULTS.about, /35 видів досліджень/);
-  assert.match(SITE_CONTENT_DEFAULTS.about, /6 напрямками/);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /54 досліджень за робочий день/);
+  assert.match(SITE_CONTENT_DEFAULTS.about, /16 000 на рік/);
   assert.ok(SITE_CONTENT_DEFAULTS.about.length <= 800);
 });
 
