@@ -13,8 +13,8 @@ type Item = {
 type Module = { num: string; name: string; items: Item[] };
 
 const DATA: Module[] = [
-  { num: "1", name: "Головна / Продаж послуг", items: [
-    { scr: "Вітрина послуг", fn: "Каталог послуг із цінами (військові безоплатно / цивільні за ціною)", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "index.html · /api/catalog" },
+  { num: "1", name: "Головна / Послуги", items: [
+    { scr: "Публічний сайт", fn: "Інформація про відділення, послуги й запис (військовим безоплатно / цивільним платно)", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "/ · /staff/structure" },
     { scr: "Онлайн-запис", fn: "Кошик і заявка прямо з головної", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "index.html · /api/site-booking" },
     { scr: "Тарифи", fn: "Таблиці цін для військових і цивільних", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "index.html · /api/tariffs" },
     { scr: "Контакти", fn: "Телефон, карта проїзду, графік", st: "ok", ph: "Готово", prcls: "none", prlbl: "—", path: "index.html" },
