@@ -3,6 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { getSetting } from "../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
+import { runDueReminders } from "../lib/reminders";
 
 interface Env {
   ASSETS: Fetcher;
@@ -148,6 +149,13 @@ const worker = {
     }
 
     return secure(await handler.fetch(request, env, ctx), request);
+  },
+
+  // Cron-тригер (див. [triggers].crons у wrangler.cloudflare.toml): планові
+  // нагадування пацієнтам за N годин до візиту через WhatsApp.
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
+    (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    ctx.waitUntil(runDueReminders(env.DB, Date.now()));
   },
 };
 

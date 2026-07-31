@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import WeekCalendar, { type CalBooking, type CalStaffOption } from "../week-calendar";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -46,8 +47,9 @@ function ActionList({ title, items, hint, href, empty }:{
   </section>;
 }
 
-type ExtEvent = { display: string; summary: string };
+const EQUIP: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 
+type ExtEvent = { display: string; summary: string };
 function ExternalCalendar() {
   const [state, setState] = useState<{ configured: boolean; events: ExtEvent[]; error?: string } | null>(null);
   useEffect(() => {
@@ -70,14 +72,24 @@ function ExternalCalendar() {
 
 export default function DashboardPage() {
   const [data,setData] = useState<Data | null>(null);
+  const [bookings,setBookings] = useState<CalBooking[]>([]);
+  const [options,setOptions] = useState<CalStaffOption[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [error,setError] = useState("");
+  const [toast,setToast] = useState("");
+  const [busyId,setBusyId] = useState<number | null>(null);
 
   async function load() {
-    const response = await fetch("/api/staff/dashboard", { cache:"no-store" });
-    const payload = await response.json() as Data & { error?:string };
-    if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
+    const [dashRes, bookingsRes] = await Promise.all([
+      fetch("/api/staff/dashboard", { cache:"no-store" }),
+      fetch("/api/staff/bookings", { cache:"no-store" }),
+    ]);
+    const payload = await dashRes.json() as Data & { error?:string };
+    if (!dashRes.ok) { setError(payload.error || "Немає доступу"); return; }
     setData(payload); setStaff(payload.staff || null); setError("");
+    const bookingsData = await bookingsRes.json().catch(() => ({})) as { bookings?:CalBooking[]; staffOptions?:CalStaffOption[] };
+    setBookings(bookingsData.bookings || []);
+    setOptions(bookingsData.staffOptions || []);
   }
 
   useEffect(() => {
@@ -85,50 +97,102 @@ export default function DashboardPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Нові/перенесені заявки, що чекають на реакцію реєстратури — миготять,
+  // доки їх не підтвердять. Найновіші згори.
+  const pending = useMemo(() => bookings
+    .filter(b => b.status === "new" || b.status === "rescheduled")
+    .sort((a, b) => (b.code || "").localeCompare(a.code || "")),
+  [bookings]);
+
+  const canManage = staff?.role === "admin" || staff?.role === "registrar";
+
+  async function confirmBooking(id:number) {
+    setBusyId(id); setToast("");
+    try {
+      const res = await fetch("/api/staff/bookings", {
+        method:"PATCH", headers:{"content-type":"application/json"},
+        body:JSON.stringify({ id, confirm:true }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?:string; reminder?:{ sent:number; skipped:number; failed:number } | null };
+      if (!res.ok) { setToast(data.error || "Не вдалося підтвердити запис"); return; }
+      setBookings(cur => cur.map(b => b.id === id ? { ...b, status:"confirmed" } : b));
+      const r = data.reminder;
+      setToast(r?.sent
+        ? "✓ Підтверджено · повідомлення у WhatsApp надіслано пацієнту"
+        : r?.failed
+          ? "✓ Підтверджено, але WhatsApp не надіслався — перевірте підключення у розділі WhatsApp"
+          : "✓ Підтверджено · WhatsApp-сповіщення вимкнено або не підключено");
+    } catch {
+      setToast("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const k = data?.kpi;
 
   return <StaffWorkspaceShell
     active="dashboard"
     title="Пульт відділення"
-    description="Що потребує уваги просто зараз: розклад, виконання, протоколи, знімки, оплати та пацієнти в одному місці."
+    description="Нові заявки, розклад і те, що потребує уваги — в одному місці."
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
     !k ? <p className="dashLoading">Завантаження зведення…</p> :
     <>
-      <div className="dashKpiGrid">
-        <a className="dashKpi dashHero" href="/staff">
-          <span>Сьогодні у розкладі</span>
-          <b>{k.scheduledToday}</b>
-          <small>{k.newToday} нових · {k.confirmedToday} підтверджено · {k.performedToday} виконано</small>
-        </a>
-        <a className="dashKpi" href="/staff/protocols">
-          <span>Потребують протоколу</span><b className={k.awaitingProtocol?"warn":""}>{k.awaitingProtocol}</b>
-          <small>{k.readyToIssue} готові до видачі · {k.issuedToday} видано сьогодні</small>
-        </a>
-        <a className="dashKpi" href="/staff/imaging">
-          <span>Без прив’язки знімків</span><b className={k.needImaging?"warn":""}>{k.needImaging}</b>
-          <small>{k.availableStudies} у PACS · {k.pacsEnabled?"PACS підключено":"PACS вимкнено"}</small>
-        </a>
-        <a className="dashKpi" href="/staff/reports">
-          <span>Очікують оплати</span><b className={k.outstandingCount?"warn":""}>{k.outstandingCount}</b>
-          <small>{k.outstandingSum.toLocaleString("uk-UA")} грн · НСЗУ на перевірці: {k.nszuPending}</small>
-        </a>
-        <a className="dashKpi" href="/staff/patients">
-          <span>Пацієнтів у базі</span><b>{k.patients}</b>
-          <small>{k.repeatPatients} повторних · {k.doNotContact} «не турбувати»</small>
-        </a>
-        <div className="dashKpi equipment">
-          <span>Завантаження апаратів сьогодні</span>
-          <div className="dashEquip">
+      {toast && <p className="dashToast" role="status" onClick={()=>setToast("")}>{toast}</p>}
+
+      {/* Компактна стрічка показників замість великих блоків */}
+      <div className="dashKpiStrip">
+        <a className="dashStat hero" href="/staff"><b>{k.scheduledToday}</b><span>сьогодні у розкладі</span><small>{k.newToday} нових · {k.confirmedToday} підтв.</small></a>
+        <a className="dashStat" href="/staff/protocols"><b className={k.awaitingProtocol?"warn":""}>{k.awaitingProtocol}</b><span>потребують протоколу</span><small>{k.readyToIssue} до видачі</small></a>
+        <a className="dashStat" href="/staff/imaging"><b className={k.needImaging?"warn":""}>{k.needImaging}</b><span>без знімків</span><small>{k.pacsEnabled?"PACS on":"PACS off"}</small></a>
+        <a className="dashStat" href="/staff/reports"><b className={k.outstandingCount?"warn":""}>{k.outstandingCount}</b><span>очікують оплати</span><small>{k.outstandingSum.toLocaleString("uk-UA")} грн</small></a>
+        <a className="dashStat" href="/staff/patients"><b>{k.patients}</b><span>пацієнтів</span><small>{k.repeatPatients} повторних</small></a>
+        <div className="dashStat equip">
+          <span>апарати сьогодні</span>
+          <div className="dashStatEquip">
             {["ct","xray","fluoro"].map((id)=>{
               const value = data?.equipmentToday.find((e)=>e.id===id)?.c || 0;
-              return <div key={id}><b>{value}</b><small>{equipmentNames[id]}</small></div>;
+              return <span key={id}><b>{value}</b>{equipmentNames[id]}</span>;
             })}
           </div>
         </div>
       </div>
+
+      {/* Нові заявки: миготять, доки не підтвердять; підтвердження одним кліком */}
+      <section className="dashPending">
+        <div className="dashPendingHead">
+          <h2>Нові заявки {pending.length ? <span className="dashPendingBadge">{pending.length}</span> : null}</h2>
+          <small>Натисніть «Підтвердити» — пацієнту одразу піде повідомлення у WhatsApp.</small>
+        </div>
+        {pending.length === 0
+          ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
+          : <ul className="dashPendingList">
+              {pending.map(b => (
+                <li key={b.id} className="dashPendingRow">
+                  <span className={`dashPendingDot ${b.status}`} aria-hidden="true" />
+                  <div className="dashPendingWho">
+                    <b>{b.name || "Без імені"}</b>
+                    <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""} · {b.desiredDate} {b.desiredTime}</small>
+                  </div>
+                  <a className="dashPendingPhone" href={`tel:${b.phone}`}>{b.phone}</a>
+                  {canManage
+                    ? <button type="button" className="dashConfirmBtn" disabled={busyId===b.id} onClick={()=>void confirmBooking(b.id)}>
+                        {busyId===b.id ? "…" : "✓ Підтвердити"}
+                      </button>
+                    : <span className="dashPendingTag">очікує</span>}
+                </li>
+              ))}
+            </ul>}
+      </section>
+
+      {/* Об'єднаний календар записів прямо в пульті */}
+      <section className="dashCalendar">
+        <div className="dashCalendarHead"><h2>Розклад</h2><a href="/staff/book" className="dashCalNew">+ Нова запис</a></div>
+        <WeekCalendar bookings={bookings} options={options} initialView="week" />
+      </section>
 
       {data?.clinicalQueue?.length ? <a className="dashQueue" href="/staff/studies" aria-label="Відкрити реєстр досліджень">
         <div className="dashQueueHead"><b>Клінічна черга</b><small>Активні стани дослідження · відкрити реєстр →</small></div>
@@ -149,9 +213,6 @@ export default function DashboardPage() {
         <ActionList title="Без прив’язки знімків" items={data!.lists.needImaging}
           hint="Виконані дослідження без DICOM-студії" empty="Усі дослідження прив’язані до знімків."
           href={(item)=>`/staff/imaging?open=${item.id}`}/>
-        <ActionList title="Черга підтвердження" items={data!.lists.confirmQueue}
-          hint="Нові заявки, що очікують на реакцію реєстратури" empty="Нових непідтверджених заявок немає."
-          href={()=>"/staff#bookings"}/>
       </div>
       <ExternalCalendar/>
     </>}

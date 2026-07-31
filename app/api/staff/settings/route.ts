@@ -4,6 +4,7 @@
 import { requireStaff } from "../../../../lib/staff-auth";
 import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
+import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
 import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
@@ -15,6 +16,7 @@ const SETTING_KEYS = [
   "calendar_token_hash", "external_ics_url",
   "patient_reminders_enabled", "sms_gateway_url", "sms_gateway_auth",
   "email_gateway_url", "email_gateway_auth", "email_gateway_from",
+  REMINDER_LEAD_KEY,
 ];
 
 function settingsView(values: Record<string, string>) {
@@ -25,6 +27,7 @@ function settingsView(values: Record<string, string>) {
     calendarConfigured: Boolean(values.calendar_token_hash),
     externalIcsUrl: values.external_ics_url,
     remindersEnabled: Boolean(values.patient_reminders_enabled),
+    reminderLeadHours: parseLeadHours(values[REMINDER_LEAD_KEY]).join(", "),
     smsGatewayUrl: values.sms_gateway_url,
     smsGatewayAuthSet: Boolean(values.sms_gateway_auth),
     emailGatewayUrl: values.email_gateway_url,
@@ -56,7 +59,7 @@ export async function PUT(request: Request) {
 
   const body = await request.json().catch(() => ({})) as {
     telegramBotToken?: string; telegramChatId?: string; payLink?: string;
-    externalIcsUrl?: string; remindersEnabled?: boolean;
+    externalIcsUrl?: string; remindersEnabled?: boolean; reminderLeadHours?: string;
     smsGatewayUrl?: string; smsGatewayAuth?: string;
     emailGatewayUrl?: string; emailGatewayAuth?: string; emailGatewayFrom?: string;
   };
@@ -103,6 +106,7 @@ export async function PUT(request: Request) {
   await setSetting(db, "pay_link", payLink);
   await setSetting(db, "external_ics_url", externalIcsUrl);
   await setSetting(db, "patient_reminders_enabled", body.remindersEnabled ? "1" : "");
+  await setSetting(db, REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
   await setSetting(db, "sms_gateway_url", smsGatewayUrl);
   await setSetting(db, "email_gateway_url", emailGatewayUrl);
   await setSetting(db, "email_gateway_from", emailGatewayFrom);
