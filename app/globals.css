@@ -320,6 +320,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .structDevMeta{display:flex;align-items:center;gap:8px;font-size:11px;color:#8a9995}
 .structKind{font-weight:800;color:#3a5a54;background:#e9f1ef;border-radius:5px;padding:1px 6px}
 .structKind.k-ct{background:#e5eef9;color:#2f5c9a}.structKind.k-fluoro{background:#f3ecf9;color:#6b4b9a}.structKind.k-mobile{background:#fbf1e2;color:#9a6b1a}
+.structKind.k-stored{background:#f0eeee;color:#6f6565}
 .structHint{color:#8a9995;font-size:12px;margin:6px 0 10px}
 .structStaff{list-style:none;margin:8px 0 0;padding:0;display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .structStaff li{display:flex;flex-direction:column;gap:1px;border:1px solid #eef2f0;border-radius:8px;padding:9px 12px;background:#fbfdfc}
