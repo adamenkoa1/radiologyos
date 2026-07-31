@@ -9,13 +9,14 @@ test("the public homepage combines hospital information, services and booking", 
   for (const marker of [
     "hospital-emblem.jpg",
     "Кабінети й обладнання",
-    "hospitalStats",
+    "hospitalDepartment",
     "totalStudies2025",
     "siteContent.milTitle",
     "siteContent.civTitle",
     "Онлайн-запис",
     "Кабінет пацієнта",
   ]) assert.match(page, new RegExp(marker));
+  assert.doesNotMatch(page, /className="hospitalStats"/);
   assert.match(page, /\/api\/department-profile/);
   assert.match(page, /\/api\/site-content/);
 });
