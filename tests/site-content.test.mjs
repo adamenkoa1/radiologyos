@@ -28,7 +28,7 @@ test("legacy branding migrates to the exact current slogan and no logo", () => {
     slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
     logoUrl: "/hospital-emblem.jpg",
   });
-  assert.equal(migrated.slogan, "Точна діагностика-вчасна допомога.");
+  assert.equal(migrated.slogan, "Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.");
   assert.equal(migrated.logoUrl, "");
 });
 
@@ -37,9 +37,20 @@ test("legacy clinic copy migrates to precise emergency-hours positioning", () =>
     workHours: "Пн–Сб · 08:00–17:00",
     about: "Відділення променевої діагностики працює цілодобово та об’єднує кабінет комп’ютерної томографії й рентгенологічні кабінети лікувального корпусу. Обладнання регулярно проходить технічне обслуговування, а у 2025 році вдосконалено проведення КТ із контрастуванням.",
   });
-  assert.match(migrated.workHours, /Екстрені дослідження/);
+  assert.match(migrated.workHours, /08:30–17:30/);
+  assert.match(migrated.workHours, /Екстрені дослідження/i);
   assert.match(migrated.workHours, /цілодобово/);
   assert.match(migrated.about, /Екстрені дослідження/);
+});
+
+test("previous approved slogan and hours migrate to the current wording", () => {
+  const migrated = sanitizeSiteContent({
+    slogan: "Точна діагностика-вчасна допомога.",
+    workHours: "Екстрені дослідження для військовослужбовців — цілодобово · цивільним — за попереднім записом",
+  });
+  assert.equal(migrated.slogan, SITE_CONTENT_DEFAULTS.slogan);
+  assert.equal(migrated.workHours, SITE_CONTENT_DEFAULTS.workHours);
+  assert.match(migrated.workHours, /24\/7/);
 });
 
 test("previous broad 24/7 copy migrates without changing custom text", () => {

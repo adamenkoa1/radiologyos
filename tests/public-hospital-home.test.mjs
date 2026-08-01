@@ -29,6 +29,9 @@ test("the public homepage combines hospital information, services and booking", 
   assert.match(page, /\/api\/site-content/);
   assert.match(page, /\/api\/department-profile/);
   assert.match(page, /Екстрені дослідження для військовослужбовців/);
+  const contentDefaults = await read("public/site/assets/department.js");
+  assert.match(contentDefaults, /08:30–17:30/);
+  assert.match(contentDefaults, /Досвід, якому можна довіряти/);
 });
 
 test("public booking collects phone, email and result delivery preference", async () => {
