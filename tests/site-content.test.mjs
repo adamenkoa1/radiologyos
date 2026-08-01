@@ -23,6 +23,46 @@ test("published defaults to true when unset", () => {
   assert.equal(sanitizeSiteContent({}).published, true);
 });
 
+test("legacy branding migrates to the exact current slogan and no logo", () => {
+  const migrated = sanitizeSiteContent({
+    slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
+    logoUrl: "/hospital-emblem.jpg",
+  });
+  assert.equal(migrated.slogan, "Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.");
+  assert.equal(migrated.logoUrl, "");
+});
+
+test("legacy clinic copy migrates to precise emergency-hours positioning", () => {
+  const migrated = sanitizeSiteContent({
+    workHours: "Пн–Сб · 08:00–17:00",
+    about: "Відділення променевої діагностики працює цілодобово та об’єднує кабінет комп’ютерної томографії й рентгенологічні кабінети лікувального корпусу. Обладнання регулярно проходить технічне обслуговування, а у 2025 році вдосконалено проведення КТ із контрастуванням.",
+  });
+  assert.match(migrated.workHours, /08:30–17:30/);
+  assert.match(migrated.workHours, /Екстрені дослідження/i);
+  assert.match(migrated.workHours, /цілодобово/);
+  assert.match(migrated.about, /Екстрені дослідження/);
+});
+
+test("previous approved slogan and hours migrate to the current wording", () => {
+  const migrated = sanitizeSiteContent({
+    slogan: "Точна діагностика-вчасна допомога.",
+    workHours: "Екстрені дослідження для військовослужбовців — цілодобово · цивільним — за попереднім записом",
+  });
+  assert.equal(migrated.slogan, SITE_CONTENT_DEFAULTS.slogan);
+  assert.equal(migrated.workHours, SITE_CONTENT_DEFAULTS.workHours);
+  assert.match(migrated.workHours, /24\/7/);
+});
+
+test("previous broad 24/7 copy migrates without changing custom text", () => {
+  const migrated = sanitizeSiteContent({
+    workHours: "Військовослужбовцям — 24/7 · цивільним — за попереднім записом",
+    about: "Відділення променевої діагностики працює для військовослужбовців цілодобово — 24/7. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.",
+  });
+  assert.equal(migrated.workHours, SITE_CONTENT_DEFAULTS.workHours);
+  assert.equal(migrated.about, SITE_CONTENT_DEFAULTS.about);
+  assert.equal(sanitizeSiteContent({ workHours: "Мій режим" }).workHours, "Мій режим");
+});
+
 test("parseSiteContent returns defaults for empty or invalid JSON", () => {
   assert.deepEqual(parseSiteContent(""), SITE_CONTENT_DEFAULTS);
   assert.deepEqual(parseSiteContent("{bad json"), SITE_CONTENT_DEFAULTS);
@@ -45,14 +85,16 @@ test("public site-content endpoint returns merged content with short caching", a
   assert.match(worker, /pathname === "\/api\/site-content"/);
 });
 
-test("editor page and nav item exist", async () => {
-  const page = await read("app/staff/site/page.tsx");
-  assert.match(page, /\/api\/staff\/site/);
-  assert.match(page, /active="site"/);
-  assert.match(page, /published/);
+test("site content editor is merged into the editable structure", async () => {
+  const legacy = await read("app/staff/site/page.tsx");
+  const page = await read("app/staff/structure/page.tsx");
+  assert.match(legacy, /redirect\("\/staff\/structure"\)/);
+  assert.match(page, /\/api\/staff\/structure/);
+  assert.match(page, /active="structure"/);
+  assert.match(page, /siteContent/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /href:"\/staff\/site"/);
-  assert.match(shell, /"site"/); // section in the union
+  assert.match(shell, /href:"\/staff\/structure"/);
+  assert.doesNotMatch(shell, /Вітрина/);
 });
 
 test("landing pulls storefront config from the API and gates on published", async () => {
@@ -63,42 +105,32 @@ test("landing pulls storefront config from the API and gates on published", asyn
   assert.match(html, /id="scAbout"/);
 });
 
-test("stage 2: color, logo and storefront type are validated", () => {
+test("stage 2: color and storefront type are validated while logo stays disabled", () => {
   const ok = sanitizeSiteContent({ brandColor: "#2F8F46", logoUrl: "https://x.co/l.png", storefrontType: "paid_only" });
   assert.equal(ok.brandColor, "#2f8f46"); // normalized lowercase
-  assert.equal(ok.logoUrl, "https://x.co/l.png");
+  assert.equal(ok.logoUrl, "");
   assert.equal(ok.storefrontType, "paid_only");
   const bad = sanitizeSiteContent({ brandColor: "red", logoUrl: "javascript:alert(1)", storefrontType: "weird" });
   assert.equal(bad.brandColor, SITE_CONTENT_DEFAULTS.brandColor); // invalid hex → default
-  assert.equal(bad.logoUrl, ""); // unsafe url rejected
+  assert.equal(bad.logoUrl, "");
   assert.equal(bad.storefrontType, "paid_and_free"); // unknown → default
 });
 
-test("landing themes via CSS variable and honors storefront type + logo", async () => {
+test("landing themes via CSS variable, honors storefront type and has no logo", async () => {
   const html = await read("public/site/index.html");
   assert.match(html, /--brand:#0c7a85/); // змінна визначена
   assert.match(html, /setProperty\('--brand',c\.brandColor\)/); // застосування кольору
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
-  assert.match(html, /id="scLogo"/);
+  assert.doesNotMatch(html, /id="scLogo"|brand-logo/);
   // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
   assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
 });
 
-test("logo accepts a data:image URI within the size cap, rejects oversized/unsafe", () => {
+test("legacy logo values are ignored", () => {
   const small = "data:image/png;base64," + "A".repeat(1000);
-  assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, small);
-  assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "https://x.co/l.svg");
-  assert.equal(sanitizeSiteContent({ logoUrl: "data:text/html;base64,xxx" }).logoUrl, ""); // не зображення
-  const huge = "data:image/png;base64," + "A".repeat(300001);
-  assert.equal(sanitizeSiteContent({ logoUrl: huge }).logoUrl, ""); // завеликий
-});
-
-test("editor uploads a logo file (browser-side resize to data URI)", async () => {
-  const page = await read("app/staff/site/page.tsx");
-  assert.match(page, /type="file"/);
-  assert.match(page, /onLogoFile/);
-  assert.match(page, /toDataURL/); // зменшення в canvas
+  assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, "");
+  assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "");
 });
 
 test("price/military pages pull content and theme from the editor via the API", async () => {
@@ -130,13 +162,15 @@ test("paid_only storefront redirects the military page to the price page", async
   assert.match(worker, /\/site\/price\.html/);
 });
 
-test("editor is renamed to Вітрина with a schema and design controls", async () => {
-  const page = await read("app/staff/site/page.tsx");
-  assert.match(page, /title="Вітрина"/);
-  assert.match(page, /Схема вітрини/);
-  assert.match(page, /storefrontType/);
-  assert.match(page, /brandColor/);
-  assert.match(page, /logoUrl/);
+test("structure editor contains public content but no appearance controls", async () => {
+  const page = await read("app/staff/structure/page.tsx");
+  assert.match(page, /title="Структура відділення"/);
+  assert.match(page, /Показники 2025 року/);
+  assert.match(page, /siteContent/);
+  assert.doesNotMatch(page, /storefrontType/);
+  assert.doesNotMatch(page, /brandColor/);
+  assert.doesNotMatch(page, /logoUrl|onLogoFile|type="file"/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /Вітрина \(редактор\)/);
+  assert.match(shell, /Структура і контент/);
+  assert.doesNotMatch(shell, /Вітрина/);
 });

@@ -66,7 +66,12 @@ export async function POST(request: Request) {
     }
     let referralType = clean(body.referralType, 30);
     if (!REFERRAL_TYPES.includes(referralType)) referralType = "other";
-    const comment = clean(body.comment, 700);
+    const commentRaw = clean(body.comment, 520);
+    const resultDelivery = clean(body.resultDelivery, 20) === "email" && patientEmail ? "email" : "department";
+    const resultNote = resultDelivery === "email"
+      ? `Спосіб отримання результату: на email ${patientEmail}`
+      : "Спосіб отримання результату: у відділенні";
+    const comment = [commentRaw, resultNote].filter(Boolean).join("\n").slice(0, 700);
     const marketingSource = clean(body.source, 40);
     const desiredDate = clean(body.desiredDate, 10);
     const desiredTime = clean(body.desiredTime, 5);

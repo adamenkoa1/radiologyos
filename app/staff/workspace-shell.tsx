@@ -23,9 +23,9 @@ type StaffWorkspaceShellProps = {
 type NavChild = { label:string; href:string; flag?:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
 const systemModules: NavModule[] = [
-  { n:"1", label:"Головна / Продаж послуг", href:"/staff/site", section:"site", items:[
-    { label:"Вітрина (редактор)", href:"/staff/site" },
-    { label:"Відкрити вітрину", href:"/" },
+  { n:"1", label:"Головна / Послуги", href:"/staff/structure", section:"structure", items:[
+    { label:"Структура і контент", href:"/staff/structure" },
+    { label:"Відкрити сайт", href:"/" },
     { label:"Онлайн-запис", href:"/" },
     { label:"Тарифи", href:"/staff/tariffs" },
     { label:"Контакти", href:"/" },
@@ -267,7 +267,7 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Вітрина":active === "schedule" ? "Графік і слоти":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік і слоти":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>

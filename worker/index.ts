@@ -105,18 +105,12 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // Public site is the v22 static design served from `public/site`. The root
-    // path renders v22's landing; all other `/site/*` files (pages, assets) are
-    // served by the normal static-asset handler below. The Next app keeps
-    // owning `/staff`, `/api` and everything else.
+    // The established teal storefront is the public homepage. Keep its URL at
+    // `/` while serving the same tested document that also remains available
+    // under `/site/index.html`.
     if (url.pathname === "/" || url.pathname === "/index.html") {
-      const landing = await env.ASSETS.fetch(new URL("/site/index.html", request.url));
-      if (landing.ok) {
-        return secure(new Response(landing.body, {
-          status: 200,
-          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-        }), request);
-      }
+      const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
+      return secure(await env.ASSETS.fetch(storefrontRequest), request);
     }
 
     // Режим вітрини «лише платні»: сторінка військових недоступна — і прямий
