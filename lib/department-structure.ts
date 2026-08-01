@@ -60,18 +60,16 @@ export const DEPARTMENT_STRUCTURE_DEFAULTS: DepartmentStructure = {
   },
   department: {
     name: "Відділення променевої діагностики",
-    emergency: "Надання невідкладної допомоги здійснюється цілодобово",
-    about: "Відділення об’єднує кабінет комп’ютерної томографії на першому поверсі та рентгенологічні кабінети на другому поверсі лікувального корпусу. Роботу служби організовано цілодобово, обладнання регулярно проходить технічне обслуговування. У 2025 році вдосконалено проведення КТ із контрастуванням.",
+    emergency: "Для військовослужбовців відділення працює цілодобово — 24/7",
+    about: "Відділення променевої діагностики Чернігівського військового госпіталю щодня проводить флюорографічні, рентгенографічні та комп’ютерно-томографічні дослідження. Значний обсяг роботи формує постійну практику та великий досвід команди. Для цивільних пацієнтів доступні платні дослідження за попереднім записом.",
   },
   statistics2025: {
     title: "Усього досліджень за 2025 рік",
     year: 2025,
     breakdown: [
-      { id: "copies", label: "Скопій", value: 590 },
-      { id: "radiographs", label: "Рентгенографій", value: 10444 },
-      { id: "fluorograms", label: "Флюорограм", value: 16513 },
-      { id: "ct", label: "Комп’ютерних томографій", value: 2861 },
-      { id: "ultrasound", label: "УЗД", value: 9406 },
+      { id: "fluorograms", label: "Флюорографічних досліджень", value: 16500 },
+      { id: "radiographs", label: "Рентгенографічних досліджень", value: 10400 },
+      { id: "ct", label: "Комп’ютерних томографій", value: 2800 },
     ],
     complexShare: 45,
     militaryExamined: 17000,
@@ -193,7 +191,7 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     };
   };
 
-  const breakdown = Array.isArray(stats.breakdown) ? stats.breakdown.slice(0, 20).map((item, index) => {
+  const sanitizedBreakdown = Array.isArray(stats.breakdown) ? stats.breakdown.slice(0, 20).map((item, index) => {
     const fallback = defaults.statistics2025.breakdown[index] ?? { id: `metric-${index + 1}`, label: "Дослідження", value: 0 };
     return {
       id: text(item?.id, fallback.id, 50).replace(/[^a-zA-Z0-9_-]/g, "-") || `metric-${index + 1}`,
@@ -201,6 +199,15 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
       value: number(item?.value, fallback.value),
     };
   }) : defaults.statistics2025.breakdown;
+  // Одноразова міграція попереднього типового набору з пояснювальної
+  // записки до погоджених показників рентгенологічних досліджень за 2025 рік.
+  const isLegacyBreakdown = sanitizedBreakdown.length === 5
+    && sanitizedBreakdown.some(item => item.id === "copies" && item.value === 590)
+    && sanitizedBreakdown.some(item => item.id === "radiographs" && item.value === 10444)
+    && sanitizedBreakdown.some(item => item.id === "fluorograms" && item.value === 16513)
+    && sanitizedBreakdown.some(item => item.id === "ct" && item.value === 2861)
+    && sanitizedBreakdown.some(item => item.id === "ultrasound" && item.value === 9406);
+  const breakdown = isLegacyBreakdown ? defaults.statistics2025.breakdown : sanitizedBreakdown;
 
   return {
     hospital: {

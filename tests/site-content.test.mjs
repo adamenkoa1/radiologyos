@@ -32,6 +32,15 @@ test("legacy branding migrates to the exact current slogan and no logo", () => {
   assert.equal(migrated.logoUrl, "");
 });
 
+test("legacy clinic copy migrates to the 24/7 positioning", () => {
+  const migrated = sanitizeSiteContent({
+    workHours: "Пн–Сб · 08:00–17:00",
+    about: "Відділення променевої діагностики працює цілодобово та об’єднує кабінет комп’ютерної томографії й рентгенологічні кабінети лікувального корпусу. Обладнання регулярно проходить технічне обслуговування, а у 2025 році вдосконалено проведення КТ із контрастуванням.",
+  });
+  assert.match(migrated.workHours, /24\/7/);
+  assert.match(migrated.about, /військовослужбовців цілодобово/);
+});
+
 test("parseSiteContent returns defaults for empty or invalid JSON", () => {
   assert.deepEqual(parseSiteContent(""), SITE_CONTENT_DEFAULTS);
   assert.deepEqual(parseSiteContent("{bad json"), SITE_CONTENT_DEFAULTS);

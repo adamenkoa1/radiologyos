@@ -32,9 +32,29 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   // Режим роботи — амбулаторні і стаціонарні.
   assert.equal(S.hours.outpatient.rows.length, 2);
   assert.equal(S.hours.inpatient.rows.length, 2);
-  assert.equal(totalStudies2025(S), 39814);
-  assert.equal(S.statistics2025.breakdown.find((item) => item.id === "ct")?.value, 2861);
+  assert.equal(totalStudies2025(S), 29700);
+  assert.equal(S.statistics2025.breakdown.length, 3);
+  assert.equal(S.statistics2025.breakdown.find((item) => item.id === "fluorograms")?.value, 16500);
+  assert.equal(S.statistics2025.breakdown.find((item) => item.id === "radiographs")?.value, 10400);
+  assert.equal(S.statistics2025.breakdown.find((item) => item.id === "ct")?.value, 2800);
   assert.equal(S.statistics2025.complexShare, 45);
+});
+
+test("legacy 2025 defaults migrate to the agreed radiology-only totals", () => {
+  const changed = sanitizeDepartmentStructure({
+    statistics2025: {
+      ...S.statistics2025,
+      breakdown: [
+        { id: "copies", label: "Скопій", value: 590 },
+        { id: "radiographs", label: "Рентгенографій", value: 10444 },
+        { id: "fluorograms", label: "Флюорограм", value: 16513 },
+        { id: "ct", label: "Комп’ютерних томографій", value: 2861 },
+        { id: "ultrasound", label: "УЗД", value: 9406 },
+      ],
+    },
+  });
+  assert.equal(totalStudies2025(changed), 29700);
+  assert.deepEqual(changed.statistics2025.breakdown, S.statistics2025.breakdown);
 });
 
 test("structure content is editable, sanitized and persisted with public site text", async () => {

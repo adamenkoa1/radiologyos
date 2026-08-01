@@ -9,6 +9,12 @@ test("the public homepage combines hospital information, services and booking", 
   for (const marker of [
     "scSlogan",
     "scAbout",
+    "Досвід, підтверджений щоденною практикою",
+    "29 700",
+    "16 500",
+    "10 400",
+    "2 800",
+    "80 досліджень щодня",
     "Військовослужбовцям",
     "Цивільним особам",
     "Дослідження та вартість",
@@ -17,6 +23,7 @@ test("the public homepage combines hospital information, services and booking", 
   ]) assert.match(page, new RegExp(marker));
   assert.doesNotMatch(page, /scLogo|brand-logo/);
   assert.match(page, /\/api\/site-content/);
+  assert.match(page, /\/api\/department-profile/);
 });
 
 test("public booking collects phone, email and result delivery preference", async () => {

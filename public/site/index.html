@@ -38,7 +38,20 @@ header{position:sticky;top:10px;z-index:50;padding:0 14px}
 .hospital-brand-title{font-size:clamp(20px,3vw,27px);font-weight:700;line-height:1.08;color:#fff;overflow-wrap:anywhere}
 .hospital-brand-subtitle{font-size:clamp(13px,1.8vw,17px);line-height:1.25;color:#e5ecf0;margin-top:5px}
 .hospital-brand-slogan{font-size:clamp(12px,1.6vw,15px);line-height:1.3;color:#cfe0e6;margin-top:6px;font-style:italic}
-.about-clinic{padding:22px 0 0}.about-clinic-text{margin:0;color:var(--muted);line-height:1.6;font-size:15px}
+.experience{padding:28px 0 0}
+.experience-card{padding:30px;border:1px solid var(--line);border-radius:24px;background:#fff;box-shadow:0 14px 38px rgba(24,34,19,.08)}
+.experience-kicker{color:var(--brand);text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:900}
+.experience-card h2{max-width:720px;margin:8px 0 12px;font-size:clamp(28px,4vw,39px);line-height:1.12;letter-spacing:-.025em;color:#12303a}
+.experience-lead{max-width:850px;margin:0;color:var(--muted);font-size:16px;line-height:1.7}
+.experience-volume{max-width:850px;margin:12px 0 0;color:#2f4650;font-size:15px;line-height:1.65}
+.experience-volume strong{color:var(--brand)}
+.experience-stats{display:grid;grid-template-columns:repeat(4,1fr);margin-top:24px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.experience-stat{padding:20px 18px;border-right:1px solid var(--line)}
+.experience-stat:first-child{padding-left:0}.experience-stat:last-child{border-right:0;padding-right:0}
+.experience-stat strong{display:block;color:var(--brand);font-size:clamp(25px,3vw,33px);line-height:1;font-weight:850;font-variant-numeric:tabular-nums}
+.experience-stat span{display:block;margin-top:9px;color:#536974;font-size:12px;line-height:1.35}
+.experience-audience{margin:20px 0 0;color:#314750;font-size:14px;line-height:1.6}
+.experience-audience b{color:var(--brand)}
 nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font-weight:800;font-size:14px}
 
 /* ===== Меню «Вхід» ===== */
@@ -172,6 +185,12 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .contact-card{padding:18px;border-radius:18px}
   .floating-cart{right:14px;bottom:14px}
   .cart-drawer{padding:16px}
+  .experience-card{padding:23px 20px;border-radius:19px}
+  .experience-stats{grid-template-columns:1fr 1fr}
+  .experience-stat{padding:17px 14px;border-bottom:1px solid var(--line)}
+  .experience-stat:nth-child(2){border-right:0}
+  .experience-stat:nth-child(3),.experience-stat:nth-child(4){border-bottom:0}
+  .experience-stat:nth-child(3){padding-left:0}
 }
 @media(max-width:520px){
   .header-login-button{padding:5px 2px;font-size:12px}
@@ -288,8 +307,22 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     </div>
   </section>
 
-  <section class="about-clinic" id="scAboutWrap" style="display:none">
-    <div class="wrap"><p class="about-clinic-text" id="scAbout"></p></div>
+  <section class="experience" id="experience">
+    <div class="wrap">
+      <div class="experience-card">
+        <div class="experience-kicker">Про відділення</div>
+        <h2>Досвід, підтверджений щоденною практикою</h2>
+        <p class="experience-lead" id="scAbout">Відділення променевої діагностики працює для військовослужбовців цілодобово — 24/7. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
+        <p class="experience-volume">Щороку наші фахівці виконують близько <strong id="statTotalInline">29 700 досліджень</strong> — понад <strong>80 досліджень щодня</strong>. Такий обсяг роботи підтверджує значний практичний досвід, відпрацьовані процеси та постійну готовність до проведення діагностики.</p>
+        <div class="experience-stats" aria-label="Показники роботи за 2025 рік">
+          <div class="experience-stat"><strong id="statTotal">29 700</strong><span>досліджень за 2025 рік</span></div>
+          <div class="experience-stat"><strong id="statFluoro">16 500</strong><span>флюорографічних досліджень</span></div>
+          <div class="experience-stat"><strong id="statRadiographs">10 400</strong><span>рентгенографічних досліджень</span></div>
+          <div class="experience-stat"><strong id="statCt">2 800</strong><span>комп’ютерних томографій</span></div>
+        </div>
+        <p class="experience-audience">Військовослужбовцям дослідження проводяться <b>безоплатно за направленням</b>. Для цивільних пацієнтів доступна <b>платна діагностика за попереднім записом</b>.</p>
+      </div>
+    </div>
   </section>
 
   <section class="tariffs-home" id="tariffs">
@@ -453,7 +486,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     if(ph&&c.phone){ph.textContent=c.phone; var a=ph.closest('a'); if(a){a.href='tel:'+c.phone.replace(/[^+\d]/g,'');}}
     if(c.slogan){ set('scSlogan',c.slogan); show('scSlogan'); }
     if(c.workHours){ set('scHours',c.workHours); show('scHoursRow'); }
-    if(c.about){ set('scAbout',c.about); show('scAboutWrap'); }
+    if(c.about){ set('scAbout',c.about); }
     if(c.published===false){
       var m=document.querySelector('main');
       if(m){ m.innerHTML='<section class="hero"><div class="wrap"><div class="promo-card" style="cursor:default"><span class="promo-text"><strong>Сайт тимчасово недоступний</strong><span>Онлайн-запис буде відновлено найближчим часом.</span></span></div></div></section>'; }
@@ -462,6 +495,17 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   try{ if(typeof getSiteContent==='function' && localStorage.getItem(SITECONTENT_STORE)){ apply(getSiteContent()); } }catch(e){}
   fetch('/api/site-content',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.content){ apply(d.content); try{ localStorage.setItem(SITECONTENT_STORE, JSON.stringify(d.content)); }catch(e){} }
+  }).catch(function(){});
+  var formatCount=function(value){return new Intl.NumberFormat('uk-UA').format(Number(value)||0);};
+  fetch('/api/department-profile',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
+    var p=d&&d.profile;if(!p)return;
+    var list=p.statistics2025&&Array.isArray(p.statistics2025.breakdown)?p.statistics2025.breakdown:[];
+    var byId=function(id){var item=list.find(function(row){return row.id===id;});return item?item.value:0;};
+    var total=Number(p.totalStudies2025)||list.reduce(function(sum,row){return sum+(Number(row.value)||0);},0);
+    if(total){set('statTotal',formatCount(total));set('statTotalInline',formatCount(total)+' досліджень');}
+    if(byId('fluorograms'))set('statFluoro',formatCount(byId('fluorograms')));
+    if(byId('radiographs'))set('statRadiographs',formatCount(byId('radiographs')));
+    if(byId('ct'))set('statCt',formatCount(byId('ct')));
   }).catch(function(){});
 })();
 </script>

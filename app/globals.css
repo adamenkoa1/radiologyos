@@ -311,7 +311,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .structStatsHeadline>strong{font-family:Georgia,serif;font-size:58px;line-height:.9;color:#fff}
 .structStatsHeadline h2{margin:0 0 4px;color:#fff}
 .structStatsHeadline p{margin:0;color:rgba(255,255,255,.65);font-size:12px}
-.structStatsGrid{display:grid;grid-template-columns:repeat(5,1fr);border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18)}
+.structStatsGrid{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid rgba(255,255,255,.18);border-bottom:1px solid rgba(255,255,255,.18)}
 .structStatsGrid div{padding:14px 12px;border-right:1px solid rgba(255,255,255,.14)}
 .structStatsGrid div:last-child{border-right:0}
 .structStatsGrid strong,.structStatsGrid span{display:block}.structStatsGrid strong{font-size:20px}.structStatsGrid span{margin-top:3px;font-size:11px;color:rgba(255,255,255,.7)}

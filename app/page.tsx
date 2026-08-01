@@ -206,7 +206,7 @@ export default function Home() {
             <a className="hospitalSecondary" href={phoneHref}>{siteContent.phone}</a>
           </div>
           <ul className="hospitalTrust">
-            <li><b>Пн–Сб</b><span>плановий прийом</span></li>
+            <li><b>24/7</b><span>для військовослужбовців</span></li>
             <li><b>4 кабінети</b><span>КТ та рентген</span></li>
             <li><b>Email</b><span>видача результату за вибором</span></li>
           </ul>
@@ -229,12 +229,13 @@ export default function Home() {
       <section className="hospitalSection hospitalDepartment" id="department">
         <div className="hospitalSectionIntro">
           <span className="hospitalKicker">Про відділення</span>
-          <h2>Спеціалізована діагностика в структурі госпіталю</h2>
+          <h2>Досвід, підтверджений щоденною практикою</h2>
         </div>
         <div className="hospitalDepartmentGrid">
           <p className="hospitalLead">
-            <b>{formatCount(profile.totalStudies2025)} — {profile.statistics2025.title}.</b>{" "}
-            {siteContent.about || profile.department.about}
+            {siteContent.about || profile.department.about}{" "}
+            <b>За 2025 рік виконано {formatCount(profile.totalStudies2025)} досліджень — понад 80 щодня.</b>{" "}
+            Такий обсяг роботи підтверджує значний практичний досвід і відпрацьовані процеси команди.
           </p>
           <div className="hospitalFacts">
             {profile.statistics2025.breakdown.map(item => (
