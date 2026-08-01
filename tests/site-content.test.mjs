@@ -83,6 +83,7 @@ test("landing themes via CSS variable and honors storefront type + logo", async 
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
   assert.match(html, /id="scLogo"/);
+  assert.match(html, /\.brand-logo\{height:68px/);
   // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
   assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
 });
