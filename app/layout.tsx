@@ -9,10 +9,6 @@ export const metadata: Metadata = {
   other: {
     "codex-preview": "development",
   },
-  icons: {
-    icon: "/hospital-emblem-transparent.png",
-    shortcut: "/hospital-emblem-transparent.png",
-  },
   openGraph: {
     title: "Променева діагностика — Чернігівський військовий госпіталь",
     description: "КТ, цифрова рентгенографія та флюорографія для військовослужбовців і цивільних пацієнтів. Онлайн-запис.",

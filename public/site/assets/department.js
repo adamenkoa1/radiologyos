@@ -87,7 +87,6 @@ const DEFAULT_SITECONTENT = {
   milNotice: 'Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.',
   milLead: 'Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.',
   brandColor: '#0c7a85',
-  logoUrl: '',
   storefrontType: 'paid_and_free'
 };
 
@@ -110,7 +109,6 @@ function applySiteContent(c) {
   if (!c || typeof c !== 'object') return;
   applyBrandColor(c);
   var set = function (id, v) { var el = document.getElementById(id); if (el && v) { el.textContent = v; } };
-  var logo = document.getElementById('scLogo'); if (logo && c.logoUrl) { logo.src = c.logoUrl; logo.style.display = ''; }
   set('scPriceTitle', c.pricePageTitle); set('scPriceSub', c.pricePageSub);
   set('scPriceIntro', c.priceIntro); set('scPriceListTitle', c.priceListTitle); set('scPriceLead', c.priceLead);
   set('scMilPageTitle', c.milPageTitle); set('scMilPageSub', c.milPageSub);

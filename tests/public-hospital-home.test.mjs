@@ -7,7 +7,6 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("the public homepage combines hospital information, services and booking", async () => {
   const page = await read("public/site/index.html");
   for (const marker of [
-    "scLogo",
     "scSlogan",
     "scAbout",
     "Військовослужбовцям",
@@ -16,6 +15,7 @@ test("the public homepage combines hospital information, services and booking", 
     "homeTariffs",
     "/staff/login",
   ]) assert.match(page, new RegExp(marker));
+  assert.doesNotMatch(page, /scLogo|brand-logo/);
   assert.match(page, /\/api\/site-content/);
 });
 

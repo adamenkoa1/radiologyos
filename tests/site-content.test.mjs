@@ -23,13 +23,13 @@ test("published defaults to true when unset", () => {
   assert.equal(sanitizeSiteContent({}).published, true);
 });
 
-test("legacy default branding migrates to the updated emblem and shorter slogan", () => {
+test("legacy branding migrates to the exact current slogan and no logo", () => {
   const migrated = sanitizeSiteContent({
     slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
     logoUrl: "/hospital-emblem.jpg",
   });
-  assert.equal(migrated.slogan, "Точна діагностика. Вчасна допомога.");
-  assert.equal(migrated.logoUrl, "/hospital-emblem-transparent.png");
+  assert.equal(migrated.slogan, "Точна діагностика-вчасна допомога.");
+  assert.equal(migrated.logoUrl, "");
 });
 
 test("parseSiteContent returns defaults for empty or invalid JSON", () => {
@@ -74,44 +74,32 @@ test("landing pulls storefront config from the API and gates on published", asyn
   assert.match(html, /id="scAbout"/);
 });
 
-test("stage 2: color, logo and storefront type are validated", () => {
+test("stage 2: color and storefront type are validated while logo stays disabled", () => {
   const ok = sanitizeSiteContent({ brandColor: "#2F8F46", logoUrl: "https://x.co/l.png", storefrontType: "paid_only" });
   assert.equal(ok.brandColor, "#2f8f46"); // normalized lowercase
-  assert.equal(ok.logoUrl, "https://x.co/l.png");
+  assert.equal(ok.logoUrl, "");
   assert.equal(ok.storefrontType, "paid_only");
   const bad = sanitizeSiteContent({ brandColor: "red", logoUrl: "javascript:alert(1)", storefrontType: "weird" });
   assert.equal(bad.brandColor, SITE_CONTENT_DEFAULTS.brandColor); // invalid hex → default
-  assert.equal(bad.logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // unsafe url → verified local emblem
+  assert.equal(bad.logoUrl, "");
   assert.equal(bad.storefrontType, "paid_and_free"); // unknown → default
 });
 
-test("landing themes via CSS variable and honors storefront type + logo", async () => {
+test("landing themes via CSS variable, honors storefront type and has no logo", async () => {
   const html = await read("public/site/index.html");
   assert.match(html, /--brand:#0c7a85/); // змінна визначена
   assert.match(html, /setProperty\('--brand',c\.brandColor\)/); // застосування кольору
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
-  assert.match(html, /id="scLogo"/);
-  assert.match(html, /\.brand-logo\{height:68px;width:68px;object-fit:contain/);
-  assert.match(html, /background:#168d97/);
+  assert.doesNotMatch(html, /id="scLogo"|brand-logo/);
   // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
   assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
 });
 
-test("logo accepts a data:image URI within the size cap, rejects oversized/unsafe", () => {
+test("legacy logo values are ignored", () => {
   const small = "data:image/png;base64," + "A".repeat(1000);
-  assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, small);
-  assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "https://x.co/l.svg");
-  assert.equal(sanitizeSiteContent({ logoUrl: "data:text/html;base64,xxx" }).logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // не зображення
-  const huge = "data:image/png;base64," + "A".repeat(300001);
-  assert.equal(sanitizeSiteContent({ logoUrl: huge }).logoUrl, SITE_CONTENT_DEFAULTS.logoUrl); // завеликий
-});
-
-test("editor uploads a logo file (browser-side resize to data URI)", async () => {
-  const page = await read("app/staff/structure/page.tsx");
-  assert.match(page, /type="file"/);
-  assert.match(page, /onLogoFile/);
-  assert.match(page, /toDataURL/); // зменшення в canvas
+  assert.equal(sanitizeSiteContent({ logoUrl: small }).logoUrl, "");
+  assert.equal(sanitizeSiteContent({ logoUrl: "https://x.co/l.svg" }).logoUrl, "");
 });
 
 test("price/military pages pull content and theme from the editor via the API", async () => {
@@ -150,7 +138,7 @@ test("structure editor contains public content but no appearance controls", asyn
   assert.match(page, /siteContent/);
   assert.doesNotMatch(page, /storefrontType/);
   assert.doesNotMatch(page, /brandColor/);
-  assert.match(page, /logoUrl/);
+  assert.doesNotMatch(page, /logoUrl|onLogoFile|type="file"/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /Структура і контент/);
   assert.doesNotMatch(shell, /Вітрина/);

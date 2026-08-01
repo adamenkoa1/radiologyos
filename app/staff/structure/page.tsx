@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
@@ -125,40 +124,6 @@ export default function StructurePage() {
     }));
   }
 
-  async function onLogoFile(file: File | null) {
-    setError("");
-    if (!file) return;
-    if (!file.type.startsWith("image/")) { setError("Оберіть файл зображення."); return; }
-    try {
-      if (file.type === "image/svg+xml") {
-        const uri = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-        if (uri.length > 300000) throw new Error("SVG завеликий — спростіть логотип.");
-        updateSite("logoUrl", uri);
-        return;
-      }
-      const objectUrl = URL.createObjectURL(file);
-      const image = new window.Image();
-      await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = reject; image.src = objectUrl; });
-      const scale = Math.min(1, 240 / image.height);
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.max(1, Math.round(image.width * scale));
-      canvas.height = Math.max(1, Math.round(image.height * scale));
-      canvas.getContext("2d")?.drawImage(image, 0, 0, canvas.width, canvas.height);
-      URL.revokeObjectURL(objectUrl);
-      let uri = canvas.toDataURL("image/webp", 0.85);
-      if (uri.length > 300000) uri = canvas.toDataURL("image/jpeg", 0.72);
-      if (uri.length > 300000) throw new Error("Логотип завеликий — оберіть менше зображення.");
-      updateSite("logoUrl", uri);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Не вдалося прочитати зображення.");
-    }
-  }
-
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setSaving(true); setNotice(""); setError("");
@@ -190,9 +155,6 @@ export default function StructurePage() {
 
   const view = <div className="structTree">
     <section className="structNode structBrandNode">
-      <div className="structBrandLogo">
-        <Image src={siteContent.logoUrl || "/hospital-emblem-transparent.png"} alt="Герб Чернігівського військового госпіталю" width={110} height={110} unoptimized />
-      </div>
       <div>
         <span className="structTag">Публічний сайт</span>
         <h2>{siteContent.brandTitle}</h2>
@@ -272,12 +234,8 @@ export default function StructurePage() {
 
   const editor = <form className="settingsCard structureEditor" onSubmit={save}>
     <section className="settingsBlock">
-      <h3>Логотип і тексти головної</h3>
+      <h3>Тексти головної</h3>
       <p className="settingsHint">Ці поля керують публічною головною сторінкою та редагуються тут без окремого блоку оформлення.</p>
-      <label className="settingsField"><span>Логотип</span>
-        <span className="logoPreview"><Image src={siteContent.logoUrl || "/hospital-emblem-transparent.png"} alt="Логотип" width={96} height={96} unoptimized /></span>
-        <input type="file" accept="image/*" onChange={event => void onLogoFile(event.target.files?.[0] || null)} />
-      </label>
       <label className="settingsField"><span>Назва закладу</span><input value={siteContent.brandTitle} onChange={event => updateSite("brandTitle", event.target.value)} /></label>
       <label className="settingsField"><span>Назва відділення</span><input value={siteContent.brandSubtitle} onChange={event => updateSite("brandSubtitle", event.target.value)} /></label>
       <label className="settingsField"><span>Слоган</span><input value={siteContent.slogan} onChange={event => updateSite("slogan", event.target.value)} /></label>

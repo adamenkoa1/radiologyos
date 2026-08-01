@@ -1,7 +1,6 @@
 "use client";
 
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import Image from "next/image";
 import { todayInKyiv } from "../lib/booking-rules";
 import { groupedServices, SERVICES } from "../lib/catalog";
 import { DEPARTMENT_STRUCTURE_DEFAULTS, totalStudies2025, type DepartmentStructure } from "../lib/department-structure";
@@ -108,7 +107,6 @@ export default function Home() {
   }, [profile.rooms]);
 
   const phoneHref = `tel:${siteContent.phone.replace(/[^+\d]/g, "")}`;
-  const logoSrc = siteContent.logoUrl || "/hospital-emblem-transparent.png";
 
   useEffect(() => {
     const controller = new AbortController();
@@ -187,7 +185,6 @@ export default function Home() {
     <main className="hospitalHome" id="top">
       <header className="hospitalHeader">
         <a className="hospitalBrand" href="#top" aria-label="На початок сторінки">
-          <Image src={logoSrc} alt="Герб Чернігівського військового госпіталю" width={382} height={382} priority unoptimized />
           <span><b>{siteContent.brandTitle}</b><small>{siteContent.brandSubtitle}</small></span>
         </a>
         <nav className="hospitalNav" aria-label="Головна навігація">
@@ -213,10 +210,6 @@ export default function Home() {
             <li><b>4 кабінети</b><span>КТ та рентген</span></li>
             <li><b>Email</b><span>видача результату за вибором</span></li>
           </ul>
-        </div>
-        <div className="hospitalHeroMark" aria-hidden="true">
-          <div className="hospitalMarkRing"><Image src={logoSrc} alt="" width={382} height={382} priority unoptimized /></div>
-          <span>Відділення<br />променевої<br />діагностики</span>
         </div>
       </section>
 
@@ -368,7 +361,7 @@ export default function Home() {
       </section>
 
       <footer className="hospitalFooter">
-        <div className="hospitalBrand footer"><Image src={logoSrc} alt="" width={382} height={382} unoptimized /><span><b>{siteContent.brandTitle}</b><small>{siteContent.brandSubtitle}</small></span></div>
+        <div className="hospitalBrand footer"><span><b>{siteContent.brandTitle}</b><small>{siteContent.brandSubtitle}</small></span></div>
         <div><b>Контакти</b><a href={phoneHref}>{siteContent.phone}</a><a href="https://maps.google.com/?q=Чернігів,+вул.+Полуботка,+40" target="_blank" rel="noopener noreferrer">{siteContent.address}</a><span>{siteContent.workHours}</span></div>
         <div><b>Пацієнтам</b><a href="#services">Послуги й тарифи</a><a href="#booking">Онлайн-запис</a><a href="/site/cabinet.html">Кабінет пацієнта</a></div>
         <div><b>Система</b><a href="/staff/login">Вхід для персоналу</a><span>Онлайн-запис не призначений для невідкладних станів.</span></div>

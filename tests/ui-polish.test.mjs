@@ -9,9 +9,9 @@ test("tab title identifies the public radiology department", async () => {
   assert.match(layout, /title:\s*"Променева діагностика \| Чернігівський військовий госпіталь/);
 });
 
-test("the hospital emblem is used as the public favicon", async () => {
+test("the public site does not declare a logo favicon", async () => {
   const layout = await read("app/layout.tsx");
-  assert.match(layout, /icon:\s*"\/hospital-emblem-transparent\.png"/);
+  assert.doesNotMatch(layout, /hospital-emblem|icons:/);
 });
 
 test("patient-card link sits on its own line (not glued to the phone)", async () => {

@@ -50,7 +50,7 @@ const FIELD_MAX = {
 export const SITE_CONTENT_DEFAULTS: SiteContent = {
   brandTitle: "Чернігівський військовий госпіталь",
   brandSubtitle: "Відділення променевої діагностики",
-  slogan: "Точна діагностика. Вчасна допомога.",
+  slogan: "Точна діагностика-вчасна допомога.",
   milTitle: "Військовослужбовцям",
   milSub: "Безоплатні дослідження за направленням",
   civTitle: "Цивільним особам",
@@ -69,7 +69,7 @@ export const SITE_CONTENT_DEFAULTS: SiteContent = {
   milNotice: "Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням.",
   milLead: "Відділення променевої діагностики Чернігівського військового госпіталю.",
   brandColor: "#0c7a85",
-  logoUrl: "/hospital-emblem-transparent.png",
+  logoUrl: "",
   storefrontType: "paid_and_free",
   published: true,
 };
@@ -88,17 +88,18 @@ export function sanitizeSiteContent(input: unknown): SiteContent {
   }
   // Одноразово оновлюємо попередній типовий слоган. Власний текст,
   // введений адміністратором, не змінюємо.
-  if (out.slogan === "Точна діагностика. Вчасна допомога. Підтримка військових.") {
+  if (
+    out.slogan === "Точна діагностика. Вчасна допомога. Підтримка військових." ||
+    out.slogan === "Точна діагностика. Вчасна допомога."
+  ) {
     out.slogan = SITE_CONTENT_DEFAULTS.slogan;
   }
   // Фірмовий колір — лише валідний HEX (#RRGGBB), інакше типовий.
   const color = String(src.brandColor ?? "").trim();
   out.brandColor = /^#[0-9a-fA-F]{6}$/.test(color) ? color.toLowerCase() : SITE_CONTENT_DEFAULTS.brandColor;
-  // Логотип — локальний герб, https-посилання або data:image (файл, зменшений у браузері).
-  // Обмежуємо розмір, щоб не роздувати конфіг у базі.
-  const logo = String(src.logoUrl ?? "").trim();
-  const logoOk = (logo === "/hospital-emblem.jpg" || logo === "/hospital-emblem-transparent.png" || /^https:\/\//.test(logo) || /^data:image\/(png|jpe?g|webp|gif|svg\+xml);/.test(logo)) && logo.length <= 300000;
-  out.logoUrl = logo === "/hospital-emblem.jpg" ? SITE_CONTENT_DEFAULTS.logoUrl : (logoOk ? logo : SITE_CONTENT_DEFAULTS.logoUrl);
+  // Поле лишається в контракті для сумісності зі старими налаштуваннями,
+  // але логотип більше не показується на сайті.
+  out.logoUrl = "";
   // Вид вітрини.
   out.storefrontType = src.storefrontType === "paid_only" ? "paid_only" : "paid_and_free";
   out.published = src.published === undefined ? SITE_CONTENT_DEFAULTS.published : Boolean(src.published);

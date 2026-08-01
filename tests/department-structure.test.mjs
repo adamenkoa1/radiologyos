@@ -62,7 +62,7 @@ test("structure page is staff-gated and wired into the shell nav", async () => {
   assert.match(page, /\/api\/staff\/structure/); // гейт і єдине джерело даних
   assert.match(page, /Захищений розділ/);
   assert.match(page, /Редагувати структуру/);
-  assert.match(page, /type="file"/);
+  assert.doesNotMatch(page, /type="file"|onLogoFile/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href="\/staff\/structure"/);
   assert.match(shell, /Структура відділення/);
