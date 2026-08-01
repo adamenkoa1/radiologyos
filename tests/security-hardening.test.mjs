@@ -101,3 +101,12 @@ test("production deployment refuses to migrate without a secure active administr
   assert.match(workflow, /secure_admins/);
   assert.match(workflow, /count < 1/);
 });
+
+test("Cloudflare deployment uses custom domains only", async () => {
+  const config = await read("wrangler.cloudflare.toml");
+  assert.match(config, /\nworkers_dev = false\n/);
+  assert.match(config, /pattern = "radiologyos\.tech", custom_domain = true/);
+  assert.match(config, /pattern = "www\.radiologyos\.tech", custom_domain = true/);
+  assert.doesNotMatch(config, /\n\[triggers\]\n/);
+  assert.doesNotMatch(config, /\ncrons\s*=/);
+});

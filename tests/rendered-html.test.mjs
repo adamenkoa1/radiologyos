@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 
 const developmentPreviewMeta =
@@ -15,7 +16,16 @@ async function renderPath(path) {
     }),
     {
       ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
+        fetch: async (req) => {
+          const href = typeof req === "string" ? req : req instanceof URL ? req.href : req.url;
+          if (new URL(href).pathname === "/site/index.html") {
+            return new Response(await readFile(new URL("../public/site/index.html", import.meta.url), "utf8"), {
+              status: 200,
+              headers: { "content-type": "text/html; charset=utf-8" },
+            });
+          }
+          return new Response("Not found", { status: 404 });
+        },
       },
     },
     {
@@ -27,7 +37,7 @@ async function renderPath(path) {
 
 const renderHome = () => renderPath("/");
 
-// When the static v22 landing exists in ASSETS, the worker serves it at "/".
+// Static storefront files are served at the clean public root URL.
 async function renderWithAssets(path, assetBodies) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}-a`);
@@ -49,11 +59,12 @@ async function renderWithAssets(path, assetBodies) {
   );
 }
 
-test("the worker serves the static v22 landing at / when present", async () => {
+test("the worker serves the established teal storefront at /", async () => {
   const marker = "<main>v22-landing</main>";
   const response = await renderWithAssets("/", { "/site/index.html": marker });
   assert.equal(response.status, 200);
-  assert.equal(await response.text(), marker);
+  const html = await response.text();
+  assert.match(html, /v22-landing/);
 });
 
 test("renders development preview metadata", async () => {
@@ -67,12 +78,14 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
-test("home is a card landing that routes into booking and staff login", async () => {
+test("home combines patient categories, services, booking and staff login", async () => {
   const response = await renderHome();
   const html = await response.text();
   assert.match(html, /Чернігівський військовий госпіталь/);
-  assert.match(html, /href=["']\/booking\?category=military["']/);
-  assert.match(html, /href=["']\/booking\?category=civilian["']/);
+  assert.match(html, /Військовослужбовцям/);
+  assert.match(html, /Цивільним особам/);
+  assert.match(html, /Дослідження та вартість/);
+  assert.match(html, /id=["']homeTariffs["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });

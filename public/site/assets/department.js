@@ -69,12 +69,15 @@ const SITECONTENT_STORE = 'radiologyos_sitecontent_v1';
 const DEFAULT_SITECONTENT = {
   brandTitle: 'Чернігівський військовий госпіталь',
   brandSubtitle: 'Відділення променевої діагностики',
+  slogan: 'Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.',
   milTitle: 'Військовослужбовцям',
   milSub: 'Безоплатні дослідження за направленням',
   civTitle: 'Цивільним особам',
   civSub: 'Платні дослідження — повний прайс і запис',
   phone: '+380 97 280 88 99',
   address: 'м. Чернігів, вул. Полуботка, 40',
+  workHours: '08:30–17:30 · екстрені дослідження для військовослужбовців — цілодобово (24/7)',
+  about: 'Екстрені дослідження для військовослужбовців проводяться цілодобово. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.',
   /* сторінка цін */
   pricePageTitle: 'Платні дослідження',
   pricePageSub: 'Вартість указана відповідно до чинних тарифів.',
@@ -87,7 +90,6 @@ const DEFAULT_SITECONTENT = {
   milNotice: 'Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.',
   milLead: 'Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.',
   brandColor: '#0c7a85',
-  logoUrl: '',
   storefrontType: 'paid_and_free'
 };
 
@@ -110,7 +112,6 @@ function applySiteContent(c) {
   if (!c || typeof c !== 'object') return;
   applyBrandColor(c);
   var set = function (id, v) { var el = document.getElementById(id); if (el && v) { el.textContent = v; } };
-  var logo = document.getElementById('scLogo'); if (logo && c.logoUrl) { logo.src = c.logoUrl; logo.style.display = ''; }
   set('scPriceTitle', c.pricePageTitle); set('scPriceSub', c.pricePageSub);
   set('scPriceIntro', c.priceIntro); set('scPriceListTitle', c.priceListTitle); set('scPriceLead', c.priceLead);
   set('scMilPageTitle', c.milPageTitle); set('scMilPageSub', c.milPageSub);

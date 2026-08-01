@@ -10,12 +10,7 @@ name = "radiologyos"
 main = "dist/server/index.js"
 compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
-
-# Cron-тригер планових нагадувань пацієнтам (за N годин до візиту). Кожні
-# 15 хв worker.scheduled перевіряє записи на сьогодні й надсилає WhatsApp.
-# Доступно на безкоштовному плані Cloudflare Workers.
-[triggers]
-crons = ["*/15 * * * *"]
+workers_dev = false
 
 # Custom domains. The radiologyos.tech zone is already on Cloudflare (its
 # nameservers point to Cloudflare), so `wrangler deploy` provisions these
