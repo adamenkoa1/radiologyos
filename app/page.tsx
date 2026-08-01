@@ -108,7 +108,7 @@ export default function Home() {
   }, [profile.rooms]);
 
   const phoneHref = `tel:${siteContent.phone.replace(/[^+\d]/g, "")}`;
-  const logoSrc = siteContent.logoUrl || "/hospital-emblem.jpg";
+  const logoSrc = siteContent.logoUrl || "/hospital-emblem-transparent.png";
 
   useEffect(() => {
     const controller = new AbortController();

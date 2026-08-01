@@ -11,7 +11,7 @@ test("tab title identifies the public radiology department", async () => {
 
 test("the hospital emblem is used as the public favicon", async () => {
   const layout = await read("app/layout.tsx");
-  assert.match(layout, /icon:\s*"\/hospital-emblem\.jpg"/);
+  assert.match(layout, /icon:\s*"\/hospital-emblem-transparent\.png"/);
 });
 
 test("patient-card link sits on its own line (not glued to the phone)", async () => {

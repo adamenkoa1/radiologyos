@@ -10,8 +10,8 @@ export const metadata: Metadata = {
     "codex-preview": "development",
   },
   icons: {
-    icon: "/hospital-emblem.jpg",
-    shortcut: "/hospital-emblem.jpg",
+    icon: "/hospital-emblem-transparent.png",
+    shortcut: "/hospital-emblem-transparent.png",
   },
   openGraph: {
     title: "Променева діагностика — Чернігівський військовий госпіталь",

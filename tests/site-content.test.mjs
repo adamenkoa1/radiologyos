@@ -23,6 +23,15 @@ test("published defaults to true when unset", () => {
   assert.equal(sanitizeSiteContent({}).published, true);
 });
 
+test("legacy default branding migrates to the updated emblem and shorter slogan", () => {
+  const migrated = sanitizeSiteContent({
+    slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
+    logoUrl: "/hospital-emblem.jpg",
+  });
+  assert.equal(migrated.slogan, "Точна діагностика. Вчасна допомога.");
+  assert.equal(migrated.logoUrl, "/hospital-emblem-transparent.png");
+});
+
 test("parseSiteContent returns defaults for empty or invalid JSON", () => {
   assert.deepEqual(parseSiteContent(""), SITE_CONTENT_DEFAULTS);
   assert.deepEqual(parseSiteContent("{bad json"), SITE_CONTENT_DEFAULTS);
@@ -83,7 +92,8 @@ test("landing themes via CSS variable and honors storefront type + logo", async 
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
   assert.match(html, /id="scLogo"/);
-  assert.match(html, /\.brand-logo\{height:68px/);
+  assert.match(html, /\.brand-logo\{height:68px;width:68px;object-fit:contain/);
+  assert.match(html, /background:#168d97/);
   // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
   assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
 });

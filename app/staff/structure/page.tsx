@@ -191,7 +191,7 @@ export default function StructurePage() {
   const view = <div className="structTree">
     <section className="structNode structBrandNode">
       <div className="structBrandLogo">
-        <Image src={siteContent.logoUrl || "/hospital-emblem.jpg"} alt="Герб Чернігівського військового госпіталю" width={110} height={110} unoptimized />
+        <Image src={siteContent.logoUrl || "/hospital-emblem-transparent.png"} alt="Герб Чернігівського військового госпіталю" width={110} height={110} unoptimized />
       </div>
       <div>
         <span className="structTag">Публічний сайт</span>
@@ -275,7 +275,7 @@ export default function StructurePage() {
       <h3>Логотип і тексти головної</h3>
       <p className="settingsHint">Ці поля керують публічною головною сторінкою та редагуються тут без окремого блоку оформлення.</p>
       <label className="settingsField"><span>Логотип</span>
-        <span className="logoPreview"><Image src={siteContent.logoUrl || "/hospital-emblem.jpg"} alt="Логотип" width={96} height={96} unoptimized /></span>
+        <span className="logoPreview"><Image src={siteContent.logoUrl || "/hospital-emblem-transparent.png"} alt="Логотип" width={96} height={96} unoptimized /></span>
         <input type="file" accept="image/*" onChange={event => void onLogoFile(event.target.files?.[0] || null)} />
       </label>
       <label className="settingsField"><span>Назва закладу</span><input value={siteContent.brandTitle} onChange={event => updateSite("brandTitle", event.target.value)} /></label>
