@@ -53,6 +53,13 @@ test("previous approved slogan and hours migrate to the current wording", () => 
   assert.match(migrated.workHours, /24\/7/);
 });
 
+test("an old empty slogan migrates to the approved wording", () => {
+  assert.equal(
+    sanitizeSiteContent({ slogan: "" }).slogan,
+    SITE_CONTENT_DEFAULTS.slogan,
+  );
+});
+
 test("previous broad 24/7 copy migrates without changing custom text", () => {
   const migrated = sanitizeSiteContent({
     workHours: "Військовослужбовцям — 24/7 · цивільним — за попереднім записом",
