@@ -32,13 +32,24 @@ test("legacy branding migrates to the exact current slogan and no logo", () => {
   assert.equal(migrated.logoUrl, "");
 });
 
-test("legacy clinic copy migrates to the 24/7 positioning", () => {
+test("legacy clinic copy migrates to precise emergency-hours positioning", () => {
   const migrated = sanitizeSiteContent({
     workHours: "Пн–Сб · 08:00–17:00",
     about: "Відділення променевої діагностики працює цілодобово та об’єднує кабінет комп’ютерної томографії й рентгенологічні кабінети лікувального корпусу. Обладнання регулярно проходить технічне обслуговування, а у 2025 році вдосконалено проведення КТ із контрастуванням.",
   });
-  assert.match(migrated.workHours, /24\/7/);
-  assert.match(migrated.about, /військовослужбовців цілодобово/);
+  assert.match(migrated.workHours, /Екстрені дослідження/);
+  assert.match(migrated.workHours, /цілодобово/);
+  assert.match(migrated.about, /Екстрені дослідження/);
+});
+
+test("previous broad 24/7 copy migrates without changing custom text", () => {
+  const migrated = sanitizeSiteContent({
+    workHours: "Військовослужбовцям — 24/7 · цивільним — за попереднім записом",
+    about: "Відділення променевої діагностики працює для військовослужбовців цілодобово — 24/7. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.",
+  });
+  assert.equal(migrated.workHours, SITE_CONTENT_DEFAULTS.workHours);
+  assert.equal(migrated.about, SITE_CONTENT_DEFAULTS.about);
+  assert.equal(sanitizeSiteContent({ workHours: "Мій режим" }).workHours, "Мій режим");
 });
 
 test("parseSiteContent returns defaults for empty or invalid JSON", () => {

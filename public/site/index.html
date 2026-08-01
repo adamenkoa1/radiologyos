@@ -97,14 +97,16 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .promo-arrow{font-size:44px;line-height:1;font-weight:400;opacity:.85}
 
 /* ===== Адреса ===== */
-.contact{padding:14px 0 0}
-.contact-card{width:100%;border-radius:22px;padding:22px 24px;background:var(--grad);box-shadow:var(--shadow);color:#fff}
-.address-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:16px;white-space:nowrap}
+.contact{padding:12px 0 0}
+.contact-card{width:100%;border-radius:18px;padding:15px 18px;background:var(--grad);box-shadow:0 10px 26px rgba(14,37,41,.13);color:#fff}
+.address-row{display:grid;grid-template-columns:minmax(96px,auto) minmax(0,1fr) auto;align-items:center;gap:12px;min-height:58px;white-space:nowrap}
+.hours-row{grid-template-columns:minmax(134px,auto) minmax(0,1fr)}
 .address-row:hover{filter:brightness(1.05)}
 .address-row:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
-.address-label{font-weight:700;font-size:clamp(16px,2vw,20px)}
-.address-text{font-size:clamp(15px,2vw,19px);overflow:hidden;text-overflow:ellipsis}
-.address-arrow{font-size:30px;line-height:1;opacity:.9}
+.address-label{font-weight:700;font-size:clamp(14px,1.7vw,16px)}
+.address-text{font-size:clamp(13px,1.7vw,16px);overflow:hidden;text-overflow:ellipsis}
+.address-arrow{font-size:25px;line-height:1;opacity:.9}
+.phone-feedback{display:block;grid-column:2 / -1;margin-top:2px;font-size:12px;font-weight:700;color:#eafcff}
 
 /* ===== Шухляда «Моя заявка» ===== */
 .eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:900}
@@ -182,7 +184,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .promo-icon{width:46px;height:46px;border-radius:12px}
   .promo-icon svg{width:23px;height:23px}
   .promo-arrow{font-size:32px}
-  .contact-card{padding:18px;border-radius:18px}
+  .contact-card{padding:15px 17px;border-radius:17px}
   .floating-cart{right:14px;bottom:14px}
   .cart-drawer{padding:16px}
   .experience-card{padding:19px 17px;border-radius:18px}
@@ -197,11 +199,13 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 @media(max-width:520px){
   .header-login-button{padding:5px 2px;font-size:12px}
   .login-menu{right:-2px}
-  .address-row{gap:10px}
-  .contact-card{padding:16px 14px}
-  .address-label{font-size:15px}
-  .address-text{font-size:13px}
-  .address-arrow{font-size:24px}
+  .address-row{grid-template-columns:minmax(82px,auto) minmax(0,1fr) auto;gap:8px;min-height:52px}
+  .hours-row{grid-template-columns:1fr;gap:3px;white-space:normal}
+  .contact-card{padding:13px 14px}
+  .address-label{font-size:13px}
+  .address-text{font-size:12.5px}
+  .address-arrow{font-size:21px}
+  .phone-feedback{grid-column:1 / -1;font-size:11px}
 }
 @media(prefers-reduced-motion:reduce){
   *{transition:none!important}
@@ -314,7 +318,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
       <div class="experience-card">
         <div class="experience-kicker">Про відділення</div>
         <h2>Досвід, підтверджений щоденною практикою</h2>
-        <p class="experience-lead" id="scAbout">Відділення променевої діагностики працює для військовослужбовців цілодобово — 24/7. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
+        <p class="experience-lead" id="scAbout">Екстрені дослідження для військовослужбовців проводяться цілодобово. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
         <p class="experience-volume">Щороку наші фахівці виконують близько <strong id="statTotalInline">29 700 досліджень</strong> — понад <strong>80 досліджень щодня</strong>. Такий обсяг роботи підтверджує значний практичний досвід, відпрацьовані процеси та постійну готовність до проведення діагностики.</p>
         <div class="experience-stats" aria-label="Показники роботи за 2025 рік">
           <div class="experience-stat"><strong id="statTotal">29 700</strong><span>досліджень за 2025 рік</span></div>
@@ -340,18 +344,19 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 
   <section class="contact" id="contacts">
     <div class="wrap">
-      <a class="contact-card address-row" href="tel:+380972808899" aria-label="Зателефонувати в реєстратуру" style="margin-bottom:14px">
+      <a class="contact-card address-row" href="tel:+380972808899" id="scPhoneLink" aria-label="Зателефонувати в реєстратуру" style="margin-bottom:10px">
         <span class="address-label">Телефон</span>
         <span class="address-text" id="scPhone">+380 97 280 88 99</span>
         <span class="address-arrow" aria-hidden="true">›</span>
+        <span class="phone-feedback" id="scPhoneFeedback" hidden></span>
       </a>
       <a class="contact-card address-row" href="https://www.google.com/maps/dir/?api=1&amp;destination=51.497850848799%2C31.3094428162464&amp;travelmode=driving" rel="noopener" target="_blank" aria-label="Прокласти маршрут до госпіталю">
         <span class="address-label">Адреса</span>
         <span class="address-text" id="scAddress">м. Чернігів, вул. Полуботка, 40</span>
         <span class="address-arrow" aria-hidden="true">›</span>
       </a>
-      <div class="contact-card address-row" id="scHoursRow" style="display:none;margin-top:14px">
-        <span class="address-label">Години</span>
+      <div class="contact-card address-row hours-row" id="scHoursRow" style="display:none;margin-top:10px">
+        <span class="address-label">Режим роботи</span>
         <span class="address-text" id="scHours"></span>
       </div>
     </div>
@@ -485,7 +490,11 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     set('scCivTitle',c.civTitle);     set('scCivSub',c.civSub);
     set('scAddress',c.address);
     var ph=document.getElementById('scPhone');
-    if(ph&&c.phone){ph.textContent=c.phone; var a=ph.closest('a'); if(a){a.href='tel:'+c.phone.replace(/[^+\d]/g,'');}}
+    var phoneLink=document.getElementById('scPhoneLink');
+    if(ph&&c.phone){
+      ph.textContent=c.phone;
+      if(phoneLink){phoneLink.href='tel:'+c.phone.replace(/[^+\d]/g,'');phoneLink.setAttribute('aria-label','Зателефонувати: '+c.phone);}
+    }
     if(c.slogan){ set('scSlogan',c.slogan); show('scSlogan'); }
     if(c.workHours){ set('scHours',c.workHours); show('scHoursRow'); }
     if(c.about){ set('scAbout',c.about); }
@@ -498,6 +507,21 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   fetch('/api/site-content',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
     if(d&&d.content){ apply(d.content); try{ localStorage.setItem(SITECONTENT_STORE, JSON.stringify(d.content)); }catch(e){} }
   }).catch(function(){});
+  var phoneLink=document.getElementById('scPhoneLink');
+  if(phoneLink){
+    phoneLink.addEventListener('click',function(event){
+      if(!window.matchMedia('(hover:hover) and (pointer:fine)').matches) return;
+      event.preventDefault();
+      var number=(document.getElementById('scPhone')||{}).textContent||'';
+      var feedback=document.getElementById('scPhoneFeedback');
+      var showFeedback=function(message){if(!feedback)return;feedback.textContent=message;feedback.hidden=false;window.setTimeout(function(){feedback.hidden=true;},2600);};
+      if(navigator.clipboard&&window.isSecureContext){
+        navigator.clipboard.writeText(number).then(function(){showFeedback('Номер скопійовано');}).catch(function(){window.location.href=phoneLink.href;});
+      }else{
+        window.location.href=phoneLink.href;
+      }
+    });
+  }
   var formatCount=function(value){return new Intl.NumberFormat('uk-UA').format(Number(value)||0);};
   fetch('/api/department-profile',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
     var p=d&&d.profile;if(!p)return;

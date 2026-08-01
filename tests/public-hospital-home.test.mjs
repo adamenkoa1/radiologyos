@@ -18,12 +18,17 @@ test("the public homepage combines hospital information, services and booking", 
     "Військовослужбовцям",
     "Цивільним особам",
     "Дослідження та вартість",
+    "Режим роботи",
+    "scPhoneLink",
+    "tel:\\+380972808899",
+    "Номер скопійовано",
     "homeTariffs",
     "/staff/login",
   ]) assert.match(page, new RegExp(marker));
   assert.doesNotMatch(page, /scLogo|brand-logo/);
   assert.match(page, /\/api\/site-content/);
   assert.match(page, /\/api\/department-profile/);
+  assert.match(page, /Екстрені дослідження для військовослужбовців/);
 });
 
 test("public booking collects phone, email and result delivery preference", async () => {

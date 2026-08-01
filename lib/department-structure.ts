@@ -60,7 +60,7 @@ export const DEPARTMENT_STRUCTURE_DEFAULTS: DepartmentStructure = {
   },
   department: {
     name: "Відділення променевої діагностики",
-    emergency: "Для військовослужбовців відділення працює цілодобово — 24/7",
+    emergency: "Екстрені дослідження для військовослужбовців проводяться цілодобово",
     about: "Відділення променевої діагностики Чернігівського військового госпіталю щодня проводить флюорографічні, рентгенографічні та комп’ютерно-томографічні дослідження. Значний обсяг роботи формує постійну практику та великий досвід команди. Для цивільних пацієнтів доступні платні дослідження за попереднім записом.",
   },
   statistics2025: {
@@ -208,6 +208,10 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     && sanitizedBreakdown.some(item => item.id === "ct" && item.value === 2861)
     && sanitizedBreakdown.some(item => item.id === "ultrasound" && item.value === 9406);
   const breakdown = isLegacyBreakdown ? defaults.statistics2025.breakdown : sanitizedBreakdown;
+  const emergency = text(department.emergency, defaults.department.emergency, 180);
+  const normalizedEmergency = emergency === "Для військовослужбовців відділення працює цілодобово — 24/7"
+    ? defaults.department.emergency
+    : emergency;
 
   return {
     hospital: {
@@ -227,7 +231,7 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     },
     department: {
       name: text(department.name, defaults.department.name, 160),
-      emergency: text(department.emergency, defaults.department.emergency, 180),
+      emergency: normalizedEmergency,
       about: text(department.about, defaults.department.about, 1200),
     },
     statistics2025: {

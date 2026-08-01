@@ -57,6 +57,17 @@ test("legacy 2025 defaults migrate to the agreed radiology-only totals", () => {
   assert.deepEqual(changed.statistics2025.breakdown, S.statistics2025.breakdown);
 });
 
+test("legacy broad 24/7 wording migrates to emergency studies only", () => {
+  const changed = sanitizeDepartmentStructure({
+    department: {
+      ...S.department,
+      emergency: "Для військовослужбовців відділення працює цілодобово — 24/7",
+    },
+  });
+  assert.equal(changed.department.emergency, S.department.emergency);
+  assert.match(changed.department.emergency, /Екстрені дослідження/);
+});
+
 test("structure content is editable, sanitized and persisted with public site text", async () => {
   const changed = sanitizeDepartmentStructure({ statistics2025: { ...S.statistics2025, complexShare: 999 } });
   assert.equal(changed.statistics2025.complexShare, 100);
