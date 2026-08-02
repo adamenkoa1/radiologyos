@@ -31,13 +31,13 @@ test("bookings charge the effective (override-aware) price", async () => {
   assert.match(legacy, /effectivePrice\(db, service\.code\)/);
 });
 
-test("home page shows tariffs (military free / civilian priced) with booking", async () => {
+test("public catalog powers the separate price page while home stays concise", async () => {
   const route = await read("app/api/catalog/route.ts");
   assert.match(route, /priceOverrides\(/);
   assert.match(route, /groups/);
   const index = await read("public/site/index.html");
-  assert.match(index, /id="homeTariffs"/);
-  assert.match(index, /assets\/home-tariffs\.js/);
+  assert.doesNotMatch(index, /id="homeTariffs"/);
+  assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
   assert.match(index, /id="patientCategory"/); // category chooser on the home form
   const js = await read("public/site/assets/home-tariffs.js");
   assert.match(js, /\/api\/catalog/);
