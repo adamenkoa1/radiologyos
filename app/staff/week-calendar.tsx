@@ -5,7 +5,7 @@
 // презентаційний: дані (bookings, staffOptions) приходять пропсами, а стан
 // вигляду/дати/фільтра — локальний.
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
 
@@ -86,19 +86,20 @@ export default function WeekCalendar({
   }, [options]);
 
   const q = search.trim().toLowerCase();
-  const matchesExtra = (b: CalBooking) =>
+  const matchesExtra = useCallback((b: CalBooking) =>
     (category === "all" || b.patientCategory === category)
-    && (payment === "all" || (payment === "paid" ? b.paymentStatus === "paid" : b.patientCategory === "civilian" && b.paymentStatus !== "paid"));
+    && (payment === "all" || (payment === "paid" ? b.paymentStatus === "paid" : b.patientCategory === "civilian" && b.paymentStatus !== "paid")),
+  [category, payment]);
 
   const dayItems = useMemo(() => bookings
     .filter(b => b.desiredDate === date && matchesExtra(b) && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q))))
     .sort((a, b) => (a.desiredTime || "").localeCompare(b.desiredTime || "")),
-  [bookings, date, tab, category, payment, q]);
+  [bookings, date, tab, q, matchesExtra]);
 
   const week = useMemo(() => weekDates(date), [date]);
   const weekItems = useMemo(() => bookings.filter(b => week.includes(b.desiredDate) && matchesExtra(b)
     && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q)))),
-  [bookings, week, tab, category, payment, q]);
+  [bookings, week, tab, q, matchesExtra]);
 
   const counts = useMemo(() => {
     const scope = view === "week" ? bookings.filter(b => week.includes(b.desiredDate)) : bookings.filter(b => b.desiredDate === date);
