@@ -1,11 +1,13 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "../lib/site";
+
+const BASE_URL = "https://radiologyos.tech";
 
 export default function sitemap(): MetadataRoute.Sitemap {
-  const base = SITE_URL;
+  const lastModified = new Date();
   return [
-    { url: base, changeFrequency: "weekly", priority: 1 },
-    { url: `${base}/privacy`, changeFrequency: "yearly", priority: 0.3 },
+    { url: `${BASE_URL}/`, lastModified, changeFrequency: "weekly", priority: 1 },
+    { url: `${BASE_URL}/site/`, lastModified, changeFrequency: "weekly", priority: 1 },
+    { url: `${BASE_URL}/site/price.html`, lastModified, changeFrequency: "weekly", priority: 0.9 },
+    { url: `${BASE_URL}/site/military.html`, lastModified, changeFrequency: "monthly", priority: 0.8 },
   ];
 }
-
