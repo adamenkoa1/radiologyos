@@ -173,6 +173,7 @@ export default function WeekCalendar({
           </button>
         ))}
       </div>
+      {view === "day" && <p className="slotBoardHint">Натисніть зелений вільний слот, щоб одразу записати пацієнта на цей кабінет, дату і час.</p>}
 
       {view === "week"
         ? <div className="apptWeek">
