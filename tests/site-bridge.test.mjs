@@ -6,7 +6,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("site-booking endpoint saves v22 cart requests into D1 bookings", async () => {
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /serviceByCode\(/);
+  assert.match(route, /configuredServiceByCode\(/);
   assert.match(route, /INSERT INTO bookings/);
   assert.match(route, /INSERT INTO booking_events/);
   assert.match(route, /isRateLimited\(/);
@@ -101,7 +101,7 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /assets\/notify\.js/); // obsolete client-side gateway removed
   const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /Очікує оплати/);
+  assert.match(cabinet, /До сплати/);
 });
 
 test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
@@ -114,8 +114,8 @@ test("the payment QR renders on the site and in the cabinet; button only for rea
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  assert.match(cabinet, /awaitingPayment && payLink \? `<div class="pay-qr"/);
-  assert.match(cabinet, /awaitingPayment && isPayUrl\(payLink\)/); // link button gated on http(s)
+  assert.match(cabinet, /payLink \? `<div class="pay-qr"/);
+  assert.match(cabinet, /isPayUrl\(payLink\)/); // link button gated on http(s)
 });
 
 test("the public request does not force patients to choose a slot", async () => {
