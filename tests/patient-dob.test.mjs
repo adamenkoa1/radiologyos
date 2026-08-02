@@ -66,7 +66,7 @@ test("site-booking stores date_of_birth and requires it", async () => {
 test("public request is short and receives an automatic appointment", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /assignEarliestAppointments\(/);
-  assert.match(route, /'confirmed'/);
+  assert.match(route, /'new'/);
   assert.match(route, /прізвище, ім’я та по батькові повністю/i);
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
@@ -89,6 +89,7 @@ test("patient cabinet logs in by phone and date of birth", async () => {
   assert.match(cabinet, /radiologyos_patient_prefill_v1/);
   assert.match(cabinet, /sessionStorage\.getItem/);
   assert.match(cabinet, /savedAutoEnter/);
-  assert.match(cabinet, /Призначено:/);
+  assert.match(cabinet, /№ заявки:/);
+  assert.match(cabinet, /очікує підтвердження|Статус:/i);
   assert.doesNotMatch(cabinet, /id="gateCode"/);
 });
