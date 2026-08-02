@@ -1,10 +1,9 @@
 /* RadiologyOS — міст між заявками v22 і базою даних відділення (D1).
    Перехоплює надсилання «Моєї заявки» (цивільна форма на index/price та
    військова форма на military) і зберігає її через /api/site-booking, щоб
-   замовлення одразу з'являлось у кабінеті персоналу. Екрани «Заявку прийнято»
-   лишаємо від v22 — додаємо лише реальний код заявки. */
+   замовлення одразу з'являлось у кабінеті персоналу. Після надсилання показуємо
+   призначені дату й час; внутрішній код заявки пацієнту не потрібен. */
 (function () {
-  const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
   const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
   function adultDobLimit() {
@@ -36,18 +35,13 @@
       sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify({
         phone: String(phone).replace(/\D/g, '').slice(-9),
         dob: String(dob || ''),
+        autoEnter: true,
       }));
     } catch (e) { /* приватний режим може блокувати storage */ }
   }
 
   prepareIdentityFields('patientName', 'patientDob');
   prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
-
-  function codesLine(codes) {
-    if (!codes.length) return '';
-    return `<div style="margin-top:6px"><strong>${codes.length > 1 ? 'Коди заявок' : 'Код заявки'}:</strong> ${codes.map(esc).join(', ')}</div>` +
-      `<div style="margin-top:4px;color:#4e5d46;font-size:13px">Збережіть код — за ним і номером телефону можна відстежити статус у кабінеті пацієнта.</div>`;
-  }
 
   async function postBooking(payload, requestKey) {
     const response = await fetch('/api/site-booking', {
@@ -57,7 +51,7 @@
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Не вдалося надіслати заявку');
-    return data.codes || (data.code ? [data.code] : []);
+    return data;
   }
 
   // Fill the confirmation screen's payment block from the department pay link.
@@ -118,20 +112,14 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        const codes = await postBooking({
+        await postBooking({
           name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         rememberPatient(phone, dob);
-        if (typeof showSuccess === 'function') {
-          showSuccess(
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes)
-          );
-        }
-        if (category === 'civilian') populatePayBlock();
+        window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
         alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');
@@ -167,7 +155,7 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        const codes = await postBooking({
+        await postBooking({
           name, phone, dob, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
@@ -175,18 +163,7 @@
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         rememberPatient(phone, dob);
-        const summary = document.getElementById('milSuccessSummary');
-        if (summary) {
-          summary.innerHTML =
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes);
-        }
-        milForm.hidden = true;
-        const panel = document.getElementById('milSuccessPanel');
-        if (panel) panel.hidden = false;
-        const milList = document.getElementById('militaryCartItems');
-        if (milList) milList.style.display = 'none';
-        if (typeof militaryCart !== 'undefined') { militaryCart.length = 0; if (typeof saveMilitaryCart === 'function') saveMilitaryCart(); }
+        window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Надіслати заявку'; }
         alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');

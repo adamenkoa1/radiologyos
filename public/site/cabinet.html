@@ -192,6 +192,7 @@ const errorBox = document.getElementById('gateError');
 let phoneDigits = '';
 let dobValue = '';
 let payLink = '';
+let savedAutoEnter = false;
 
 function adultDobLimit() {
   const today = new Date();
@@ -208,6 +209,7 @@ try {
   if (saved && /^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob || ''))) {
     document.getElementById('gateDob').value = saved.dob;
   }
+  savedAutoEnter = Boolean(saved && saved.autoEnter);
 } catch (e) { /* залишаємо поля порожніми */ }
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
@@ -225,14 +227,14 @@ function cardHtml(b) {
   const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
   const badgeLabel = b.statusLabel || meta.label;
   const org = b.organization ? ' · ' + esc(b.organization) : '';
-  const when = b.desiredDate ? `бажана дата: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
+  const when = b.desiredDate ? `Призначено: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
   return `<div class="card app-card" id="card-${esc(b.code)}">
     <div class="app-top">
       <div>
         <div class="app-study">${esc(b.service)}</div>
-        <div class="app-meta">Код ${esc(b.code)}${org}${when ? ' · ' + when : ''}</div>
+        <div class="app-meta">${org ? org.slice(3) : ''}${org && when ? ' · ' : ''}${when}</div>
       </div>
       <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
@@ -337,6 +339,19 @@ document.getElementById('gateBtn').addEventListener('click', () => {
 });
 document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
 document.getElementById('gateDob').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
+if (savedAutoEnter && new URLSearchParams(window.location.search).get('new') === '1') {
+  const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
+  const dob = document.getElementById('gateDob').value.trim();
+  if (digits.length === 9 && /^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || '{}');
+      saved.autoEnter = false;
+      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify(saved));
+    } catch (e) {}
+    window.history.replaceState({}, '', '/site/cabinet.html');
+    enter(digits, dob);
+  }
+}
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
   phoneDigits = '';

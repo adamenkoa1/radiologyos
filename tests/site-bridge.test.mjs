@@ -15,13 +15,14 @@ test("site-booking endpoint saves v22 cart requests into D1 bookings", async () 
   assert.match(route, /status:\s*201/);
 });
 
-test("the client bridge posts the cart to /api/site-booking and reuses v22 success UI", async () => {
+test("the client bridge posts the cart and opens the authorized patient cabinet", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /\/api\/site-booking/);
   assert.match(bridge, /stopImmediatePropagation\(\)/); // takes over cart.js submit
   assert.match(bridge, /items:\s*items\.map/);
-  assert.match(bridge, /showSuccess\(/); // shows v22 confirmation panel with the RD code
-  assert.match(bridge, /Код заявки|Коди заявок/);
+  assert.match(bridge, /autoEnter:\s*true/);
+  assert.match(bridge, /cabinet\.html\?new=1/);
+  assert.doesNotMatch(bridge, /Код заявки|Коди заявок/);
 });
 
 test("the booking pages load the D1 bridge after cart.js", async () => {
