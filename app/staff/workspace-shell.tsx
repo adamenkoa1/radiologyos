@@ -33,11 +33,11 @@ const systemModules: NavModule[] = [
     { label:"Довіра", href:"/staff/system-map#mod-1" },
     { label:"Зворотний дзвінок", href:"/staff/system-map#mod-1" },
   ]},
-  { n:"2", label:"Запис і заявки", href:"/staff", section:"overview", items:[
+  { n:"2", label:"Календар і заявки", href:"/staff/appointments", section:"appointments", items:[
     { label:"Форма заявки", href:"/site/price.html" },
     { label:"Вибір часу", href:"/staff/dashboard" },
     { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
-    { label:"Черга реєстратури", href:"/staff#bookings" },
+    { label:"Календар заявок", href:"/staff/appointments" },
     { label:"Записати пацієнта", href:"/staff/book" },
     { label:"Календар записів", href:"/staff/appointments" },
     { label:"Реєстр досліджень", href:"/staff/studies" },
