@@ -80,6 +80,8 @@ header{padding:0 14px;margin-bottom:18px}
 .payment-detail{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:9px 12px;border-bottom:1px solid #edf2f4;font-size:13px}
 .payment-detail:last-child{border-bottom:0}.payment-detail span{color:var(--muted)}.payment-detail b{overflow-wrap:anywhere}
 .copy-payment{margin-top:10px}.pay-note{margin:8px 2px 0;color:var(--muted);font-size:12px;text-align:center}
+.pay-toggle{margin-top:10px}.payment-panel{margin-top:10px;padding:14px;border:1px solid #d9eef0;border-radius:14px;background:#f7fbfc}
+.payment-panel[hidden]{display:none}.payment-instructions{font-size:13px;color:#33434d}.payment-instructions b{font-size:15px;color:#0e454c}.payment-instructions ol{margin:8px 0 2px;padding-left:22px}.payment-instructions li{margin:5px 0}
 
 .protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfefe}
 .protocol.open{display:block}
@@ -245,19 +247,26 @@ function cardHtml(b) {
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
     ${awaitingPayment ? `<div class="pay-row">💳 <span>До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>
-      <div class="payment-details">
-        <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b></div>
-        <div class="payment-detail"><span>Послуга</span><b>${esc(b.service)}</b></div>
-        <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b></div>
-        <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b></div>
-      </div>
-      <button class="btn secondary copy-payment" type="button" data-copy-payment
-        data-name="${esc(b.patientName || '')}" data-service="${esc(b.service)}"
-        data-amount="${esc(money(b.paymentAmount))}" data-purpose="${esc(paymentPurpose)}">Скопіювати платіжні дані</button>` : ''}
-    ${awaitingPayment && payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
-    <div class="actions">
-      ${awaitingPayment && isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити у Privat24</a>` : ''}
-      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
+      <button class="btn pay-toggle" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button>
+      <div class="payment-panel" id="payment-${esc(b.code)}" hidden>
+        <div class="payment-instructions"><b>Як оплатити</b><ol>
+          <li>Натисніть «Скопіювати платіжні дані».</li>
+          <li>Відкрийте Privat24 кнопкою нижче або відскануйте QR-код.</li>
+          <li>Перевірте ПІБ, послугу та суму перед підтвердженням платежу.</li>
+        </ol></div>
+        <div class="payment-details">
+          <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b></div>
+          <div class="payment-detail"><span>Послуга</span><b>${esc(b.service)}</b></div>
+          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b></div>
+          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b></div>
+        </div>
+        <button class="btn secondary copy-payment" type="button" data-copy-payment
+          data-name="${esc(b.patientName || '')}" data-service="${esc(b.service)}"
+          data-amount="${esc(money(b.paymentAmount))}" data-purpose="${esc(paymentPurpose)}">Скопіювати платіжні дані</button>
+        ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
+        ${isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Відкрити Privat24</a>` : ''}
+      </div>` : ''}
+    <div class="actions">      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
       ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
     </div>
     <div class="protocol" id="prot-${esc(b.code)}"></div>
@@ -281,11 +290,19 @@ async function loadBookings() {
   document.getElementById('emptyState').hidden = bookings.length > 0;
   list.innerHTML = bookings.map(cardHtml).join('');
   list.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => cancelBooking(b.dataset.cancel)));
+  list.querySelectorAll('[data-pay-toggle]').forEach((button) => button.addEventListener('click', () => togglePayment(button)));
   list.querySelectorAll('[data-copy-payment]').forEach((button) => button.addEventListener('click', () => copyPaymentDetails(button)));
   list.querySelectorAll('[data-protocol]').forEach((b) => b.addEventListener('click', () => toggleProtocol(b.dataset.protocol, b)));
   return true;
 }
 
+function togglePayment(button) {
+  const panel = document.getElementById('payment-' + button.dataset.payToggle);
+  if (!panel) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  button.textContent = opening ? 'Сховати оплату' : 'Сплатити';
+}
 async function copyPaymentDetails(button) {
   const text = [
     `ПІБ платника: ${button.dataset.name || ''}`,
