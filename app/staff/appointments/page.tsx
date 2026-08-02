@@ -62,8 +62,8 @@ export default function StaffAppointmentsPage() {
   return (
     <StaffWorkspaceShell
       active="appointments"
-      title="Календар і заявки"
-      description="Головний робочий екран: час, пацієнт, послуга, маршрут і оплата."
+      title="Записи і слоти"
+      description="Один робочий екран: вільні слоти кабінетів, заявки, запис пацієнта, прибуття та оплата."
       staffName={staff?.displayName}
       staffRole={staff?.role}
     >
