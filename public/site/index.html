@@ -83,12 +83,12 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 }
 .promo-card:hover{transform:translateY(-2px);box-shadow:0 20px 48px rgba(24,34,19,.18)}
 .promo-card:focus-visible{outline:3px solid var(--gold);outline-offset:4px}
-.promo-military{background:var(--grad);color:#fff}
-.promo-civil{background:linear-gradient(135deg,#e2f4f5,#bfe0e4);color:#12303a}
+.promo-military{background:linear-gradient(135deg,#26734d,#15563a);color:#fff}
+.promo-civil{background:linear-gradient(135deg,#fff3bd,#f4d66d);color:#332600}
 .promo-icon{width:58px;height:58px;border-radius:16px;display:grid;place-items:center;background:rgba(255,255,255,.14)}
 .promo-icon svg{width:28px;height:28px}
 .promo-military .promo-icon{color:#f2f6f8}
-.promo-civil .promo-icon{background:rgba(79,93,62,.1);color:var(--brand)}
+.promo-civil .promo-icon{background:rgba(122,86,0,.12);color:#7a5600}
 .promo-text{min-width:0}
 .promo-text strong{display:block;font-size:clamp(22px,3.3vw,29px);font-weight:600;line-height:1.12;letter-spacing:-.01em}
 .promo-text span{display:block;margin-top:7px;font-size:clamp(15px,2.1vw,18px)}
@@ -102,7 +102,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .barium-card{margin-top:12px;padding:17px;border:1px solid #c9e4e7;border-radius:18px;background:#f1fafb}.barium-card h3{margin:0 0 10px;color:var(--brand-dark);font-size:18px}.barium-links{display:grid;gap:8px}.barium-links details{border:1px solid #d6e8ea;border-radius:13px;background:#fff;overflow:hidden}.barium-links summary{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;color:var(--brand-dark);font-size:14px;font-weight:800;cursor:pointer;list-style:none}.barium-links summary::-webkit-details-marker{display:none}.barium-links summary::after{content:"+";font-size:20px}.barium-links details[open] summary::after{content:"−"}.barium-detail{padding:0 14px 13px;color:#405d65;font-size:13.5px;line-height:1.5}.barium-detail p{margin:7px 0}.barium-detail strong{color:#163941}
 .how-divider{height:1px;margin:26px 0;background:var(--line)}.how-steps.civilian{grid-template-columns:repeat(4,1fr)}.how-steps.civilian .how-num{background:#d8edef;color:var(--brand-dark)}.access-notice{display:flex;gap:14px;margin-top:14px;padding:15px 17px;border:1px solid #c9e4e7;border-radius:14px;background:#f1fafb;color:#294850;font-size:14px;line-height:1.45}.access-notice strong{flex:0 0 auto;color:var(--brand-dark)}
 @media(max-width:900px){.how-steps.civilian{grid-template-columns:1fr 1fr}.barium-grid{grid-template-columns:1fr}}@media(max-width:760px){.how-steps,.how-steps.civilian{grid-template-columns:1fr}.how-card{padding:22px 18px}.fold-card>summary{min-height:62px;padding:15px 17px}.fold-card .fold-body{padding:0 17px 18px}.how-exception,.how-result,.access-notice{display:block}.how-exception strong,.how-result strong,.access-notice strong{display:block;margin-bottom:4px}.barium-card{padding:16px}}
-.promo-civil .promo-text span{color:#0e454c}
+.promo-civil .promo-text span{color:#5d4700}
 .promo-arrow{font-size:44px;line-height:1;font-weight:400;opacity:.85}
 
 /* ===== Адреса ===== */
@@ -183,9 +183,9 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .header-row,.wrap{width:min(92vw,960px)}
 }
 @media(max-width:700px){
-  body{padding-top:10px}
-  header{top:6px;padding:0 10px}
-  .header-row{min-height:80px;padding:14px;border-radius:18px;gap:10px}
+  body{padding-top:8px;padding-bottom:86px}
+  header{position:relative;top:auto;padding:0 10px}
+  .header-row{min-height:0;padding:14px;border-radius:18px;gap:10px}
   .hospital-brand-title{font-size:19px}
   .hospital-brand-subtitle{font-size:12px}
   .wrap{width:min(100% - 20px,760px)}
@@ -195,10 +195,10 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .promo-icon svg{width:23px;height:23px}
   .promo-arrow{font-size:32px}
   .contact-card{padding:15px 17px;border-radius:17px}
-  .floating-cart{right:14px;bottom:14px}
+  .floating-cart{right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:10px 12px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.18)}
   .cart-drawer{padding:16px}
   .experience-card{padding:19px 17px;border-radius:18px}
-  .experience-card h2{font-size:24px}
+  .experience-card h2{font-size:22px;line-height:1.18}
   .experience-lead,.experience-volume{font-size:13px}
   .experience-stats{grid-template-columns:1fr 1fr}
   .experience-stat{padding:14px 10px;border-bottom:1px solid var(--line)}
@@ -207,6 +207,15 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .experience-stat:nth-child(3){padding-left:0}
 }
 @media(max-width:520px){
+  .hospital-brand-title{font-size:18px}
+  .hospital-brand-subtitle{font-size:12px}
+  .hospital-brand-slogan{font-size:12px;line-height:1.35}
+  .promo-card{min-height:108px;padding:17px 15px;gap:12px}
+  .promo-text strong{font-size:20px}
+  .promo-text span{font-size:14px}
+  .fold-card>summary{font-size:17px;line-height:1.25}
+  .how-card h2{font-size:21px}
+  .how-intro{font-size:14px}
   .header-login-button{padding:5px 2px;font-size:12px}
   .login-menu{right:-2px}
   .address-row{grid-template-columns:minmax(82px,auto) minmax(0,1fr) auto;gap:8px;min-height:52px}
