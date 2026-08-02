@@ -165,7 +165,7 @@ const PROTOCOL_API = '/api/my-protocol';
 const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
 const statusMeta = {
-  new:               { badge: 'new',       label: 'Нова',              step: 'new' },
+  new:               { badge: 'new',       label: 'Заявку отримано',    step: 'new' },
   requested:         { badge: 'new',       label: 'Заявка',            step: 'new' },
   needs_verification:{ badge: 'new',       label: 'Потребує перевірки',step: 'new' },
   scheduled:         { badge: 'booked',    label: 'Заплановано',       step: 'booked' },
@@ -223,7 +223,7 @@ function showError(message) { errorBox.textContent = message; errorBox.classList
 
 function stepper(status) {
   const order = ['new', 'booked', 'done'];
-  const labels = ['Заявку подано', 'Записано', 'Виконано'];
+  const labels = ['Заявку отримано', 'Запис підтверджено', 'Виконано'];
   const step = (statusMeta[status] || {}).step || 'new';
   const idx = order.indexOf(step);
   return '<div class="stepper">' + labels.map((l, i) =>
@@ -234,7 +234,8 @@ function cardHtml(b) {
   const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
   const badgeLabel = b.statusLabel || meta.label;
   const org = b.organization ? ' · ' + esc(b.organization) : '';
-  const when = b.desiredDate ? `Призначено: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
+  const whenPrefix = ['new', 'requested', 'needs_verification'].includes(b.status) ? 'Попередньо призначено' : 'Призначено';
+  const when = b.desiredDate ? `${whenPrefix}: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
   const serviceWithCode = [b.serviceCode, b.service].filter(Boolean).join(' · ');
@@ -243,7 +244,7 @@ function cardHtml(b) {
     <div class="app-top">
       <div>
         <div class="app-study">${esc(b.service)}</div>
-        <div class="app-meta">${org ? org.slice(3) : ''}${org && when ? ' · ' : ''}${when}</div>
+        <div class="app-meta"><b>№ заявки: ${esc(b.code)}</b>${(org || when) ? ' · ' : ''}${org ? org.slice(3) : ''}${org && when ? ' · ' : ''}${when}</div>
       </div>
       <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
