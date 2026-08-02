@@ -78,6 +78,31 @@
     } catch (e) { /* leave hidden on failure */ }
   }
 
+  async function applyPublicServiceAvailability() {
+    try {
+      const response = await fetch('/api/public-services', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      const services = Array.isArray(data.services) ? data.services : [];
+      if (!response.ok || !services.length) return;
+      const militaryPage = /military/i.test(location.pathname);
+      const byCode = Object.fromEntries(services.map((item) => [String(item.code), item]));
+      document.querySelectorAll('button.row-add').forEach((button) => {
+        const source = button.getAttribute('onclick') || '';
+        const match = source.match(/\(['"]([^'"]+)['"]/);
+        const item = match ? byCode[match[1]] : null;
+        if (!item) return;
+        const available = militaryPage ? item.availableToMilitary : item.availableToCivilian;
+        button.disabled = !available;
+        button.setAttribute('aria-disabled', available ? 'false' : 'true');
+        if (!available) {
+          button.textContent = 'Тимчасово недоступно';
+          button.title = 'Послугу вимкнено адміністратором';
+        }
+      });
+    } catch (e) { /* сервер додатково перевіряє доступність при надсиланні */ }
+  }
+  applyPublicServiceAvailability();
+
   // ----- Civilian request (index.html, price.html) -----
   const civilForm = document.getElementById('requestForm');
   if (civilForm) {
