@@ -17,14 +17,13 @@ test("the public homepage combines hospital information, services and booking", 
     "80 досліджень щодня",
     "Військовослужбовцям",
     "Цивільним особам",
-    "Дослідження та вартість",
     "Режим роботи",
     "scPhoneLink",
     "tel:\\+380972808899",
     "Номер скопійовано",
-    "homeTariffs",
     "/staff/login",
   ]) assert.match(page, new RegExp(marker));
+  assert.doesNotMatch(page, /Дослідження та вартість|homeTariffs/);
   assert.doesNotMatch(page, /scLogo|brand-logo/);
   assert.match(page, /\/api\/site-content/);
   assert.match(page, /\/api\/department-profile/);
