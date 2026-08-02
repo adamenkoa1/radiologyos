@@ -178,7 +178,7 @@ export default function StaffWorkspaceShell({
 
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}`}>
     <aside className="workspaceSidebar">
-      <Link className="workspaceBrand" href="/staff" aria-label="RadiologyOS — головна">
+      <Link className="workspaceBrand" href="/staff/appointments" aria-label="RadiologyOS — календар заявок">
         <span className="workspaceBrandMark">R</span>
         <span className="workspaceBrandCopy"><b>RadiologyOS</b><small>Променева діагностика</small></span>
       </Link>
@@ -256,7 +256,7 @@ export default function StaffWorkspaceShell({
             <span><b>{identity}</b><small>{staffRole || "Персонал відділення"}</small></span>
           </summary>
           <div>
-            <Link href="/staff">Робочий кабінет</Link>
+            <Link href="/staff/appointments">Календар і заявки</Link>
             <Link href="/staff/reports">Звіти відділення</Link>
             <Link href="/">Публічний сайт</Link>
             <button type="button" className="workspaceLogout" onClick={()=>void logout()}>Вийти</button>
