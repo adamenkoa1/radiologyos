@@ -105,7 +105,7 @@ test("site content editor is a visual storefront with dedicated tariff navigatio
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/structure"/);
   assert.match(shell, /Публічна вітрина/);
-  assert.match(shell, /Редактор вітрини/);
+  assert.match(shell, /Редактор публічного сайту/);
 });
 
 test("landing pulls storefront config from the API and gates on published", async () => {
@@ -182,5 +182,5 @@ test("visual storefront editor keeps appearance fixed and structure available be
   assert.doesNotMatch(page, /storefrontType/);
   assert.doesNotMatch(page, /type="color"|logoUrl|onLogoFile|type="file"/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /Редактор вітрини/);
+  assert.match(shell, /Редактор публічного сайту/);
 });
