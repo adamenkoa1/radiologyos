@@ -357,7 +357,7 @@ export default function Home() {
           <button className="hospitalSubmit" type="submit" disabled={submitState.kind === "sending"}>{submitState.kind === "sending" ? "Надсилаємо…" : "Надіслати заявку"}</button>
 
           {submitState.kind === "error" && <p className="hospitalFormMessage error" role="alert">{submitState.message}</p>}
-          {submitState.kind === "success" && <div className="hospitalFormMessage success" role="status"><b>Заявку прийнято</b><span>Код: {submitState.codes.join(", ")}</span><a href="/site/cabinet.html">Відкрити кабінет пацієнта</a></div>}
+          {submitState.kind === "success" && <div className="hospitalFormMessage success" role="status"><b>Заявку отримано</b><span>№ заявки: {submitState.codes.join(", ")} · очікує підтвердження адміністратором</span><a href="/site/cabinet.html">Перевірити статус у кабінеті пацієнта</a></div>}
         </form>
       </section>
 
