@@ -21,78 +21,39 @@ type StaffWorkspaceShellProps = {
 // Підпункт може залежати від feature flag профілю організації: якщо
 // відповідну можливість вимкнено, пункт ховається (конструктор).
 type NavChild = { label:string; href:string; flag?:string };
-type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; items:NavChild[] };
+type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; defaultOpen?:boolean; items:NavChild[] };
 const systemModules: NavModule[] = [
-  { n:"1", label:"Головна / Послуги", href:"/staff/structure", section:"structure", items:[
-    { label:"Редактор вітрини", href:"/staff/structure" },
-    { label:"Відкрити сайт", href:"/" },
-    { label:"Онлайн-запис", href:"/" },
-    { label:"Тарифи", href:"/staff/tariffs" },
-    { label:"Контакти", href:"/" },
-    { label:"Пакети / акції", href:"/staff/system-map#mod-1" },
-    { label:"Довіра", href:"/staff/system-map#mod-1" },
-    { label:"Зворотний дзвінок", href:"/staff/system-map#mod-1" },
-  ]},
-  { n:"2", label:"Календар і заявки", href:"/staff/appointments", section:"appointments", items:[
-    { label:"Форма заявки", href:"/site/price.html" },
-    { label:"Вибір часу", href:"/staff/dashboard" },
-    { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
+  { n:"1", label:"Календар і заявки", href:"/staff/appointments", section:"appointments", items:[
     { label:"Календар заявок", href:"/staff/appointments" },
     { label:"Записати пацієнта", href:"/staff/book" },
-    { label:"Календар записів", href:"/staff/appointments" },
-    { label:"Реєстр досліджень", href:"/staff/studies" },
-    { label:"Розклад дня", href:"/staff/dashboard" },
-    { label:"Нагадування", href:"/staff/settings", flag:"reminders" },
-    { label:"Повторний запис", href:"/staff/system-map#mod-2" },
-  ]},
-  { n:"3", label:"CRM (пацієнти/клієнти)", href:"/staff/patients", section:"patients", items:[
-    { label:"Картка пацієнта", href:"/staff/patients" },
-    { label:"Чат з пацієнтами", href:"/staff/chat" },
-    { label:"Комунікації", href:"/staff/patients" },
-    { label:"Сегменти", href:"/staff/patients" },
-    { label:"Експорт контактів", href:"/staff/patients" },
-    { label:"Розсилки", href:"/staff/system-map#mod-3" },
-    { label:"Воронка лідів", href:"/staff/system-map#mod-3" },
-    { label:"Лояльність", href:"/staff/system-map#mod-3" },
-  ]},
-  { n:"4", label:"Бухгалтерія / Фінанси", href:"/staff/reports", section:"reports", items:[
-    { label:"Оплати за заявками", href:"/staff#bookings" },
-    { label:"Тарифи / прайс", href:"/staff/tariffs" },
-    { label:"Квитанції / рахунки", href:"/staff/system-map#mod-4" },
-    { label:"Каса та зміни", href:"/staff/system-map#mod-4" },
-    { label:"Звірка з Приват24", href:"/staff/system-map#mod-4" },
-    { label:"Фінансові звіти", href:"/staff/reports" },
-    { label:"Договори / акти", href:"/staff/system-map#mod-4" },
-    { label:"Витрати", href:"/staff/system-map#mod-4" },
-    { label:"Податки / ФОП", href:"/staff/system-map#mod-4" },
-  ]},
-  { n:"5", label:"Персонал (HR)", href:"/staff#staff-admin", items:[
-    { label:"Співробітники й ролі", href:"/staff#staff-admin" },
-    { label:"Реєстрація за кодом", href:"/staff/register" },
-    { label:"Графік змін", href:"/staff/system-map#mod-5" },
-    { label:"Завантаженість", href:"/staff/system-map#mod-5" },
-    { label:"KPI / виробіток", href:"/staff/system-map#mod-5" },
-    { label:"Відпустки / лікарняні", href:"/staff/system-map#mod-5" },
-    { label:"Журнал дій (аудит)", href:"/staff/audit" },
-  ]},
-  { n:"6", label:"Обладнання", href:"/staff/equipment", section:"equipment", items:[
-    { label:"Реєстр апаратів", href:"/staff/equipment" },
-    { label:"Графік кабінетів", href:"/staff/schedule" },
-    { label:"Завантаженість", href:"/staff/dashboard" },
-    { label:"Знімки / PACS", href:"/staff/imaging", flag:"dicom_pacs" },
-    { label:"Обслуговування (ТО)", href:"/staff/system-map#mod-6" },
-    { label:"Простої / поломки", href:"/staff#equipment" },
-    { label:"Витратні матеріали", href:"/staff/system-map#mod-6" },
-  ]},
-  { n:"7", label:"Адмін / Наскрізне", href:"/staff/dashboard", section:"dashboard", items:[
     { label:"Пульт відділення", href:"/staff/dashboard" },
-    { label:"Організація та профіль", href:"/staff/organization" },
+    { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
+  ]},
+  { n:"2", label:"Пацієнти", href:"/staff/patients", section:"patients", items:[
+    { label:"Картки пацієнтів", href:"/staff/patients" },
+    { label:"Чат із пацієнтами", href:"/staff/chat" },
     { label:"WhatsApp", href:"/staff/whatsapp" },
+  ]},
+  { n:"3", label:"Кабінети й обладнання", href:"/staff/schedule", section:"schedule", items:[
+    { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
+    { label:"Обладнання", href:"/staff/equipment" },
+  ]},
+  { n:"4", label:"Дослідження", href:"/staff/studies", section:"studies", items:[
+    { label:"Реєстр досліджень", href:"/staff/studies" },
+    { label:"Протоколи", href:"/staff/protocols" },
+    { label:"Знімки DICOM", href:"/staff/imaging", flag:"dicom_pacs" },
+  ]},
+  { n:"5", label:"Фінанси і звіти", href:"/staff/reports", section:"reports", items:[
+    { label:"Звіти відділення", href:"/staff/reports" },
+    { label:"Тарифи", href:"/staff/tariffs" },
+  ]},
+  { n:"6", label:"Адміністрування", href:"/staff/settings", section:"settings", defaultOpen:false, items:[
+    { label:"Редактор публічного сайту", href:"/staff/structure" },
+    { label:"Організація та профіль", href:"/staff/organization" },
+    { label:"Персонал і ролі", href:"/staff#staff-admin" },
+    { label:"Реєстрація працівника", href:"/staff/register" },
     { label:"Налаштування", href:"/staff/settings" },
-    { label:"Ролі й права", href:"/staff#staff-admin" },
-    { label:"Журнал дій (аудит)", href:"/staff/audit" },
-    { label:"Календар", href:"/staff/settings" },
-    { label:"Резервне копіювання", href:"/staff/settings" },
+    { label:"Журнал дій", href:"/staff/audit" },
   ]},
 ];
 
@@ -186,21 +147,15 @@ export default function StaffWorkspaceShell({
       <nav className="workspaceNavigation" aria-label="Модулі системи">
         <p>Огляд</p>
         <Link
-          href="/staff/system-map"
-          className={`workspaceModuleLink${active === "system-map" ? " active":""}`}
-          aria-current={active === "system-map" ? "page":undefined}
-          title={collapsed ? "Карта системи":undefined}
-        ><span aria-hidden="true">◑</span><b>Карта системи</b></Link>
-        <Link
           href="/staff/structure"
           className={`workspaceModuleLink${active === "structure" ? " active":""}`}
           aria-current={active === "structure" ? "page":undefined}
           title={collapsed ? "Публічна вітрина":undefined}
-        ><span aria-hidden="true">▤</span><b>Публічна вітрина</b></Link>
+        ><span aria-hidden="true">▤</span><b>Редактор сайту</b></Link>
         <p>Модулі</p>
         {systemModules.map((item)=>{
           const isActive = !!item.section && item.section === active;
-          const isOpen = openModules[item.n] ?? true;
+          const isOpen = openModules[item.n] ?? item.defaultOpen ?? true;
           return <div className="workspaceModuleGroup" key={item.n}>
             <div className="workspaceModuleRow">
               <Link
