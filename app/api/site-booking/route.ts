@@ -1,5 +1,5 @@
 import { todayInKyiv } from "../../../lib/booking-rules";
-import { serviceByCode } from "../../../lib/catalog";
+import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
@@ -99,9 +99,13 @@ export async function POST(request: Request) {
     if (new Set(serviceCodes).size !== serviceCodes.length) {
       return Response.json({ error: "Одна й та сама послуга додана декілька разів" }, { status: 400 });
     }
-    const services = serviceCodes.map((code) => serviceByCode(code));
+    const serviceConfig = parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY));
+    const services = serviceCodes.map((code) => configuredServiceByCode(code, serviceConfig));
     if (services.some((service) => !service)) {
       return Response.json({ error: "У заявці є невідома послуга" }, { status: 400 });
+    }
+    if (services.some((service) => !service!.active || (category === "military" ? !service!.military : !service!.civilian))) {
+      return Response.json({ error: "Одна з обраних послуг зараз недоступна для цієї категорії пацієнтів" }, { status: 400 });
     }
 
     if (name.split(/\s+/).filter(Boolean).length < 3) {
