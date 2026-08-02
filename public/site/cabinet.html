@@ -82,6 +82,7 @@ header{padding:0 14px;margin-bottom:18px}
 .copy-payment{margin-top:10px}.pay-note{margin:8px 2px 0;color:var(--muted);font-size:12px;text-align:center}
 .pay-toggle{margin-top:10px}.payment-panel{margin-top:10px;padding:14px;border:1px solid #d9eef0;border-radius:14px;background:#f7fbfc}
 .payment-panel[hidden]{display:none}.payment-instructions{font-size:13px;color:#33434d}.payment-instructions b{font-size:15px;color:#0e454c}.payment-instructions ol{margin:8px 0 2px;padding-left:22px}.payment-instructions li{margin:5px 0}
+.bank-choice{margin-top:10px}.bank-details{margin-top:10px;border:1px solid #d9eef0;border-radius:13px;overflow:hidden;background:#fff}.bank-details[hidden]{display:none}.bank-title{padding:11px 12px;background:#eef7f8;font-size:14px;font-weight:800;color:#0e454c}
 
 .protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfefe}
 .protocol.open{display:block}
@@ -251,9 +252,9 @@ function cardHtml(b) {
       <button class="btn pay-toggle" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button>
       <div class="payment-panel" id="payment-${esc(b.code)}" hidden>
         <div class="payment-instructions"><b>Як оплатити</b><ol>
-          <li>Натисніть «Відкрити Privat24» — ПІБ автоматично скопіюється.</li>
-          <li>У формі банку вставте ПІБ у перше поле та введіть зазначену суму.</li>
-          <li>У призначенні зазначте код і назву послуги, потім підтвердьте платіж.</li>
+          <li>Для швидкої оплати натисніть «Сплатити карткою будь-якого банку».</li>
+          <li>Можна використати картку Monobank, Ощадбанку або іншого українського банку.</li>
+          <li>Або відкрийте реквізити IBAN і створіть платіж у застосунку свого банку.</li>
         </ol></div>
         <div class="payment-details">
           <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b><button class="copy-one" type="button" data-copy-value="${esc(b.patientName || '')}">Копіювати</button></div>
@@ -262,7 +263,16 @@ function cardHtml(b) {
           <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
         </div>
         ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
-        ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Відкрити Privat24</button>` : ''}
+        ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Сплатити карткою будь-якого банку</button>` : ''}
+        <button class="btn secondary bank-choice" type="button" data-bank-toggle="${esc(b.code)}">Оплатити через Monobank / Ощад за IBAN</button>
+        <div class="bank-details" id="bank-${esc(b.code)}" hidden>
+          <div class="bank-title">Реквізити для платежу за IBAN</div>
+          <div class="payment-detail"><span>Отримувач</span><b>Військова частина А3120</b><button class="copy-one" type="button" data-copy-value="Військова частина А3120">Копіювати</button></div>
+          <div class="payment-detail"><span>IBAN</span><b>UA27 820172 0313 2510 0120 2006000</b><button class="copy-one" type="button" data-copy-value="UA278201720313251001202006000">Копіювати</button></div>
+          <div class="payment-detail"><span>ЄДРПОУ</span><b>08296098</b><button class="copy-one" type="button" data-copy-value="08296098">Копіювати</button></div>
+          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
+          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
+        </div>
       </div>` : ''}
     <div class="actions">      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
       ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
@@ -291,6 +301,7 @@ async function loadBookings() {
   list.querySelectorAll('[data-pay-toggle]').forEach((button) => button.addEventListener('click', () => togglePayment(button)));
   list.querySelectorAll('[data-copy-value]').forEach((button) => button.addEventListener('click', () => copySingleValue(button)));
   list.querySelectorAll('[data-open-payment]').forEach((button) => button.addEventListener('click', () => openPayment(button)));
+  list.querySelectorAll('[data-bank-toggle]').forEach((button) => button.addEventListener('click', () => toggleBankDetails(button)));
   list.querySelectorAll('[data-protocol]').forEach((b) => b.addEventListener('click', () => toggleProtocol(b.dataset.protocol, b)));
   return true;
 }
@@ -314,12 +325,19 @@ async function copySingleValue(button) {
   }
 }
 
+function toggleBankDetails(button) {
+  const panel = document.getElementById('bank-' + button.dataset.bankToggle);
+  if (!panel) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  button.textContent = opening ? 'Сховати реквізити IBAN' : 'Оплатити через Monobank / Ощад за IBAN';
+}
 function openPayment(button) {
   const name = button.dataset.name || '';
   if (name) navigator.clipboard?.writeText(name).catch(() => {});
   window.open(button.dataset.url || payLink, '_blank', 'noopener');
   button.textContent = 'Privat24 відкрито · ПІБ скопійовано';
-  window.setTimeout(() => { button.textContent = 'Відкрити Privat24'; }, 2200);
+  window.setTimeout(() => { button.textContent = 'Сплатити карткою будь-якого банку'; }, 2200);
 }
 async function enter(digits, dob) {
   phoneDigits = digits;
