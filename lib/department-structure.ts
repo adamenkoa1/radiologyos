@@ -76,7 +76,7 @@ export const DEPARTMENT_STRUCTURE_DEFAULTS: DepartmentStructure = {
   },
   rooms: [
     { id: "ct", name: "Кабінет комп'ютерної томографії", devices: [
-      { name: "Комп'ютерний томограф Siemens SOMATOM", kind: "КТ", details: "Модифікацію уточнити за технічним паспортом · в експлуатації з 2021 року" },
+      { name: "Комп'ютерний томограф Siemens SOMATOM go.Up", kind: "КТ", details: "В експлуатації з 2021 року" },
     ] },
     { id: "xray", name: "Рентгенологічний кабінет №1", devices: [
       { name: "Рентгенівський діагностичний апарат Sireskop-CX", kind: "Рентген", details: "В експлуатації з 1998 року" },
@@ -157,10 +157,13 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     const fallback = defaults.rooms[roomIndex] ?? { id: `room-${roomIndex + 1}`, name: "Кабінет", devices: [] };
     const devices = Array.isArray(room?.devices) ? room.devices.slice(0, 50).map((device, deviceIndex) => {
       const deviceFallback = fallback.devices[deviceIndex] ?? { name: "Обладнання", kind: "Інше" };
+      const rawName = text(device?.name, deviceFallback.name, 220);
+      const legacyCt = fallback.id === "ct" && /^Комп['’]ютерний томограф Siemens SOMATOM$/i.test(rawName);
+      const rawDetails = text(device?.details, deviceFallback.details ?? "", 160);
       return {
-        name: text(device?.name, deviceFallback.name, 220),
+        name: legacyCt ? deviceFallback.name : rawName,
         kind: text(device?.kind, deviceFallback.kind, 60),
-        details: text(device?.details, deviceFallback.details ?? "", 160),
+        details: legacyCt && rawDetails.includes("Модифікацію уточнити") ? deviceFallback.details : rawDetails,
         status: device?.status === "stored" ? "stored" as const : "active" as const,
       };
     }) : fallback.devices;
