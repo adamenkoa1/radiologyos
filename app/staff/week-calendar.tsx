@@ -7,6 +7,7 @@
 
 import { useMemo, useState } from "react";
 import { stateLabel } from "../../lib/study-state";
+import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
 
 export type CalBooking = {
   id: number; code: string; name: string; phone: string; service: string;
@@ -15,6 +16,7 @@ export type CalBooking = {
   assignedRadiologistEmail?: string; assignedRadiographerEmail?: string;
 };
 export type CalStaffOption = { email: string; displayName: string; role: string };
+export type CalEquipmentBlock = { id:number; equipmentId:string; blockedDate:string; startTime:string; endTime:string; reason:string };
 export type CalView = "list" | "day" | "week";
 
 const GROUPS: Record<string, string[]> = {
@@ -61,10 +63,12 @@ function weekDates(dateStr: string): string[] {
 }
 
 export default function WeekCalendar({
-  bookings, options = [], initialView = "week", initialDate,
+  bookings, options = [], schedule = SCHEDULE_DEFAULTS, blocks = [], initialView = "day", initialDate,
 }: {
   bookings: CalBooking[];
   options?: CalStaffOption[];
+  schedule?: ScheduleConfig;
+  blocks?: CalEquipmentBlock[];
   initialView?: CalView;
   initialDate?: string;
 }) {
@@ -119,6 +123,19 @@ export default function WeekCalendar({
         <em>{b.patientCategory==="military"?"Військовий":b.paymentStatus==="paid"?"Оплачено":"Цивільний · перевірити оплату"}</em>
       </a>
     );
+  }
+
+  function roomSlot(equipmentId:string,time:string) {
+    const start = minutesOf(time) || 0;
+    const step = schedule.equipment[equipmentId]?.slotMinutes || 15;
+    const end = start + step;
+    const occupied = bookings.find(b => b.desiredDate === date && b.equipmentId === equipmentId
+      && !["cancelled","no_show"].includes(b.status)
+      && (minutesOf(b.desiredTime) || 0) < end
+      && (minutesOf(b.desiredTime) || 0) + (b.durationMinutes || step) > start);
+    const blocked = blocks.find(b => b.blockedDate === date && b.equipmentId === equipmentId
+      && (minutesOf(b.startTime) || 0) < end && (minutesOf(b.endTime) || 0) > start);
+    return { occupied, blocked };
   }
 
   const rangeLabel = view === "week"
@@ -180,18 +197,25 @@ export default function WeekCalendar({
               ))}
             </div>
           </div>
-        : dayItems.length === 0
-          ? <div className="apptEmpty"><span aria-hidden="true">🗓</span><p>Записів на цей день немає</p></div>
-          : view === "day"
-            ? <div className="apptTimeline" style={{ height: (DAY_END - DAY_START) * HOUR_PX }}>
-                <div className="apptHours">
-                  {hours.map(h => <div className="apptHour" key={h} style={{ height: HOUR_PX }}><span>{String(h).padStart(2, "0")}:00</span></div>)}
-                </div>
-                <div className="apptLane">
-                  {Array.from({length:(DAY_END-DAY_START)*2},(_,i)=><div className={`apptSlotLine${i%2===0?" hour":""}`} key={i} style={{top:i*HOUR_PX/2}}><span>{i%2===0?`${String(DAY_START+i/2).padStart(2,"0")}:00`:""}</span></div>)}
-                  {dayItems.map(b => eventBlock(b, false))}
-                </div>
+        : view === "day"
+          ? <div className="roomSlotBoard">
+              <div className="slotLegend"><span><i className="free"/>Вільно</span><span><i className="occupied"/>Зайнято</span><span><i className="blocked"/>Недоступно</span></div>
+              <div className="roomSlotColumns">
+                {EQUIP_KEYS.map(equipmentId => <section className="roomSlotColumn" key={equipmentId}>
+                  <header><b>{EQUIP_LABELS[equipmentId]}</b><span>крок {schedule.equipment[equipmentId]?.slotMinutes || 15} хв</span></header>
+                  {!isEquipmentDayOpen(date,schedule,equipmentId)
+                    ? <p className="roomClosed">Кабінет цього дня не працює</p>
+                    : <div className="roomSlots">{candidateTimesFor(schedule.equipment[equipmentId] || SCHEDULE_DEFAULTS.equipment[equipmentId], schedule.equipment[equipmentId]?.slotMinutes || 15).map(time => {
+                        const state=roomSlot(equipmentId,time);
+                        if(state.occupied) return <a href={`/staff?open=${state.occupied.id}#bookings`} className={`roomSlot occupied route-${state.occupied.patientCategory || "unknown"}`} key={time}><strong>{time}</strong><span>{state.occupied.name}</span><small>{state.occupied.service}</small></a>;
+                        if(state.blocked) return <span className="roomSlot blocked" key={time} title={state.blocked.reason}><strong>{time}</strong><span>Недоступно</span><small>{state.blocked.reason || "Технічне вікно"}</small></span>;
+                        return <a className="roomSlot free" href={`/staff/book?date=${date}&time=${time}&equipment=${equipmentId}`} key={time}><strong>{time}</strong><span>Вільний слот</span></a>;
+                      })}</div>}
+                </section>)}
               </div>
+            </div>
+          : dayItems.length === 0
+            ? <div className="apptEmpty"><span aria-hidden="true">🗓</span><p>Записів на цей день немає</p></div>
             : <div className="apptListWrap">{dayItems.map(b => (
                 <div className="apptCardRow" key={b.id}>
                   <span className="apptCardTime">{b.desiredTime || "—"}<small>{b.desiredDate}</small></span>
