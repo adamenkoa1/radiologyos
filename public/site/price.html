@@ -192,7 +192,7 @@ header .brand{flex:1;min-width:0}
 <p id="scPriceSub">Вартість указана відповідно до чинних тарифів.</p></div>
 </div>
 </div></section>
-<div class="wrap"><div class="price-intro" id="scPriceIntro"><strong>Цивільним особам — платні послуги.</strong> Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані. Після опрацювання заявки з вами зв’яжуться і повідомлять дату та час проведення дослідження.</div><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)">Офіційний перелік</div><h1 style="color:var(--ink);margin:10px 0" id="scPriceListTitle">Тарифи на платні медичні послуги</h1><p class="lead" id="scPriceLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
+<div class="wrap"><div class="price-intro" id="scPriceIntro"><strong>Цивільним особам — платні послуги.</strong> Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані. Після надсилання в особистому кабінеті з’являться номер заявки, попередній слот і статус підтвердження.</div><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)">Офіційний перелік</div><h1 style="color:var(--ink);margin:10px 0" id="scPriceListTitle">Тарифи на платні медичні послуги</h1><p class="lead" id="scPriceLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
 <div id="priceGroups">
     <section class="price-group open">
       <h2>1. Цифрова флюорографія</h2>
@@ -467,16 +467,16 @@ header .brand{flex:1;min-width:0}
           <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження та ознайомився(-лася) з <a href="/privacy" rel="noopener" target="_blank">політикою конфіденційності</a>.</span>
         </label>
         <span class="field-error consent-error">Потрібна згода на обробку даних</span>
-        <p class="cart-note">Після надсилання реєстратура зателефонує для погодження дати й часу.</p>
+        <p class="cart-note">Після надсилання заявка збережеться в системі. В особистому кабінеті буде видно номер, попередній слот і статус підтвердження.</p>
         <button class="btn send-request" type="submit">Сформувати заявку</button>
       </div>
     </form>
 
     <div class="success-panel" id="successPanel" hidden>
       <div class="success-icon" aria-hidden="true">✓</div>
-      <h3>Заявку прийнято</h3>
+      <h3>Заявку отримано</h3>
       <div class="success-summary" id="successSummary"></div>
-      <p id="successText">Дата й час дослідження призначаються автоматично з найближчих вільних слотів. Телефон і дата народження вже підставлені в особистому кабінеті.</p>
+      <p id="successText">Найближчий вільний слот попередньо зарезервовано. Остаточний статус «Запис підтверджено» з’явиться в особистому кабінеті.</p>
       <div id="payBlock" hidden style="border:1px solid #cfe9ec;background:#f3fafb;border-radius:14px;padding:14px;margin:0 0 12px;text-align:center">
         <div style="font-weight:700;font-size:14px;margin-bottom:8px">Оплата дослідження</div>
         <div id="payQr" style="display:flex;justify-content:center;margin-bottom:8px"></div>
