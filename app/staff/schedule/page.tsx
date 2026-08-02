@@ -74,7 +74,12 @@ export default function StaffSchedulePage() {
     });
   }
   function toggleWeekday(d: number) {
-    setCfg(prev => ({ ...prev, weekdays: prev.weekdays.includes(d) ? prev.weekdays.filter(x => x !== d) : [...prev.weekdays, d].sort((a, b) => a - b) }));
+    setCfg(prev => {
+      const room = prev.equipment[activeEquipment];
+      const current = room.weekdays ?? prev.weekdays;
+      const weekdays = current.includes(d) ? current.filter(x => x !== d) : [...current, d].sort((a, b) => a - b);
+      return { ...prev, equipment: { ...prev.equipment, [activeEquipment]: { ...room, weekdays } } };
+    });
   }
   function toggleTeamMember(email: string) {
     setCfg(prev => {
@@ -85,8 +90,13 @@ export default function StaffSchedulePage() {
     });
   }
   function addDayOff() {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDay) || cfg.daysOff.includes(newDay)) return;
-    setCfg(prev => ({ ...prev, daysOff: [...prev.daysOff, newDay].sort() }));
+    const current = cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDay) || current.includes(newDay)) return;
+    setCfg(prev => {
+      const room = prev.equipment[activeEquipment];
+      const daysOff = [...(room.daysOff ?? prev.daysOff), newDay].sort();
+      return { ...prev, equipment: { ...prev.equipment, [activeEquipment]: { ...room, daysOff } } };
+    });
     setNewDay("");
   }
 
@@ -184,11 +194,14 @@ export default function StaffSchedulePage() {
           </section>
 
           <section className="settingsBlock compactWeekdays">
-            <h3>Робочі дні тижня — типовий графік</h3>
-            <p className="settingsHint">Цей шаблон діє для всіх кабінетів. Окрему дату можна змінити у календарі вище.</p>
-            <div className="weekdaySwitches">{WEEKDAYS.map(([d, label]) => <button type="button" key={d} aria-pressed={cfg.weekdays.includes(d)} className={cfg.weekdays.includes(d) ? "on" : ""} onClick={() => toggleWeekday(d)}><span>{label}</span><i aria-hidden="true" /></button>)}<button type="button" disabled className="sunday"><span>Нд</span><i aria-hidden="true" /></button></div>
-            <div className="dayOffAdd"><input type="date" value={newDay} onChange={e => setNewDay(e.target.value)} /><button type="button" className="button secondary" onClick={addDayOff}>Закрити дату для всіх</button></div>
-            {cfg.daysOff.length > 0 && <ul className="dayOffList">{cfg.daysOff.map(d => <li key={d}>{d}<button type="button" onClick={() => setCfg(prev => ({ ...prev, daysOff: prev.daysOff.filter(x => x !== d) }))}>×</button></li>)}</ul>}
+            <h3>Робочі дні — {EQUIP_LABELS[activeEquipment]}</h3>
+            <p className="settingsHint">Власний шаблон цього кабінету. Окрему дату можна змінити у календарі вище.</p>
+            <div className="weekdaySwitches">{WEEKDAYS.map(([d, label]) => <button type="button" key={d} aria-pressed={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d)} className={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d) ? "on" : ""} onClick={() => toggleWeekday(d)}><span>{label}</span><i aria-hidden="true" /></button>)}<button type="button" disabled className="sunday"><span>Нд</span><i aria-hidden="true" /></button></div>
+            <div className="dayOffAdd"><input type="date" value={newDay} onChange={e => setNewDay(e.target.value)} /><button type="button" className="button secondary" onClick={addDayOff}>Закрити дату для цього кабінету</button></div>
+            {(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).length > 0 && <ul className="dayOffList">{(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).map(d => <li key={d}>{d}<button type="button" onClick={() => setCfg(prev => {
+              const room = prev.equipment[activeEquipment];
+              return { ...prev, equipment: { ...prev.equipment, [activeEquipment]: { ...room, daysOff: (room.daysOff ?? prev.daysOff).filter(x => x !== d) } } };
+            })}>×</button></li>)}</ul>}
           </section>
 
           {notice && <p className="notice success" role="status">{notice}</p>}
