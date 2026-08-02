@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       WHERE NOT EXISTS (
         SELECT 1 FROM bookings
         WHERE equipment_id = ? AND desired_date = ?
-          AND status IN ('confirmed','rescheduled')
+          AND status IN ('new','confirmed','rescheduled')
           AND desired_time < ?
           AND time(desired_time, '+' || duration_minutes || ' minutes') > ?
       )
@@ -93,7 +93,7 @@ export async function POST(request: Request) {
         "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created', ?, 'patient')"
       ).bind(result.meta.last_row_id, `${service.code} ${desiredDate} ${desiredTime}`).run();
     }
-    return Response.json({ code }, { status: 201 });
+    return Response.json({ code, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" }, { status: 201 });
   } catch (error) {
     console.error("booking_create_failed", error);
     return Response.json({ error: "Не вдалося зберегти заявку" }, { status: 500 });
