@@ -147,7 +147,7 @@ export default function StaffWorkspaceShell({
         ><span aria-hidden="true">▤</span><b>Редактор сайту</b></Link>
         <p>Модулі</p>
         {systemModules.map((item)=>{
-          const isActive = !!item.section && item.section === active;
+          const isActive = (!!item.section && item.section === active) || (item.n === "2" && ["schedule", "equipment", "services"].includes(active));
           const isOpen = openModules[item.n] ?? item.defaultOpen ?? true;
           return <div className="workspaceModuleGroup" key={item.n}>
             <div className="workspaceModuleRow">
