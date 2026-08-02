@@ -143,32 +143,8 @@ export default function StructurePage() {
     setNotice("");
   }
 
-  function updateDevice(roomIndex: number, deviceIndex: number, key: "name" | "kind" | "details", value: string) {
-    setStructure(prev => ({
-      ...prev,
-      rooms: prev.rooms.map((room, ri) => ri === roomIndex
-        ? { ...room, devices: room.devices.map((device, di) => di === deviceIndex ? { ...device, [key]: value } : device) }
-        : room),
-    }));
-    setNotice("");
-  }
-
   function updatePersonnel(index: number, key: "position" | "note", value: string) {
     setStructure(prev => ({ ...prev, personnel: prev.personnel.map((item, i) => i === index ? { ...item, [key]: value } : item) }));
-    setNotice("");
-  }
-
-  function updateHours(kind: "outpatient" | "inpatient", rowIndex: number, key: "service" | "intake" | "issue", value: string) {
-    setStructure(prev => ({
-      ...prev,
-      hours: {
-        ...prev.hours,
-        [kind]: {
-          ...prev.hours[kind],
-          rows: prev.hours[kind].rows.map((row, i) => i === rowIndex ? { ...row, [key]: value } : row),
-        },
-      },
-    }));
     setNotice("");
   }
 
