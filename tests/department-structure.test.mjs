@@ -18,7 +18,7 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   const activeDevices = devices.filter((d) => d.status !== "stored").map((d) => d.name);
   const storedDevices = devices.filter((d) => d.status === "stored").map((d) => d.name);
   assert.equal(activeDevices.length, 10);
-  for (const name of ["Siemens SOMATOM", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
+  for (const name of ["Siemens SOMATOM go.Up", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
     "IMAX 6000", "12Ф9-Україна", "9Л5Ф", "PLX 102", "М32"]) {
     assert.ok(activeDevices.some((d) => d.includes(name)), `active device ${name} present`);
   }
