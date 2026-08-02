@@ -18,7 +18,7 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   const activeDevices = devices.filter((d) => d.status !== "stored").map((d) => d.name);
   const storedDevices = devices.filter((d) => d.status === "stored").map((d) => d.name);
   assert.equal(activeDevices.length, 10);
-  for (const name of ["SOMATOM go.Up", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
+  for (const name of ["Siemens SOMATOM", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
     "IMAX 6000", "12Ф9-Україна", "9Л5Ф", "PLX 102", "М32"]) {
     assert.ok(activeDevices.some((d) => d.includes(name)), `active device ${name} present`);
   }
@@ -92,9 +92,11 @@ test("structure page is staff-gated and wired into the shell nav", async () => {
   assert.match(page, /active="structure"/);
   assert.match(page, /\/api\/staff\/structure/); // гейт і єдине джерело даних
   assert.match(page, /Захищений розділ/);
-  assert.match(page, /Редагувати структуру/);
+  assert.match(page, /Редагуйте текст прямо на макеті/);
+  assert.match(page, /Службова структура відділення/);
+  assert.match(page, /href="\/staff\/tariffs"/);
   assert.doesNotMatch(page, /type="file"|onLogoFile/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href="\/staff\/structure"/);
-  assert.match(shell, /Структура відділення/);
+  assert.match(shell, /Публічна вітрина/);
 });

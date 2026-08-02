@@ -34,11 +34,14 @@ test("the public homepage combines hospital information, services and booking", 
   assert.match(contentDefaults, /Досвід, якому можна довіряти/);
 });
 
-test("public booking collects phone, email and result delivery preference", async () => {
+test("public booking collects a complete identity and leaves visit time for registrar confirmation", async () => {
   const page = await read("public/site/index.html");
   const route = await read("app/api/site-booking/route.ts");
   assert.match(page, /id="patientPhone"/);
+  assert.match(page, /id="patientDob"/);
+  assert.match(page, /Прізвище, ім’я та по батькові/);
   assert.match(page, /id="patientCategory"/);
-  assert.match(page, /id="desiredDate"/);
+  assert.doesNotMatch(page, /id="desiredDate"|id="desiredTime"/);
+  assert.match(route, /desiredDate && !isBookableDate/);
   assert.match(route, /Спосіб отримання результату:/);
 });

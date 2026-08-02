@@ -1,7 +1,7 @@
 import { addMinutes, EQUIPMENT, serviceByCode } from "../../../lib/catalog";
 import { isBookableDate } from "../../../lib/booking-rules";
 import { getSetting } from "../../../lib/settings";
-import { candidateTimesFor, hoursFor, isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { candidateTimesFor, hoursFor, isDayOpen, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -12,7 +12,7 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
   // Налаштовуваний графік: робочі дні й години прийому.
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-  if (!isDayOpen(date, schedule)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
+  if (!isDayOpen(date, schedule) || !isEquipmentDayOpen(date, schedule, service.equipmentId)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
 
   const [bookings, blocks] = await Promise.all([
     db.prepare(

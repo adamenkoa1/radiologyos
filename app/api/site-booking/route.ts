@@ -1,13 +1,13 @@
 import { isBookableDate } from "../../../lib/booking-rules";
 import { serviceByCode } from "../../../lib/catalog";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
-import { normalizeDob } from "../../../lib/dob";
+import { isAdultDob, normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
 import { effectivePrice } from "../../../lib/tariffs";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
-import { isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { isDayOpen, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
@@ -90,24 +90,33 @@ export async function POST(request: Request) {
       return Response.json({ error: "У заявці є невідома послуга" }, { status: 400 });
     }
 
-    if (!name || !phoneNormalized) {
-      return Response.json({ error: "Вкажіть ім’я та коректний телефон" }, { status: 400 });
+    if (name.split(/\s+/).filter(Boolean).length < 3) {
+      return Response.json({ error: "Вкажіть прізвище, ім’я та по батькові повністю" }, { status: 400 });
+    }
+    if (!phoneNormalized) {
+      return Response.json({ error: "Вкажіть коректний номер телефону" }, { status: 400 });
     }
     if (!dob) {
       return Response.json({ error: "Вкажіть коректну дату народження" }, { status: 400 });
     }
-    if (!isBookableDate(desiredDate)) {
+    if (!isAdultDob(dob)) {
+      return Response.json({ error: "Онлайн-запис доступний пацієнтам від 18 років" }, { status: 400 });
+    }
+    if (desiredDate && !isBookableDate(desiredDate)) {
       return Response.json({ error: "Оберіть доступну майбутню дату" }, { status: 400 });
     }
     // Публічний запис теж поважає графік клініки (робочі дні / вихідні), а не
     // лише staff-підтвердження — інакше у чергу потрапляли б заявки на закриті
     // дні. Час у межах годин звіряється при підтвердженні запису персоналом.
     const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!isDayOpen(desiredDate, schedule)) {
+    if (desiredDate && (!isDayOpen(desiredDate, schedule) || services.some(service => !isEquipmentDayOpen(desiredDate, schedule, service!.equipmentId)))) {
       return Response.json({ error: "У цей день клініка не працює — оберіть інший день" }, { status: 400 });
     }
     if (desiredTime && !/^([01]\d|2[0-3]):[0-5]\d$/.test(desiredTime)) {
       return Response.json({ error: "Вкажіть коректний бажаний час" }, { status: 400 });
+    }
+    if (desiredTime && !desiredDate) {
+      return Response.json({ error: "Час можна вказати лише разом із датою" }, { status: 400 });
     }
     if (body.consent !== true || consentVersion !== CONSENT_VERSION) {
       return Response.json({ error: "Потрібно підтвердити актуальну політику обробки даних" }, { status: 400 });
@@ -129,18 +138,22 @@ export async function POST(request: Request) {
             code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
             duration_minutes, desired_date, desired_time, referral, patient_category,
             referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment,
+            assigned_radiologist_email, assigned_radiographer_email,
             date_of_birth, consent_at, consent_version, consent_source
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
         ).bind(
           codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
           desiredDate, desiredTime, referral, category, referralType, marketingSource,
-          paymentStatus, prices[index], nszuStatus, comment, dob, consentVersion, "public_site",
+          paymentStatus, prices[index], nszuStatus, comment,
+          schedule.equipment[verifiedService.equipmentId]?.radiologistEmail || "",
+          schedule.equipment[verifiedService.equipmentId]?.radiographerEmail || "",
+          dob, consentVersion, "public_site",
         ),
         db.prepare(
           `INSERT INTO booking_events (booking_id, action, details, actor)
            SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
-        ).bind(`${verifiedService.code} ${desiredDate} ${desiredTime || "час не обрано"}`, codes[index]),
+        ).bind(`${verifiedService.code} ${desiredDate || "дата узгоджується"} ${desiredTime || "час узгоджується"}`, codes[index]),
       );
     });
     statements.push(

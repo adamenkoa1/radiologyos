@@ -6,11 +6,15 @@
 
 // Обідня перерва (breakStart/breakEnd) — необов'язкова: якщо задана, слоти,
 // що її перетинають, не пропонуються (дає два вікна прийому: до і після обіду).
-export type EquipHours = { start: string; end: string; slotMinutes: number; breakStart?: string; breakEnd?: string };
+export type EquipHours = {
+  start: string; end: string; slotMinutes: number; breakStart?: string; breakEnd?: string;
+  radiographerEmail?: string; radiologistEmail?: string; teamEmails?: string[];
+};
 export type ScheduleConfig = {
   equipment: Record<string, EquipHours>;
   weekdays: number[]; // відкриті дні тижня, 1=Пн … 6=Сб (неділя завжди закрита)
   daysOff: string[];  // конкретні закриті дати YYYY-MM-DD
+  dateOverrides: Record<string, Record<string, boolean>>; // ручний стан дати для кабінету
 };
 
 export const SCHEDULE_KEY = "equipment_schedule";
@@ -31,6 +35,7 @@ export const SCHEDULE_DEFAULTS: ScheduleConfig = {
   },
   weekdays: [1, 2, 3, 4, 5, 6],
   daysOff: [],
+  dateOverrides: { ct: {}, xray: {}, fluoro: {} },
 };
 
 const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -65,13 +70,18 @@ export function isDayOpen(date: string, cfg: ScheduleConfig): boolean {
   return cfg.weekdays.includes(d.getUTCDay());
 }
 
+export function isEquipmentDayOpen(date: string, cfg: ScheduleConfig, equipmentId: string): boolean {
+  const override = cfg.dateOverrides?.[equipmentId]?.[date];
+  return typeof override === "boolean" ? override : isDayOpen(date, cfg);
+}
+
 export function hoursFor(cfg: ScheduleConfig, equipmentId: string): EquipHours {
   return cfg.equipment[equipmentId] || SCHEDULE_DEFAULTS.equipment[equipmentId] || SCHEDULE_DEFAULTS.equipment.ct;
 }
 
 export function sanitizeSchedule(input: unknown): ScheduleConfig {
   const src = (input && typeof input === "object") ? input as Record<string, unknown> : {};
-  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown; breakStart?: unknown; breakEnd?: unknown }> : {};
+  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown; breakStart?: unknown; breakEnd?: unknown; radiographerEmail?: unknown; radiologistEmail?: unknown; teamEmails?: unknown }> : {};
   const equipment: Record<string, EquipHours> = {};
   for (const key of EQUIP_KEYS) {
     const d = SCHEDULE_DEFAULTS.equipment[key];
@@ -93,6 +103,9 @@ export function sanitizeSchedule(input: unknown): ScheduleConfig {
     if (bs && be && toMin(be) > toMin(bs) && toMin(bs) >= toMin(eh.start) && toMin(be) <= toMin(eh.end)) {
       eh.breakStart = bs; eh.breakEnd = be;
     } else { delete eh.breakStart; delete eh.breakEnd; }
+    if (typeof e.radiographerEmail === "string" && e.radiographerEmail.length <= 254) eh.radiographerEmail = e.radiographerEmail.trim().toLowerCase();
+    if (typeof e.radiologistEmail === "string" && e.radiologistEmail.length <= 254) eh.radiologistEmail = e.radiologistEmail.trim().toLowerCase();
+    if (Array.isArray(e.teamEmails)) eh.teamEmails = [...new Set(e.teamEmails.filter((v): v is string => typeof v === "string").map(v => v.trim().toLowerCase()).filter(v => v.length > 0 && v.length <= 254))].slice(0, 30);
     equipment[key] = eh;
   }
   const rawWk = Array.isArray(src.weekdays) ? src.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
@@ -100,7 +113,14 @@ export function sanitizeSchedule(input: unknown): ScheduleConfig {
   const daysOff = Array.isArray(src.daysOff)
     ? Array.from(new Set(src.daysOff.filter((x): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x)))).slice(0, 200)
     : [];
-  return { equipment, weekdays, daysOff };
+  const rawOverrides = src.dateOverrides && typeof src.dateOverrides === "object" ? src.dateOverrides as Record<string, unknown> : {};
+  const dateOverrides: Record<string, Record<string, boolean>> = {};
+  for (const key of EQUIP_KEYS) {
+    const values = rawOverrides[key] && typeof rawOverrides[key] === "object" ? rawOverrides[key] as Record<string, unknown> : {};
+    dateOverrides[key] = Object.fromEntries(Object.entries(values)
+      .filter(([date, value]) => /^\d{4}-\d{2}-\d{2}$/.test(date) && typeof value === "boolean").slice(0, 400)) as Record<string, boolean>;
+  }
+  return { equipment, weekdays, daysOff, dateOverrides };
 }
 
 export function parseSchedule(stored: string): ScheduleConfig {

@@ -32,24 +32,47 @@ test("migration adds date_of_birth to bookings and phone+dob lookup works", asyn
 
 // normalizeDob приймає лише правдоподібну YYYY-MM-DD.
 test("normalizeDob validates the date shape and range", async () => {
-  const src = await read("lib/dob.ts");
-  assert.match(src, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
-  assert.match(src, /y < 1900 \|\| y > 2100/);
+  const { normalizeDob } = await import("../lib/dob.ts");
+  assert.equal(normalizeDob("1990-05-21"), "1990-05-21");
+  assert.equal(normalizeDob("2026-02-31"), "");
+  assert.equal(normalizeDob("not-a-date"), "");
+});
+
+test("online booking accepts only adults aged 18 or older", async () => {
+  const { isAdultDob } = await import("../lib/dob.ts");
+  assert.equal(isAdultDob("2008-08-01", 18, "2026-08-01"), true);
+  assert.equal(isAdultDob("2008-08-02", 18, "2026-08-01"), false);
 });
 
 // Публічний запис (обидві форми) збирає й зберігає дату народження.
 test("site-booking stores date_of_birth and requires it", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /normalizeDob\(body\.dob\)/);
+  assert.match(route, /isAdultDob\(dob\)/);
   assert.match(route, /Вкажіть коректну дату народження/);
+  assert.match(route, /від 18 років/);
   assert.match(route, /date_of_birth/);
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('patientDob'\)/);
   assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
   assert.match(bridge, /name, phone, dob,/); // dob потрапляє у payload
-  for (const page of ["public/site/price.html", "public/site/military.html"]) {
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
-    assert.match(html, /type="date"/, `${page} has a date input`);
+    assert.match(html, /id="(?:military)?[Pp]atientDob"[^>]*type="date"|id="patientDob"[^>]*type="date"/, `${page} has a date input`);
+    assert.doesNotMatch(html, /max="2100-12-31"/, `${page} does not allow a future DOB`);
+  }
+});
+
+test("public request is short and leaves scheduling to the registrar", async () => {
+  const route = await read("app/api/site-booking/route.ts");
+  assert.match(route, /desiredDate && !isBookableDate/);
+  assert.match(route, /прізвище, ім’я та по батькові повністю/i);
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+    const html = await read(page);
+    assert.match(html, /Прізвище, ім’я та по батькові/);
+    assert.match(html, /Завантаження документів через сайт не виконується/);
+    assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час|<label for="(?:military)?[Rr]eferral">/);
+    assert.doesNotMatch(html, /type="file"/);
   }
 });
 
@@ -62,5 +85,7 @@ test("patient cabinet logs in by phone and date of birth", async () => {
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /id="gateDob"/);
   assert.match(cabinet, /dob: dobValue/);
+  assert.match(cabinet, /radiologyos_patient_prefill_v1/);
+  assert.match(cabinet, /sessionStorage\.getItem/);
   assert.doesNotMatch(cabinet, /id="gateCode"/);
 });

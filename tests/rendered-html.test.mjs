@@ -67,6 +67,15 @@ test("the worker serves the established teal storefront at /", async () => {
   assert.match(html, /v22-landing/);
 });
 
+test("the worker serves the same public storefront at /site/", async () => {
+  const marker = "<main>site-path-landing</main>";
+  for (const path of ["/site", "/site/", "/site/index.html"]) {
+    const response = await renderWithAssets(path, { "/site/index.html": marker });
+    assert.equal(response.status, 200, `${path} should open the storefront`);
+    assert.match(await response.text(), /site-path-landing/);
+  }
+});
+
 test("renders development preview metadata", async () => {
   const response = await renderHome();
 

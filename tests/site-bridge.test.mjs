@@ -117,12 +117,14 @@ test("the payment QR renders on the site and in the cabinet; button only for rea
   assert.match(cabinet, /awaitingPayment && isPayUrl\(payLink\)/); // link button gated on http(s)
 });
 
-test("the slot picker uses the real department schedule", async () => {
-  const slots = await read("public/site/assets/slots.js");
-  assert.match(slots, /\/api\/availability\?date=/);
-  assert.match(slots, /serviceCode=/);
-  const cart = await read("public/site/assets/cart.js");
-  assert.match(cart, /serviceCode:\s*code/); // cart drives the picker by service code
+test("the public request does not force patients to choose a slot", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /const desiredDate = ''/);
+  assert.match(bridge, /const desiredTime = ''/);
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+    const html = await read(page);
+    assert.doesNotMatch(html, /id="(?:mil)?[Ss]lotPicker"/);
+  }
 });
 
 test("the military free-booking form saves to D1 as category 'military'", async () => {
@@ -132,5 +134,5 @@ test("the military free-booking form saves to D1 as category 'military'", async 
   assert.match(bridge, /referralType:\s*'military_referral'/);
   const military = await read("public/site/military.html");
   assert.match(military, /assets\/d1-bridge\.js/); // bridge loaded on the military page
-  assert.match(military, /serviceCode:\s*String\(militaryCart\[0\]\.code\)/); // picker fixed to new signature
+  assert.doesNotMatch(military, /id="milSlotPicker"/);
 });

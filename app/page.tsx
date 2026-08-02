@@ -25,7 +25,7 @@ const defaultRooms: RoomCard[] = [
     number: "01",
     title: "Кабінет комп’ютерної томографії",
     floor: "1 поверх",
-    equipment: "Siemens SOMATOM go.Up",
+    equipment: "Siemens SOMATOM",
     text: "КТ без контрастування, з контрастуванням та КТ-ангіографія за медичними показаннями.",
   },
   {

@@ -14,8 +14,13 @@ export async function GET(request: Request) {
   if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (member.role !== "admin") return Response.json({ error: "Графік налаштовує лише адміністратор" }, { status: 403 });
 
-  const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-  return Response.json({ schedule, staff: member }, { headers: { "cache-control": "no-store" } });
+  const [schedule, people] = await Promise.all([
+    getSetting(db, SCHEDULE_KEY).then(parseSchedule),
+    db.prepare(`SELECT email, display_name AS displayName, role, position_title AS positionTitle,
+      military_rank AS militaryRank FROM staff_members
+      WHERE active = 1 ORDER BY position_title, display_name`).all(),
+  ]);
+  return Response.json({ schedule, staff: member, people: people.results }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {

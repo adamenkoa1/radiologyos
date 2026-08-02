@@ -16,7 +16,7 @@ export interface BookingNotice {
 export function bookingMessage(notice: BookingNotice): string {
   const when = notice.desiredDate
     ? `${notice.desiredDate}${notice.desiredTime ? ` о ${notice.desiredTime}` : ""}`
-    : "не вказано";
+    : "реєстратура погоджує з пацієнтом";
   const lines = [
     "🆕 <b>Нова заявка</b>",
     `📅 Бажаний час: ${escapeHtml(when)}`,

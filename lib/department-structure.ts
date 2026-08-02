@@ -76,7 +76,7 @@ export const DEPARTMENT_STRUCTURE_DEFAULTS: DepartmentStructure = {
   },
   rooms: [
     { id: "ct", name: "Кабінет комп'ютерної томографії", devices: [
-      { name: "Комп'ютерний томограф Siemens SOMATOM go.Up", kind: "КТ", details: "В експлуатації з 2021 року" },
+      { name: "Комп'ютерний томограф Siemens SOMATOM", kind: "КТ", details: "Модифікацію уточнити за технічним паспортом · в експлуатації з 2021 року" },
     ] },
     { id: "xray", name: "Рентгенологічний кабінет №1", devices: [
       { name: "Рентгенівський діагностичний апарат Sireskop-CX", kind: "Рентген", details: "В експлуатації з 1998 року" },

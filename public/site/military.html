@@ -97,6 +97,7 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
 
 .service-title{font-weight:700;color:#0e161c}
 .service-help{margin-top:4px;color:#5c6c78;font-size:13px;line-height:1.35;max-width:760px}
+.service-guide{margin-top:8px;max-width:780px;border:1px solid #c9e4e7;border-radius:12px;background:#f3fafb;overflow:hidden}.service-guide summary{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 12px;color:var(--brand-dark);font-size:13px;font-weight:750;cursor:pointer;list-style:none}.service-guide summary::-webkit-details-marker{display:none}.service-guide summary::after{content:"+";font-size:19px;line-height:1}.service-guide[open] summary::after{content:"−"}.service-guide-body{padding:0 12px 12px;color:#405d65;font-size:13px;line-height:1.5}.service-guide-body p{margin:8px 0}.service-guide-body strong{color:#163941}
 @media(max-width:700px){.service-help{font-size:12px}}
 
 .military-notice{padding:28px 0 0}
@@ -361,11 +362,11 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
 <div id="militaryCartItems"></div>
 <form class="request-form" id="militaryRequestForm" novalidate>
       <div class="form-step">
-        <div class="step-title"><span class="step-num">1</span>Контактні дані</div>
+        <div class="step-title"><span class="step-num">1</span>Ваші дані</div>
         <div class="field">
-          <label for="militaryPatientName">Ім’я та прізвище <span class="req">*</span></label>
-          <input autocomplete="name" id="militaryPatientName" required placeholder="Іван Іваненко"/>
-          <span class="field-error">Вкажіть ім’я та прізвище</span>
+          <label for="militaryPatientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
+          <input autocomplete="name" id="militaryPatientName" required placeholder="Іваненко Іван Іванович"/>
+          <span class="field-error">Вкажіть прізвище, ім’я та по батькові повністю</span>
         </div>
         <div class="field">
           <label for="militaryPatientPhone">Номер телефону <span class="req">*</span></label>
@@ -377,54 +378,23 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
         </div>
         <div class="field">
           <label for="militaryPatientDob">Дата народження <span class="req">*</span></label>
-          <input id="militaryPatientDob" type="date" max="2100-12-31" min="1920-01-01" required autocomplete="bday"/>
-          <span class="field-error">Вкажіть дату народження</span>
+          <input id="militaryPatientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
+          <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>
         </div>
       </div>
       <div class="form-step">
-        <div class="step-title"><span class="step-num">2</span>Деталі візиту</div>
-        <div class="slot-picker" id="milSlotPicker"><div class="sp-loading">Оберіть послугу — і тут з’явиться вільний час</div></div>
-        <div class="field-row">
-          <div class="field">
-            <label for="militaryDesiredDate">Або вкажіть дату вручну</label>
-            <input id="militaryDesiredDate" type="date"/>
-          </div>
-          <div class="field">
-            <label for="militaryDesiredTime">Зручний час</label>
-            <select id="militaryDesiredTime">
-              <option value="">Будь-який</option>
-              <option>Ранок (8:00–12:00)</option>
-              <option>День (12:00–17:00)</option>
-            </select>
-          </div>
-        </div>
-        <div class="field">
-          <label for="militaryReferral">Направлення</label>
-          <select id="militaryReferral">
-            <option>Є направлення</option>
-            <option>Направлення ще немає</option>
-            <option>Потрібна консультація</option>
-          </select>
-        </div>
-        <div class="field">
-          <label>Попередні медичні документи</label>
-          <div class="upload-box">
-            <div class="upload-help">Завантаження документів на сайті не виконується. Візьміть попередні висновки та зображення із собою або передайте їх реєстратурі узгодженим захищеним способом.</div>
-          </div>
-        </div>
+        <div class="step-title"><span class="step-num">2</span>Надіслати заявку</div>
+        <p class="cart-note"><strong>Візьміть із собою направлення та попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
         <div class="field">
           <label for="militaryComment">Коментар <span class="opt">(необов’язково)</span></label>
-          <textarea id="militaryComment" placeholder="Підрозділ, зручний час або інша інформація"></textarea>
+          <textarea id="militaryComment" placeholder="Додаткова інформація для реєстратури"></textarea>
         </div>
-      </div>
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">3</span>Підтвердження</div>
         <label class="consent">
           <input id="militaryConsent" required type="checkbox"/>
           <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження та ознайомився(-лася) з <a href="/privacy" rel="noopener" target="_blank">політикою конфіденційності</a>.</span>
         </label>
         <span class="field-error consent-error">Потрібна згода на обробку даних</span>
-        <p class="cart-note">Після надсилання ви отримаєте індивідуальний код заявки. Збережіть його для звернення до реєстратури. Для входу до кабінету пацієнта використовуйте номер телефону та дату народження.</p>
+        <p class="cart-note">Після надсилання реєстратура зателефонує для погодження дати й часу.</p>
         <button class="btn send-request" type="submit">Сформувати заявку</button>
       </div>
     </form>
@@ -433,7 +403,7 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
       <div class="success-icon" aria-hidden="true">✓</div>
       <h3>Заявку прийнято</h3>
       <div class="success-summary" id="milSuccessSummary"></div>
-      <p>Реєстратура опрацює заявку та зателефонує вам для підтвердження дати й часу. Стежити за статусом можна в кабінеті пацієнта за повним номером телефону та кодом заявки.</p>
+      <p>Реєстратура зателефонує вам для погодження дати й часу. Телефон і дата народження вже підставлені в особистому кабінеті.</p>
       <a class="btn send-request" href="/site/cabinet.html" style="margin-bottom:8px">Особистий кабінет</a>
       <button class="btn send-request" type="button" onclick="closeMilitaryCart()" style="background:#eef2f5;color:#0e454c">Готово</button>
     </div>
@@ -526,20 +496,6 @@ function openMilitaryCart() {
     if (milList) milList.style.display = '';
   }
 
-  /* вибір вільного часу для апарата обраних досліджень */
-  if (typeof initSlotPicker === 'function' && militaryCart.length) {
-    window.milPickedSlot = { date: '', time: '' };
-    initSlotPicker({
-      container: document.getElementById('milSlotPicker'),
-      serviceCode: String(militaryCart[0].code),
-      onPick: sl => {
-        window.milPickedSlot = sl;
-        const dd = document.getElementById('militaryDesiredDate');
-        if (dd && sl.date) dd.value = sl.date;
-      }
-    });
-  }
-
   renderMilitaryCart();
 }
 
@@ -559,6 +515,34 @@ document.addEventListener('keydown', event => {
   if (event.key === 'Escape') closeMilitaryCart();
 });
 
+function addBariumGuides() {
+  const guides = {
+    '301': {
+      label: 'Для чого, як підготуватися і як проходить',
+      help: 'Дослідження верхніх відділів травного тракту з прийманням барієвої суспензії.',
+      html: '<p><strong>Для чого:</strong> для оцінювання стравоходу, шлунка та дванадцятипалої кишки, зокрема при підозрі на грижу стравохідного отвору діафрагми або виразкові зміни. При виразці шлунка чи дванадцятипалої кишки через 1 годину може виконуватися контрольний знімок для оцінки евакуації контрасту зі шлунка та дванадцятипалої кишки.</p><p><strong>Підготовка:</strong> дослідження проводиться натще — щонайменше за 6 годин не їжте, не пийте та не жуйте гумку. Ліки, цукровий діабет і можливу вагітність обов’язково обговоріть під час запису. Наявність барію сульфату та порядок його надання підтвердить відділення.</p><p><strong>Як проходить:</strong> пацієнт випиває барієву суспензію, а лікар-рентгенолог спостерігає за її проходженням у режимі рентгеноскопії та, за показаннями, у різних положеннях тіла.</p>'
+    },
+    '302': {
+      label: 'Підготовка та графік контрольних знімків',
+      help: 'Погодинне дослідження для оцінки проходження барію тонкою кишкою.',
+      html: '<p><strong>Для чого:</strong> для оцінювання проходження барієвої суміші тонкою кишкою та можливих порушень пасажу.</p><p><strong>Підготовка:</strong> дослідження проводиться натще — щонайменше за 6 годин не їжте, не пийте та не жуйте гумку. Наявність барію й точні інструкції підтвердить відділення під час запису.</p><p><strong>Як проходить:</strong> після приймання барієвої суспензії контрольні знімки зазвичай виконують через 1 і 2 години, а далі — приблизно кожні 3 години за вказівкою лікаря-рентгенолога. Дослідження може тривати до 24 годин, тому необхідно підходити на повторні знімки у визначений час.</p>'
+    }
+  };
+  document.querySelectorAll('.price-group tbody tr').forEach(row => {
+    const code = row.querySelector('.code')?.textContent?.trim();
+    const guide = guides[code];
+    const cell = row.querySelector('td:nth-child(2)');
+    if (!guide || !cell || cell.querySelector('.service-guide')) return;
+    const help = cell.querySelector('.service-help');
+    if (help) help.textContent = guide.help;
+    const details = document.createElement('details');
+    details.className = 'service-guide';
+    details.innerHTML = '<summary>' + guide.label + '</summary><div class="service-guide-body">' + guide.html + '</div>';
+    cell.appendChild(details);
+  });
+}
+
+addBariumGuides();
 renderMilitaryCart();
 </script><script src="/site/assets/department.js"></script>
 <script>
@@ -575,10 +559,5 @@ renderMilitaryCart();
   }catch(e){}
 })();
 </script>
-<script src="/site/assets/slots.js"></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
-<script>
-const _mdd=document.getElementById('militaryDesiredDate');
-if(_mdd)_mdd.min=new Date().toISOString().slice(0,10);
-</script>
 </body></html>

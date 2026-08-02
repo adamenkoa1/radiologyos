@@ -125,7 +125,7 @@ header{padding:0 14px;margin-bottom:18px}
     </div>
     <div class="code-wrap">
       <label for="gateDob">Дата народження</label>
-      <input id="gateDob" type="date" max="2100-12-31" min="1920-01-01" aria-label="Дата народження" autocomplete="bday"/>
+      <input id="gateDob" type="date" min="1900-01-01" aria-label="Дата народження" autocomplete="bday"/>
     </div>
     <span class="gate-error" id="gateError"></span>
     <button class="btn" id="gateBtn" type="button">Переглянути заявки</button>
@@ -155,6 +155,7 @@ header{padding:0 14px;margin-bottom:18px}
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
+const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
 const statusMeta = {
   new:               { badge: 'new',       label: 'Нова',              step: 'new' },
@@ -191,6 +192,23 @@ const errorBox = document.getElementById('gateError');
 let phoneDigits = '';
 let dobValue = '';
 let payLink = '';
+
+function adultDobLimit() {
+  const today = new Date();
+  const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
+}
+
+document.getElementById('gateDob').max = adultDobLimit();
+try {
+  const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || 'null');
+  if (saved && /^\d{9}$/.test(String(saved.phone || ''))) {
+    document.getElementById('gatePhone').value = saved.phone;
+  }
+  if (saved && /^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob || ''))) {
+    document.getElementById('gateDob').value = saved.dob;
+  }
+} catch (e) { /* залишаємо поля порожніми */ }
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
 
@@ -326,6 +344,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   cabinet.hidden = true; gate.hidden = false;
   document.getElementById('gatePhone').value = '';
   document.getElementById('gateDob').value = '';
+  try { sessionStorage.removeItem(PATIENT_PREFILL_KEY); } catch (e) {}
 });
 </script>
 </body>

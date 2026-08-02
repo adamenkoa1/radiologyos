@@ -5,12 +5,43 @@
    лишаємо від v22 — додаємо лише реальний код заявки. */
 (function () {
   const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
-  const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-  const REFERRAL_MAP = {
-    'Є направлення': 'paper_referral',
-    'Направлення ще немає': 'none',
-    'Потрібна консультація': 'other',
-  };
+  const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
+
+  function adultDobLimit() {
+    const today = new Date();
+    const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+    const y = limit.getFullYear();
+    const m = String(limit.getMonth() + 1).padStart(2, '0');
+    const d = String(limit.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+
+  function prepareIdentityFields(nameId, dobId) {
+    const nameInput = document.getElementById(nameId);
+    const dobInput = document.getElementById(dobId);
+    if (dobInput) dobInput.max = adultDobLimit();
+    if (nameInput) {
+      const validate = () => nameInput.setCustomValidity(
+        nameInput.value.trim().split(/\s+/).filter(Boolean).length >= 3
+          ? ''
+          : 'Вкажіть прізвище, ім’я та по батькові повністю'
+      );
+      nameInput.addEventListener('input', validate);
+      validate();
+    }
+  }
+
+  function rememberPatient(phone, dob) {
+    try {
+      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify({
+        phone: String(phone).replace(/\D/g, '').slice(-9),
+        dob: String(dob || ''),
+      }));
+    } catch (e) { /* приватний режим може блокувати storage */ }
+  }
+
+  prepareIdentityFields('patientName', 'patientDob');
+  prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
   function codesLine(codes) {
     if (!codes.length) return '';
@@ -61,6 +92,8 @@
       event.stopImmediatePropagation();
       const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
       if (!items.length) { alert('Спочатку додайте послугу до заявки.'); return; }
+      const nameInput = document.getElementById('patientName');
+      if (nameInput) nameInput.dispatchEvent(new Event('input'));
       if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       // Category comes from the form selector when present (home page), else the page.
@@ -72,13 +105,10 @@
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('patientDob') || {}).value || '';
-      const picked = (typeof pickedSlot !== 'undefined') ? pickedSlot : { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('desiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('desiredTime').value || '';
-      const referralType = category === 'military'
-        ? 'military_referral'
-        : (REFERRAL_MAP[document.getElementById('referral').value] || 'other');
-      const comment = document.getElementById('comment').value.trim();
+      const desiredDate = '';
+      const desiredTime = '';
+      const referralType = category === 'military' ? 'military_referral' : 'other';
+      const comment = (document.getElementById('comment') || {}).value?.trim() || '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
       const submitBtn = civilForm.querySelector('.send-request');
@@ -94,10 +124,10 @@
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
+        rememberPatient(phone, dob);
         if (typeof showSuccess === 'function') {
           showSuccess(
             `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
             `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes)
           );
         }
@@ -117,17 +147,17 @@
       event.stopImmediatePropagation();
       const items = (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart)) ? militaryCart : [];
       if (!items.length) { alert('Оберіть хоча б одне дослідження.'); return; }
+      const nameInput = document.getElementById('militaryPatientName');
+      if (nameInput) nameInput.dispatchEvent(new Event('input'));
       if (!milForm.checkValidity()) { milForm.classList.add('was-validated'); const bad = milForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       const name = document.getElementById('militaryPatientName').value.trim();
       const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
-      const picked = window.milPickedSlot || { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('militaryDesiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('militaryDesiredTime').value || '';
-      const refText = (document.getElementById('militaryReferral') || {}).value || '';
       const commentRaw = (document.getElementById('militaryComment') || {}).value || '';
-      const comment = [refText, commentRaw.trim()].filter(Boolean).join('. ');
+      const comment = commentRaw.trim();
+      const desiredDate = '';
+      const desiredTime = '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
       const submitBtn = milForm.querySelector('.send-request');
@@ -144,11 +174,11 @@
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
+        rememberPatient(phone, dob);
         const summary = document.getElementById('milSuccessSummary');
         if (summary) {
           summary.innerHTML =
             `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
             `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes);
         }
         milForm.hidden = true;

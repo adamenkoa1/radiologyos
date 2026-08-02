@@ -29,7 +29,8 @@ type EquipmentBlock = {
   id:number; equipmentId:string; blockedDate:string; startTime:string; endTime:string; reason:string;
 };
 type StaffMember = {
-  email:string; phone:string; displayName:string; role:StaffRole; active:number; createdAt:string;
+  email:string; phone:string; displayName:string; lastName:string; firstName:string; patronymic:string;
+  contactEmail:string; militaryRank:string; positionTitle:string; role:StaffRole; active:number; createdAt:string;
 };
 
 const labels: Record<string,string> = {
@@ -40,6 +41,10 @@ const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
 };
+const FIRST_NAMES = ["Іван","Олександр","Андрій","Дмитро","Микола","Сергій","Володимир","Олена","Наталія","Тетяна","Ірина","Марина"];
+const PATRONYMICS = ["Іванович","Олександрович","Андрійович","Дмитрович","Миколайович","Сергійович","Володимирович","Іванівна","Олександрівна","Андріївна","Миколаївна","Сергіївна"];
+const POSITION_OPTIONS = ["Начальник відділення","Лікар-рентгенолог","Рентгенолаборант","Черговий рентгенолаборант","Медична сестра","Санітарка","Реєстратор","Адміністратор"];
+const RANK_OPTIONS = ["Цивільний персонал","Солдат","Старший солдат","Молодший сержант","Сержант","Старший сержант","Головний сержант","Штаб-сержант","Молодший лейтенант","Лейтенант","Старший лейтенант","Капітан","Майор","Підполковник","Полковник"];
 const categoryLabels: Record<string,string> = { civilian:"Цивільний маршрут", military:"Військовий маршрут" };
 const referralLabels: Record<string,string> = {
   eh_referral:"е-Направлення", military_referral:"Направлення військової частини",
@@ -326,7 +331,12 @@ export default function StaffPage() {
       method:"POST", headers:{"content-type":"application/json"},
       body:JSON.stringify({
         phone:String(data.get("phone")),
-        displayName:String(data.get("displayName")),
+        lastName:String(data.get("lastName")),
+        firstName:String(data.get("firstName")),
+        patronymic:String(data.get("patronymic")),
+        contactEmail:String(data.get("contactEmail")),
+        militaryRank:String(data.get("militaryRank")),
+        positionTitle:String(data.get("positionTitle")),
         role:String(data.get("role")),
         active:String(data.get("active")) !== "false",
         password:String(data.get("password") || ""),
@@ -419,26 +429,46 @@ export default function StaffPage() {
         <div>
           <p className="eyebrow">Доступ персоналу</p>
           <h2>Працівники та ролі</h2>
-          <p>Додавайте реєстраторів, лікарів і лаборантів без зміни програмного коду.</p>
+          <p>Створіть картку працівника. Повне ім’я складається автоматично з окремих полів і далі доступне у графіку кабінетів.</p>
         </div>
-        <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-          <label><span>Номер телефону</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/><span className="fieldHint">Без +38, напр.: 0972808899</span></label>
-          <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
-          <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-          <label><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
-          <input name="active" type="hidden" value="true"/>
-          <button type="submit">Додати працівника</button>
-        </form>
+        <details className="staffCreate">
+          <summary><span>＋</span> Додати працівника</summary>
+          <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
+            <p className="staffFormGroup">ПІБ</p>
+            <label className="nameField"><span>Прізвище</span><input name="lastName" required maxLength={60} placeholder="Іваненко"/></label>
+            <label className="nameField"><span>Ім’я</span><input name="firstName" required maxLength={60} list="first-name-options" placeholder="Почніть вводити: Іва…"/></label>
+            <label className="nameField"><span>По батькові</span><input name="patronymic" maxLength={60} list="patronymic-options" placeholder="Іванович"/></label>
+            <p className="staffFormGroup">Посада</p>
+            <label className="halfField"><span>Посада</span><select name="positionTitle" required defaultValue="Рентгенолаборант">{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="halfField"><span>Військове звання</span><select name="militaryRank" defaultValue="Цивільний персонал">{RANK_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <p className="staffFormGroup">Контакти та доступ</p>
+            <label className="halfField"><span>Мобільний телефон</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/></label>
+            <label className="halfField"><span>E-mail</span><input name="contactEmail" type="email" maxLength={254} placeholder="name@hospital.ua"/></label>
+            <label className="halfField"><span>Роль доступу</span><select name="role" defaultValue="radiographer">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="halfField"><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
+            <input name="active" type="hidden" value="true"/>
+            <button type="submit">Додати працівника</button>
+          </form>
+        </details>
+        <datalist id="first-name-options">{FIRST_NAMES.map(value=><option key={value} value={value}/>)}</datalist>
+        <datalist id="patronymic-options">{PATRONYMICS.map(value=><option key={value} value={value}/>)}</datalist>
         <div className="staffMemberList">
-          {members.map(member=><form key={member.email} onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-            <input name="phone" type="hidden" value={member.phone}/>
-            <label><span>Телефон</span><b>{member.phone || member.email}</b></label>
-            <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
-            <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          {members.map(member=><details className="staffMemberCard" key={member.email}>
+            <summary><span><b>{member.displayName || member.phone}</b><small>{member.positionTitle || roleLabels[member.role]}{member.militaryRank ? ` · ${member.militaryRank}` : ""}</small></span><em className={member.active ? "active" : "inactive"}>{member.active ? "Активний" : "Вимкнений"}</em></summary>
+            <form onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
+            <label><span>Прізвище</span><input name="lastName" required defaultValue={member.lastName || member.displayName.split(" ")[0] || ""} maxLength={60}/></label>
+            <label><span>Ім’я</span><input name="firstName" required list="first-name-options" defaultValue={member.firstName || member.displayName.split(" ")[1] || ""} maxLength={60}/></label>
+            <label><span>По батькові</span><input name="patronymic" list="patronymic-options" defaultValue={member.patronymic || member.displayName.split(" ").slice(2).join(" ")} maxLength={60}/></label>
+            <label><span>Телефон</span><input name="phone" type="tel" required defaultValue={member.phone}/></label>
+            <label><span>E-mail</span><input name="contactEmail" type="email" defaultValue={member.contactEmail} maxLength={254}/></label>
+            <label><span>Військове звання</span><select name="militaryRank" defaultValue={member.militaryRank || "Цивільний персонал"}>{RANK_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label><span>Посада</span><select name="positionTitle" required defaultValue={member.positionTitle || roleLabels[member.role]}>{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label><span>Роль доступу</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>
             <label><span>Новий PIN-код</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр (порожньо — без змін)"/></label>
-            <button type="submit">Зберегти</button>
-          </form>)}
+              <button type="submit">Зберегти зміни</button>
+            </form>
+          </details>)}
         </div>
       </section>}
 
