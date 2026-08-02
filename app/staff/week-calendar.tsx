@@ -135,7 +135,7 @@ export default function WeekCalendar({
           <button type="button" className={view === "day" ? "active" : ""} onClick={() => setView("day")}>День</button>
           <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Список</button>
         </div>
-        <a className="apptNewBtn" href="/staff/book">+ Нова запис</a>
+        <a className="apptNewBtn" href="/staff/book">+ Записати пацієнта</a>
       </div>
       <div className="apptStatusRow">
         {TABS.map(t => (

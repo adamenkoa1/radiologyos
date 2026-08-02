@@ -91,10 +91,11 @@ export default function StaffBookPage() {
   const body = forbidden
     ? <p className="notice error" role="alert">Створювати записи може реєстратор або адміністратор.</p>
     : <form className="settingsCard" onSubmit={submit}>
-        {code && <p className="notice success" role="status">Запис створено. Код: <b>{code}</b>. <a className="textLink" href="/staff/appointments">До календаря →</a></p>}
+        {code && <p className="notice success" role="status">Пацієнта записано, час підтверджено. <a className="textLink" href="/staff/appointments">Переглянути в календарі →</a></p>}
+        <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
         <section className="settingsBlock">
-          <h3>Пацієнт</h3>
-          <label className="settingsField"><span>Імʼя та прізвище *</span><input name="name" required maxLength={120} placeholder="Іван Іваненко" /></label>
+          <h3>Дані пацієнта</h3>
+          <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><input name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" /></label>
           <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" /></label>
           <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" /></label>
           <label className="settingsField"><span>Категорія</span>
@@ -157,7 +158,7 @@ export default function StaffBookPage() {
       </form>;
 
   return (
-    <StaffWorkspaceShell active="appointments" title="Нова запис" description="Створення запису вручну: пацієнт, послуга, час, лікар." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="appointments" title="Записати пацієнта" description="Оформлення запису працівником від імені пацієнта." staffName={staff?.displayName} staffRole={staff?.role}>
       {body}
     </StaffWorkspaceShell>
   );

@@ -24,7 +24,7 @@ function clean(value: unknown, max: number) {
 
 const REFERRAL_TYPES = ["military_referral", "eh_referral", "paper_referral", "none", "other"];
 
-// Ручне створення запису персоналом («Нова запис»). Реєстратор/адмін.
+// Ручне створення запису персоналом від імені пацієнта. Реєстратор/медсестра або адмін.
 // Запис одразу підтверджений (status='confirmed'), тож займає слот на апараті.
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canManageBookings(member.role)) {
-    return Response.json({ error: "Створювати записи може реєстратор або адміністратор" }, { status: 403 });
+    return Response.json({ error: "Створювати записи може реєстратор, медсестра з правами реєстратора або адміністратор" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
@@ -99,8 +99,8 @@ export async function POST(request: Request) {
   const bookingId = result.meta.last_row_id;
   if (bookingId) {
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created', ?, ?)"
-    ).bind(bookingId, `${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created_by_staff', ?, ?)"
+    ).bind(bookingId, `Запис від імені пацієнта: ${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
   }
   return Response.json({ ok: true, code }, { status: 201 });
 }
