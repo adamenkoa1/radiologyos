@@ -4,12 +4,17 @@
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <meta name="codex-preview" content="development"/>
-<title>RadiologyOS — Відділення променевої діагностики</title>
-<meta name="description" content="Відділення променевої діагностики Чернігівського військового госпіталю: КТ, рентгенографія, флюорографія. Безоплатні дослідження для військовослужбовців, онлайн-заявка для цивільних пацієнтів. м. Чернігів, вул. Полуботка, 40."/>
-<meta property="og:title" content="RadiologyOS — Відділення променевої діагностики"/>
-<meta property="og:description" content="КТ, рентгенографія, флюорографія у Чернігові. Запис онлайн."/>
+<title>КТ, рентген і флюорографія у Чернігові | RadiologyOS</title>
+<meta name="description" content="КТ у Чернігові, КТ з контрастуванням, цифровий рентген і флюорографія у відділенні променевої діагностики. Безоплатно військовослужбовцям за направленням; цивільним — платно за попереднім записом."/>
+<meta property="og:title" content="КТ, рентген і флюорографія у Чернігові | RadiologyOS"/>
+<meta property="og:description" content="Відділення променевої діагностики у Чернігові: КТ, цифровий рентген, флюорографія та онлайн-запис."/>
+<meta property="og:url" content="https://radiologyos.tech/"/>
+<link rel="canonical" href="https://radiologyos.tech/"/>
 <meta name="theme-color" content="#0c7a85"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230e161c'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%2325b4c0'/%3E%3C/svg%3E"/>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"MedicalClinic","@id":"https://radiologyos.tech/#clinic","name":"Відділення променевої діагностики Чернігівського військового госпіталю","url":"https://radiologyos.tech/","telephone":"+380972808899","description":"КТ, КТ з контрастуванням, цифрова рентгенографія та флюорографія у Чернігові.","medicalSpecialty":"Radiologic","address":{"@type":"PostalAddress","streetAddress":"вул. Гетьмана Полуботка, 40","addressLocality":"Чернігів","postalCode":"14013","addressCountry":"UA"},"areaServed":{"@type":"City","name":"Чернігів"},"openingHoursSpecification":[{"@type":"OpeningHoursSpecification","dayOfWeek":["Monday","Tuesday","Wednesday","Thursday","Friday"],"opens":"08:30","closes":"17:30"}]}
+</script>
 <style>
 /* ===== Токени ===== */
 :root{--brand:#0c7a85;--brand-dark:#0e6b74;
@@ -52,6 +57,7 @@ header{position:sticky;top:10px;z-index:50;padding:0 14px}
 .experience-stat span{display:block;margin-top:6px;color:#536974;font-size:11px;line-height:1.3}
 .experience-audience{margin:14px 0 0;color:#314750;font-size:13px;line-height:1.5}
 .experience-audience b{color:var(--brand)}
+.experience-fold{padding:0;overflow:hidden}.experience-fold>summary{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:20px 24px;cursor:pointer;list-style:none}.experience-fold>summary::-webkit-details-marker{display:none}.experience-fold>summary::after{content:"+";display:grid;place-items:center;width:36px;height:36px;flex:0 0 36px;border-radius:50%;background:#e4f2f3;color:var(--brand-dark);font-size:24px;line-height:1}.experience-fold[open]>summary::after{content:"−"}.experience-fold>summary:hover{background:#f7fbfc}.experience-fold>summary:focus-visible{outline:3px solid var(--gold);outline-offset:-3px}.experience-summary-title{display:block;max-width:900px;margin:5px 0 0;font-size:clamp(21px,2.55vw,25px);line-height:1.16;letter-spacing:-.015em;color:#12303a}.experience-body{padding:0 24px 20px}.experience-seo{max-width:880px;margin:9px 0 0;color:#415964;font-size:13px;line-height:1.52}
 nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font-weight:800;font-size:14px}
 
 /* ===== Меню «Вхід» ===== */
@@ -101,6 +107,8 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .how-result{display:flex;gap:14px;margin-top:10px;padding:14px 17px;border:1px solid var(--line);border-radius:14px;background:#fff;color:#294850;font-size:14px;line-height:1.45}.how-result strong{flex:0 0 auto;color:var(--brand-dark)}
 .barium-card{margin-top:12px;padding:17px;border:1px solid #c9e4e7;border-radius:18px;background:#f1fafb}.barium-card h3{margin:0 0 10px;color:var(--brand-dark);font-size:18px}.barium-links{display:grid;gap:8px}.barium-links details{border:1px solid #d6e8ea;border-radius:13px;background:#fff;overflow:hidden}.barium-links summary{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;color:var(--brand-dark);font-size:14px;font-weight:800;cursor:pointer;list-style:none}.barium-links summary::-webkit-details-marker{display:none}.barium-links summary::after{content:"+";font-size:20px}.barium-links details[open] summary::after{content:"−"}.barium-detail{padding:0 14px 13px;color:#405d65;font-size:13.5px;line-height:1.5}.barium-detail p{margin:7px 0}.barium-detail strong{color:#163941}
 .how-divider{height:1px;margin:26px 0;background:var(--line)}.how-steps.civilian{grid-template-columns:repeat(4,1fr)}.how-steps.civilian .how-num{background:#d8edef;color:var(--brand-dark)}.access-notice{display:flex;gap:14px;margin-top:14px;padding:15px 17px;border:1px solid #c9e4e7;border-radius:14px;background:#f1fafb;color:#294850;font-size:14px;line-height:1.45}.access-notice strong{flex:0 0 auto;color:var(--brand-dark)}
+.fold-card.military-fold{border-color:#a9d4b8;border-top-color:#26734d;background:#eaf6ee}.military-fold>summary{background:#eaf6ee;color:#174b34}.military-fold>summary::after{background:#cfe8d8;color:#15563a}.military-fold>summary:hover{background:#e1f1e6}.military-fold .fold-body,.military-fold .how-card{background:#f4fbf6}.military-fold .how-step{border-color:#c8e1d1;background:#fff}.military-fold .how-num{background:#26734d}.military-fold .how-exception,.military-fold .barium-card{border-color:#b7d9c2;background:#e1f1e6}.military-fold .barium-links details,.military-fold .how-result{border-color:#c8e1d1}
+.fold-card.civilian-fold{border-color:#e5c75b;border-top-color:#d6a800;background:#fff8dc}.civilian-fold>summary{background:#fff8dc;color:#5d4700}.civilian-fold>summary::after{background:#f7df7d;color:#6d5000}.civilian-fold>summary:hover{background:#fff3c5}.civilian-fold .fold-body,.civilian-fold .how-card{background:#fffaf0}.civilian-fold .how-step{border-color:#ead994;background:#fff}.civilian-fold .how-steps.civilian .how-num{background:#f0cf62;color:#4b3800}.civilian-fold .access-notice{border-color:#e5cc70;background:#fff1b8;color:#4a3b0a}.civilian-fold .access-notice strong{color:#6d5000}
 @media(max-width:900px){.how-steps.civilian{grid-template-columns:1fr 1fr}.barium-grid{grid-template-columns:1fr}}@media(max-width:760px){.how-steps,.how-steps.civilian{grid-template-columns:1fr}.how-card{padding:22px 18px}.fold-card>summary{min-height:62px;padding:15px 17px}.fold-card .fold-body{padding:0 17px 18px}.how-exception,.how-result,.access-notice{display:block}.how-exception strong,.how-result strong,.access-notice strong{display:block;margin-bottom:4px}.barium-card{padding:16px}}
 .promo-civil .promo-text span{color:#5d4700}
 .promo-arrow{font-size:44px;line-height:1;font-weight:400;opacity:.85}
@@ -198,7 +206,8 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .floating-cart{right:10px;bottom:calc(10px + env(safe-area-inset-bottom));padding:10px 12px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.18)}
   .cart-drawer{padding:16px}
   .experience-card{padding:19px 17px;border-radius:18px}
-  .experience-card h2{font-size:22px;line-height:1.18}
+  .experience-card h2,.experience-summary-title{font-size:22px;line-height:1.18}
+  .experience-fold{padding:0}.experience-fold>summary{padding:18px 17px}.experience-body{padding:0 17px 18px}
   .experience-lead,.experience-volume{font-size:13px}
   .experience-stats{grid-template-columns:1fr 1fr}
   .experience-stat{padding:14px 10px;border-bottom:1px solid var(--line)}
@@ -311,10 +320,11 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 <main>
   <section class="experience" id="experience">
     <div class="wrap">
-      <div class="experience-card">
-        <div class="experience-kicker">Про відділення</div>
-        <h2>Досвід, підтверджений щоденною практикою</h2>
+      <details class="experience-card experience-fold">
+        <summary><span><span class="experience-kicker">Про відділення</span><strong class="experience-summary-title">Досвід, підтверджений щоденною практикою</strong></span></summary>
+        <div class="experience-body">
         <p class="experience-lead" id="scAbout">Екстрені дослідження для військовослужбовців проводяться цілодобово — 24/7. Планові дослідження проводяться відповідно до режиму роботи відділення: 08:30–17:30. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
+        <p class="experience-seo">У відділенні доступні КТ у Чернігові, КТ з внутрішньовенним контрастуванням, цифрова рентгенографія та флюорографія. Цивільні пацієнти можуть обрати дослідження й подати онлайн-заявку на вільний час.</p>
         <p class="experience-volume">Щороку наші фахівці виконують близько <strong id="statTotalInline">29 700 досліджень</strong> — понад <strong>80 досліджень щодня</strong>. Такий обсяг роботи підтверджує значний практичний досвід, відпрацьовані процеси та постійну готовність до проведення діагностики.</p>
         <div class="experience-stats" aria-label="Показники роботи за 2025 рік">
           <div class="experience-stat"><strong id="statTotal">29 700</strong><span>досліджень за 2025 рік</span></div>
@@ -323,7 +333,8 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           <div class="experience-stat"><strong id="statCt">2 800</strong><span>комп’ютерних томографій</span></div>
         </div>
         <p class="experience-audience">Військовослужбовцям дослідження проводяться <b>безоплатно за направленням</b>. Для цивільних пацієнтів доступна <b>платна діагностика за попереднім записом</b>.</p>
-      </div>
+        </div>
+      </details>
     </div>
   </section>
 
@@ -379,20 +390,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           </div></div>
         </details>
       </div>
-    </div>
-  </section>
-
-  <section class="tariffs-home" id="tariffs">
-    <div class="wrap">
-      <details class="fold-card tariffs-fold">
-        <summary>Тарифи: Дослідження та вартість</summary>
-        <div class="fold-body">
-          <div class="tariffs-head">
-            <p>Військовослужбовцям — <b>безоплатно</b> за направленням. Цивільним особам — за тарифом. Оберіть дослідження, натисніть «Записатися» та вкажіть категорію.</p>
-          </div>
-          <div id="homeTariffs" class="home-tariffs"><div class="ht-loading">Завантаження тарифів…</div></div>
-        </div>
-      </details>
     </div>
   </section>
 
@@ -577,6 +574,5 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 <script src="/site/assets/slots.js"></script>
 <script src="/site/assets/cart.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
-<script src="/site/assets/home-tariffs.js" defer></script>
 </body>
 </html>
