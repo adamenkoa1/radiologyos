@@ -1,11 +1,11 @@
-import { addMinutes, type Service } from "./catalog.ts";
+import { addMinutes, type Service } from "./catalog";
 import {
   candidateTimesFor,
   hoursFor,
   isDayOpen,
   isEquipmentDayOpen,
   type ScheduleConfig,
-} from "./schedule.ts";
+} from "./schedule";
 
 export type BusyBooking = {
   equipmentId: string;
