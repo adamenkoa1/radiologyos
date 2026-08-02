@@ -359,12 +359,9 @@ export default function StructurePage() {
           <h3>Кабінети й обладнання</h3>
           <div className="sfRoomEditor">{structure.rooms.map((room, roomIndex) => <article key={room.id}>
             <label className="sfField"><span>Назва кабінету</span><input value={room.name} readOnly={readOnly} onChange={event => updateRoom(roomIndex, event.target.value)} /></label>
-            {room.devices.map((device, deviceIndex) => <div className="sfDeviceRow" key={deviceIndex}>
-              <label className="sfField"><span>Обладнання</span><input value={device.name} readOnly={readOnly} onChange={event => updateDevice(roomIndex, deviceIndex, "name", event.target.value)} /></label>
-              <label className="sfField"><span>Тип</span><input value={device.kind} readOnly={readOnly} onChange={event => updateDevice(roomIndex, deviceIndex, "kind", event.target.value)} /></label>
-              <label className="sfField"><span>Примітка</span><input value={device.details ?? ""} readOnly={readOnly} onChange={event => updateDevice(roomIndex, deviceIndex, "details", event.target.value)} /></label>
-            </div>)}
           </article>)}</div>
+          <p className="settingsHint">Моделі, характеристики та стан апаратів ведуться лише в єдиному реєстрі обладнання.</p>
+          <a className="button compact" href="/staff/equipment">Відкрити реєстр обладнання</a>
         </section>
 
         <section className="sfInternalSection">
@@ -373,14 +370,9 @@ export default function StructurePage() {
             <label className="sfField"><span>Посада</span><input value={item.position} readOnly={readOnly} onChange={event => updatePersonnel(index, "position", event.target.value)} /></label>
             <label className="sfField"><span>Примітка</span><input value={item.note} readOnly={readOnly} onChange={event => updatePersonnel(index, "note", event.target.value)} /></label>
           </div>)}</div>
-          {(["outpatient", "inpatient"] as const).map(kind => <div className="sfHoursGroup" key={kind}>
-            <h4>{structure.hours[kind].title}</h4>
-            {structure.hours[kind].rows.map((row, rowIndex) => <div className="sfDeviceRow" key={rowIndex}>
-              <label className="sfField"><span>Послуга</span><input value={row.service} readOnly={readOnly} onChange={event => updateHours(kind, rowIndex, "service", event.target.value)} /></label>
-              <label className="sfField"><span>Прийом</span><input value={row.intake} readOnly={readOnly} onChange={event => updateHours(kind, rowIndex, "intake", event.target.value)} /></label>
-              <label className="sfField"><span>Видача</span><input value={row.issue ?? ""} readOnly={readOnly} onChange={event => updateHours(kind, rowIndex, "issue", event.target.value)} /></label>
-            </div>)}
-          </div>)}
+          <p className="settingsHint">Години, робочі дні, обід, винятки та персонал налаштовуються окремо для кожного кабінету.</p>
+          <a className="button compact" href="/staff/schedule">Відкрити графік кабінетів</a>
+          <a className="button compact secondary" href="/staff/services">Відкрити послуги кабінетів</a>
           <div className="sfFieldGrid compact">
             <label className="sfField"><span>Складні дослідження, %</span><input type="number" min="0" max="100" value={structure.statistics2025.complexShare} readOnly={readOnly} onChange={event => updateStats("complexShare", event.target.value)} /></label>
             <label className="sfField"><span>Обстежено учасників АТО</span><input type="number" min="0" value={structure.statistics2025.militaryExamined} readOnly={readOnly} onChange={event => updateStats("militaryExamined", event.target.value)} /></label>
