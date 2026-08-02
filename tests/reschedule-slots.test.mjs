@@ -23,7 +23,7 @@ test("staff reschedule offers real free slots from /api/availability", async () 
 test("availability endpoint filters conflicts and equipment blocks", async () => {
   const source = await readFile(new URL("../app/api/availability/route.ts", import.meta.url), "utf8");
   assert.match(source, /equipment_blocks/);
-  assert.match(source, /status IN \\('new','confirmed','rescheduled'\\)/);
+  assert.match(source, /status IN \('new','confirmed','rescheduled'\)/);
   assert.match(source, /overlaps/);
 });
 
