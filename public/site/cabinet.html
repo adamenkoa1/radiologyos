@@ -236,7 +236,8 @@ function cardHtml(b) {
   const when = b.desiredDate ? `Призначено: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
-  const paymentPurpose = `Сплата за медичні послуги: ${b.service}`;
+  const serviceWithCode = [b.serviceCode, b.service].filter(Boolean).join(' · ');
+  const paymentPurpose = `Сплата за медичні послуги${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
   return `<div class="card app-card" id="card-${esc(b.code)}">
     <div class="app-top">
       <div>
@@ -252,13 +253,13 @@ function cardHtml(b) {
         <div class="payment-instructions"><b>Як оплатити</b><ol>
           <li>Натисніть «Відкрити Privat24» — ПІБ автоматично скопіюється.</li>
           <li>У формі банку вставте ПІБ у перше поле та введіть зазначену суму.</li>
-          <li>Перевірте призначення «Сплата за медичні послуги» й підтвердьте платіж.</li>
+          <li>У призначенні зазначте код і назву послуги, потім підтвердьте платіж.</li>
         </ol></div>
         <div class="payment-details">
           <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b><button class="copy-one" type="button" data-copy-value="${esc(b.patientName || '')}">Копіювати</button></div>
-          <div class="payment-detail"><span>Послуга</span><b>${esc(b.service)}</b><i></i></div>
+          <div class="payment-detail"><span>Послуга</span><b>${esc(serviceWithCode)}</b><button class="copy-one" type="button" data-copy-value="${esc(serviceWithCode)}">Копіювати</button></div>
           <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
-          <div class="payment-detail"><span>Призначення</span><b>Сплата за медичні послуги</b><i></i></div>
+          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
         </div>
         ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
         ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Відкрити Privat24</button>` : ''}
