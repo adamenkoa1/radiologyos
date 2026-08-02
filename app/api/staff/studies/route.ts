@@ -1,6 +1,5 @@
 import { canManageBookings, type StaffRole } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
-import { getOrgProfile } from "../../../../lib/org-profile";
 import { listOrgClinicians, listOrgStudies } from "../../../../lib/tenant-repo";
 import { STUDY_STATES, STUDY_STATE_LABELS, isTerminal, nextStates, stateLabel } from "../../../../lib/study-state";
 import { dbBinding } from "../../../../lib/db";
@@ -16,10 +15,9 @@ export async function GET(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
 
   const canManage = canManageBookings(ctx.role as StaffRole);
-  const [rows, clinicians, profile] = await Promise.all([
+  const [rows, clinicians] = await Promise.all([
     listOrgStudies(db, ctx),
     canManage ? listOrgClinicians(db, ctx) : Promise.resolve([]),
-    getOrgProfile(db, ctx),
   ]);
   const nameByEmail = new Map(clinicians.map((c) => [c.email, c.displayName || c.email]));
 
@@ -43,9 +41,8 @@ export async function GET(request: Request) {
     organization: { id: ctx.organizationId, name: ctx.organizationName, slug: ctx.slug },
     role: ctx.role,
     canManage,
-    profile: { type: profile.profileType, label: profile.profileLabel },
-    // Профіль організації керує видимістю можливостей (напр. DICOM/PACS).
-    features: { dicomPacs: profile.flags.dicom_pacs },
+    // Єдиний заклад: DICOM/PACS доступний завжди (керується лише вмиканням PACS).
+    features: { dicomPacs: true },
     states: STUDY_STATES.map((v) => ({ v, l: STUDY_STATE_LABELS[v], count: counts[v] ?? 0 })),
     // Виконавці для призначення: розділені за роллю (tenant-scoped).
     radiologists: clinicians.filter((c) => c.role === "radiologist").map((c) => ({ v: c.email, l: c.displayName || c.email })),

@@ -56,8 +56,6 @@ test("sensitive actions are wired to the audit log", async () => {
   assert.match(schedule, /action: "schedule_update"/);
   const settings = await read("app/api/staff/settings/route.ts");
   assert.match(settings, /action: "settings_update"/);
-  const org = await read("app/api/staff/org-profile/route.ts");
-  assert.match(org, /action: "org_profile_update"/);
   const members = await read("app/api/staff/members/route.ts");
   assert.match(members, /action: existing \? "member_role" : "member_add"/);
 });
