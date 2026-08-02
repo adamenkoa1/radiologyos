@@ -1583,3 +1583,54 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
   .appointmentMoment{font-size:24px}
   .receptionActions{grid-template-columns:1fr}
 }
+
+
+/* Synchronized room slot board */
+.apptCal{font-size:15px}
+.apptCalBar{gap:10px}
+.apptCalBar input,.apptCalBar select,.apptCalBar button,.apptCalBar a{min-height:44px;font-size:14px}
+.apptStatusTab{min-height:42px;font-size:13px}
+.apptEvent{color:inherit;text-decoration:none;border-left:4px solid #8aa5aa}
+.apptEvent.route-military{border-left-color:#0e8589}
+.apptEvent.route-civilian{border-left-color:#2f6fae}
+.apptEvent em{display:block;margin-top:2px;font-size:9px;font-style:normal;font-weight:800;opacity:.78}
+.apptEvent.unpaid{box-shadow:inset 0 -3px #e5a12f}
+.apptSlotLine{position:absolute;left:0;right:0;border-top:1px dashed #e5ecee;pointer-events:none}
+.apptSlotLine.hour{border-top-style:solid;border-top-color:#cbd8db}
+.apptSlotLine span{display:none}
+.roomSlotBoard{display:grid;gap:14px}
+.slotLegend{display:flex;align-items:center;gap:18px;padding:10px 14px;border:1px solid #dbe5e7;border-radius:10px;background:#fff;color:#53666a;font-size:12px;font-weight:750}
+.slotLegend span{display:flex;align-items:center;gap:7px}
+.slotLegend i{width:13px;height:13px;border-radius:4px;border:1px solid}
+.slotLegend .free{background:#edf8f2;border-color:#86c5a4}
+.slotLegend .occupied{background:#dff1f3;border-color:#16858b}
+.slotLegend .blocked{background:#eef0f1;border-color:#aeb9bd}
+.roomSlotColumns{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+.roomSlotColumn{overflow:hidden;border:1px solid #d6e1e3;border-radius:14px;background:#fff;box-shadow:0 8px 24px rgba(20,55,60,.06)}
+.roomSlotColumn>header{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:15px 16px;background:#0e777d;color:#fff}
+.roomSlotColumn>header b{font-size:16px}
+.roomSlotColumn>header span{font-size:10px;opacity:.82;white-space:nowrap}
+.roomSlots{display:grid;gap:6px;padding:10px}
+.roomSlot{display:grid;grid-template-columns:58px 1fr;gap:2px 8px;align-items:center;min-height:55px;padding:8px 10px;border:1px solid;border-radius:9px;text-decoration:none}
+.roomSlot strong{grid-row:1/3;font-size:17px}
+.roomSlot span{font-size:12px;font-weight:850;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roomSlot small{font-size:10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.76}
+.roomSlot.free{background:#f1faf5;border-color:#b9dfca;color:#1a6c45}
+.roomSlot.free:hover{background:#dcf3e6;border-color:#64ad83}
+.roomSlot.occupied{background:#e5f4f5;border-color:#78bcc0;color:#0b5960}
+.roomSlot.occupied.route-civilian{background:#edf5fc;border-color:#90b8df;color:#174f83}
+.roomSlot.blocked{background:#f2f3f4;border-color:#d2d8da;color:#69777b}
+.roomClosed{margin:10px;padding:24px 12px;border-radius:9px;background:#f2f3f4;color:#6b787c;text-align:center;font-size:12px;font-weight:750}
+.apptCardTime{display:grid;gap:3px;font-size:22px}
+.apptCardTime small{font-size:10px;color:#718084}
+.apptCardRoute{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.apptOpenRecord{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 12px;border-radius:8px;background:#0e777d;color:#fff;font-size:11px;font-weight:850;text-decoration:none}
+@media(max-width:1050px){
+  .roomSlotColumns{grid-template-columns:1fr}
+  .roomSlots{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+  .roomSlots{grid-template-columns:1fr}
+  .apptCalBar{display:grid;grid-template-columns:1fr}
+  .apptViewToggle{width:100%}
+}
