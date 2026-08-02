@@ -1,11 +1,10 @@
-import { addMinutes, type Service } from "./catalog";
+import { addMinutes, type Service } from "./catalog.ts";
 import {
   candidateTimesFor,
   hoursFor,
-  isDayOpen,
   isEquipmentDayOpen,
   type ScheduleConfig,
-} from "./schedule";
+} from "./schedule.ts";
 
 export type BusyBooking = {
   equipmentId: string;
@@ -62,7 +61,7 @@ export function assignEarliestAppointments(input: {
     let selected: AutoAppointment | null = null;
     for (let offset = 0; offset <= searchDays && !selected; offset += 1) {
       const date = addDays(input.fromDate, offset);
-      if (!isDayOpen(date, input.schedule) || !isEquipmentDayOpen(date, input.schedule, service.equipmentId)) continue;
+      if (!isEquipmentDayOpen(date, input.schedule, service.equipmentId)) continue;
 
       const candidates = candidateTimesFor(hoursFor(input.schedule, service.equipmentId), service.durationMinutes);
       for (const time of candidates) {
