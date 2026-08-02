@@ -76,6 +76,10 @@ header{padding:0 14px;margin-bottom:18px}
 .actions .btn{width:auto;flex:1;min-width:150px;min-height:44px}
 .pay-row{display:flex;gap:10px;align-items:center;background:#eef7f8;border:1px solid #d9eef0;border-radius:13px;padding:12px 14px;margin-top:14px;font-size:14px;color:#0e454c}
 .pay-row strong{font-weight:800}
+.payment-details{margin-top:12px;border:1px solid #d9eef0;border-radius:13px;overflow:hidden;background:#fff}
+.payment-detail{display:grid;grid-template-columns:110px 1fr;gap:10px;padding:9px 12px;border-bottom:1px solid #edf2f4;font-size:13px}
+.payment-detail:last-child{border-bottom:0}.payment-detail span{color:var(--muted)}.payment-detail b{overflow-wrap:anywhere}
+.copy-payment{margin-top:10px}.pay-note{margin:8px 2px 0;color:var(--muted);font-size:12px;text-align:center}
 
 .protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfefe}
 .protocol.open{display:block}
@@ -230,6 +234,7 @@ function cardHtml(b) {
   const when = b.desiredDate ? `Призначено: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
+  const paymentPurpose = `Сплата за медичні послуги: ${b.service}`;
   return `<div class="card app-card" id="card-${esc(b.code)}">
     <div class="app-top">
       <div>
@@ -239,10 +244,19 @@ function cardHtml(b) {
       <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
-    ${awaitingPayment ? `<div class="pay-row">💳 <span>Очікує оплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>` : ''}
-    ${awaitingPayment && payLink ? `<div class="pay-qr" style="text-align:center;margin:4px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Наведіть камеру банку, щоб сплатити</div></div>` : ''}
+    ${awaitingPayment ? `<div class="pay-row">💳 <span>До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>
+      <div class="payment-details">
+        <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b></div>
+        <div class="payment-detail"><span>Послуга</span><b>${esc(b.service)}</b></div>
+        <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b></div>
+        <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b></div>
+      </div>
+      <button class="btn secondary copy-payment" type="button" data-copy-payment
+        data-name="${esc(b.patientName || '')}" data-service="${esc(b.service)}"
+        data-amount="${esc(money(b.paymentAmount))}" data-purpose="${esc(paymentPurpose)}">Скопіювати платіжні дані</button>` : ''}
+    ${awaitingPayment && payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
     <div class="actions">
-      ${awaitingPayment && isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити</a>` : ''}
+      ${awaitingPayment && isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити у Privat24</a>` : ''}
       ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
       ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
     </div>
@@ -267,10 +281,27 @@ async function loadBookings() {
   document.getElementById('emptyState').hidden = bookings.length > 0;
   list.innerHTML = bookings.map(cardHtml).join('');
   list.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => cancelBooking(b.dataset.cancel)));
+  list.querySelectorAll('[data-copy-payment]').forEach((button) => button.addEventListener('click', () => copyPaymentDetails(button)));
   list.querySelectorAll('[data-protocol]').forEach((b) => b.addEventListener('click', () => toggleProtocol(b.dataset.protocol, b)));
   return true;
 }
 
+async function copyPaymentDetails(button) {
+  const text = [
+    `ПІБ платника: ${button.dataset.name || ''}`,
+    `Послуга: ${button.dataset.service || ''}`,
+    `Сума: ${button.dataset.amount || ''} грн`,
+    `Призначення: ${button.dataset.purpose || ''}`,
+  ].join('\n');
+  try {
+    await navigator.clipboard.writeText(text);
+    const old = button.textContent;
+    button.textContent = 'Скопійовано ✓';
+    window.setTimeout(() => { button.textContent = old; }, 1800);
+  } catch (e) {
+    window.prompt('Скопіюйте платіжні дані', text);
+  }
+}
 async function enter(digits, dob) {
   phoneDigits = digits;
   dobValue = dob;
