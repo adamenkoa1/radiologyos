@@ -1,6 +1,6 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
 import { isBookableDate } from "../../../../lib/booking-rules";
-import { candidateTimesFor, hoursFor, isDayOpen, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
+import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
 import { getSetting } from "../../../../lib/settings";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { normalizeDob } from "../../../../lib/dob";
@@ -59,7 +59,7 @@ export async function POST(request: Request) {
   radiologist ||= schedule.equipment[service.equipmentId]?.radiologistEmail || "";
   radiographer ||= schedule.equipment[service.equipmentId]?.radiographerEmail || "";
   const validTimes = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes);
-  if (!isBookableDate(desiredDate) || !isDayOpen(desiredDate, schedule) || !validTimes.includes(desiredTime) || !isEquipmentDayOpen(desiredDate, schedule, service.equipmentId)) {
+  if (!isBookableDate(desiredDate) || !validTimes.includes(desiredTime) || !isEquipmentDayOpen(desiredDate, schedule, service.equipmentId)) {
     return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
   }
 
