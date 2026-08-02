@@ -1544,3 +1544,42 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
   .hospitalCategoryChoice{grid-template-columns:1fr}
   .hospitalFooter{grid-template-columns:1fr;padding:55px 20px;gap:35px}
 }
+
+
+/* Reception queue: visual routes, attendance and payment verification */
+.receptionStats{grid-template-columns:repeat(6,minmax(120px,1fr))}
+.receptionStats .militaryStat{border-top:4px solid #137d84;background:#eefafb}
+.receptionStats .civilianStat{border-top:4px solid #2d6db4;background:#f1f6fc}
+.receptionStats .attentionStat{border-top:4px solid #d98b18;background:#fff8e9}
+.bookingRow.appointmentRow{position:relative;overflow:hidden;border-left:6px solid #cbd5d9}
+.bookingRow.appointmentRow.route-military{border-left-color:#137d84;background:linear-gradient(90deg,#f0fbfb 0,#fff 13%)}
+.bookingRow.appointmentRow.route-civilian{border-left-color:#2d6db4;background:linear-gradient(90deg,#f2f7fd 0,#fff 13%)}
+.bookingRow.appointmentRow.payment-ok{box-shadow:inset 0 0 0 1px rgba(29,133,80,.18)}
+.bookingBadges{display:flex;gap:7px;align-items:center;flex-wrap:wrap}
+.patientRoute{display:inline-flex;align-items:center;width:max-content;padding:5px 9px;border-radius:999px;font-size:10px;font-weight:900;letter-spacing:.035em;text-transform:uppercase}
+.patientRoute.military{background:#d8f2f2;color:#075f66}
+.patientRoute.civilian{background:#dfeefa;color:#174f87}
+.appointmentMoment{display:flex;align-items:baseline;gap:9px;margin:5px 0;color:#0a5960;font-size:27px;line-height:1}
+.appointmentMoment small{font-size:12px;color:#66777a;font-weight:750}
+.paymentOverview{display:inline-flex;width:max-content;max-width:100%;margin-top:7px;padding:6px 9px;border-radius:8px;font-size:11px;font-weight:850}
+.paymentOverview.military{background:#e0f4f1;color:#08665f}
+.paymentOverview.paid{background:#e7f6eb;color:#146638}
+.paymentOverview.pending{background:#fff0d7;color:#8c5500}
+.receptionActions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}
+.receptionActions button,.paymentVerifyAction{min-height:38px;padding:7px 10px;border-radius:8px;font:inherit;font-size:11px;font-weight:850;cursor:pointer}
+.arrivedAction{border:1px solid #15845b;background:#e8f7ef;color:#0d6845}
+.noShowAction{border:1px solid #c5cbd0;background:#f5f6f7;color:#4e5960}
+.paymentVerifyAction{width:100%;margin-top:7px;border:1px solid #c8871f;background:#fff4dc;color:#7b4b00}
+.statusTag.arrived{background:#dff4e8;color:#12633c}
+.statusTag.no_show{background:#eceff1;color:#4f5a61}
+.staffTools{align-items:end}
+.staffTools>label{min-width:145px}
+@media(max-width:1200px){
+  .receptionStats{grid-template-columns:repeat(3,1fr)}
+}
+@media(max-width:760px){
+  .receptionStats{grid-template-columns:repeat(2,1fr)}
+  .bookingRow.appointmentRow{border-left-width:5px}
+  .appointmentMoment{font-size:24px}
+  .receptionActions{grid-template-columns:1fr}
+}
