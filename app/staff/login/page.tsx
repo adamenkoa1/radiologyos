@@ -5,9 +5,9 @@ import { FormEvent, useState } from "react";
 import { PasswordInput } from "../PasswordInput";
 
 function safeReturnTo(): string {
-  if (typeof window === "undefined") return "/staff";
-  const raw = new URLSearchParams(window.location.search).get("returnTo") || "/staff";
-  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/staff";
+  if (typeof window === "undefined") return "/staff/appointments";
+  const raw = new URLSearchParams(window.location.search).get("returnTo") || "/staff/appointments";
+  return raw.startsWith("/") && !raw.startsWith("//") ? raw : "/staff/appointments";
 }
 
 export default function StaffLoginPage() {
