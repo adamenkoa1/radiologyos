@@ -90,6 +90,7 @@ test("patient cabinet logs in by phone and date of birth", async () => {
   assert.match(cabinet, /sessionStorage\.getItem/);
   assert.match(cabinet, /savedAutoEnter/);
   assert.match(cabinet, /№ заявки:/);
-  assert.match(cabinet, /очікує підтвердження|Статус:/i);
+  assert.match(cabinet, /Заявку отримано/);
+  assert.match(cabinet, /statusMeta/);
   assert.doesNotMatch(cabinet, /id="gateCode"/);
 });
