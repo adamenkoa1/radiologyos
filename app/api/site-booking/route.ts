@@ -129,7 +129,7 @@ export async function POST(request: Request) {
                 desired_time AS startTime, duration_minutes AS durationMinutes
          FROM bookings
          WHERE desired_date BETWEEN ? AND ?
-           AND status IN ('confirmed','rescheduled')`
+           AND status IN ('new','confirmed','rescheduled')`
       ).bind(fromDate, throughDate).all<BusyBooking>(),
       db.prepare(
         `SELECT equipment_id AS equipmentId, blocked_date AS date,
@@ -154,7 +154,7 @@ export async function POST(request: Request) {
 
     const codes = services.map(() => `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`);
     const prices = await Promise.all(services.map((service) => effectivePrice(db, service!.code)));
-    const responseBody = { codes, code: codes[0], appointments };
+    const responseBody = { codes, code: codes[0], appointments, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
     const statements: D1PreparedStatement[] = [];
 
     services.forEach((service, index) => {
@@ -171,7 +171,7 @@ export async function POST(request: Request) {
             referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment,
             assigned_radiologist_email, assigned_radiographer_email,
             date_of_birth, consent_at, consent_version, consent_source
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,'confirmed',?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
         ).bind(
           codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
         db.prepare(
           `INSERT INTO booking_events (booking_id, action, details, actor)
            SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
-        ).bind(`${verifiedService.code} ${appointment.date} ${appointment.time} · призначено автоматично`, codes[index]),
+        ).bind(`${verifiedService.code} ${appointment.date} ${appointment.time} · слот попередньо зарезервовано`, codes[index]),
       );
     });
     statements.push(
