@@ -416,7 +416,7 @@ export async function PATCH(request: Request) {
     ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     const service = booking && serviceByCode(booking.serviceCode);
     const rSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!booking || !service || !isBookableDate(body.desiredDate) || !isDayOpen(body.desiredDate, rSched) || !isEquipmentDayOpen(body.desiredDate, rSched, service.equipmentId)
+    if (!booking || !service || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, service.equipmentId)
         || !candidateTimesFor(hoursFor(rSched, service.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
     }
@@ -461,7 +461,7 @@ export async function PATCH(request: Request) {
     }
     const service = serviceByCode(booking.serviceCode);
     const cSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!service || !isBookableDate(booking.desiredDate) || !isDayOpen(booking.desiredDate, cSched) || !isEquipmentDayOpen(booking.desiredDate, cSched, service.equipmentId)
+    if (!service || !isBookableDate(booking.desiredDate) || !isEquipmentDayOpen(booking.desiredDate, cSched, service.equipmentId)
         || !candidateTimesFor(hoursFor(cSched, service.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
       return Response.json({ error: "Бажаний час поза розкладом — перенесіть запис на вільний слот" }, { status: 400 });
     }
