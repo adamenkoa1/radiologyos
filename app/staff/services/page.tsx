@@ -42,7 +42,7 @@ export default function ServiceAssignmentsPage() {
 
   function change(code: string, field: keyof ServiceConfigRecord, value: string | boolean) {
     setServices((rows) => rows.map((row) => row.code === code
-      ? { ...row, [field]: field === "durationMinutes" ? Number(value) : value }
+      ? ({ ...row, [field]: field === "durationMinutes" ? Number(value) : value } as ServiceConfigRecord)
       : row));
   }
 
