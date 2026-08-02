@@ -1,9 +1,11 @@
-import { addMinutes, serviceByCode } from "../../../lib/catalog";
+import { addMinutes } from "../../../lib/catalog";
 import { isBookableDate, isTimeForService } from "../../../lib/booking-rules";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { effectivePrice } from "../../../lib/tariffs";
+import { getSetting } from "../../../lib/settings";
+import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -25,7 +27,7 @@ export async function POST(request: Request) {
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const serviceCode = clean(body.serviceCode, 12);
-    const service = serviceByCode(serviceCode);
+    const service = configuredServiceByCode(serviceCode, parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY)));
     const desiredDate = clean(body.date, 10);
     const desiredTime = clean(body.time, 5);
     const patientCategory = clean(body.patientCategory, 20);
@@ -42,6 +44,9 @@ export async function POST(request: Request) {
     }
     if (!["military", "civilian"].includes(patientCategory)) {
       return Response.json({ error: "Оберіть категорію пацієнта" }, { status: 400 });
+    }
+    if (!service.active || (patientCategory === "military" ? !service.military : !service.civilian)) {
+      return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
     }
     if (!["military_referral", "eh_referral", "paper_referral", "none", "other"].includes(referralType)) {
       return Response.json({ error: "Оберіть тип направлення" }, { status: 400 });
