@@ -11,7 +11,7 @@ import { stateLabel } from "../../lib/study-state";
 export type CalBooking = {
   id: number; code: string; name: string; phone: string; service: string;
   equipmentId: string; durationMinutes: number; desiredDate: string; desiredTime: string;
-  status: string; patientCategory?: string;
+  status: string; patientCategory?: string; paymentStatus?: string; paymentAmount?: number; paidAmount?: number;
   assignedRadiologistEmail?: string; assignedRadiographerEmail?: string;
 };
 export type CalStaffOption = { email: string; displayName: string; role: string };
@@ -40,7 +40,7 @@ function groupOf(status: string): string {
 }
 const EQUIP: Record<string, string> = { ct: "КТ", xray: "Рентген", fluoro: "Флюорограф" };
 const WEEKDAY = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
-const DAY_START = 8, DAY_END = 19, HOUR_PX = 56;
+const DAY_START = 8, DAY_END = 19, HOUR_PX = 76;
 
 function todayKyiv(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -71,6 +71,8 @@ export default function WeekCalendar({
   const [date, setDate] = useState(initialDate || todayKyiv());
   const [view, setView] = useState<CalView>(initialView);
   const [tab, setTab] = useState("all");
+  const [category, setCategory] = useState("all");
+  const [payment, setPayment] = useState("all");
   const [search, setSearch] = useState("");
 
   const nameByEmail = useMemo(() => {
@@ -80,16 +82,19 @@ export default function WeekCalendar({
   }, [options]);
 
   const q = search.trim().toLowerCase();
+  const matchesExtra = (b: CalBooking) =>
+    (category === "all" || b.patientCategory === category)
+    && (payment === "all" || (payment === "paid" ? b.paymentStatus === "paid" : b.patientCategory === "civilian" && b.paymentStatus !== "paid"));
 
   const dayItems = useMemo(() => bookings
-    .filter(b => b.desiredDate === date && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q))))
+    .filter(b => b.desiredDate === date && matchesExtra(b) && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q))))
     .sort((a, b) => (a.desiredTime || "").localeCompare(b.desiredTime || "")),
-  [bookings, date, tab, q]);
+  [bookings, date, tab, category, payment, q]);
 
   const week = useMemo(() => weekDates(date), [date]);
-  const weekItems = useMemo(() => bookings.filter(b => week.includes(b.desiredDate)
+  const weekItems = useMemo(() => bookings.filter(b => week.includes(b.desiredDate) && matchesExtra(b)
     && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q)))),
-  [bookings, week, tab, q]);
+  [bookings, week, tab, category, payment, q]);
 
   const counts = useMemo(() => {
     const scope = view === "week" ? bookings.filter(b => week.includes(b.desiredDate)) : bookings.filter(b => b.desiredDate === date);
@@ -107,11 +112,12 @@ export default function WeekCalendar({
     const top = Math.max(0, ((mins - DAY_START * 60) / 60) * HOUR_PX);
     const height = Math.max(compact ? 20 : 24, ((b.durationMinutes || 30) / 60) * HOUR_PX - 3);
     return (
-      <div className={`apptEvent grp-${groupOf(b.status)}`} key={b.id} style={{ top, height }} title={`${b.desiredTime} · ${b.name} · ${b.service}`}>
+      <a href={`/staff?open=${b.id}#bookings`} className={`apptEvent grp-${groupOf(b.status)} route-${b.patientCategory || "unknown"} ${b.paymentStatus==="paid"?"paid":"unpaid"}`} key={b.id} style={{ top, height }} title={`${b.desiredTime} · ${b.name} · ${b.service}`}>
         <b>{b.desiredTime} {b.name || "Без імені"}</b>
         {!compact && <span>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · ${doctorOf(b)}` : ""}</span>}
         {compact && <span>{EQUIP[b.equipmentId] || b.service}</span>}
-      </div>
+        <em>{b.patientCategory==="military"?"Військовий":b.paymentStatus==="paid"?"Оплачено":"Цивільний · перевірити оплату"}</em>
+      </a>
     );
   }
 
@@ -129,6 +135,12 @@ export default function WeekCalendar({
           <span className="apptRange">{rangeLabel}</span>
         </div>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <select aria-label="Категорія пацієнта" value={category} onChange={e=>setCategory(e.target.value)}>
+          <option value="all">Усі пацієнти</option><option value="military">Військові</option><option value="civilian">Цивільні</option>
+        </select>
+        <select aria-label="Оплата" value={payment} onChange={e=>setPayment(e.target.value)}>
+          <option value="all">Будь-яка оплата</option><option value="pending">Перевірити оплату</option><option value="paid">Оплату перевірено</option>
+        </select>
         <input type="search" placeholder="Пошук за пацієнтом…" value={search} onChange={e => setSearch(e.target.value)} />
         <div className="apptViewToggle">
           <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Тиждень</button>
@@ -162,7 +174,7 @@ export default function WeekCalendar({
               </div>
               {week.map(d => (
                 <div className="apptWeekCol" key={d}>
-                  {hours.map(h => <div className="apptLaneLine" key={h} style={{ top: (h - DAY_START) * HOUR_PX }} />)}
+                  {Array.from({length:(DAY_END-DAY_START)*2},(_,i)=><div className={`apptSlotLine${i%2===0?" hour":""}`} key={i} style={{top:i*HOUR_PX/2}}><span>{i%2===0?`${String(DAY_START+i/2).padStart(2,"0")}:00`:""}</span></div>)}
                   {weekItems.filter(b => b.desiredDate === d).map(b => eventBlock(b, true))}
                 </div>
               ))}
@@ -176,18 +188,18 @@ export default function WeekCalendar({
                   {hours.map(h => <div className="apptHour" key={h} style={{ height: HOUR_PX }}><span>{String(h).padStart(2, "0")}:00</span></div>)}
                 </div>
                 <div className="apptLane">
-                  {hours.map(h => <div className="apptLaneLine" key={h} style={{ top: (h - DAY_START) * HOUR_PX }} />)}
+                  {Array.from({length:(DAY_END-DAY_START)*2},(_,i)=><div className={`apptSlotLine${i%2===0?" hour":""}`} key={i} style={{top:i*HOUR_PX/2}}><span>{i%2===0?`${String(DAY_START+i/2).padStart(2,"0")}:00`:""}</span></div>)}
                   {dayItems.map(b => eventBlock(b, false))}
                 </div>
               </div>
             : <div className="apptListWrap">{dayItems.map(b => (
                 <div className="apptCardRow" key={b.id}>
-                  <span className="apptCardTime">{b.desiredTime || "—"}</span>
+                  <span className="apptCardTime">{b.desiredTime || "—"}<small>{b.desiredDate}</small></span>
                   <div className="apptCardBody">
-                    <b>{b.name || "Без імені"}</b>
+                    <div className="apptCardRoute"><span className={`patientRoute ${b.patientCategory}`}>{b.patientCategory==="military"?"Військовий":"Цивільний"}</span>{b.patientCategory==="civilian"&&<span className={`paymentOverview ${b.paymentStatus==="paid"?"paid":"pending"}`}>{b.paymentStatus==="paid"?"Оплату перевірено":`Перевірити оплату · ${b.paymentAmount || 0} грн`}</span>}</div><b>{b.name || "Без імені"}</b>
                     <span>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · ${doctorOf(b)}` : ""}</span>
                   </div>
-                  <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span>
+                  <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span><a className="apptOpenRecord" href={`/staff?open=${b.id}#bookings`}>Відкрити</a>
                 </div>
               ))}</div>}
     </div>
