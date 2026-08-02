@@ -119,9 +119,8 @@ export function sanitizeSchedule(input: unknown): ScheduleConfig {
     if (typeof e.radiographerEmail === "string" && e.radiographerEmail.length <= 254) eh.radiographerEmail = e.radiographerEmail.trim().toLowerCase();
     if (typeof e.radiologistEmail === "string" && e.radiologistEmail.length <= 254) eh.radiologistEmail = e.radiologistEmail.trim().toLowerCase();
     if (Array.isArray(e.teamEmails)) eh.teamEmails = [...new Set(e.teamEmails.filter((v): v is string => typeof v === "string").map(v => v.trim().toLowerCase()).filter(v => v.length > 0 && v.length <= 254))].slice(0, 30);
-    const hasRoomWeekdays = Array.isArray(e.weekdays);
-    const roomWeekdays = hasRoomWeekdays ? e.weekdays!.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
-    eh.weekdays = hasRoomWeekdays ? Array.from(new Set(roomWeekdays)).sort((a, b) => a - b) : [...legacyWeekdays];
+    const roomWeekdays = Array.isArray(e.weekdays) ? e.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
+    eh.weekdays = Array.isArray(e.weekdays) ? Array.from(new Set(roomWeekdays)).sort((a, b) => a - b) : [...legacyWeekdays];
     eh.daysOff = Array.isArray(e.daysOff)
       ? Array.from(new Set(e.daysOff.filter((x): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x)))).slice(0, 200)
       : [...legacyDaysOff];
