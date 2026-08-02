@@ -9,6 +9,7 @@
 export type EquipHours = {
   start: string; end: string; slotMinutes: number; breakStart?: string; breakEnd?: string;
   radiographerEmail?: string; radiologistEmail?: string; teamEmails?: string[];
+  weekdays?: number[]; daysOff?: string[];
 };
 export type ScheduleConfig = {
   equipment: Record<string, EquipHours>;
@@ -29,9 +30,9 @@ export const EQUIP_LABELS: Record<string, string> = {
 // з тією ж обідньою перервою (адміністратор може змінити у «Графік і слоти»).
 export const SCHEDULE_DEFAULTS: ScheduleConfig = {
   equipment: {
-    ct: { start: "08:00", end: "17:00", slotMinutes: 30, breakStart: "13:00", breakEnd: "14:00" },
-    xray: { start: "10:00", end: "15:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" },
-    fluoro: { start: "09:30", end: "16:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00" },
+    ct: { start: "08:00", end: "17:00", slotMinutes: 30, breakStart: "13:00", breakEnd: "14:00", weekdays: [1, 2, 3, 4, 5, 6], daysOff: [] },
+    xray: { start: "10:00", end: "15:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00", weekdays: [1, 2, 3, 4, 5, 6], daysOff: [] },
+    fluoro: { start: "09:30", end: "16:00", slotMinutes: 15, breakStart: "13:00", breakEnd: "14:00", weekdays: [1, 2, 3, 4, 5, 6], daysOff: [] },
   },
   weekdays: [1, 2, 3, 4, 5, 6],
   daysOff: [],
@@ -72,7 +73,14 @@ export function isDayOpen(date: string, cfg: ScheduleConfig): boolean {
 
 export function isEquipmentDayOpen(date: string, cfg: ScheduleConfig, equipmentId: string): boolean {
   const override = cfg.dateOverrides?.[equipmentId]?.[date];
-  return typeof override === "boolean" ? override : isDayOpen(date, cfg);
+  if (typeof override === "boolean") return override;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return false;
+  const room = hoursFor(cfg, equipmentId);
+  const daysOff = room.daysOff ?? cfg.daysOff;
+  if (daysOff.includes(date)) return false;
+  const parsed = new Date(`${date}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return false;
+  return (room.weekdays ?? cfg.weekdays).includes(parsed.getUTCDay());
 }
 
 export function hoursFor(cfg: ScheduleConfig, equipmentId: string): EquipHours {
@@ -81,7 +89,12 @@ export function hoursFor(cfg: ScheduleConfig, equipmentId: string): EquipHours {
 
 export function sanitizeSchedule(input: unknown): ScheduleConfig {
   const src = (input && typeof input === "object") ? input as Record<string, unknown> : {};
-  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown; breakStart?: unknown; breakEnd?: unknown; radiographerEmail?: unknown; radiologistEmail?: unknown; teamEmails?: unknown }> : {};
+  const rawLegacyWeekdays = Array.isArray(src.weekdays) ? src.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
+  const legacyWeekdays = rawLegacyWeekdays.length ? Array.from(new Set(rawLegacyWeekdays)).sort((a, b) => a - b) : [...SCHEDULE_DEFAULTS.weekdays];
+  const legacyDaysOff = Array.isArray(src.daysOff)
+    ? Array.from(new Set(src.daysOff.filter((x): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x)))).slice(0, 200)
+    : [];
+  const srcEquip = (src.equipment && typeof src.equipment === "object") ? src.equipment as Record<string, { start?: unknown; end?: unknown; slotMinutes?: unknown; breakStart?: unknown; breakEnd?: unknown; radiographerEmail?: unknown; radiologistEmail?: unknown; teamEmails?: unknown; weekdays?: unknown; daysOff?: unknown }> : {};
   const equipment: Record<string, EquipHours> = {};
   for (const key of EQUIP_KEYS) {
     const d = SCHEDULE_DEFAULTS.equipment[key];
@@ -106,13 +119,15 @@ export function sanitizeSchedule(input: unknown): ScheduleConfig {
     if (typeof e.radiographerEmail === "string" && e.radiographerEmail.length <= 254) eh.radiographerEmail = e.radiographerEmail.trim().toLowerCase();
     if (typeof e.radiologistEmail === "string" && e.radiologistEmail.length <= 254) eh.radiologistEmail = e.radiologistEmail.trim().toLowerCase();
     if (Array.isArray(e.teamEmails)) eh.teamEmails = [...new Set(e.teamEmails.filter((v): v is string => typeof v === "string").map(v => v.trim().toLowerCase()).filter(v => v.length > 0 && v.length <= 254))].slice(0, 30);
+    const roomWeekdays = Array.isArray(e.weekdays) ? e.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
+    eh.weekdays = roomWeekdays.length ? Array.from(new Set(roomWeekdays)).sort((a, b) => a - b) : [...legacyWeekdays];
+    eh.daysOff = Array.isArray(e.daysOff)
+      ? Array.from(new Set(e.daysOff.filter((x): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x)))).slice(0, 200)
+      : [...legacyDaysOff];
     equipment[key] = eh;
   }
-  const rawWk = Array.isArray(src.weekdays) ? src.weekdays.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 6) : [];
-  const weekdays = rawWk.length ? Array.from(new Set(rawWk)).sort((a, b) => a - b) : [...SCHEDULE_DEFAULTS.weekdays];
-  const daysOff = Array.isArray(src.daysOff)
-    ? Array.from(new Set(src.daysOff.filter((x): x is string => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x)))).slice(0, 200)
-    : [];
+  const weekdays = legacyWeekdays;
+  const daysOff = legacyDaysOff;
   const rawOverrides = src.dateOverrides && typeof src.dateOverrides === "object" ? src.dateOverrides as Record<string, unknown> : {};
   const dateOverrides: Record<string, Record<string, boolean>> = {};
   for (const key of EQUIP_KEYS) {
