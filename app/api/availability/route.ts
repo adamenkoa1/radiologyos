@@ -1,15 +1,18 @@
-import { addMinutes, EQUIPMENT, serviceByCode } from "../../../lib/catalog";
+import { addMinutes, EQUIPMENT } from "../../../lib/catalog";
 import { isBookableDate } from "../../../lib/booking-rules";
 import { getSetting } from "../../../lib/settings";
+import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
 import { candidateTimesFor, hoursFor, isDayOpen, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const date = url.searchParams.get("date") || "";
-  const service = serviceByCode(url.searchParams.get("serviceCode") || "");
-  if (!isBookableDate(date) || !service) return Response.json({ times: [] });
+  const serviceCode = url.searchParams.get("serviceCode") || "";
+  if (!isBookableDate(date)) return Response.json({ times: [] });
   const db = (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
+  const service = configuredServiceByCode(serviceCode, parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY)));
+  if (!service || !service.active || (!service.civilian && !service.military)) return Response.json({ times: [] });
   // Налаштовуваний графік: робочі дні й години прийому.
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
   if (!isDayOpen(date, schedule) || !isEquipmentDayOpen(date, schedule, service.equipmentId)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
