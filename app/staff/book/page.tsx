@@ -24,6 +24,7 @@ export default function StaffBookPage() {
   const [serviceCode, setServiceCode] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [requestedTime, setRequestedTime] = useState("");
   const [times, setTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -48,17 +49,31 @@ export default function StaffBookPage() {
   }, []);
 
   useEffect(() => {
+    const t = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedDate = params.get("date") || "";
+      const requestedSlot = params.get("time") || "";
+      const equipment = params.get("equipment") || "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) setDate(requestedDate);
+      if (/^\d{2}:\d{2}$/.test(requestedSlot)) setRequestedTime(requestedSlot);
+      const firstService = Object.values(serviceGroups).flat().find(service => service.equipmentId === equipment);
+      if (firstService) setServiceCode(firstService.code);
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [serviceGroups]);
+
+  useEffect(() => {
     let active = true;
     const t = window.setTimeout(() => {
       if (!date || !serviceCode) { setTimes([]); setSlotsLoading(false); return; }
       setSlotsLoading(true); setTime("");
       fetch(`/api/availability?date=${encodeURIComponent(date)}&serviceCode=${encodeURIComponent(serviceCode)}`, { cache: "no-store" })
-        .then(r => r.json()).then((d: { times?: string[] }) => { if (active) setTimes(d.times || []); })
+        .then(r => r.json()).then((d: { times?: string[] }) => { if (active) { const available=d.times || []; setTimes(available); if (requestedTime && available.includes(requestedTime)) setTime(requestedTime); } })
         .catch(() => { if (active) setTimes([]); })
         .finally(() => { if (active) setSlotsLoading(false); });
     }, 0);
     return () => { active = false; window.clearTimeout(t); };
-  }, [date, serviceCode]);
+  }, [date, serviceCode, requestedTime]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,7 +98,7 @@ export default function StaffBookPage() {
     if (!res.ok || !result.ok) { setError(result.error || "Не вдалося створити запис"); return; }
     setCode(result.code || "");
     (event.target as HTMLFormElement).reset();
-    setServiceCode(""); setDate(""); setTime(""); setTimes([]);
+    setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
   }
 
   const price = serviceByCode(serviceCode)?.price;
