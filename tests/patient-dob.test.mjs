@@ -56,6 +56,11 @@ test("site-booking stores date_of_birth and requires it", async () => {
   assert.match(bridge, /getElementById\('patientDob'\)/);
   assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
   assert.match(bridge, /name, phone, dob,/); // dob потрапляє у payload
+  assert.match(bridge, /dob-segmented/);
+  assert.match(bridge, /День народження/);
+  assert.match(bridge, /Місяць народження/);
+  assert.match(bridge, /Рік народження/);
+  assert.match(bridge, /Онлайн-запис доступний пацієнтам від 18 років/);
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /id="(?:military)?[Pp]atientDob"[^>]*type="date"|id="patientDob"[^>]*type="date"/, `${page} has a date input`);
