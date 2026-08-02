@@ -2,7 +2,7 @@
    Перехоплює надсилання «Моєї заявки» (цивільна форма на index/price та
    військова форма на military) і зберігає її через /api/site-booking, щоб
    замовлення одразу з'являлось у кабінеті персоналу. Після надсилання показуємо
-   призначені дату й час; внутрішній код заявки пацієнту не потрібен. */
+   попередньо призначені дату й час, номер заявки та її поточний статус. */
 (function () {
   const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
@@ -99,8 +99,8 @@
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('patientDob') || {}).value || '';
-      const desiredDate = '';
-      const desiredTime = '';
+      const desiredDate = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.date) ? pickedSlot.date : '';
+      const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
       const referralType = category === 'military' ? 'military_referral' : 'other';
       const comment = (document.getElementById('comment') || {}).value?.trim() || '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
@@ -112,13 +112,14 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        await postBooking({
+        const result = await postBooking({
           name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         rememberPatient(phone, dob);
+        try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
         window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
@@ -155,7 +156,7 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        await postBooking({
+        const result = await postBooking({
           name, phone, dob, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
@@ -163,6 +164,7 @@
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         rememberPatient(phone, dob);
+        try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
         window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Надіслати заявку'; }
