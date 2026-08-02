@@ -33,7 +33,8 @@ export async function POST(request: Request) {
   }
 
   const rows = await db.prepare(
-    `SELECT b.code, b.service, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
+    `SELECT b.code, b.name AS patientName, b.service, b.service_code AS serviceCode,
+       b.desired_date AS desiredDate, b.desired_time AS desiredTime,
        b.status, b.created_at AS createdAt, b.patient_category AS category,
        b.payment_status AS paymentStatus, b.payment_amount AS paymentAmount,
        COALESCE(o.name, '') AS organization,
