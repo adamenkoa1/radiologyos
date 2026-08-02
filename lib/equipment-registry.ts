@@ -16,7 +16,7 @@ export const EQUIPMENT_REGISTRY_KEY = "equipment_registry_v1";
 // Точний перелік перенесено зі структури відділення. Технічні поля, яких у
 // вихідних даних не було (кВ, заводський номер), залишено для заповнення.
 export const EQUIPMENT_REGISTRY_DEFAULTS: EquipmentRecord[] = [
-  { id:"siemens-somatom", type:"Комп’ютерний томограф", manufacturer:"Siemens", model:"SOMATOM", room:"Кабінет комп’ютерної томографії", maxKv:"", year:"2021", serialNumber:"", status:"active", notes:"Точну модифікацію уточнити за технічним паспортом. В експлуатації з 2021 року" },
+  { id:"siemens-somatom", type:"Комп’ютерний томограф", manufacturer:"Siemens", model:"SOMATOM go.Up", room:"Кабінет комп’ютерної томографії", maxKv:"", year:"2021", serialNumber:"", status:"active", notes:"В експлуатації з 2021 року" },
   { id:"sireskop-cx", type:"Рентгенівський діагностичний апарат", manufacturer:"Siemens", model:"Sireskop-CX", room:"Рентгенологічний кабінет №1", maxKv:"", year:"1998", serialNumber:"", status:"active", notes:"В експлуатації з 1998 року" },
   { id:"5d2", type:"Стаціонарний дентальний рентгенапарат", manufacturer:"Актюбрентген", model:"5Д2", room:"Рентгенологічний кабінет №1", maxKv:"", year:"1994", serialNumber:"", status:"active", notes:"В експлуатації з 1994 року" },
   { id:"hyperion-x9-pro", type:"Панорамний рентгенапарат", manufacturer:"MyRay", model:"HYPERION X9 Pro", room:"Рентгенологічний кабінет №2", maxKv:"", year:"", serialNumber:"", status:"active", notes:"" },
@@ -34,11 +34,13 @@ export function sanitizeEquipmentRegistry(input:unknown):EquipmentRecord[] {
   return EQUIPMENT_REGISTRY_DEFAULTS.map(base => {
     const src = rows.find(row => row && typeof row === "object" && (row as {id?:unknown}).id === base.id) as Partial<EquipmentRecord> | undefined;
     const status = src?.status === "maintenance" || src?.status === "inactive" || src?.status === "active" ? src.status : base.status;
+    const legacyCtModel = base.id === "siemens-somatom" && /^(?:Siemens\s+)?SOMATOM$/i.test(String(src?.model || "").trim());
+    const legacyCtNotes = base.id === "siemens-somatom" && String(src?.notes || "").includes("Точну модифікацію уточнити");
     return {
       id:base.id, type:clean(src?.type ?? base.type,120) || base.type,
-      manufacturer:clean(src?.manufacturer ?? base.manufacturer,80), model:clean(src?.model ?? base.model,120), room:clean(src?.room ?? base.room,100),
+      manufacturer:clean(src?.manufacturer ?? base.manufacturer,80), model:legacyCtModel ? base.model : clean(src?.model ?? base.model,120), room:clean(src?.room ?? base.room,100),
       maxKv:clean(src?.maxKv ?? base.maxKv,12), year:clean(src?.year ?? base.year,4), serialNumber:clean(src?.serialNumber ?? base.serialNumber,80),
-      status, notes:clean(src?.notes ?? base.notes,500),
+      status, notes:legacyCtNotes ? base.notes : clean(src?.notes ?? base.notes,500),
     };
   });
 }
