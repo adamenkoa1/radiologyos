@@ -23,34 +23,26 @@ type StaffWorkspaceShellProps = {
 type NavChild = { label:string; href:string; flag?:string };
 type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; defaultOpen?:boolean; items:NavChild[] };
 const systemModules: NavModule[] = [
-  { n:"1", label:"Календар і заявки", href:"/staff/appointments", section:"appointments", items:[
-    { label:"Календар заявок", href:"/staff/appointments" },
-    { label:"Записати пацієнта", href:"/staff/book" },
-    { label:"Пульт відділення", href:"/staff/dashboard" },
-    { label:"Кабінет пацієнта", href:"/site/cabinet.html", flag:"patient_cabinet" },
-  ]},
-  { n:"2", label:"Пацієнти", href:"/staff/patients", section:"patients", items:[
-    { label:"Картки пацієнтів", href:"/staff/patients" },
-    { label:"Чат із пацієнтами", href:"/staff/chat" },
-    { label:"WhatsApp", href:"/staff/whatsapp" },
-  ]},
-  { n:"3", label:"Кабінети й обладнання", href:"/staff/schedule", section:"schedule", items:[
+  { n:"1", label:"Записи і слоти", href:"/staff/appointments", section:"appointments", items:[] },
+  { n:"2", label:"Кабінети й обладнання", href:"/staff/schedule", section:"schedule", items:[
     { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
     { label:"Обладнання", href:"/staff/equipment" },
   ]},
-  { n:"4", label:"Дослідження", href:"/staff/studies", section:"studies", items:[
+  { n:"3", label:"Дослідження", href:"/staff/studies", section:"studies", items:[
     { label:"Реєстр досліджень", href:"/staff/studies" },
     { label:"Протоколи", href:"/staff/protocols" },
     { label:"Знімки DICOM", href:"/staff/imaging", flag:"dicom_pacs" },
   ]},
-  { n:"5", label:"Фінанси і звіти", href:"/staff/reports", section:"reports", items:[
+  { n:"4", label:"Фінанси і звіти", href:"/staff/reports", section:"reports", items:[
     { label:"Звіти відділення", href:"/staff/reports" },
     { label:"Тарифи", href:"/staff/tariffs" },
   ]},
-  { n:"6", label:"Адміністрування", href:"/staff/settings", section:"settings", defaultOpen:false, items:[
+  { n:"5", label:"Адміністрування", href:"/staff/settings", section:"settings", defaultOpen:false, items:[
     { label:"Редактор публічного сайту", href:"/staff/structure" },
     { label:"Організація та профіль", href:"/staff/organization" },
     { label:"Персонал і ролі", href:"/staff#staff-admin" },
+    { label:"Чат із пацієнтами", href:"/staff/chat" },
+    { label:"WhatsApp", href:"/staff/whatsapp" },
     { label:"Реєстрація працівника", href:"/staff/register" },
     { label:"Налаштування", href:"/staff/settings" },
     { label:"Журнал дій", href:"/staff/audit" },
@@ -164,15 +156,15 @@ export default function StaffWorkspaceShell({
                 aria-current={isActive ? "page":undefined}
                 title={collapsed ? item.label:undefined}
               ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>
-              <button
+              {item.items.length > 0 && <button
                 type="button"
                 className="workspaceSubToggle"
                 aria-label={isOpen ? "Згорнути підпункти":"Розгорнути підпункти"}
                 aria-expanded={isOpen}
                 onClick={()=>toggleModule(item.n)}
-              >▾</button>
+              >▾</button>}
             </div>
-            {isOpen && <div className="workspaceSubList">
+            {isOpen && item.items.length > 0 && <div className="workspaceSubList">
               {item.items.filter(childVisible).map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
             </div>}
           </div>;
