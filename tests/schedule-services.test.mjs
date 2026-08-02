@@ -6,7 +6,8 @@ const read = path => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("room schedule shows services linked to the selected equipment", async () => {
   const page = await read("app/staff/schedule/page.tsx");
-  assert.match(page, /SERVICES\.filter\(service => service\.equipmentId === activeEquipment\)/);
+  assert.match(page, /configuredService\(service, serviceConfig\)/);
+  assert.match(page, /service\.equipmentId === activeEquipment/);
   assert.match(page, /Послуги цього кабінету/);
   assert.match(page, /\/staff\/tariffs/);
   assert.match(page, /service\.durationMinutes/);
