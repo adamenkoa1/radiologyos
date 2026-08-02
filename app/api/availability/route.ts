@@ -2,7 +2,7 @@ import { addMinutes, EQUIPMENT } from "../../../lib/catalog";
 import { isBookableDate } from "../../../lib/booking-rules";
 import { getSetting } from "../../../lib/settings";
 import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
-import { candidateTimesFor, hoursFor, isDayOpen, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -15,7 +15,7 @@ export async function GET(request: Request) {
   if (!service || !service.active || (!service.civilian && !service.military)) return Response.json({ times: [] });
   // Налаштовуваний графік: робочі дні й години прийому.
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-  if (!isDayOpen(date, schedule) || !isEquipmentDayOpen(date, schedule, service.equipmentId)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
+  if (!isEquipmentDayOpen(date, schedule, service.equipmentId)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
 
   const [bookings, blocks] = await Promise.all([
     db.prepare(
