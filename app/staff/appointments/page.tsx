@@ -12,7 +12,7 @@ export default function StaffAppointmentsPage() {
   const [options, setOptions] = useState<CalStaffOption[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [forbidden, setForbidden] = useState(false);
-  const [initialView, setInitialView] = useState<CalView>("week");
+  const [initialView, setInitialView] = useState<CalView>("day");
   const [initialDate, setInitialDate] = useState<string | undefined>(undefined);
 
   useEffect(() => {
@@ -51,8 +51,8 @@ export default function StaffAppointmentsPage() {
   return (
     <StaffWorkspaceShell
       active="appointments"
-      title="Календар записів"
-      description="Тиждень, день або список — із фільтрами за станом."
+      title="Календар і заявки"
+      description="Головний робочий екран: час, пацієнт, послуга, маршрут і оплата."
       staffName={staff?.displayName}
       staffRole={staff?.role}
     >
