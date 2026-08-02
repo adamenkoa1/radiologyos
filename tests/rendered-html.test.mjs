@@ -87,14 +87,14 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
-test("home combines patient categories, services, booking and staff login", async () => {
+test("home separates patient categories and links to booking and staff login", async () => {
   const response = await renderHome();
   const html = await response.text();
   assert.match(html, /Чернігівський військовий госпіталь/);
   assert.match(html, /Військовослужбовцям/);
   assert.match(html, /Цивільним особам/);
-  assert.match(html, /Дослідження та вартість/);
-  assert.match(html, /id=["']homeTariffs["']/);
+  assert.doesNotMatch(html, /Дослідження та вартість/);
+  assert.doesNotMatch(html, /id=["']homeTariffs["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });
