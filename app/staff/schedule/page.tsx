@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { EQUIP_KEYS, EQUIP_LABELS, SCHEDULE_DEFAULTS, candidateTimesFor, isEquipmentDayOpen, type ScheduleConfig } from "../../../lib/schedule";
 import { SERVICES } from "../../../lib/catalog";
+import { configuredService, SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type PersonOption = { email: string; displayName: string; role: string; positionTitle?: string; militaryRank?: string };
@@ -26,6 +27,7 @@ export default function StaffSchedulePage() {
   const [loaded, setLoaded] = useState(false);
   const [cfg, setCfg] = useState<ScheduleConfig>(() => JSON.parse(JSON.stringify(SCHEDULE_DEFAULTS)));
   const [people, setPeople] = useState<PersonOption[]>([]);
+  const [serviceConfig, setServiceConfig] = useState<ServiceConfigRecord[]>(SERVICE_CONFIG_DEFAULTS.map((row) => ({ ...row })));
   const [activeEquipment, setActiveEquipment] = useState<string>("xray");
   const [calendarMonth, setCalendarMonth] = useState(() => monthKey(new Date()));
   const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
@@ -37,13 +39,18 @@ export default function StaffSchedulePage() {
   useEffect(() => {
     let active = true;
     const t = window.setTimeout(async () => {
-      const res = await fetch("/api/staff/schedule", { cache: "no-store" });
+      const [res, servicesRes] = await Promise.all([
+        fetch("/api/staff/schedule", { cache: "no-store" }),
+        fetch("/api/staff/services", { cache: "no-store" }),
+      ]);
       if (res.status === 403) { if (active) setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { schedule?: ScheduleConfig; staff?: StaffInfo; people?: PersonOption[] };
+      const servicesData = await servicesRes.json().catch(() => ({})) as { services?: ServiceConfigRecord[] };
       if (!active) return;
       if (data.schedule) setCfg({ ...JSON.parse(JSON.stringify(SCHEDULE_DEFAULTS)), ...data.schedule });
       if (data.staff) setStaff(data.staff);
       if (Array.isArray(data.people)) setPeople(data.people);
+      if (Array.isArray(servicesData.services)) setServiceConfig(servicesData.services);
       setLoaded(true);
     }, 0);
     return () => { active = false; window.clearTimeout(t); };
@@ -164,7 +171,7 @@ export default function StaffSchedulePage() {
                 <a href="/staff/tariffs">Редагувати тарифи →</a>
               </div>
               <div className="roomServiceGroups">
-                {Object.entries(SERVICES.filter(service => service.equipmentId === activeEquipment).reduce<Record<string, typeof SERVICES>>((groups, service) => {
+                {Object.entries(SERVICES.map(service => configuredService(service, serviceConfig)).filter(service => service.active && service.equipmentId === activeEquipment).reduce<Record<string, typeof SERVICES>>((groups, service) => {
                   (groups[service.group] ||= []).push(service);
                   return groups;
                 }, {})).map(([group, services]) => <details key={group} open>
