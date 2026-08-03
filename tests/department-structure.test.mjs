@@ -85,6 +85,33 @@ test("structure carries NO personal data (no names/addresses/DOB/phones)", async
   assert.doesNotMatch(raw, /\b0\d{9}\b/); // телефони персоналу
   assert.doesNotMatch(raw, /вул\. Бєлова|вул\. Гагаріна|Лук['’]яненка/); // домашні адреси
   for (const p of S.personnel) assert.ok(p.position && !/[А-ЯІЇЄ]{4,}\s+[А-ЯІЇЄ][а-яіїє]/.test(p.position));
+  // Ще й додаткові прізвища/адреси з відомості 2024 — теж відсутні.
+  assert.doesNotMatch(raw, /БЕНДІК|ВОВКУШЕВСЬКИЙ|КРИВЦОВ|КОВАЛЕНКО/);
+  assert.doesNotMatch(raw, /Незалежності 25|Савчук|Масанівська|П['’]ятницька/);
+});
+
+test("personnel roster is posts-and-headcount only (real posts, 9 people)", () => {
+  const positions = S.personnel.map((p) => p.position);
+  assert.ok(positions.includes("Молодша медична сестра"));
+  assert.ok(positions.includes("Водій-електрик ПРК"));
+  assert.ok(!positions.includes("Лікарі-рентгенологи")); // немає у фактичній відомості
+  const total = S.personnel.reduce((n, p) => n + (Number((p.note.match(/^\d+/) || [])[0]) || 0), 0);
+  assert.equal(total, 9);
+});
+
+test("legacy generic personnel list migrates to the real posts; custom lists untouched", () => {
+  const migrated = sanitizeDepartmentStructure({
+    personnel: [
+      { position: "Начальник відділення променевої діагностики", note: "Відповідальна особа з радіаційної безпеки" },
+      { position: "Начальник ПРК", note: "" },
+      { position: "Лікарі-рентгенологи", note: "" },
+      { position: "Рентгенолаборанти", note: "" },
+    ],
+  });
+  assert.deepEqual(migrated.personnel, S.personnel);
+  const custom = sanitizeDepartmentStructure({ personnel: [{ position: "Фізик-дозиметрист", note: "1" }] });
+  assert.equal(custom.personnel.length, 1);
+  assert.equal(custom.personnel[0].position, "Фізик-дозиметрист");
 });
 
 test("structure page is staff-gated and wired into the shell nav", async () => {

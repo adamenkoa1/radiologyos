@@ -100,11 +100,13 @@ export const DEPARTMENT_STRUCTURE_DEFAULTS: DepartmentStructure = {
       { name: "Флюорограф 12Ф7Ц", kind: "Демонтовано", details: "На зберіганні", status: "stored" },
     ] },
   ],
+  // Штат за посадами й кількістю (без ПІБ/адрес/дат народження/телефонів).
   personnel: [
-    { position: "Начальник відділення променевої діагностики", note: "Відповідальна особа з радіаційної безпеки" },
-    { position: "Начальник ПРК", note: "" },
-    { position: "Лікарі-рентгенологи", note: "" },
-    { position: "Рентгенолаборанти", note: "" },
+    { position: "Начальник відділення променевої діагностики", note: "1 · відповідальна особа з радіаційної безпеки" },
+    { position: "Начальник ПРК", note: "1" },
+    { position: "Рентгенолаборанти", note: "5 (у т.ч. пересувного рентгенівського кабінету)" },
+    { position: "Молодша медична сестра", note: "1" },
+    { position: "Водій-електрик ПРК", note: "1" },
   ],
   hours: {
     outpatient: {
@@ -174,10 +176,18 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     };
   }) : defaults.rooms;
 
-  const personnel = Array.isArray(src.personnel) ? src.personnel.slice(0, 30).map((item, index) => {
+  const personnelRaw = Array.isArray(src.personnel) ? src.personnel.slice(0, 30).map((item, index) => {
     const fallback = defaults.personnel[index] ?? { position: "Посада", note: "" };
     return { position: text(item?.position, fallback.position, 160), note: text(item?.note, fallback.note, 220) };
   }) : defaults.personnel;
+  // Одноразова міграція попереднього узагальненого переліку (4 посади) до
+  // фактичної штатної картини за посадами й кількістю. Власні зміни адміна не
+  // чіпаємо — оновлюємо лише якщо перелік точно збігається з колишнім типовим.
+  const legacyPersonnel = ["Начальник відділення променевої діагностики", "Начальник ПРК", "Лікарі-рентгенологи", "Рентгенолаборанти"];
+  const personnel = (personnelRaw.length === legacyPersonnel.length
+    && personnelRaw.every((p, i) => p.position === legacyPersonnel[i]))
+    ? defaults.personnel
+    : personnelRaw;
 
   const sanitizeHours = (block: unknown, fallback: DepartmentStructure["hours"]["outpatient"]) => {
     const source = block && typeof block === "object" ? block as typeof fallback : fallback;
