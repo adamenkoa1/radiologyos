@@ -290,6 +290,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .auditFilters label{display:flex;flex-direction:column;gap:4px}
 .auditFilters span{font-size:11px;font-weight:800;color:#41544f;text-transform:uppercase;letter-spacing:.05em}
 .auditFilters select,.auditFilters input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;min-width:220px}
+.auditExport{align-self:end;white-space:nowrap;text-decoration:none}
 .auditEmpty{color:#5b6a66;font-size:13px;background:#fff;border:1px solid #e7ece9;border-radius:12px;padding:18px}
 .auditTableWrap{overflow-x:auto;background:#fff;border:1px solid #e7ece9;border-radius:12px}
 .auditTable{width:100%;border-collapse:collapse;font-size:12.5px}

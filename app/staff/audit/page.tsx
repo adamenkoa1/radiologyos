@@ -74,6 +74,10 @@ export default function StaffAuditPage() {
             <label><span>Хто (email / телефон)</span>
               <input type="search" value={actor} placeholder="частина email або номера" onChange={e => setActor(e.target.value)} />
             </label>
+            <a
+              className="button secondary auditExport"
+              href={`/api/staff/audit?format=csv${action ? `&action=${encodeURIComponent(action)}` : ""}${actor.trim() ? `&actor=${encodeURIComponent(actor.trim())}` : ""}`}
+            >Експорт CSV</a>
           </div>
 
           {events.length === 0
