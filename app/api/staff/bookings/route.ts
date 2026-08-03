@@ -41,6 +41,7 @@ export async function POST(request: Request) {
   const phone = clean(body.phone, 40);
   const phoneNormalized = normalizeUkrainianPhone(phone);
   const dob = normalizeDob(body.dob);
+  const email = clean(body.email, 254);
   const serviceCode = clean(body.serviceCode, 12);
   const service = serviceByCode(serviceCode);
   const desiredDate = clean(body.date, 10);
@@ -85,14 +86,14 @@ export async function POST(request: Request) {
     `INSERT INTO bookings (
       organization_id, code, name, phone, phone_normalized, service, service_code, equipment_id,
       duration_minutes, desired_date, desired_time, referral, patient_category, referral_type,
-      payment_status, payment_amount, nszu_status, comment, date_of_birth,
+      payment_status, payment_amount, nszu_status, comment, date_of_birth, patient_email,
       assigned_radiologist_email, assigned_radiographer_email, status,
       consent_at, consent_version, consent_source
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
   ).bind(
     ctx.organizationId, code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
     service.durationMinutes, desiredDate, desiredTime, referral, category, referralType,
-    paymentStatus, price, nszuStatus, comment, dob,
+    paymentStatus, price, nszuStatus, comment, dob, email,
     radiologist, radiographer, "2026-07-29", "staff",
   ).run();
 
@@ -227,8 +228,12 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Редагувати заявку може реєстратор або адміністратор" }, { status: 403 });
     }
     const cur = await db.prepare(
-      "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps FROM bookings WHERE id = ?"
-    ).bind(body.id!).first<{ d: string; t: string; eq: string; ps: string }>();
+      "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps, status AS st FROM bookings WHERE id = ?"
+    ).bind(body.id!).first<{ d: string; t: string; eq: string; ps: string; st: string }>();
+    // Закриті заявки не редагуються (як і в гілці підтвердження).
+    if (cur && (cur.st === "cancelled" || cur.st === "completed")) {
+      return Response.json({ error: "Скасовану або завершену заявку редагувати не можна" }, { status: 409 });
+    }
     // Фінанси не перезаписуємо, якщо оплату вже внесено/не потрібна.
     const financeLocked = !!cur && ["paid", "not_required"].includes(cur.ps);
     const e = body.edit;
@@ -241,7 +246,11 @@ export async function PATCH(request: Request) {
       if (!norm) return Response.json({ error: "Некоректний номер телефону" }, { status: 400 });
       sets.push("phone = ?", "phone_normalized = ?"); binds.push(ph, norm);
     }
-    if (typeof e.email === "string") { sets.push("patient_email = ?"); binds.push(e.email.trim().slice(0, 254)); }
+    if (typeof e.email === "string") {
+      const em = e.email.trim().slice(0, 254);
+      if (em && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)) return Response.json({ error: "Некоректний email" }, { status: 400 });
+      sets.push("patient_email = ?"); binds.push(em);
+    }
     if (typeof e.dob === "string") { sets.push("date_of_birth = ?"); binds.push(normalizeDob(e.dob)); }
     if (typeof e.patientCategory === "string") {
       const cat = e.patientCategory === "military" ? "military" : "civilian";
@@ -252,15 +261,25 @@ export async function PATCH(request: Request) {
     if (typeof e.serviceCode === "string") {
       const svc = serviceByCode(e.serviceCode.trim().slice(0, 12));
       if (!svc) return Response.json({ error: "Невідома послуга" }, { status: 400 });
-      // Зміна апарата: поточний слот має бути вільним на новому апараті.
-      if (cur && svc.equipmentId !== cur.eq) {
+      // Нова послуга може змінити апарат І/АБО тривалість — повністю
+      // перевіряємо поточний слот для неї: сітка/робочий день/блокування/
+      // накладання (виключаючи саму заявку). Інакше просимо перенести.
+      if (cur) {
+        const rSchedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+        const validTimes = candidateTimesFor(hoursFor(rSchedule, svc.equipmentId), svc.durationMinutes);
         const endTime = addMinutes(cur.t, svc.durationMinutes);
+        const rejectReschedule = Response.json({ error: "Поточний час не підходить для нової послуги (апарат / тривалість / зайнятість) — спершу перенесіть заявку" }, { status: 409 });
+        if (!isBookableDate(cur.d) || !isEquipmentDayOpen(cur.d, rSchedule, svc.equipmentId) || !validTimes.includes(cur.t)) return rejectReschedule;
         const clash = await db.prepare(
           `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
            AND status IN ('confirmed','rescheduled') AND desired_time < ?
            AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
         ).bind(svc.equipmentId, cur.d, body.id!, endTime, cur.t).first();
-        if (clash) return Response.json({ error: "Час зайнятий на апараті нової послуги — спершу перенесіть заявку" }, { status: 409 });
+        if (clash) return rejectReschedule;
+        const blocked = await db.prepare(
+          "SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
+        ).bind(svc.equipmentId, cur.d, endTime, cur.t).first();
+        if (blocked) return rejectReschedule;
       }
       sets.push("service = ?", "service_code = ?", "equipment_id = ?", "duration_minutes = ?");
       binds.push(svc.title, svc.code, svc.equipmentId, svc.durationMinutes);

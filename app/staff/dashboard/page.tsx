@@ -170,7 +170,7 @@ export default function DashboardPage() {
           const days:string[] = [];
           for (let i = 6; i >= 0; i--) { const dt = new Date(`${data.today}T12:00:00Z`); dt.setUTCDate(dt.getUTCDate() - i); days.push(dt.toISOString().slice(0,10)); }
           const at = (id:string, d:string) => data.equipmentWeek.find((e)=>e.id===id && e.d===d)?.c || 0;
-          const peak = Math.max(1, ...data.equipmentWeek.map((e)=>e.c));
+          const peak = Math.max(1, ...data.equipmentWeek.filter((e)=>["ct","xray","fluoro"].includes(e.id)).map((e)=>e.c));
           const dow = (d:string) => ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"][new Date(`${d}T12:00:00Z`).getUTCDay()];
           return <div className="dashLoadGrid" style={{ gridTemplateColumns:`120px repeat(${days.length}, 1fr)` }}>
             <span className="dashLoadCorner" />

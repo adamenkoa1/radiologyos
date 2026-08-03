@@ -92,9 +92,13 @@ export async function listAuditEvents(db: D1Database, organizationId: number, q:
   return rows.results;
 }
 
-// Екранування значення для CSV (RFC 4180): лапки, коми й переноси — у лапках.
+// Екранування значення для CSV (RFC 4180) + нейтралізація формул: клітинку,
+// що починається з = + - @ (або tab/CR), префіксуємо апострофом, щоб Excel/
+// LibreOffice не виконали її як формулу (CSV injection). Лапки від цього не
+// рятують — редактор їх знімає перед обчисленням.
 function csvCell(value: unknown): string {
-  const s = String(value ?? "");
+  let s = String(value ?? "");
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
 }
 
