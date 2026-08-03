@@ -25,6 +25,9 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => ({})) as { prices?: Record<string, unknown> };
   const prices = body.prices && typeof body.prices === "object" ? body.prices : {};
 
+  // Спочатку валідуємо всі позиції, потім пишемо однією транзакцією (db.batch),
+  // щоб некоректна ціна наприкінці не лишила частково збережений прайс.
+  const statements = [];
   for (const [code, rawValue] of Object.entries(prices)) {
     const service = serviceByCode(code);
     if (!service) continue;
@@ -32,15 +35,14 @@ export async function PUT(request: Request) {
     if (!Number.isFinite(value) || value < 0 || value > 1_000_000) {
       return Response.json({ error: `Некоректна ціна для послуги ${code}` }, { status: 400 });
     }
-    if (value === service.price) {
-      await db.prepare("DELETE FROM service_prices WHERE code = ?").bind(code).run();
-    } else {
-      await db.prepare(
-        `INSERT INTO service_prices (code, price) VALUES (?, ?)
-         ON CONFLICT(code) DO UPDATE SET price = excluded.price`
-      ).bind(code, value).run();
-    }
+    statements.push(value === service.price
+      ? db.prepare("DELETE FROM service_prices WHERE code = ?").bind(code)
+      : db.prepare(
+          `INSERT INTO service_prices (code, price) VALUES (?, ?)
+           ON CONFLICT(code) DO UPDATE SET price = excluded.price`
+        ).bind(code, value));
   }
+  if (statements.length) await db.batch(statements);
 
   return Response.json({ ok: true, tariffs: await tariffList(db) });
 }

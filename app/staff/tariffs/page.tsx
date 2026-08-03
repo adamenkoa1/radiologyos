@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type Tariff = { code: string; title: string; group: string; defaultPrice: number; price: number; custom: boolean };
@@ -13,6 +14,7 @@ export default function StaffTariffsPage() {
   const [tariffs, setTariffs] = useState<Tariff[]>([]);
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<"idle" | "saving">("idle");
+  const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
 
@@ -21,12 +23,18 @@ export default function StaffTariffsPage() {
   useEffect(() => {
     let active = true;
     (async () => {
-      const res = await fetch("/api/staff/tariffs", { cache: "no-store" });
-      const data = await res.json().catch(() => ({})) as { tariffs?: Tariff[]; staff?: StaffInfo; error?: string };
-      if (!active) return;
-      if (data.tariffs) setTariffs(data.tariffs);
-      if (data.staff) setStaff(data.staff);
-      if (!res.ok) setError(data.error || "Не вдалося завантажити тарифи");
+      try {
+        const res = await fetch("/api/staff/tariffs", { cache: "no-store" });
+        const data = await res.json().catch(() => ({})) as { tariffs?: Tariff[]; staff?: StaffInfo; error?: string };
+        if (!active) return;
+        if (data.tariffs) setTariffs(data.tariffs);
+        if (data.staff) setStaff(data.staff);
+        if (!res.ok) setError(data.error || "Не вдалося завантажити тарифи");
+      } catch {
+        if (active) setError("Не вдалося завантажити тарифи — перевірте зʼєднання");
+      } finally {
+        if (active) setLoaded(true);
+      }
     })();
     return () => { active = false; };
   }, []);
@@ -69,12 +77,12 @@ export default function StaffTariffsPage() {
       title="Тарифи"
       description="Прайс на платні дослідження для цивільних пацієнтів. Військовим — безоплатно."
       staffName={staff?.displayName}
-      staffRole={staff?.role}
+      staffRole={roleLabelUk(staff?.role)}
     >
       <div className="tariffPage">
         {isAdmin && (
           <div className="tariffBar">
-            <span>Змініть ціну в полі й натисніть «Зберегти». Порожнє поле або значення = стандартному повертає тариф до типового.</span>
+            <span>Змініть ціну в полі й натисніть «Зберегти». Порожнє поле або значення, що дорівнює стандартному, повертає тариф до типового.</span>
             <button className="button" onClick={save} disabled={!dirty || status === "saving"}>
               {status === "saving" ? "Зберігаємо…" : "Зберегти тарифи"}
             </button>
@@ -83,7 +91,9 @@ export default function StaffTariffsPage() {
         {notice && <p className="notice success" role="status">{notice}</p>}
         {error && <p className="notice error" role="alert">{error}</p>}
 
-        {groups.map(([group, items]) => (
+        {!loaded ? <p className="notice">Завантаження тарифів…</p> :
+         groups.length === 0 ? <p className="dashListEmpty">Тарифів не знайдено.</p> :
+         groups.map(([group, items]) => (
           <section className="tariffGroup" key={group}>
             <h2>{group}</h2>
             <table className="tariffTable">

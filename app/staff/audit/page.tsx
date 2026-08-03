@@ -2,8 +2,16 @@
 
 import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
+
+// Українські підписи технічних ключів у полі «Деталі».
+const DETAIL_KEY_LABELS: Record<string, string> = {
+  role: "роль", channel: "канал", rows: "рядків", reason: "причина",
+  status: "статус", email: "email", phone: "телефон", target: "обʼєкт",
+  count: "кількість", name: "імʼя", field: "поле", value: "значення",
+};
 type AuditEvent = {
   id: number; actorEmail: string; action: string; resource: string;
   targetId: string; detailsJson: string; createdAt: string;
@@ -36,26 +44,38 @@ export default function StaffAuditPage() {
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
 
+  const PAGE = 50;
   const load = useCallback(async (beforeId?: number) => {
     setBusy(true);
     const params = new URLSearchParams();
     if (action) params.set("action", action);
     if (actor.trim()) params.set("actor", actor.trim());
+    params.set("limit", String(PAGE));
     if (beforeId) params.set("beforeId", String(beforeId));
-    const res = await fetch(`/api/staff/audit?${params.toString()}`, { cache: "no-store" });
-    if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); setBusy(false); return; }
-    const data = await res.json().catch(() => ({})) as { events?: AuditEvent[]; labels?: Record<string, string>; staff?: StaffInfo };
-    if (data.labels) setLabels(data.labels);
-    if (data.staff) setStaff(data.staff);
-    const batch = data.events ?? [];
-    setEvents(prev => beforeId ? [...prev, ...batch] : batch);
-    setMore(batch.length >= 50);
-    setLoaded(true); setBusy(false);
+    try {
+      const res = await fetch(`/api/staff/audit?${params.toString()}`, { cache: "no-store" });
+      if (res.status === 401 || res.status === 403) {
+        // Стіну доступу показуємо лише на першому завантаженні; при
+        // «Показати ще» не стираємо вже завантажений список.
+        if (!beforeId) setForbidden(true);
+        return;
+      }
+      const data = await res.json().catch(() => ({})) as { events?: AuditEvent[]; labels?: Record<string, string>; staff?: StaffInfo };
+      if (data.labels) setLabels(data.labels);
+      if (data.staff) setStaff(data.staff);
+      const batch = data.events ?? [];
+      setEvents(prev => beforeId ? [...prev, ...batch] : batch);
+      setMore(batch.length >= PAGE);
+    } catch {
+      if (!beforeId) setForbidden(false);
+    } finally {
+      setLoaded(true); setBusy(false);
+    }
   }, [action, actor]);
 
   useEffect(() => {
-    // Відкладаємо за межі синхронної фази ефекту (setBusy(true) на старті load).
-    const t = window.setTimeout(() => { void load(); }, 0);
+    // Дебаунс: чекаємо паузу в наборі, щоб не бити запит на кожну літеру.
+    const t = window.setTimeout(() => { void load(); }, 350);
     return () => window.clearTimeout(t);
   }, [load]);
 
@@ -88,7 +108,7 @@ export default function StaffAuditPage() {
                   <tbody>
                     {events.map(ev => {
                       let details = "";
-                      try { const o = JSON.parse(ev.detailsJson || "{}"); details = Object.entries(o).map(([k, v]) => `${k}: ${v}`).join(", "); } catch { details = ev.detailsJson; }
+                      try { const o = JSON.parse(ev.detailsJson || "{}"); details = Object.entries(o).map(([k, v]) => `${DETAIL_KEY_LABELS[k] || k}: ${v}`).join(", "); } catch { details = ev.detailsJson; }
                       const danger = ev.action === "login_failed";
                       return <tr key={ev.id} className={danger ? "auditDanger" : undefined}>
                         <td className="auditTime">{fmtKyiv(ev.createdAt)}</td>
@@ -112,7 +132,7 @@ export default function StaffAuditPage() {
       title="Журнал дій (аудит)"
       description="Хто, що і коли зробив у системі: входи, зміни налаштувань і графіка, керування персоналом."
       staffName={staff?.displayName}
-      staffRole={staff?.role}
+      staffRole={roleLabelUk(staff?.role)}
     >
       {body}
     </StaffWorkspaceShell>
