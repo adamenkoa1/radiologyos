@@ -61,8 +61,20 @@ export default function IntakePage() {
 
   const selected = data?.bookings.find(b => b.id === selectedId) || null;
 
+  // Чи форма розходиться зі збереженою заявкою (лише поля корекції).
+  function formMatchesSelected() {
+    if (!selected) return true;
+    return form.name===(selected.name||"") && form.phone===(selected.phone||"") && form.email===(selected.patientEmail||"")
+      && form.dob===(selected.dateOfBirth||"") && form.patientCategory===(selected.patientCategory||"civilian")
+      && form.serviceCode===(selected.serviceCode||SERVICES[0].code) && form.comment===(selected.comment||"");
+  }
+  function guardUnsaved() {
+    return !(selected && !creating && !formMatchesSelected()) || window.confirm("Незбережені зміни буде втрачено. Продовжити?");
+  }
+
   // Вибір заявки заповнює форму (режим редагування) — без ефекту, у обробнику.
   function selectBooking(b:Booking) {
+    if (!guardUnsaved()) return;
     setCreating(false);
     setSelectedId(b.id);
     setForm({
@@ -124,7 +136,7 @@ export default function IntakePage() {
     } finally { setBusy(false); }
   }
 
-  function startCreate() { setCreating(true); setSelectedId(null); setForm({ ...emptyForm, date:todayInKyiv() }); }
+  function startCreate() { if (!guardUnsaved()) return; setCreating(true); setSelectedId(null); setForm({ ...emptyForm, date:todayInKyiv() }); }
 
   const readOnly = !!data && !["admin","registrar"].includes(data.staff.role);
 
