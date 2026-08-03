@@ -33,9 +33,14 @@ test("appointments page renders the shared calendar in the staff shell", async (
   assert.match(shell, /Календар записів/);
 });
 
-test("dashboard merges the calendar and a one-click confirm queue", async () => {
+test("dashboard shows a compact today agenda and a one-click confirm queue", async () => {
   const dash = await read("app/staff/dashboard/page.tsx");
-  assert.match(dash, /WeekCalendar/); // календар вбудований у пульт
+  // Повний тижневий календар живе в окремому розділі; пульт дає короткий
+  // огляд «на сьогодні» + перехід у «Календар записів».
+  assert.doesNotMatch(dash, /WeekCalendar/);
+  assert.match(dash, /Розклад на сьогодні/);
+  assert.match(dash, /dashAgenda/);
+  assert.match(dash, /href="\/staff\/appointments"/);
   assert.match(dash, /dashKpiStrip/); // компактні картки замість великих блоків
   assert.match(dash, /dashPending/); // черга нових заявок
   assert.match(dash, /confirm:true/); // підтвердження одним кліком
