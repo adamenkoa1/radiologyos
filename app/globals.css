@@ -1099,6 +1099,11 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 /* Пункти-модулі «Карти системи» в бічній панелі — номерні бейджі */
 .workspaceNavigation a.workspaceModuleLink>span{display:grid;place-items:center;width:20px;height:20px;flex:0 0 20px;border-radius:6px;background:rgba(37,180,192,.16);color:#7fd4dc;font-size:11px;font-weight:700}
 .workspaceNavigation a.workspaceModuleLink.active>span,.workspaceNavigation a.workspaceModuleLink:hover>span{background:rgba(37,180,192,.28);color:#bff0f5}
+/* Зручність: повний підпис модуля (перенос замість обрізання) + читабельний
+   активний бейдж-номер (на білому боксі — суцільний teal з білою цифрою). */
+.workspaceNavigation a.workspaceModuleLink{gap:9px;padding-top:6px;padding-bottom:6px;align-items:center}
+.workspaceNavigation a.workspaceModuleLink>b{white-space:normal;overflow:visible;line-height:1.16}
+.workspaceNavigation a.workspaceModuleLink.active>span{background:#0c7a85;color:#fff}
 
 /* Розгортувані модулі з підпунктами в бічній панелі */
 .workspaceModuleGroup{display:block}
