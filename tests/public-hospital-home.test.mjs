@@ -9,7 +9,7 @@ test("the public homepage combines hospital information, services and booking", 
   for (const marker of [
     "scSlogan",
     "scAbout",
-    "Досвід, підтверджений щоденною практикою",
+    "Флюорографія, рентгенографія та КТ у Чернігові",
     "29 700",
     "16 500",
     "10 400",
