@@ -624,6 +624,8 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .apptWeekBody{position:relative;display:grid;grid-template-columns:56px repeat(7,1fr);background:#fff;border:1px solid #dce4e3;border-top:0;border-radius:0 0 10px 10px;overflow:hidden}
 .apptWeek .apptHours{position:relative;top:auto;left:auto;width:auto;height:auto;border-right:1px solid #eef2f0}
 .apptWeekCol{position:relative;border-left:1px solid #eef2f0}
+.apptNowLine{position:absolute;left:0;right:0;height:2px;background:#e5484d;z-index:6;pointer-events:none}
+.apptNowLine:before{content:"";position:absolute;left:-3px;top:-3px;width:8px;height:8px;border-radius:50%;background:#e5484d}
 .apptWeek .apptEvent{left:2px;right:2px;padding:3px 6px;border-left-width:3px}
 .apptWeek .apptEvent b{font-size:10.5px}
 .apptWeek .apptEvent span{font-size:9.5px}

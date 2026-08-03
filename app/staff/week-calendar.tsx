@@ -62,6 +62,42 @@ function weekDates(dateStr: string): string[] {
   return Array.from({ length: 7 }, (_, i) => { const x = new Date(d); x.setUTCDate(d.getUTCDate() + i); return fmtDate(x); });
 }
 
+// Розкладка подій дня по «доріжках»: події, що перетинаються в часі,
+// діляться на колонки (як у Google Calendar), щоб не малюватися одна поверх
+// одної. Повертає для кожного id { lane, lanes } — індекс і кількість колонок
+// у його кластері накладань.
+function laneLayout(events: CalBooking[]): Map<number, { lane: number; lanes: number }> {
+  const out = new Map<number, { lane: number; lanes: number }>();
+  const items = events
+    .map(b => { const s = minutesOf(b.desiredTime) ?? 0; return { id: b.id, s, e: s + (b.durationMinutes || 30) }; })
+    .sort((a, b) => a.s - b.s || a.e - b.e);
+  let cluster: Array<{ id: number; s: number; e: number; lane: number }> = [];
+  let clusterEnd = -1;
+  const flush = () => {
+    const laneEnds: number[] = [];
+    for (const it of cluster) {
+      let li = laneEnds.findIndex(end => end <= it.s);
+      if (li === -1) { li = laneEnds.length; laneEnds.push(it.e); } else { laneEnds[li] = it.e; }
+      it.lane = li;
+    }
+    const lanes = laneEnds.length;
+    for (const it of cluster) out.set(it.id, { lane: it.lane, lanes });
+    cluster = []; clusterEnd = -1;
+  };
+  for (const it of items) {
+    if (cluster.length && it.s >= clusterEnd) flush();
+    cluster.push({ ...it, lane: 0 });
+    clusterEnd = Math.max(clusterEnd, it.e);
+  }
+  flush();
+  return out;
+}
+
+function nowMinutesKyiv(): number {
+  const hm = new Intl.DateTimeFormat("en-GB", { timeZone: "Europe/Kyiv", hour: "2-digit", minute: "2-digit", hour12: false }).format(new Date());
+  return minutesOf(hm) ?? -1;
+}
+
 export default function WeekCalendar({
   bookings, options = [], schedule = SCHEDULE_DEFAULTS, blocks = [], initialView = "day", initialDate,
 }: {
@@ -101,23 +137,38 @@ export default function WeekCalendar({
     && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q)))),
   [bookings, week, tab, q, matchesExtra]);
 
+  // Лічильники вкладок рахуємо на вже відфільтрованій вибірці (категорія,
+  // оплата, пошук), щоб числа збігалися з тим, що реально показано.
   const counts = useMemo(() => {
-    const scope = view === "week" ? bookings.filter(b => week.includes(b.desiredDate)) : bookings.filter(b => b.desiredDate === date);
+    const inScope = (b: CalBooking) =>
+      (view === "week" ? week.includes(b.desiredDate) : b.desiredDate === date)
+      && matchesExtra(b)
+      && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q));
+    const scope = bookings.filter(inScope);
     const out: Record<string, number> = { all: scope.length };
     for (const t of TABS) if (t.key !== "all") out[t.key] = scope.filter(b => GROUPS[t.key].includes(b.status)).length;
     return out;
-  }, [bookings, date, week, view]);
+  }, [bookings, date, week, view, matchesExtra, q]);
+
+  // Фільтри й вкладки стосуються заявок; у вигляді «День» (дошка вільних слотів
+  // кабінетів) вони не застосовуються — тому там їх не показуємо.
+  const filtersApply = view === "week" || view === "list";
 
   const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const doctorOf = (b: CalBooking) => nameByEmail[b.assignedRadiologistEmail || ""] || nameByEmail[b.assignedRadiographerEmail || ""] || "";
 
-  function eventBlock(b: CalBooking, compact: boolean) {
+  function eventBlock(b: CalBooking, compact: boolean, pos?: { lane: number; lanes: number }) {
     const mins = minutesOf(b.desiredTime);
     if (mins === null) return null;
     const top = Math.max(0, ((mins - DAY_START * 60) / 60) * HOUR_PX);
     const height = Math.max(compact ? 20 : 24, ((b.durationMinutes || 30) / 60) * HOUR_PX - 3);
+    // Ділимо ширину колонки між подіями, що накладаються.
+    const lanes = pos && pos.lanes > 1 ? pos.lanes : 1;
+    const laneStyle = lanes > 1
+      ? { left: `calc(${(pos!.lane * 100) / lanes}% + 2px)`, width: `calc(${100 / lanes}% - 4px)`, right: "auto" as const }
+      : {};
     return (
-      <a href={`/staff?open=${b.id}#bookings`} className={`apptEvent grp-${groupOf(b.status)} route-${b.patientCategory || "unknown"} ${b.paymentStatus==="paid"?"paid":"unpaid"}`} key={b.id} style={{ top, height }} title={`${b.desiredTime} · ${b.name} · ${b.service}`}>
+      <a href={`/staff?open=${b.id}#bookings`} className={`apptEvent grp-${groupOf(b.status)} route-${b.patientCategory || "unknown"} ${b.paymentStatus==="paid"?"paid":"unpaid"}`} key={b.id} style={{ top, height, ...laneStyle }} title={`${b.desiredTime} · ${b.name} · ${b.service}`}>
         <b>{b.desiredTime} {b.name || "Без імені"}</b>
         {!compact && <span>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · ${doctorOf(b)}` : ""}</span>}
         {compact && <span>{EQUIP[b.equipmentId] || b.service}</span>}
@@ -153,13 +204,15 @@ export default function WeekCalendar({
           <span className="apptRange">{rangeLabel}</span>
         </div>
         <input type="date" value={date} onChange={e => setDate(e.target.value)} />
-        <select aria-label="Категорія пацієнта" value={category} onChange={e=>setCategory(e.target.value)}>
-          <option value="all">Усі пацієнти</option><option value="military">Військові</option><option value="civilian">Цивільні</option>
-        </select>
-        <select aria-label="Оплата" value={payment} onChange={e=>setPayment(e.target.value)}>
-          <option value="all">Будь-яка оплата</option><option value="pending">Перевірити оплату</option><option value="paid">Оплату перевірено</option>
-        </select>
-        <input type="search" placeholder="Пошук за пацієнтом…" value={search} onChange={e => setSearch(e.target.value)} />
+        {filtersApply && <>
+          <select aria-label="Категорія пацієнта" value={category} onChange={e=>setCategory(e.target.value)}>
+            <option value="all">Усі пацієнти</option><option value="military">Військові</option><option value="civilian">Цивільні</option>
+          </select>
+          <select aria-label="Оплата" value={payment} onChange={e=>setPayment(e.target.value)}>
+            <option value="all">Будь-яка оплата</option><option value="pending">Перевірити оплату</option><option value="paid">Оплату перевірено</option>
+          </select>
+          <input type="search" placeholder="Пошук за пацієнтом…" value={search} onChange={e => setSearch(e.target.value)} />
+        </>}
         <div className="apptViewToggle">
           <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Тиждень</button>
           <button type="button" className={view === "day" ? "active" : ""} onClick={() => setView("day")}>День</button>
@@ -167,13 +220,13 @@ export default function WeekCalendar({
         </div>
         <a className="apptNewBtn" href="/staff/book">+ Записати пацієнта</a>
       </div>
-      <div className="apptStatusRow">
+      {filtersApply && <div className="apptStatusRow">
         {TABS.map(t => (
           <button type="button" key={t.key} className={`apptStatusTab${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
             {t.label}<span className="apptStatusCount">{counts[t.key] ?? 0}</span>
           </button>
         ))}
-      </div>
+      </div>}
       {view === "day" && <p className="slotBoardHint">Натисніть зелений вільний слот, щоб одразу записати пацієнта на цей кабінет, дату і час.</p>}
 
       {view === "week"
@@ -191,12 +244,16 @@ export default function WeekCalendar({
               <div className="apptHours">
                 {hours.map(h => <div className="apptHour" key={h} style={{ height: HOUR_PX }}><span>{String(h).padStart(2, "0")}:00</span></div>)}
               </div>
-              {week.map(d => (
-                <div className="apptWeekCol" key={d}>
+              {(() => { const now = nowMinutesKyiv(); const tk = todayKyiv(); return week.map(d => {
+                const dayEvs = weekItems.filter(b => b.desiredDate === d);
+                const lay = laneLayout(dayEvs);
+                const showNow = d === tk && now >= DAY_START * 60 && now <= DAY_END * 60;
+                return <div className="apptWeekCol" key={d}>
                   {Array.from({length:(DAY_END-DAY_START)*2},(_,i)=><div className={`apptSlotLine${i%2===0?" hour":""}`} key={i} style={{top:i*HOUR_PX/2}}><span>{i%2===0?`${String(DAY_START+i/2).padStart(2,"0")}:00`:""}</span></div>)}
-                  {weekItems.filter(b => b.desiredDate === d).map(b => eventBlock(b, true))}
-                </div>
-              ))}
+                  {showNow && <div className="apptNowLine" style={{ top: ((now - DAY_START * 60) / 60) * HOUR_PX }} aria-hidden="true" />}
+                  {dayEvs.map(b => eventBlock(b, true, lay.get(b.id)))}
+                </div>;
+              }); })()}
             </div>
           </div>
         : view === "day"
