@@ -15,41 +15,49 @@ type StaffWorkspaceShellProps = {
   children: ReactNode;
 };
 
-// Бічна панель = модулі цільової структури (у порядку «Карти системи»).
-// Кожен модуль веде на робочу сторінку й розгортається у підпункти-екрани;
-// кожен підпункт — на свою сторінку (нереалізовані ведуть у блок карти).
-// Підпункт може залежати від feature flag профілю організації: якщо
-// відповідну можливість вимкнено, пункт ховається (конструктор).
-type NavChild = { label:string; href:string; flag?:string };
-type NavModule = { n:string; label:string; href:string; section?:WorkspaceSection; defaultOpen?:boolean; items:NavChild[] };
+// Бічна панель: угорі «Огляд» — найчастіші екрани реєстратури; нижче
+// «Модулі» — робочі напрями, згруповані за призначенням. Кожен модуль
+// веде на головну сторінку напряму й розгортається у підпункти-екрани.
+type NavChild = { label:string; href:string };
+type NavLink = { label:string; href:string; section:WorkspaceSection; icon:string };
+// section — головний розділ модуля; sections — усі розділи, що його підсвічують.
+type NavModule = { label:string; href:string; sections:WorkspaceSection[]; icon:string; defaultOpen?:boolean; items:NavChild[] };
+
+// Швидкий доступ: найчастіші екрани реєстратури — угорі, з піктограмами.
+const overview: NavLink[] = [
+  { label:"Пульт", href:"/staff/dashboard", section:"dashboard", icon:"🏠" },
+  { label:"Дошка прийому", href:"/staff/intake", section:"intake", icon:"📋" },
+  { label:"Календар записів", href:"/staff/appointments", section:"appointments", icon:"🗓️" },
+];
+
+// Модулі — згруповані за напрямом роботи, з піктограмами й підпунктами.
 const systemModules: NavModule[] = [
-  { n:"1", label:"Записи і слоти", href:"/staff/appointments", section:"appointments", items:[
-    { label:"Дошка прийому", href:"/staff/intake" },
-    { label:"Календар записів", href:"/staff/appointments" },
+  { label:"Пацієнти", href:"/staff/patients", sections:["patients","chat"], icon:"👥", items:[
+    { label:"Картки пацієнтів", href:"/staff/patients" },
+    { label:"Чат із пацієнтами", href:"/staff/chat" },
   ]},
-  { n:"2", label:"Кабінети й обладнання", href:"/staff/schedule", section:"schedule", items:[
+  { label:"Дослідження", href:"/staff/studies", sections:["studies","protocols","imaging"], icon:"🩻", items:[
+    { label:"Реєстр досліджень", href:"/staff/studies" },
+    { label:"Протоколи", href:"/staff/protocols" },
+    { label:"Знімки DICOM", href:"/staff/imaging" },
+  ]},
+  { label:"Кабінети й обладнання", href:"/staff/schedule", sections:["schedule","equipment","services"], icon:"🛠️", items:[
     { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
     { label:"Обладнання", href:"/staff/equipment" },
     { label:"Послуги кабінетів", href:"/staff/services" },
   ]},
-  { n:"3", label:"Дослідження", href:"/staff/studies", section:"studies", items:[
-    { label:"Реєстр досліджень", href:"/staff/studies" },
-    { label:"Протоколи", href:"/staff/protocols" },
-    { label:"Знімки DICOM", href:"/staff/imaging", flag:"dicom_pacs" },
-  ]},
-  { n:"4", label:"Фінанси і звіти", href:"/staff/reports", section:"reports", items:[
+  { label:"Фінанси і звіти", href:"/staff/reports", sections:["reports","tariffs"], icon:"💳", items:[
     { label:"Звіти відділення", href:"/staff/reports" },
     { label:"Тарифи", href:"/staff/tariffs" },
   ]},
-  { n:"5", label:"Адміністрування", href:"/staff/settings", section:"settings", defaultOpen:false, items:[
-    { label:"Редактор публічного сайту", href:"/staff/structure" },
+  { label:"Адміністрування", href:"/staff/settings", sections:["settings","structure","organization","whatsapp","audit"], icon:"⚙️", defaultOpen:false, items:[
+    { label:"Сайт і структура відділення", href:"/staff/structure" },
     { label:"Організація та профіль", href:"/staff/organization" },
     { label:"Персонал і ролі", href:"/staff#staff-admin" },
-    { label:"Чат із пацієнтами", href:"/staff/chat" },
     { label:"WhatsApp", href:"/staff/whatsapp" },
+    { label:"Журнал дій", href:"/staff/audit" },
     { label:"Реєстрація працівника", href:"/staff/register" },
     { label:"Налаштування", href:"/staff/settings" },
-    { label:"Журнал дій", href:"/staff/audit" },
   ]},
 ];
 
@@ -81,29 +89,10 @@ export default function StaffWorkspaceShell({
   const [now,setNow] = useState<Date | null>(null);
   const [dark,setDark] = useState(false);
   const [openModules,setOpenModules] = useState<Record<string,boolean>>({});
-  // Ефективні feature flags організації; null — ще не завантажено (показуємо все).
-  const [flags,setFlags] = useState<Record<string,boolean> | null>(null);
 
-  function toggleModule(n:string) {
-    setOpenModules((current)=>({ ...current, [n]:!current[n] }));
+  function toggleModule(key:string) {
+    setOpenModules((current)=>({ ...current, [key]:!current[key] }));
   }
-
-  // Пункт видимий, доки прапорці не завантажені; після — лише якщо його
-  // можливість увімкнена (пункти без flag завжди видимі).
-  function childVisible(child:NavChild) {
-    if (!child.flag) return true;
-    if (!flags) return true;
-    return flags[child.flag] !== false;
-  }
-
-  useEffect(()=>{
-    let active = true;
-    fetch("/api/staff/org-profile", { cache:"no-store" })
-      .then((r)=>r.ok ? r.json() : null)
-      .then((d)=>{ if (active && d?.flags) setFlags(d.flags as Record<string,boolean>); })
-      .catch(()=>{});
-    return ()=>{ active = false; };
-  },[]);
 
   useEffect(()=>{
     const timer = window.setInterval(()=>setNow(new Date()),1000);
@@ -142,34 +131,35 @@ export default function StaffWorkspaceShell({
 
       <nav className="workspaceNavigation" aria-label="Модулі системи">
         <p>Огляд</p>
-        <Link
-          href="/staff/structure"
-          className={`workspaceModuleLink${active === "structure" ? " active":""}`}
-          aria-current={active === "structure" ? "page":undefined}
-          title={collapsed ? "Публічна вітрина":undefined}
-        ><span aria-hidden="true">▤</span><b>Редактор сайту</b></Link>
+        {overview.map((o)=><Link
+          key={o.href}
+          href={o.href}
+          className={`workspaceModuleLink${active === o.section ? " active":""}`}
+          aria-current={active === o.section ? "page":undefined}
+          title={collapsed ? o.label:undefined}
+        ><span aria-hidden="true">{o.icon}</span><b>{o.label}</b></Link>)}
         <p>Модулі</p>
         {systemModules.map((item)=>{
-          const isActive = (!!item.section && item.section === active) || (item.n === "2" && ["schedule", "equipment", "services"].includes(active));
-          const isOpen = openModules[item.n] ?? item.defaultOpen ?? true;
-          return <div className="workspaceModuleGroup" key={item.n}>
+          const isActive = item.sections.includes(active);
+          const isOpen = openModules[item.href] ?? item.defaultOpen ?? true;
+          return <div className="workspaceModuleGroup" key={item.href}>
             <div className="workspaceModuleRow">
               <Link
                 href={item.href}
                 className={`workspaceModuleLink${isActive ? " active":""}`}
                 aria-current={isActive ? "page":undefined}
                 title={collapsed ? item.label:undefined}
-              ><span aria-hidden="true">{item.n}</span><b>{item.label}</b></Link>
+              ><span aria-hidden="true">{item.icon}</span><b>{item.label}</b></Link>
               {item.items.length > 0 && <button
                 type="button"
                 className="workspaceSubToggle"
                 aria-label={isOpen ? "Згорнути підпункти":"Розгорнути підпункти"}
                 aria-expanded={isOpen}
-                onClick={()=>toggleModule(item.n)}
+                onClick={()=>toggleModule(item.href)}
               >▾</button>}
             </div>
             {isOpen && item.items.length > 0 && <div className="workspaceSubList">
-              {item.items.filter(childVisible).map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
+              {item.items.map((sub,i)=><Link key={i} href={sub.href} className="workspaceSubLink">{sub.label}</Link>)}
             </div>}
           </div>;
         })}
