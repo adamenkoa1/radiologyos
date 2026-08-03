@@ -64,3 +64,23 @@ test("protocol builder page renders inside the staff workspace", async () => {
   assert.match(html, /Конструктор протоколів/);
   assert.match(html, /Оберіть дослідження зі списку/);
 });
+
+test("protocol editor guards unsaved work, shows a table of contents and loading state", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const page = await readFile(new URL("../app/staff/protocols/page.tsx", import.meta.url), "utf8");
+  // Захист незбережених змін при перемиканні протоколу.
+  assert.match(page, /function selectBooking/);
+  assert.match(page, /незбережені зміни/);
+  assert.match(page, /setDirty/);
+  // Стан завантаження картки, а не оманливий плейсхолдер.
+  assert.match(page, /bookingLoading/);
+  assert.match(page, /Завантаження протоколу…/);
+  // Зміст протоколу з переходами по секціях + заповненість.
+  assert.match(page, /protocolToc/);
+  assert.match(page, /заповнено \$\{completeness\.filled\}\/\$\{completeness\.total\}/);
+  assert.match(page, /#protocol-conclusion/);
+  // Друк: підпис лікаря — рядок для підпису, а не email.
+  assert.doesNotMatch(page, /Лікар-рентгенолог: \{booking\.assignedRadiologistEmail/);
+  // Єдиний патч документа замість повторюваного setDoc.
+  assert.match(page, /function patchDoc/);
+});

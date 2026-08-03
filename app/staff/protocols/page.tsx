@@ -64,6 +64,14 @@ export default function ProtocolsPage() {
   const [aiLoading,setAiLoading] = useState(false);
   const [filter,setFilter] = useState<"awaiting"|"ready"|"issued"|"all">("awaiting");
   const [query,setQuery] = useState("");
+  const [bookingLoading,setBookingLoading] = useState(false);
+  const [dirty,setDirty] = useState(false);
+
+  // Єдиний патч документа + позначка «є незбережені зміни».
+  function patchDoc(partial:Partial<EditorDoc>) {
+    setDoc((current) => current && ({ ...current, ...partial }));
+    setDirty(true);
+  }
 
   async function loadQueue() {
     const response = await fetch("/api/staff/protocols", { cache:"no-store" });
@@ -79,6 +87,40 @@ export default function ProtocolsPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Захист незбережених змін перед перемиканням на інший протокол.
+  function selectBooking(id:number) {
+    if (id === selectedId) return;
+    if (dirty && !window.confirm("У поточному протоколі є незбережені зміни. Відкрити інший запис без збереження?")) return;
+    void openBooking(id);
+  }
+
+  async function openBooking(id:number) {
+    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
+    setBookingLoading(true); setDirty(false);
+    try {
+      const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
+      const data = await response.json() as {
+        booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
+      };
+      if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
+      setBooking(data.booking);
+      setDoc(data.protocol
+        ? {
+            templateKey:data.protocol.templateKey, method:data.protocol.method,
+            sections:data.protocol.sections || {}, findings:data.protocol.findings,
+            conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
+            number:data.protocol.number, status:data.protocol.status,
+            version:data.protocol.version, updatedBy:data.protocol.updatedBy, updatedAt:data.protocol.updatedAt,
+          }
+        : emptyDoc(data.booking.serviceCode));
+    } catch {
+      setActionError("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBookingLoading(false);
+    }
+  }
+
+  // Глибоке посилання ?open=<id> відкриває протокол одразу після завантаження черги.
   useEffect(() => {
     if (!queue.length || selectedId !== null) return;
     const open = Number(new URLSearchParams(window.location.search).get("open"));
@@ -86,30 +128,12 @@ export default function ProtocolsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
-  async function openBooking(id:number) {
-    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
-    const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
-    const data = await response.json() as {
-      booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
-    };
-    if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
-    setBooking(data.booking);
-    setDoc(data.protocol
-      ? {
-          templateKey:data.protocol.templateKey, method:data.protocol.method,
-          sections:data.protocol.sections || {}, findings:data.protocol.findings,
-          conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
-          number:data.protocol.number, status:data.protocol.status,
-          version:data.protocol.version, updatedBy:data.protocol.updatedBy, updatedAt:data.protocol.updatedAt,
-        }
-      : emptyDoc(data.booking.serviceCode));
-  }
-
   function setSectionField(sectionKey:string,fieldKey:string,value:string) {
     setDoc((current) => current && ({
       ...current,
       sections:{ ...current.sections, [sectionKey]:{ ...(current.sections[sectionKey] || {}), [fieldKey]:value } },
     }));
+    setDirty(true);
   }
 
   function changeTemplate(templateKey:string) {
@@ -122,6 +146,7 @@ export default function ProtocolsPage() {
         method:current.method.trim() ? current.method : template.method,
       };
     });
+    setDirty(true);
   }
 
   function fillNorms() {
@@ -136,6 +161,7 @@ export default function ProtocolsPage() {
       }
       return { ...current, method:current.method.trim() ? current.method : template.method, sections };
     });
+    setDirty(true);
     setActionSuccess("Поля заповнено типовими формулюваннями норми. Відредагуйте виявлені зміни.");
   }
 
@@ -159,6 +185,7 @@ export default function ProtocolsPage() {
     };
     setSaving(false);
     if (!response.ok || !data.ok) { setActionError(data.error || "Не вдалося зберегти протокол"); return; }
+    setDirty(false);
     setDoc((current) => current && ({ ...current, status, version:data.version || current.version, updatedBy:staff?.email || current.updatedBy }));
     setBooking((current) => current && ({
       ...current,
@@ -202,12 +229,11 @@ export default function ProtocolsPage() {
   }
 
   function applyDraft(part:"conclusion"|"recommendations"|"all") {
-    if (!aiDraft) return;
-    setDoc((current) => current && ({
-      ...current,
-      conclusion:part === "recommendations" ? current.conclusion : aiDraft.conclusion,
-      recommendations:part === "conclusion" ? current.recommendations : aiDraft.recommendations,
-    }));
+    if (!aiDraft || !doc) return;
+    patchDoc({
+      conclusion:part === "recommendations" ? doc.conclusion : aiDraft.conclusion,
+      recommendations:part === "conclusion" ? doc.recommendations : aiDraft.recommendations,
+    });
     setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед видачею.");
   }
 
@@ -229,6 +255,18 @@ export default function ProtocolsPage() {
     ready:queue.filter((item) => item.protocolStatus === "ready").length,
     issued:queue.filter((item) => item.protocolStatus === "issued").length,
   }), [queue]);
+
+  // Заповненість структурованих полів — для змісту й підказки готовності.
+  const completeness = useMemo(() => {
+    if (!doc) return null;
+    const tpl = protocolTemplateByKey(doc.templateKey);
+    let total = 0, filled = 0;
+    for (const section of tpl.sections) for (const field of section.fields) {
+      total++;
+      if ((doc.sections[section.key]?.[field.key] || "").trim()) filled++;
+    }
+    return { total, filled };
+  }, [doc]);
 
   return <StaffWorkspaceShell
     active="protocols"
@@ -253,7 +291,7 @@ export default function ProtocolsPage() {
           {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
             key={item.id}
             className={`protocolQueueItem${selectedId === item.id ? " active":""}`}
-            onClick={()=>void openBooking(item.id)}
+            onClick={()=>selectBooking(item.id)}
           >
             <span className={`protocolTag ${item.protocolStatus}`}>{bookingProtocolLabels[item.protocolStatus] || item.protocolStatus}</span>
             <b>{item.serviceTitle}</b>
@@ -267,7 +305,11 @@ export default function ProtocolsPage() {
         {actionError && <p className="staffError" role="alert">{actionError}</p>}
         {actionSuccess && <p className="staffSuccess" role="status">{actionSuccess}</p>}
 
-        {!booking || !doc || !template ? <div className="protocolPlaceholder">
+        {bookingLoading && !booking ? <div className="protocolPlaceholder">
+          <span aria-hidden="true">⏳</span>
+          <b>Завантаження протоколу…</b>
+          <p>Відкриваємо структурований протокол дослідження та його чернетку.</p>
+        </div> : !booking || !doc || !template ? <div className="protocolPlaceholder">
           <span aria-hidden="true">▤</span>
           <b>Оберіть дослідження зі списку</b>
           <p>Структурований протокол відкриється тут. Для нового дослідження шаблон підбереться автоматично за модальністю.</p>
@@ -288,6 +330,18 @@ export default function ProtocolsPage() {
 
           {!canEdit && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
 
+          <nav className="protocolToc" aria-label="Зміст протоколу">
+            <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
+            <a href="#protocol-method" className={doc.method.trim() ? "done" : ""}>Методика</a>
+            {template.sections.map((section)=>{
+              const filled = section.fields.some((f)=>(doc.sections[section.key]?.[f.key] || "").trim());
+              return <a key={section.key} href={`#protocol-section-${section.key}`} className={filled ? "done" : ""}>{section.title}</a>;
+            })}
+            <a href="#protocol-findings" className={doc.findings.trim() ? "done" : ""}>Опис</a>
+            <a href="#protocol-conclusion" className={doc.conclusion.trim() ? "done" : ""}>Висновок</a>
+            <a href="#protocol-recommendations" className={doc.recommendations.trim() ? "done" : ""}>Рекомендації</a>
+          </nav>
+
           <fieldset className="protocolFields" disabled={!canEdit || saving}>
             <div className="protocolRow">
               <label className="wide"><span>Шаблон протоколу</span>
@@ -297,17 +351,17 @@ export default function ProtocolsPage() {
               </label>
               <label><span>Номер протоколу</span>
                 <input value={doc.number} maxLength={80} placeholder="Наприклад, КТ-2026-001"
-                  onChange={(e)=>setDoc((c)=>c && ({...c,number:e.target.value}))}/>
+                  onChange={(e)=>patchDoc({number:e.target.value})}/>
               </label>
               <button type="button" className="protocolNormButton" onClick={fillNorms}>Заповнити норму</button>
             </div>
 
-            <label className="protocolNarrative"><span>Методика</span>
+            <label className="protocolNarrative" id="protocol-method"><span>Методика</span>
               <textarea value={doc.method} maxLength={600} placeholder={template.method || "Опишіть методику дослідження"}
-                onChange={(e)=>setDoc((c)=>c && ({...c,method:e.target.value}))}/>
+                onChange={(e)=>patchDoc({method:e.target.value})}/>
             </label>
 
-            {template.sections.map((section)=><div className="protocolSection" key={section.key}>
+            {template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
               <h3>{section.title}</h3>
               <div className="protocolSectionFields">
                 {section.fields.map((field)=>{
@@ -326,17 +380,17 @@ export default function ProtocolsPage() {
               </div>
             </div>)}
 
-            <label className="protocolNarrative"><span>Опис (додатково)</span>
+            <label className="protocolNarrative" id="protocol-findings"><span>Опис (додатково)</span>
               <textarea value={doc.findings} maxLength={6000} placeholder="Вільний опис виявлених змін, що доповнює структуровані поля"
-                onChange={(e)=>setDoc((c)=>c && ({...c,findings:e.target.value}))}/>
+                onChange={(e)=>patchDoc({findings:e.target.value})}/>
             </label>
-            <label className="protocolNarrative"><span>Висновок</span>
+            <label className="protocolNarrative" id="protocol-conclusion"><span>Висновок</span>
               <textarea value={doc.conclusion} maxLength={6000} placeholder="Діагностичний висновок"
-                onChange={(e)=>setDoc((c)=>c && ({...c,conclusion:e.target.value}))}/>
+                onChange={(e)=>patchDoc({conclusion:e.target.value})}/>
             </label>
-            <label className="protocolNarrative"><span>Рекомендації</span>
+            <label className="protocolNarrative" id="protocol-recommendations"><span>Рекомендації</span>
               <textarea value={doc.recommendations} maxLength={6000} placeholder="Рекомендації щодо подальшого обстеження"
-                onChange={(e)=>setDoc((c)=>c && ({...c,recommendations:e.target.value}))}/>
+                onChange={(e)=>patchDoc({recommendations:e.target.value})}/>
             </label>
           </fieldset>
 
@@ -393,7 +447,7 @@ export default function ProtocolsPage() {
               <div><dt>Пацієнт</dt><dd>{booking.name}</dd></div>
               <div><dt>Код запису</dt><dd>{booking.code}</dd></div>
               <div><dt>Дослідження</dt><dd>{booking.service}</dd></div>
-              <div><dt>Дата виконання</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
+              <div><dt>{booking.performedAt ? "Дата виконання" : "Запланована дата"}</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
             </dl>
             {(doc.method || template.method) && <section><h2>Методика</h2><p>{doc.method || template.method}</p></section>}
             {template.sections.map((section)=>{
@@ -409,7 +463,7 @@ export default function ProtocolsPage() {
             {doc.conclusion.trim() && <section><h2>Висновок</h2><p>{doc.conclusion}</p></section>}
             {doc.recommendations.trim() && <section><h2>Рекомендації</h2><p>{doc.recommendations}</p></section>}
             <footer>
-              <span>Лікар-рентгенолог: {booking.assignedRadiologistEmail || doc.updatedBy || "________________"}</span>
+              <span>Лікар-рентгенолог: ________________________ <small>(підпис, ПІБ)</small></span>
               <span>Статус: {PROTOCOL_STATUS_LABELS[doc.status]}</span>
             </footer>
           </article>
