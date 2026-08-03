@@ -140,6 +140,7 @@ export async function GET(request: Request) {
         performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         paid_amount AS paidAmount, external_reference AS externalReference,
+        date_of_birth AS dateOfBirth,
         comment, status, created_at AS createdAt
        FROM bookings WHERE ${scope.sql} ORDER BY created_at DESC LIMIT 500`
     ).bind(...scope.values).all(),
@@ -206,10 +207,50 @@ export async function PATCH(request: Request) {
     performedAt?: string;
     anatomicalRegionsCount?: number;
     externalReference?: string;
+    edit?: {
+      name?: string; phone?: string; email?: string; dob?: string;
+      patientCategory?: string; serviceCode?: string; comment?: string;
+    };
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
   if (!(await canAccessBooking(db, member, body.id!, ctx.organizationId))) {
     return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
+  }
+
+  // Повна корекція заявки: ПІБ, телефон, email, ДН, категорія, послуга,
+  // коментар. Лише реєстратор/адміністратор. Зміна послуги переобчислює
+  // апарат і тривалість (слот за потреби перенести окремо).
+  if (body.edit && typeof body.edit === "object") {
+    if (!canManageBookings(member.role)) {
+      return Response.json({ error: "Редагувати заявку може реєстратор або адміністратор" }, { status: 403 });
+    }
+    const e = body.edit;
+    const sets: string[] = [];
+    const binds: (string | number)[] = [];
+    if (typeof e.name === "string") { sets.push("name = ?"); binds.push(e.name.trim().slice(0, 120)); }
+    if (typeof e.phone === "string") {
+      const ph = e.phone.trim().slice(0, 40);
+      const norm = normalizeUkrainianPhone(ph);
+      if (!norm) return Response.json({ error: "Некоректний номер телефону" }, { status: 400 });
+      sets.push("phone = ?", "phone_normalized = ?"); binds.push(ph, norm);
+    }
+    if (typeof e.email === "string") { sets.push("patient_email = ?"); binds.push(e.email.trim().slice(0, 254)); }
+    if (typeof e.dob === "string") { sets.push("date_of_birth = ?"); binds.push(normalizeDob(e.dob)); }
+    if (typeof e.patientCategory === "string") { sets.push("patient_category = ?"); binds.push(e.patientCategory === "military" ? "military" : "civilian"); }
+    if (typeof e.comment === "string") { sets.push("comment = ?"); binds.push(e.comment.trim().slice(0, 700)); }
+    if (typeof e.serviceCode === "string") {
+      const svc = serviceByCode(e.serviceCode.trim().slice(0, 12));
+      if (!svc) return Response.json({ error: "Невідома послуга" }, { status: 400 });
+      sets.push("service = ?", "service_code = ?", "equipment_id = ?", "duration_minutes = ?");
+      binds.push(svc.title, svc.code, svc.equipmentId, svc.durationMinutes);
+    }
+    if (!sets.length) return Response.json({ error: "Немає змін для збереження" }, { status: 400 });
+    binds.push(body.id!);
+    await db.prepare(`UPDATE bookings SET ${sets.join(", ")} WHERE id = ?`).bind(...binds).run();
+    await db.prepare(
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'edited', ?, ?)"
+    ).bind(body.id!, `Скориговано поля: ${Object.keys(e).join(", ")}`, member.email).run();
+    return Response.json({ ok: true });
   }
 
   if (typeof body.note === "string") {

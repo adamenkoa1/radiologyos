@@ -296,6 +296,48 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .dashCalendarHead h2{font-size:16px;font-weight:750;margin:0}
 .dashCalNew{font-size:13px;font-weight:800;color:var(--green,#0c7a85)}
+/* Дошка прийому заявок */
+.intakeBoard{display:grid;grid-template-columns:360px 1fr;gap:16px;max-width:1500px;margin:0 auto;align-items:start}
+.intakeQueue{background:#fff;border:1px solid #e7ece9;border-radius:14px;overflow:hidden;position:sticky;top:12px}
+.intakeQueueTop{display:flex;flex-direction:column;gap:8px;padding:12px;border-bottom:1px solid #eef2f0}
+.intakeSeg{display:flex;background:#f4f8f7;border-radius:8px;padding:3px}
+.intakeSeg button{flex:1;border:0;background:transparent;padding:7px;border-radius:6px;font:inherit;font-size:12.5px;font-weight:700;color:#5b6a66;cursor:pointer}
+.intakeSeg button.on{background:#fff;color:#0c7a85;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+.intakeQueueTop input{padding:9px 11px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}
+.intakeNew{padding:9px;border:1px dashed #0c7a85;background:#e6f3f2;color:#0c7a85;border-radius:8px;font:inherit;font-weight:700;cursor:pointer}
+.intakeList{list-style:none;margin:0;padding:8px;display:flex;flex-direction:column;gap:6px;max-height:calc(100vh - 220px);overflow-y:auto}
+.intakeEmpty{color:#8a9995;font-size:12.5px;padding:16px;text-align:center}
+.intakeCard{width:100%;text-align:left;border:1px solid #eef2f0;border-left:3px solid #cbd8d6;border-radius:8px;background:#fbfdfc;padding:9px 11px;display:flex;flex-direction:column;gap:3px;cursor:pointer}
+.intakeCard:hover{background:#f4f8f7}
+.intakeCard.active{border-color:#0c7a85;border-left-color:#0c7a85;background:#eef7f6}
+.intakeCard.st-new{border-left-color:#c9a227}.intakeCard.st-rescheduled{border-left-color:#2f5c9a}
+.intakeCardTop{display:flex;justify-content:space-between;align-items:center}
+.intakeCardTop b{font-size:13px;font-weight:700;color:#25332f}
+.intakeSrc{font-size:12px}
+.intakeCardSvc{font-size:11.5px;color:#5b6a66;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.intakeCardMeta{font-size:11px;color:#8a9995}
+.intakeStatus{font-style:normal;font-weight:700}.intakeStatus.st-new{color:#a6801a}.intakeStatus.st-confirmed{color:#2c7a4b}.intakeStatus.st-rescheduled{color:#2f5c9a}.intakeStatus.st-cancelled{color:#9a3b3b}
+.intakeDetail{background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:18px;min-height:320px}
+.intakeDetailHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:14px}
+.intakeDetailHead h2{font-size:19px;font-weight:750;margin:0}
+.intakeDetailHead small{color:#5b6a66}
+.intakeClose{border:0;background:#f4f8f7;border-radius:7px;width:32px;height:32px;cursor:pointer;font-size:15px}
+.intakeWa{background:#25d366;color:#053;border-radius:8px;padding:7px 12px;font-weight:700;text-decoration:none;font-size:12.5px;white-space:nowrap}
+.intakePlaceholder{display:flex;align-items:center;justify-content:center;min-height:260px;color:#8a9995}
+.intakeForm{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.intakeForm label{display:flex;flex-direction:column;gap:4px}
+.intakeForm label.intakeWide{grid-column:1 / -1}
+.intakeForm span{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#41544f}
+.intakeForm input,.intakeForm select,.intakeForm textarea{padding:9px 11px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}
+.intakeForm input[readonly],.intakeForm textarea[readonly]{background:#f4f8f7;color:#5b6a66}
+.intakeActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;border-top:1px solid #eef2f0;padding-top:14px}
+.intakeActions button{padding:9px 14px;border:1px solid #cbd8d6;background:#fff;border-radius:8px;font:inherit;font-weight:650;cursor:pointer}
+.intakeActions button.primary{background:#0c7a85;border-color:#0c7a85;color:#fff}
+.intakeActions button.ok{background:#e6f3ec;border-color:#8fce9f;color:#2c7a4b}
+.intakeActions button.danger{background:#fbf3f3;border-color:#d9c2c2;color:#9a4b4b}
+.intakeActions button:disabled{opacity:.5;cursor:not-allowed}
+.intakeToast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25332f;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.2)}
+@media(max-width:900px){.intakeBoard{grid-template-columns:1fr}.intakeQueue{position:static}.intakeForm{grid-template-columns:1fr}}
 /* Журнал дій (аудит) */
 .auditWrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .auditFilters{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
