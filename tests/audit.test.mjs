@@ -54,6 +54,18 @@ test("toAuditCsv builds an Excel-friendly CSV with a BOM and escaped fields", as
   assert.match(lines[2], /"\{""a"":""b, c""\}"/);
 });
 
+test("toAuditCsv neutralizes formula-injection cells", async () => {
+  const { toAuditCsv } = await import("../lib/audit.ts");
+  const csv = toAuditCsv([
+    { id: 1, actorEmail: "=HYPERLINK(\"http://evil\")", action: "login_failed", resource: "auth", targetId: "+1", detailsJson: "@x", createdAt: "2026-08-03 10:00:00" },
+  ]);
+  const row = csv.slice(1).split("\r\n")[1];
+  // Небезпечні клітинки префіксуються апострофом (і беруться в лапки через ").
+  assert.match(row, /"'=HYPERLINK/);
+  assert.match(row, /'\+1/);
+  assert.match(row, /'@x/);
+});
+
 test("audit API is admin-only and org-scoped", async () => {
   const route = await read("app/api/staff/audit/route.ts");
   assert.match(route, /requireOrgContext/);

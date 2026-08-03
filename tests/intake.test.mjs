@@ -24,8 +24,15 @@ test("bookings PATCH supports full booking correction (edit branch)", async () =
   assert.match(route, /"paid", "not_required"/);
   assert.match(route, /payment_amount = \?/);
   assert.match(route, /effectivePrice\(db, svc\.code\)/);
-  assert.match(route, /svc\.equipmentId !== cur\.eq/);
-  assert.match(route, /Час зайнятий на апараті нової послуги/);
+  // Виправлено (аудит): повна перевірка слоту при зміні послуги (сітка/день/
+  // блокування/накладання), а не лише конфлікт апарата.
+  assert.match(route, /candidateTimesFor\(hoursFor\(rSchedule/);
+  assert.match(route, /isEquipmentDayOpen\(cur\.d, rSchedule/);
+  assert.match(route, /equipment_blocks/);
+  // Закриті заявки не редагуються; email валідується; email зберігається при створенні.
+  assert.match(route, /cur\.st === "cancelled"/);
+  assert.match(route, /Некоректний email/);
+  assert.match(route, /date_of_birth, patient_email,/); // POST зберігає email
 });
 
 test("intake board page is a two-pane queue + editable detail, wired into the shell", async () => {
@@ -41,6 +48,8 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /created_by_staff|Нова заявка/); // ручне створення
   assert.match(page, /🌐|✍️/);        // позначка джерела (сайт/вручну)
   assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
+  // Виправлено (аудит): помилки завантаження не кладуться в data (не білий екран).
+  assert.match(page, /!Array\.isArray\(payload\.bookings\) \|\| !payload\.staff/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/intake"/);
   assert.match(shell, /Дошка прийому/);

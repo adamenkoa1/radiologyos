@@ -39,16 +39,22 @@ export default function IntakePage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState("");
 
+  function flash(msg:string) { setToast(msg); window.setTimeout(()=>setToast(""), 2600); }
+
   async function load(keepSelection = true) {
     const res = await fetch("/api/staff/bookings", { cache:"no-store" });
     if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); return; }
-    const payload = await res.json().catch(()=>({})) as Data;
+    const payload = await res.json().catch(()=>null) as (Data & { error?:string }) | null;
+    // Помилки (503/500 тощо) не кладемо в data — інакше далі впаде data.staff.
+    if (!res.ok || !payload || !Array.isArray(payload.bookings) || !payload.staff) {
+      flash(payload?.error || "Не вдалося завантажити заявки"); setLoaded(true); return;
+    }
     setData(payload); setLoaded(true);
     if (!keepSelection) setSelectedId(null);
   }
+  // Одноразове завантаження на монтуванні (load стабільний за задумом).
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(t); }, []);
-
-  function flash(msg:string) { setToast(msg); window.setTimeout(()=>setToast(""), 2600); }
 
   const sourceOf = useMemo(() => {
     const m = new Map<number,"site"|"staff">();
