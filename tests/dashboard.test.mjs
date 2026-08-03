@@ -17,6 +17,19 @@ test("dashboard API aggregates across pillars and never mutates schema", async (
   assert.doesNotMatch(route, /UPDATE\s+bookings/i);
 });
 
+test("dashboard exposes a 7-day per-equipment workload", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  // 7-денне вікно: сьогодні та 6 попередніх днів.
+  assert.match(route, /setUTCDate\(d\.getUTCDate\(\) - 6\)/);
+  assert.match(route, /desired_date BETWEEN \? AND \?/);
+  assert.match(route, /GROUP BY desired_date, equipment_id/);
+  assert.match(route, /equipmentWeek:/);
+  assert.match(route, /weekStart,/);
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /Завантаженість апаратів · 7 днів/);
+  assert.match(page, /equipmentWeek/);
+});
+
 test("dashboard exposes a tenant-scoped clinical queue by machine state", async () => {
   const route = await read("app/api/staff/dashboard/route.ts");
   // Черга рахує активні стани єдиної state machine.

@@ -26,6 +26,8 @@ export async function GET(request: Request) {
   const orgId = ctx?.organizationId ?? 1;
 
   const today = todayInKyiv();
+  // Початок 7-денного вікна завантаженості (сьогодні та 6 попередніх днів).
+  const weekStart = (() => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 6); return d.toISOString().slice(0, 10); })();
   const one = (sql: string, ...bind: unknown[]) => db.prepare(sql).bind(...bind).first<Record<string, unknown>>();
   const many = (sql: string, ...bind: unknown[]) => db.prepare(sql).bind(...bind).all();
 
@@ -38,6 +40,7 @@ export async function GET(request: Request) {
     equipmentToday,
     needProtocolList, readyList, needImagingList, confirmList,
     clinicalQueueRows,
+    equipmentWeekRows,
   ] = await Promise.all([
     one("SELECT COUNT(*) AS c FROM bookings WHERE desired_date = ? AND status != 'cancelled'", today),
     one("SELECT SUM(status='new') AS newc, SUM(status='confirmed') AS confirmedc FROM bookings WHERE desired_date = ? AND status != 'cancelled'", today),
@@ -64,6 +67,13 @@ export async function GET(request: Request) {
        WHERE organization_id = ? AND status IN ('queued','in_progress','images_ready','reporting','protocol_ready')
        GROUP BY status`,
       orgId,
+    ),
+    // Завантаженість апаратів за 7 днів: кількість досліджень на день і апарат.
+    many(
+      `SELECT desired_date AS d, equipment_id AS id, COUNT(*) AS c FROM bookings
+       WHERE desired_date BETWEEN ? AND ? AND status != 'cancelled'
+       GROUP BY desired_date, equipment_id`,
+      weekStart, today,
     ),
   ]);
 
@@ -98,6 +108,8 @@ export async function GET(request: Request) {
       doNotContact: num(doNotContact),
     },
     equipmentToday: (equipmentToday as { results?: Array<Record<string, unknown>> }).results || [],
+    equipmentWeek: (equipmentWeekRows as { results?: Array<Record<string, unknown>> }).results || [],
+    weekStart,
     clinicalQueue,
     lists: {
       needProtocol: withTitle(needProtocolList),

@@ -262,6 +262,18 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 @media(max-width:1000px){.dashKpiStrip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:620px){.dashKpiStrip{grid-template-columns:repeat(2,1fr)}}
 /* Пульт — нові заявки з миготінням і підтвердженням у 1 клік */
+.dashLoad{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
+.dashLoadGrid{display:grid;gap:6px 8px;align-items:end;margin-top:12px}
+.dashLoadCorner{grid-row:1}
+.dashLoadDay{grid-row:1;text-align:center;font-size:11px;font-weight:800;color:#8a9995;display:flex;flex-direction:column;gap:1px}
+.dashLoadDay small{font-weight:600;color:#aab6b2}
+.dashLoadDay.today{color:#0c7a85}.dashLoadDay.today small{color:#0c7a85}
+.dashLoadRow{align-self:center;font-size:12.5px;font-weight:650;color:#25332f}
+.dashLoadCell{position:relative;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:52px;background:#f4f8f7;border-radius:6px;overflow:hidden}
+.dashLoadCell i{width:100%;background:linear-gradient(180deg,#2aa198,#0c7a85);min-height:2px;transition:height .2s}
+.dashLoadCell i.empty{background:transparent;min-height:0}
+.dashLoadCell b{position:absolute;top:3px;font-size:11px;font-weight:800;color:#25332f}
+@media(max-width:640px){.dashLoadRow{font-size:11px}.dashLoadCell{height:40px}}
 .dashPending{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
 .dashPendingHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
 .dashPendingHead h2{font-size:16px;font-weight:750;margin:0}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import WeekCalendar, { type CalBooking, type CalStaffOption } from "../week-calendar";
 
@@ -18,6 +18,8 @@ type QueueState = { v:string; l:string; count:number };
 type Data = {
   today:string; kpi:Kpi;
   equipmentToday:Array<{ id:string; c:number }>;
+  equipmentWeek:Array<{ d:string; id:string; c:number }>;
+  weekStart:string;
   clinicalQueue:QueueState[];
   lists:{ needProtocol:ListItem[]; readyToIssue:ListItem[]; needImaging:ListItem[]; confirmQueue:ListItem[] };
   staff:StaffInfo;
@@ -160,6 +162,28 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Завантаженість апаратів за 7 днів (сьогодні та 6 попередніх) */}
+      {data && <section className="dashLoad">
+        <div className="dashListHead"><h3>Завантаженість апаратів · 7 днів</h3><span>{data.weekStart} — {data.today}</span></div>
+        {(() => {
+          const days:string[] = [];
+          for (let i = 6; i >= 0; i--) { const dt = new Date(`${data.today}T12:00:00Z`); dt.setUTCDate(dt.getUTCDate() - i); days.push(dt.toISOString().slice(0,10)); }
+          const at = (id:string, d:string) => data.equipmentWeek.find((e)=>e.id===id && e.d===d)?.c || 0;
+          const peak = Math.max(1, ...data.equipmentWeek.map((e)=>e.c));
+          const dow = (d:string) => ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"][new Date(`${d}T12:00:00Z`).getUTCDay()];
+          return <div className="dashLoadGrid" style={{ gridTemplateColumns:`120px repeat(${days.length}, 1fr)` }}>
+            <span className="dashLoadCorner" />
+            {days.map((d)=><span key={d} className={`dashLoadDay${d===data.today?" today":""}`}>{dow(d)}<small>{d.slice(8,10)}.{d.slice(5,7)}</small></span>)}
+            {["ct","xray","fluoro"].map((id)=><Fragment key={id}>
+              <span className="dashLoadRow">{equipmentNames[id]}</span>
+              {days.map((d)=>{ const v = at(id,d); return <span key={d} className="dashLoadCell" title={`${equipmentNames[id]} · ${d}: ${v}`}>
+                <i style={{ height:`${Math.round((v/peak)*100)}%` }} className={v?"":"empty"} /><b>{v||""}</b>
+              </span>; })}
+            </Fragment>)}
+          </div>;
+        })()}
+      </section>}
 
       {/* Нові заявки: миготять, доки не підтвердять; підтвердження одним кліком */}
       <section className="dashPending">
