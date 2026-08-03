@@ -72,6 +72,7 @@ export default function PatientsPage() {
   const [query,setQuery] = useState("");
   const [selectedPhone,setSelectedPhone] = useState<string | null>(null);
   const [card,setCard] = useState<PatientCard | null>(null);
+  const [cardLoading,setCardLoading] = useState(false);
   const [creating,setCreating] = useState(false);
   const [error,setError] = useState("");
   const [actionError,setActionError] = useState("");
@@ -103,11 +104,17 @@ export default function PatientsPage() {
   }, [patients]);
 
   async function openPatient(phone:string) {
-    setActionError(""); setActionSuccess(""); setCreating(false); setSelectedPhone(phone); setCard(null);
-    const response = await fetch(`/api/staff/patients?phone=${encodeURIComponent(phone)}`, { cache:"no-store" });
-    const data = await response.json() as PatientCard & { error?:string };
-    if (!response.ok) { setActionError(data.error || "Не вдалося відкрити картку"); return; }
-    setCard(data);
+    setActionError(""); setActionSuccess(""); setCreating(false); setSelectedPhone(phone); setCard(null); setCardLoading(true);
+    try {
+      const response = await fetch(`/api/staff/patients?phone=${encodeURIComponent(phone)}`, { cache:"no-store" });
+      const data = await response.json() as PatientCard & { error?:string };
+      if (!response.ok) { setActionError(data.error || "Не вдалося відкрити картку"); return; }
+      setCard(data);
+    } catch {
+      setActionError("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setCardLoading(false);
+    }
   }
 
   async function saveProfile(form:HTMLFormElement) {
@@ -251,6 +258,10 @@ export default function PatientsPage() {
               <button type="button" className="crmCancel" onClick={()=>setCreating(false)}>Скасувати</button>
             </div>
           </form>
+        </div> : cardLoading && !card ? <div className="protocolPlaceholder">
+          <span aria-hidden="true">⏳</span>
+          <b>Завантаження картки…</b>
+          <p>Збираємо історію візитів, протоколів, оплат і комунікацій пацієнта.</p>
         </div> : !card || !selectedPhone ? <div className="protocolPlaceholder">
           <span aria-hidden="true">☺</span>
           <b>Оберіть пацієнта зі списку</b>
@@ -267,7 +278,15 @@ export default function PatientsPage() {
                 {card.patient?.marketingSource && <span className="crmTag muted">Джерело: {card.patient.marketingSource}</span>}
               </p>}
             </div>
-            {card.profile?.doNotContact ? <span className="crmDnc large">Не турбувати</span> : null}
+            <div className="crmCardActions">
+              {card.profile?.doNotContact ? <span className="crmDnc large">Не турбувати</span> : null}
+              {canManage && <a className="crmBookBtn" href={`/staff/book?${new URLSearchParams({
+                phone:card.phone,
+                name:card.profile?.displayName || card.patient?.name || "",
+                dob:card.profile?.birthDate || "",
+                category:card.patient?.category || "",
+              }).toString()}`}>+ Записати на дослідження</a>}
+            </div>
           </header>
 
           <div className="crmStats">
@@ -307,7 +326,9 @@ export default function PatientsPage() {
                     <span>Оплата: {paymentLabels[booking.paymentStatus] || booking.paymentStatus}{booking.paidAmount?` · ${booking.paidAmount} грн`:""}</span>
                     {booking.performedAt && <span>Виконано: {formatDateTime(booking.performedAt)}</span>}
                   </div>
-                  <a className="crmVisitLink" href={`/staff/protocols?open=${booking.id}`}>Протокол дослідження →</a>
+                  {booking.performedAt || ["ready","issued","in_progress"].includes(booking.protocolStatus)
+                    ? <a className="crmVisitLink" href={`/staff/protocols?open=${booking.id}`}>Протокол дослідження →</a>
+                    : <a className="crmVisitLink" href={`/staff/appointments?date=${booking.desiredDate}&view=day`}>Відкрити в календарі →</a>}
                 </li>)}
               </ol>}
             </section>

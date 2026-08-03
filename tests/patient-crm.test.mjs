@@ -79,3 +79,28 @@ test("CRM page renders inside the staff workspace", async () => {
   assert.match(html, /Картки пацієнтів/);
   assert.match(html, /Оберіть пацієнта зі списку/);
 });
+
+test("CRM card shows a loading state, a book action, and context-correct visit links", async () => {
+  const page = await read("app/staff/patients/page.tsx");
+  // Окремий стан завантаження картки (не плутати з плейсхолдером «оберіть пацієнта»).
+  assert.match(page, /cardLoading/);
+  assert.match(page, /Завантаження картки…/);
+  // Кнопка «Записати на дослідження» веде у форму запису з даними пацієнта.
+  assert.match(page, /crmBookBtn/);
+  assert.match(page, /\/staff\/book\?/);
+  assert.match(page, /Записати на дослідження/);
+  // Майбутні візити ведуть у календар, виконані — у протокол.
+  assert.match(page, /\/staff\/appointments\?date=/);
+  assert.match(page, /performedAt \|\| \["ready","issued","in_progress"\]/);
+});
+
+test("booking form pre-fills patient data from query params (CRM → book)", async () => {
+  const page = await read("app/staff/book/page.tsx");
+  for (const p of ["name", "phone", "dob", "category"]) {
+    assert.match(page, new RegExp(`params\\.get\\("${p}"\\)`), `reads ${p}`);
+  }
+  // Поля контрольовані, щоб передзаповнення справді відображалося.
+  assert.match(page, /value=\{name\} onChange/);
+  assert.match(page, /value=\{phone\} onChange/);
+  assert.match(page, /value=\{category\} onChange/);
+});

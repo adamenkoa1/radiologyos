@@ -30,6 +30,11 @@ export default function StaffBookPage() {
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  // Передзаповнення з картки пацієнта (CRM → «Записати на дослідження»).
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [dob, setDob] = useState("");
+  const [category, setCategory] = useState("civilian");
 
   const serviceGroups = useMemo(() => groupedServices(), []);
   const radiologists = useMemo(() => options.filter(o => o.role === "radiologist"), [options]);
@@ -58,6 +63,11 @@ export default function StaffBookPage() {
       if (/^\d{2}:\d{2}$/.test(requestedSlot)) setRequestedTime(requestedSlot);
       const firstService = Object.values(serviceGroups).flat().find(service => service.equipmentId === equipment);
       if (firstService) setServiceCode(firstService.code);
+      // Дані пацієнта з CRM-картки.
+      const pName = params.get("name"); if (pName) setName(pName.slice(0, 120));
+      const pPhone = params.get("phone"); if (pPhone) setPhone(pPhone.slice(0, 20));
+      const pDob = params.get("dob"); if (pDob && /^\d{4}-\d{2}-\d{2}$/.test(pDob)) setDob(pDob);
+      const pCat = params.get("category"); if (pCat === "military" || pCat === "civilian") setCategory(pCat);
     }, 0);
     return () => window.clearTimeout(t);
   }, [serviceGroups]);
@@ -99,6 +109,7 @@ export default function StaffBookPage() {
     setCode(result.code || "");
     (event.target as HTMLFormElement).reset();
     setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
+    setName(""); setPhone(""); setDob(""); setCategory("civilian");
   }
 
   const price = serviceByCode(serviceCode)?.price;
@@ -110,11 +121,11 @@ export default function StaffBookPage() {
         <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
         <section className="settingsBlock">
           <h3>Дані пацієнта</h3>
-          <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><input name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" /></label>
-          <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" /></label>
-          <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" /></label>
+          <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><input name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" value={name} onChange={e=>setName(e.target.value)} /></label>
+          <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)} /></label>
+          <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" value={dob} onChange={e=>setDob(e.target.value)} /></label>
           <label className="settingsField"><span>Категорія</span>
-            <select name="patientCategory" defaultValue="civilian">
+            <select name="patientCategory" value={category} onChange={e=>setCategory(e.target.value)}>
               <option value="civilian">Цивільний пацієнт</option>
               <option value="military">Військовослужбовець</option>
             </select>
