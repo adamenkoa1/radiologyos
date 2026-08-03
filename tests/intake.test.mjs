@@ -18,6 +18,14 @@ test("bookings PATCH supports full booking correction (edit branch)", async () =
   assert.match(route, /duration_minutes = \?/);
   // GET віддає дату народження для форми корекції.
   assert.match(route, /date_of_birth AS dateOfBirth/);
+  // Виправлено: зміна послуги оновлює суму; категорії — статус оплати;
+  // фінанси не чіпаємо на оплачених; зміна апарата перевіряє слот.
+  assert.match(route, /financeLocked/);
+  assert.match(route, /"paid", "not_required"/);
+  assert.match(route, /payment_amount = \?/);
+  assert.match(route, /effectivePrice\(db, svc\.code\)/);
+  assert.match(route, /svc\.equipmentId !== cur\.eq/);
+  assert.match(route, /Час зайнятий на апараті нової послуги/);
 });
 
 test("intake board page is a two-pane queue + editable detail, wired into the shell", async () => {
@@ -32,6 +40,7 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /status:"cancelled"/);     // скасування
   assert.match(page, /created_by_staff|Нова заявка/); // ручне створення
   assert.match(page, /🌐|✍️/);        // позначка джерела (сайт/вручну)
+  assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/intake"/);
   assert.match(shell, /Дошка прийому/);

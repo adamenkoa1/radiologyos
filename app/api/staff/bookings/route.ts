@@ -219,11 +219,18 @@ export async function PATCH(request: Request) {
 
   // Повна корекція заявки: ПІБ, телефон, email, ДН, категорія, послуга,
   // коментар. Лише реєстратор/адміністратор. Зміна послуги переобчислює
-  // апарат і тривалість (слот за потреби перенести окремо).
+  // апарат, тривалість і суму; зміна категорії — статус оплати (окрім уже
+  // оплачених). Якщо нова послуга змінює апарат — перевіряємо, що поточний
+  // слот вільний на новому апараті.
   if (body.edit && typeof body.edit === "object") {
     if (!canManageBookings(member.role)) {
       return Response.json({ error: "Редагувати заявку може реєстратор або адміністратор" }, { status: 403 });
     }
+    const cur = await db.prepare(
+      "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps FROM bookings WHERE id = ?"
+    ).bind(body.id!).first<{ d: string; t: string; eq: string; ps: string }>();
+    // Фінанси не перезаписуємо, якщо оплату вже внесено/не потрібна.
+    const financeLocked = !!cur && ["paid", "not_required"].includes(cur.ps);
     const e = body.edit;
     const sets: string[] = [];
     const binds: (string | number)[] = [];
@@ -236,13 +243,28 @@ export async function PATCH(request: Request) {
     }
     if (typeof e.email === "string") { sets.push("patient_email = ?"); binds.push(e.email.trim().slice(0, 254)); }
     if (typeof e.dob === "string") { sets.push("date_of_birth = ?"); binds.push(normalizeDob(e.dob)); }
-    if (typeof e.patientCategory === "string") { sets.push("patient_category = ?"); binds.push(e.patientCategory === "military" ? "military" : "civilian"); }
+    if (typeof e.patientCategory === "string") {
+      const cat = e.patientCategory === "military" ? "military" : "civilian";
+      sets.push("patient_category = ?"); binds.push(cat);
+      if (!financeLocked) { sets.push("payment_status = ?"); binds.push(cat === "civilian" ? "pending" : "verification_required"); }
+    }
     if (typeof e.comment === "string") { sets.push("comment = ?"); binds.push(e.comment.trim().slice(0, 700)); }
     if (typeof e.serviceCode === "string") {
       const svc = serviceByCode(e.serviceCode.trim().slice(0, 12));
       if (!svc) return Response.json({ error: "Невідома послуга" }, { status: 400 });
+      // Зміна апарата: поточний слот має бути вільним на новому апараті.
+      if (cur && svc.equipmentId !== cur.eq) {
+        const endTime = addMinutes(cur.t, svc.durationMinutes);
+        const clash = await db.prepare(
+          `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+           AND status IN ('confirmed','rescheduled') AND desired_time < ?
+           AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
+        ).bind(svc.equipmentId, cur.d, body.id!, endTime, cur.t).first();
+        if (clash) return Response.json({ error: "Час зайнятий на апараті нової послуги — спершу перенесіть заявку" }, { status: 409 });
+      }
       sets.push("service = ?", "service_code = ?", "equipment_id = ?", "duration_minutes = ?");
       binds.push(svc.title, svc.code, svc.equipmentId, svc.durationMinutes);
+      if (!financeLocked) { sets.push("payment_amount = ?"); binds.push(await effectivePrice(db, svc.code)); }
     }
     if (!sets.length) return Response.json({ error: "Немає змін для збереження" }, { status: 400 });
     binds.push(body.id!);
