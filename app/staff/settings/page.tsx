@@ -122,7 +122,7 @@ export default function StaffSettingsPage() {
 
       <section className="settingsBlock">
         <h2>Оплата (ПриватБанк) для цивільних</h2>
-        <p>Посилання на оплату (напр. кнопка/QR «Оплатити частинами» або checkout ПриватБанку). Його побачать цивільні пацієнти після заявки та в кабінеті.</p>
+        <p>Посилання на оплату (напр. кнопка/QR «Оплатити частинами» або сторінка оплати ПриватБанку). Його побачать цивільні пацієнти після заявки та в кабінеті.</p>
         <label><span>Посилання на оплату</span>
           <input value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://…" autoComplete="off" inputMode="url" />
         </label>
@@ -138,7 +138,10 @@ export default function StaffSettingsPage() {
           <label><span>Посилання для підписки</span>
             <input value={calendarUrl} readOnly onFocus={(e) => e.target.select()} />
             <small>
-              <button type="button" className="linkBtn" onClick={() => { navigator.clipboard?.writeText(calendarUrl); setCalCopied(true); setTimeout(() => setCalCopied(false), 1500); }}>
+              <button type="button" className="linkBtn" onClick={async () => {
+                try { await navigator.clipboard.writeText(calendarUrl); setCalCopied(true); setTimeout(() => setCalCopied(false), 1500); }
+                catch { window.prompt("Скопіюйте посилання вручну:", calendarUrl); }
+              }}>
                 {calCopied ? "Скопійовано ✓" : "Копіювати посилання"}
               </button> · тримайте його в таємниці: воно відкриває службовий розклад.
             </small>
@@ -167,7 +170,7 @@ export default function StaffSettingsPage() {
           <input type="checkbox" checked={remindersEnabled} onChange={(e) => setRemindersEnabled(e.target.checked)} />
           <span>Надсилати пацієнтам автонагадування про підтвердження та перенесення запису</span>
         </label>
-        <label><span>Нагадування у WhatsApp за (годин до візиту)</span>
+        <label><span>Нагадування за (годин до візиту)</span>
           <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="3, 1" inputMode="numeric" />
           <small>Через кому — за скільки годин до візиту слати нагадування (напр. «3, 1»). Працює, коли підключено WhatsApp і увімкнено нагадування вище. Розсилає планувальник кожні ~15 хв.</small>
         </label>

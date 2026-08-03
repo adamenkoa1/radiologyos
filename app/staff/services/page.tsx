@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES } from "../../../lib/catalog";
 import { SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
+import { countUk, roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 const CABINETS = {
@@ -31,9 +32,12 @@ export default function ServiceAssignmentsPage() {
           if (data.staff) setStaff(data.staff);
         }
         setLoaded(true);
-      });
+      })
+      .catch(() => { if (active) { setError("Не вдалося завантажити послуги — перевірте зʼєднання"); setLoaded(true); } });
     return () => { active = false; };
   }, []);
+
+  const canEdit = staff?.role === "admin";
 
   const grouped = useMemo(() => Object.keys(CABINETS).map((equipmentId) => ({
     equipmentId,
@@ -60,18 +64,19 @@ export default function ServiceAssignmentsPage() {
     setNotice("Прив’язки послуг збережено.");
   }
 
-  return <StaffWorkspaceShell active="services" title="Послуги кабінетів" description="Кабінет, тривалість, доступність і правила запису для кожного дослідження." staffName={staff?.displayName} staffRole={staff?.role}>
+  return <StaffWorkspaceShell active="services" title="Послуги кабінетів" description="Кабінет, тривалість, доступність і правила запису для кожного дослідження." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
     {!loaded ? <p className="notice">Завантаження…</p> : <form className="equipmentRegistry" onSubmit={save}>
       <div className="equipmentRegistryHead">
         <div><b>Кабінет → обладнання → послуги</b><span>Неактивні послуги не приймаються сервером і не створюють слоти.</span></div>
         <a href="/staff/schedule">Графік кабінетів →</a>
       </div>
-      <div className="equipmentRegistryGrid">
-        {grouped.map((group, index) => <details className="equipmentCard" key={group.equipmentId} open={index === 0}>
-          <summary><i>{String(index + 1).padStart(2, "0")}</i><span><b>{CABINETS[group.equipmentId as keyof typeof CABINETS]}</b><small>{group.rows.length} послуг</small></span><em className="active">Налаштування</em></summary>
+      <fieldset className="equipmentRegistryGrid" disabled={!canEdit}>
+        {grouped.map((group, index) => <details className="equipmentCard" key={group.equipmentId} open={index === 0 && group.rows.length > 0}>
+          <summary><i>{String(index + 1).padStart(2, "0")}</i><span><b>{CABINETS[group.equipmentId as keyof typeof CABINETS]}</b><small>{countUk(group.rows.length, "послуга", "послуги", "послуг")}</small></span><em className="active">Налаштування</em></summary>
           <div className="equipmentFields">
-            {group.rows.map((row) => {
-              const service = SERVICES.find((item) => item.code === row.code)!;
+            {group.rows.length === 0 ? <p className="settingsHint">До цього кабінету не привʼязано жодної послуги.</p> : group.rows.map((row) => {
+              const service = SERVICES.find((item) => item.code === row.code);
+              if (!service) return null;
               return <div className="serviceAssignmentRow" key={row.code}>
                 <div><b>{row.code} · {service.title}</b><small>{service.group}</small></div>
                 <label><span>Кабінет</span><select value={row.equipmentId} onChange={(event) => change(row.code, "equipmentId", event.target.value)}>
@@ -86,10 +91,10 @@ export default function ServiceAssignmentsPage() {
             })}
           </div>
         </details>)}
-      </div>
+      </fieldset>
       {error && <p className="notice error">{error}</p>}
       {notice && <p className="notice success">{notice}</p>}
-      {staff?.role === "admin" ? <button className="equipmentSave" type="submit">Зберегти послуги</button> : <p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
+      {canEdit ? <button className="equipmentSave" type="submit">Зберегти послуги</button> : <p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
     </form>}
   </StaffWorkspaceShell>;
 }

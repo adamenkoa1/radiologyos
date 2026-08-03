@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 import { EQUIP_KEYS, EQUIP_LABELS, SCHEDULE_DEFAULTS, candidateTimesFor, isEquipmentDayOpen, type ScheduleConfig } from "../../../lib/schedule";
 import { SERVICES } from "../../../lib/catalog";
 import { configuredService, SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type PersonOption = { email: string; displayName: string; role: string; positionTitle?: string; militaryRank?: string };
@@ -39,19 +40,24 @@ export default function StaffSchedulePage() {
   useEffect(() => {
     let active = true;
     const t = window.setTimeout(async () => {
-      const [res, servicesRes] = await Promise.all([
-        fetch("/api/staff/schedule", { cache: "no-store" }),
-        fetch("/api/staff/services", { cache: "no-store" }),
-      ]);
-      if (res.status === 403) { if (active) setForbidden(true); return; }
-      const data = await res.json().catch(() => ({})) as { schedule?: ScheduleConfig; staff?: StaffInfo; people?: PersonOption[] };
-      const servicesData = await servicesRes.json().catch(() => ({})) as { services?: ServiceConfigRecord[] };
-      if (!active) return;
-      if (data.schedule) setCfg({ ...JSON.parse(JSON.stringify(SCHEDULE_DEFAULTS)), ...data.schedule });
-      if (data.staff) setStaff(data.staff);
-      if (Array.isArray(data.people)) setPeople(data.people);
-      if (Array.isArray(servicesData.services)) setServiceConfig(servicesData.services);
-      setLoaded(true);
+      try {
+        const [res, servicesRes] = await Promise.all([
+          fetch("/api/staff/schedule", { cache: "no-store" }),
+          fetch("/api/staff/services", { cache: "no-store" }),
+        ]);
+        if (res.status === 401 || res.status === 403) { if (active) { setForbidden(true); setLoaded(true); } return; }
+        const data = await res.json().catch(() => ({})) as { schedule?: ScheduleConfig; staff?: StaffInfo; people?: PersonOption[] };
+        const servicesData = await servicesRes.json().catch(() => ({})) as { services?: ServiceConfigRecord[] };
+        if (!active) return;
+        if (data.schedule) setCfg({ ...JSON.parse(JSON.stringify(SCHEDULE_DEFAULTS)), ...data.schedule });
+        if (data.staff) setStaff(data.staff);
+        if (Array.isArray(data.people)) setPeople(data.people);
+        if (Array.isArray(servicesData.services)) setServiceConfig(servicesData.services);
+      } catch {
+        if (active) setError("Не вдалося завантажити графік — перевірте зʼєднання");
+      } finally {
+        if (active) setLoaded(true);
+      }
     }, 0);
     return () => { active = false; window.clearTimeout(t); };
   }, []);
@@ -98,7 +104,9 @@ export default function StaffSchedulePage() {
   }
   function addDayOff() {
     const current = cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff;
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDay) || current.includes(newDay)) return;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(newDay)) { setError("Вкажіть дату, щоб закрити її для кабінету."); return; }
+    if (current.includes(newDay)) { setError("Цю дату вже закрито для цього кабінету."); return; }
+    setError("");
     setCfg(prev => {
       const room = prev.equipment[activeEquipment];
       const daysOff = [...(room.daysOff ?? prev.daysOff), newDay].sort();
@@ -123,8 +131,9 @@ export default function StaffSchedulePage() {
     finally { setStatus("idle"); }
   }
 
+  const canEdit = staff?.role === "admin";
   const body = forbidden
-    ? <p className="notice error" role="alert">Графік налаштовує лише адміністратор.</p>
+    ? <p className="notice error" role="alert">Графік доступний лише персоналу відділення. Увійдіть під робочим обліковим записом.</p>
     : !loaded
       ? <p className="notice">Завантаження…</p>
       : <form className="settingsCard" onSubmit={save}>
@@ -214,13 +223,15 @@ export default function StaffSchedulePage() {
           {notice && <p className="notice success" role="status">{notice}</p>}
           {error && <p className="notice error" role="alert">{error}</p>}
           <div className="settingsActions">
-            <button type="submit" disabled={status === "saving"}>{status === "saving" ? "Зберігаємо…" : "Зберегти графік"}</button>
+            {canEdit
+              ? <button type="submit" disabled={status === "saving"}>{status === "saving" ? "Зберігаємо…" : "Зберегти графік"}</button>
+              : <p className="settingsHint">Графік редагує адміністратор. Ви можете переглядати години, слоти й відповідальних.</p>}
             <a className="textLink" href="/staff/appointments">До календаря</a>
           </div>
         </form>;
 
   return (
-    <StaffWorkspaceShell active="schedule" title="Графік роботи кабінетів" description="Режим роботи, слоти, календар і відповідальний персонал для кожного кабінету." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="schedule" title="Графік роботи кабінетів" description="Режим роботи, слоти, календар і відповідальний персонал для кожного кабінету." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
       {body}
     </StaffWorkspaceShell>
   );

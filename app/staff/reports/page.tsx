@@ -78,6 +78,8 @@ export default function ReportsPage() {
   );
   const [data,setData] = useState<ReportData | null>(null);
   const [error,setError] = useState("");
+  const [authErr,setAuthErr] = useState(false);
+  const [appliedQuery,setAppliedQuery] = useState("");
   const [loading,setLoading] = useState(true);
 
   function queryString(includeColumns = true) {
@@ -94,35 +96,39 @@ export default function ReportsPage() {
   async function load() {
     setLoading(true);
     setError("");
-    const response = await fetch(`/api/staff/reports?${queryString()}`,{ cache:"no-store" });
-    const result = await response.json() as ReportData & { error?:string };
-    if (!response.ok) {
-      setData(null);
-      setError(result.error || "Не вдалося сформувати звіт");
-    } else {
-      setData(result);
+    const query = queryString();
+    try {
+      const response = await fetch(`/api/staff/reports?${query}`,{ cache:"no-store" });
+      const result = await response.json() as ReportData & { error?:string };
+      if (!response.ok) {
+        setData(null);
+        setAuthErr(response.status === 401 || response.status === 403);
+        setError(result.error || "Не вдалося сформувати звіт");
+      } else {
+        setData(result);
+        setAppliedQuery(query);
+        setAuthErr(false);
+      }
+    } catch {
+      setError("Не вдалося сформувати звіт — перевірте зʼєднання");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(()=>{
-    const timer = window.setTimeout(()=>{
-      void fetch(`/api/staff/reports?from=${initialFrom}&to=${initialToday}&template=studies`,{cache:"no-store"})
-        .then(async(response)=>({response,result:await response.json() as ReportData & {error?:string}}))
-        .then(({response,result})=>{
-          if (response.ok) setData(result);
-          else setError(result.error || "Не вдалося сформувати звіт");
-          setLoading(false);
-        });
-    },0);
+    const timer = window.setTimeout(()=>{ void load(); },0);
     return ()=>window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   const maxDay = useMemo(()=>Math.max(1,...(data?.byDay.map((row)=>row.total) || [1])),[data]);
   const currentTemplate = REPORT_TEMPLATES[template];
   const radiologists = data?.filterOptions.staff.filter((item)=>item.role === "radiologist") || [];
   const radiographers = data?.filterOptions.staff.filter((item)=>item.role === "radiographer") || [];
-  const exportHref = `/api/staff/reports/export?${queryString()}`;
+  // Експорт має віддавати саме те, що показано (застосований запит), а не
+  // поточні незастосовані значення форми.
+  const exportHref = `/api/staff/reports/export?${appliedQuery || queryString()}`;
 
   function chooseTemplate(value:ReportTemplateKey) {
     setTemplate(value);
@@ -143,11 +149,15 @@ export default function ReportsPage() {
     staffRole={data?.staff ? roleLabels[data.staff.role] || data.staff.role : undefined}
   >
 
-    {error && !data ? <section className="accessDenied">
+    {loading && !data ? <p className="dashLoading">Завантаження звіту…</p> :
+    error && !data ? (authErr ? <section className="accessDenied">
       <b>Захищений розділ</b>
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
       <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Freports">Увійти для роботи</a>
-    </section> : <>
+    </section> : <section className="accessDenied">
+      <b>Не вдалося сформувати звіт</b>
+      <p>{error}.</p>
+    </section>) : <>
       <section className="reportBuilder">
         <div className="reportBuilderHead">
           <div><p className="eyebrow">Конструктор</p><h2>Оберіть потрібний реєстр</h2></div>

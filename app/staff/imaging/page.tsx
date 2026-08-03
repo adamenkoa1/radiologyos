@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { countUk } from "../../../lib/labels";
 import {
   STUDY_STATUS_LABELS,
   STUDY_STATUSES,
@@ -54,6 +55,7 @@ export default function ImagingPage() {
   const [saving,setSaving] = useState(false);
   const [filter,setFilter] = useState<"all"|"not_linked"|"available">("all");
   const [query,setQuery] = useState("");
+  const [loaded,setLoaded] = useState(false);
 
   const loadSettings = useCallback(async () => {
     const response = await fetch("/api/staff/imaging/settings", { cache:"no-store" });
@@ -62,14 +64,20 @@ export default function ImagingPage() {
   }, []);
 
   const loadWorklist = useCallback(async () => {
-    const response = await fetch("/api/staff/imaging", { cache:"no-store" });
-    const data = await response.json() as { worklist?:WorklistItem[]; settings?:Settings; staff?:StaffInfo; error?:string };
-    if (!response.ok) { setError(data.error || "Немає доступу"); return; }
-    setWorklist(data.worklist || []);
-    setStaff(data.staff || null);
-    if (data.settings) setSettings(data.settings);
-    setError("");
-    if (data.staff?.role === "admin") void loadSettings();
+    try {
+      const response = await fetch("/api/staff/imaging", { cache:"no-store" });
+      const data = await response.json() as { worklist?:WorklistItem[]; settings?:Settings; staff?:StaffInfo; error?:string };
+      if (!response.ok) { setError(data.error || "Немає доступу"); return; }
+      setWorklist(data.worklist || []);
+      setStaff(data.staff || null);
+      if (data.settings) setSettings(data.settings);
+      setError("");
+      if (data.staff?.role === "admin") void loadSettings();
+    } catch {
+      setError("Не вдалося завантажити список — перевірте зʼєднання");
+    } finally {
+      setLoaded(true);
+    }
   }, [loadSettings]);
 
   useEffect(() => {
@@ -185,7 +193,7 @@ export default function ImagingPage() {
             <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Код, ПІБ, Accession"/>
           </div>
           <div className="protocolQueueList">
-            {visible.length === 0 ? <p className="empty">Досліджень у цій категорії немає.</p> : visible.map((item)=><button
+            {visible.length === 0 ? <p className="empty">{!loaded ? "Завантаження…" : "Досліджень у цій категорії немає."}</p> : visible.map((item)=><button
               key={item.id}
               className={`protocolQueueItem${selectedId===item.id?" active":""}`}
               onClick={()=>void openBooking(item.id)}
@@ -193,7 +201,7 @@ export default function ImagingPage() {
               <span className={`protocolTag ${item.studyStatus==="available"?"ready":item.studyStatus==="archived"?"issued":item.studyStatus==="scheduled"?"in_progress":""}`}>{STUDY_STATUS_LABELS[item.studyStatus]}</span>
               <b>{item.serviceTitle}</b>
               <small>{item.code} · {item.name}</small>
-              <small>{item.accessionNumber ? `Accession ${item.accessionNumber}` : item.performedAt ? `Виконано ${formatDateTime(item.performedAt)}` : `${item.desiredDate} ${item.desiredTime}`}{item.seriesCount ? ` · ${item.seriesCount} серій` : ""}</small>
+              <small>{item.accessionNumber ? `Accession ${item.accessionNumber}` : item.performedAt ? `Виконано ${formatDateTime(item.performedAt)}` : `${item.desiredDate} ${item.desiredTime}`}{item.seriesCount ? ` · ${countUk(item.seriesCount, "серія", "серії", "серій")}` : ""}</small>
             </button>)}
           </div>
         </aside>

@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type Conversation = { phone: string; name: string; lastText: string; lastDirection: string; lastAt: string };
@@ -25,6 +26,7 @@ export default function StaffChatPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [draft, setDraft] = useState("");
   const [sending, setSending] = useState(false);
+  const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState("");
 
   async function loadConversations() {
@@ -42,11 +44,18 @@ export default function StaffChatPage() {
   }, []);
 
   async function openConversation(phone: string) {
-    setActive(phone); setError(""); setMessages([]);
-    const res = await fetch(`/api/staff/chat?phone=${encodeURIComponent(phone)}`, { cache: "no-store" });
-    const data = await res.json().catch(() => ({})) as { messages?: Message[]; name?: string };
-    setMessages(data.messages || []);
-    setActiveName(data.name || "");
+    // Скидаємо чернетку — щоб текст для одного пацієнта не пішов іншому.
+    setActive(phone); setError(""); setMessages([]); setDraft(""); setThreadLoading(true);
+    try {
+      const res = await fetch(`/api/staff/chat?phone=${encodeURIComponent(phone)}`, { cache: "no-store" });
+      const data = await res.json().catch(() => ({})) as { messages?: Message[]; name?: string };
+      setMessages(data.messages || []);
+      setActiveName(data.name || "");
+    } catch {
+      setError("Не вдалося завантажити діалог — перевірте зʼєднання");
+    } finally {
+      setThreadLoading(false);
+    }
   }
 
   async function reply(event: FormEvent<HTMLFormElement>) {
@@ -91,7 +100,7 @@ export default function StaffChatPage() {
                       <span>{m.direction === "inbound" ? "" : m.actor === "bot" ? "Бот · " : ""}{shortTime(m.createdAt)}</span>
                     </div>
                   ))}
-                  {messages.length === 0 && <p className="empty">Повідомлень ще немає.</p>}
+                  {messages.length === 0 && <p className="empty">{threadLoading ? "Завантаження…" : "Повідомлень ще немає."}</p>}
                 </div>
                 {error && <p className="notice error" role="alert">{error}</p>}
                 <form className="chatReply" onSubmit={reply}>
@@ -103,7 +112,7 @@ export default function StaffChatPage() {
       </div>;
 
   return (
-    <StaffWorkspaceShell active="chat" title="Чат з пацієнтами" description="WhatsApp-листування — відповідайте прямо звідси." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="chat" title="Чат з пацієнтами" description="WhatsApp-листування — відповідайте прямо звідси." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
       {body}
     </StaffWorkspaceShell>
   );

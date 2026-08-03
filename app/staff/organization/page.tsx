@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type Department = { id:number; name:string; slug?:string };
 type Data = {
@@ -17,19 +18,27 @@ export default function OrganizationPage() {
   const [error,setError] = useState("");
 
   useEffect(() => {
-    const timer = window.setTimeout(async () => {
-      const response = await fetch("/api/staff/org", { cache:"no-store" });
-      const payload = await response.json().catch(()=>({})) as Data & { error?:string };
-      if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
-      setData(payload); setError("");
-    }, 0);
-    return () => window.clearTimeout(timer);
+    let active = true;
+    (async () => {
+      try {
+        const response = await fetch("/api/staff/org", { cache:"no-store" });
+        const payload = await response.json().catch(()=>({})) as Data & { error?:string };
+        if (!active) return;
+        if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
+        setData(payload); setError("");
+      } catch {
+        if (active) setError("Не вдалося завантажити дані — перевірте зʼєднання");
+      }
+    })();
+    return () => { active = false; };
   }, []);
 
   return <StaffWorkspaceShell
     active="organization"
     title="Організація"
     description="Дані закладу: назва, підрозділи й обсяг записів."
+    staffName={data?.member.displayName}
+    staffRole={roleLabelUk(data?.role)}
   >
     {error ? <section className="accessDenied">
       <b>Захищений розділ</b>
@@ -40,7 +49,7 @@ export default function OrganizationPage() {
     <div className="orgProfile">
       <div className="orgProfileHead">
         <span className="studiesOrgBadge">{data.organization.name}</span>
-        <small>Ви — <b>{data.member.displayName || data.member.email}</b> · роль: {data.role}</small>
+        <small>Ви — <b>{data.member.displayName || data.member.email}</b> · роль: {roleLabelUk(data.role)}</small>
       </div>
 
       <section className="orgProfileCard">
@@ -53,12 +62,14 @@ export default function OrganizationPage() {
         </dl>
       </section>
 
-      {data.departments.length > 0 && <section className="orgProfileCard">
+      <section className="orgProfileCard">
         <h3>Підрозділи</h3>
-        <ul className="structStaff">
-          {data.departments.map(d => <li key={d.id}><b>{d.name}</b>{d.slug ? <small>{d.slug}</small> : null}</li>)}
-        </ul>
-      </section>}
+        {data.departments.length === 0
+          ? <p className="orgProfileHint">Підрозділів ще немає.</p>
+          : <ul className="structStaff">
+              {data.departments.map(d => <li key={d.id}><b>{d.name}</b>{d.slug ? <small>{d.slug}</small> : null}</li>)}
+            </ul>}
+      </section>
 
       <section className="orgProfileCard">
         <h3>Структура відділення</h3>
