@@ -79,7 +79,8 @@ export async function listAuditEvents(db: D1Database, organizationId: number, q:
   if (q.action) { where.push("action = ?"); binds.push(q.action.slice(0, 80)); }
   if (q.actor) { where.push("actor_email LIKE ?"); binds.push(`%${q.actor.slice(0, 120)}%`); }
   if (q.beforeId && Number.isFinite(q.beforeId)) { where.push("id < ?"); binds.push(q.beforeId); }
-  const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 200);
+  // Стеля 200 для UI-пагінації; до 5000 для CSV-експорту.
+  const limit = Math.min(Math.max(Number(q.limit) || 50, 1), 5000);
   const rows = await db.prepare(
     `SELECT id, actor_email AS actorEmail, action, resource, target_id AS targetId,
             details_json AS detailsJson, created_at AS createdAt
@@ -89,4 +90,23 @@ export async function listAuditEvents(db: D1Database, organizationId: number, q:
      LIMIT ?`
   ).bind(...binds, limit).all<AuditRow>();
   return rows.results;
+}
+
+// Екранування значення для CSV (RFC 4180): лапки, коми й переноси — у лапках.
+function csvCell(value: unknown): string {
+  const s = String(value ?? "");
+  return /[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+}
+
+// Журнал → CSV (з BOM для коректного відкриття в Excel). Дата — UTC, як у БД.
+export function toAuditCsv(rows: AuditRow[], labels: Record<string, string> = AUDIT_LABELS): string {
+  const header = ["Дата (UTC)", "Код події", "Подія", "Ресурс", "Хто", "Обʼєкт", "Деталі"];
+  const lines = [header.map(csvCell).join(",")];
+  for (const r of rows) {
+    lines.push([
+      r.createdAt, r.action, labels[r.action] || r.action,
+      r.resource, r.actorEmail, r.targetId, r.detailsJson,
+    ].map(csvCell).join(","));
+  }
+  return "﻿" + lines.join("\r\n");
 }

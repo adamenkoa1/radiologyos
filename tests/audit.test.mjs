@@ -39,11 +39,31 @@ test("migration 0023 creates the security_audit_log table and index", async () =
   assert.match(sql, /CREATE INDEX IF NOT EXISTS `security_audit_created_idx`/);
 });
 
+test("toAuditCsv builds an Excel-friendly CSV with a BOM and escaped fields", async () => {
+  const { toAuditCsv } = await import("../lib/audit.ts");
+  const csv = toAuditCsv([
+    { id: 2, actorEmail: "a@b.c", action: "login", resource: "auth", targetId: "", detailsJson: "{}", createdAt: "2026-08-03 10:00:00" },
+    { id: 1, actorEmail: "x@y.z", action: "settings_update", resource: "settings", targetId: "380,99", detailsJson: '{"a":"b, c"}', createdAt: "2026-08-03 09:00:00" },
+  ]);
+  assert.ok(csv.startsWith("﻿"), "starts with UTF-8 BOM");
+  const lines = csv.slice(1).split("\r\n");
+  assert.match(lines[0], /^Дата \(UTC\),Код події,Подія,Ресурс,Хто,/);
+  assert.match(lines[1], /login,Вхід у систему,auth,a@b\.c/);
+  // Кома всередині поля → значення в лапках.
+  assert.match(lines[2], /"380,99"/);
+  assert.match(lines[2], /"\{""a"":""b, c""\}"/);
+});
+
 test("audit API is admin-only and org-scoped", async () => {
   const route = await read("app/api/staff/audit/route.ts");
   assert.match(route, /requireOrgContext/);
   assert.match(route, /ctx\.role !== "admin"/);
   assert.match(route, /listAuditEvents\(db, ctx\.organizationId/);
+  // CSV-експорт: гілка format=csv віддає text/csv як завантаження.
+  assert.match(route, /format"\) === "csv"/);
+  assert.match(route, /toAuditCsv/);
+  assert.match(route, /text\/csv/);
+  assert.match(route, /attachment; filename="audit-log\.csv"/);
 });
 
 test("sensitive actions are wired to the audit log", async () => {
