@@ -44,6 +44,9 @@ export default function StudiesPage() {
   const [staff,setStaff] = useState<StaffInfo|null>(null);
   const [error,setError] = useState("");
   const [filter,setFilter] = useState("all");
+  const [equipment,setEquipment] = useState("all");
+  const [query,setQuery] = useState("");
+  const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(0);
 
   async function load() {
@@ -62,7 +65,7 @@ export default function StudiesPage() {
 
   async function transition(id:number, status:string) {
     if (!status) return;
-    setBusy(id);
+    setBusy(id); setNotice("");
     try {
       const response = await fetch("/api/staff/bookings", {
         method:"PATCH", headers:{"content-type":"application/json"},
@@ -70,10 +73,12 @@ export default function StudiesPage() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(()=>({})) as { error?:string };
-        window.alert(payload.error || "Не вдалося змінити стан");
+        setNotice(payload.error || "Не вдалося змінити стан");
       } else {
         await load();
       }
+    } catch {
+      setNotice("Помилка мережі — спробуйте ще раз");
     } finally {
       setBusy(0);
     }
@@ -82,7 +87,7 @@ export default function StudiesPage() {
   // Призначення виконавця: reg/admin шлють оновлення на той самий PATCH
   // /api/staff/bookings, що валідує роль виконавця й фіксує подію.
   async function assign(study:Study, field:"radiologist"|"radiographer", email:string) {
-    setBusy(study.id);
+    setBusy(study.id); setNotice("");
     try {
       const body = field === "radiologist"
         ? { id:study.id, assignedRadiologistEmail:email, assignedRadiographerEmail:study.assignedRadiographerEmail }
@@ -93,10 +98,12 @@ export default function StudiesPage() {
       });
       if (!response.ok) {
         const payload = await response.json().catch(()=>({})) as { error?:string };
-        window.alert(payload.error || "Не вдалося призначити виконавця");
+        setNotice(payload.error || "Не вдалося призначити виконавця");
       } else {
         await load();
       }
+    } catch {
+      setNotice("Помилка мережі — спробуйте ще раз");
     } finally {
       setBusy(0);
     }
@@ -104,8 +111,13 @@ export default function StudiesPage() {
 
   const visible = useMemo(() => {
     if (!data) return [];
-    return filter === "all" ? data.studies : data.studies.filter((s)=>s.status===filter);
-  }, [data, filter]);
+    const q = query.trim().toLowerCase();
+    return data.studies.filter((s)=>
+      (filter === "all" || s.status === filter)
+      && (equipment === "all" || s.equipmentId === equipment)
+      && (!q || `${s.code} ${s.name} ${s.service}`.toLowerCase().includes(q)),
+    );
+  }, [data, filter, equipment, query]);
 
   const activeStates = useMemo(
     () => (data?.states || []).filter((s)=>s.count > 0),
@@ -131,6 +143,18 @@ export default function StudiesPage() {
         <small>{data.profile?.label ? `${data.profile.label} · ` : ""}{data.studies.length} досліджень · роль: {roleLabels[data.role]}{data.canManage ? "" : " · лише перегляд"}</small>
       </div>
 
+      {notice && <p className="staffError" role="alert" onClick={()=>setNotice("")}>{notice}</p>}
+
+      <div className="studiesToolbar">
+        <input type="search" className="studiesSearch" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Пошук: код, пацієнт, дослідження" aria-label="Пошук досліджень"/>
+        <select value={equipment} onChange={(e)=>setEquipment(e.target.value)} aria-label="Апарат">
+          <option value="all">Усі апарати</option>
+          <option value="ct">КТ</option><option value="xray">Рентген</option><option value="fluoro">Флюорограф</option>
+        </select>
+        {(query || equipment!=="all" || filter!=="all") && <button type="button" className="studiesClear" onClick={()=>{setQuery("");setEquipment("all");setFilter("all");}}>Скинути</button>}
+        <span className="studiesResultCount">Показано: {visible.length}</span>
+      </div>
+
       <div className="studiesTabs" role="tablist" aria-label="Фільтр за станом">
         <button type="button" role="tab" aria-selected={filter==="all"}
           className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>
@@ -142,7 +166,7 @@ export default function StudiesPage() {
         </button>)}
       </div>
 
-      {visible.length === 0 ? <p className="dashListEmpty">У цьому стані досліджень немає.</p> :
+      {visible.length === 0 ? <p className="dashListEmpty">{query || equipment!=="all" ? "За цим запитом досліджень не знайдено." : "У цьому стані досліджень немає."}</p> :
       <div className="studiesTableWrap">
         <table className="studiesTable">
           <thead><tr>
@@ -193,6 +217,8 @@ export default function StudiesPage() {
           </tbody>
         </table>
       </div>}
+
+      {data.studies.length >= 500 && <p className="studiesTrunc">Показано найновіші 500 досліджень. Старіші поки не відображаються — уточніть пошук або стан.</p>}
     </>}
   </StaffWorkspaceShell>;
 }
