@@ -17,15 +17,16 @@ test("structure data covers hospital, license, rooms, equipment and hours", () =
   const devices = S.rooms.flatMap((r) => r.devices);
   const activeDevices = devices.filter((d) => d.status !== "stored").map((d) => d.name);
   const storedDevices = devices.filter((d) => d.status === "stored").map((d) => d.name);
-  assert.equal(activeDevices.length, 10);
+  assert.equal(activeDevices.length, 11);
   for (const name of ["Siemens SOMATOM go.Up", "Sireskop-CX", "5Д2", "HYPERION X9 Pro", "RXDC",
-    "IMAX 6000", "12Ф9-Україна", "9Л5Ф", "PLX 102", "М32"]) {
+    "IMAX 6000", "12Ф9-Україна", "9Л5Ф", "PLX 102", "М32", "СЕРИКС 71"]) {
     assert.ok(activeDevices.some((d) => d.includes(name)), `active device ${name} present`);
   }
   for (const name of ["SHIMADZU UD 150L-30EX", "12Ф7Ц"]) {
     assert.ok(storedDevices.some((d) => d.includes(name)), `stored device ${name} present`);
   }
-  for (const name of ["SOMATOM AR-TX", "Серикс-71", "WHA-50N Opescope"]) {
+  // СЕРИКС 71 підтверджено офіційним переліком в/ч; лишаються непідтвердженими:
+  for (const name of ["SOMATOM AR-TX", "WHA-50N Opescope"]) {
     assert.ok(!devices.some((d) => d.name.includes(name)), `unconfirmed device ${name} absent`);
   }
   assert.ok(devices.every((d) => !("kv" in d)), "unverified kV values are not published");
