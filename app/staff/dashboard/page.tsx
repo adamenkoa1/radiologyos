@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
-import WeekCalendar, { type CalBooking, type CalStaffOption } from "../week-calendar";
+import { type CalBooking } from "../week-calendar";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -30,6 +30,19 @@ const roleLabels: Record<StaffRole,string> = {
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
 };
 const equipmentNames: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
+
+// Компактний статус запису для агенди «на сьогодні».
+const STATUS_UK: Record<string,string> = {
+  new:"нова", rescheduled:"перенесено", confirmed:"підтв.", queued:"у черзі",
+  in_progress:"виконується", images_ready:"є знімки", reporting:"опис",
+  protocol_ready:"протокол", completed:"завершено", performed:"виконано",
+};
+function statusGroup(s:string) {
+  if (s === "new" || s === "rescheduled") return "new";
+  if (s === "confirmed") return "ok";
+  if (s === "cancelled") return "off";
+  return "done";
+}
 
 function ActionList({ title, items, hint, href, empty }:{
   title:string; items:ListItem[]; hint:string; href:(item:ListItem)=>string; empty:string;
@@ -75,7 +88,6 @@ function ExternalCalendar() {
 export default function DashboardPage() {
   const [data,setData] = useState<Data | null>(null);
   const [bookings,setBookings] = useState<CalBooking[]>([]);
-  const [options,setOptions] = useState<CalStaffOption[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [error,setError] = useState("");
   const [toast,setToast] = useState("");
@@ -90,11 +102,10 @@ export default function DashboardPage() {
     // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
     // корисним для всіх ролей, а не блокується стіною «лише адмін».
     const bookingsData = await bookingsRes.json().catch(() => ({})) as
-      { bookings?:CalBooking[]; staffOptions?:CalStaffOption[]; staff?:StaffInfo; error?:string };
+      { bookings?:CalBooking[]; staff?:StaffInfo; error?:string };
     if (!bookingsRes.ok || !bookingsData.staff) { setError(bookingsData.error || "Немає доступу"); return; }
     setStaff(bookingsData.staff);
     setBookings(bookingsData.bookings || []);
-    setOptions(bookingsData.staffOptions || []);
     setError("");
     // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
     if (dashRes.ok) {
@@ -143,6 +154,14 @@ export default function DashboardPage() {
   }
 
   const k = data?.kpi;
+
+  // Розклад на сьогодні (Київ). Пульт дає лише короткий огляд — повний
+  // тижневий календар живе в окремому розділі «Календар записів».
+  const today = data?.today || new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Kyiv" }).format(new Date());
+  const todayAgenda = useMemo(() => bookings
+    .filter(b => b.desiredDate === today && b.status !== "cancelled")
+    .sort((a, b) => (a.desiredTime || "").localeCompare(b.desiredTime || "")),
+  [bookings, today]);
 
   return <StaffWorkspaceShell
     active="dashboard"
@@ -194,10 +213,27 @@ export default function DashboardPage() {
         <a className="dashStat" href="/staff/patients"><b>{k.patients}</b><span>пацієнтів</span><small>{k.repeatPatients} повторних</small></a>
       </div>}
 
-      {/* Об'єднаний календар записів прямо в пульті */}
+      {/* Короткий розклад на сьогодні; повний тижневий — у «Календарі записів». */}
       <section className="dashCalendar">
-        <div className="dashCalendarHead"><h2>Розклад</h2><a href="/staff/book" className="dashCalNew">+ Записати пацієнта</a></div>
-        <WeekCalendar bookings={bookings} options={options} initialView="week" />
+        <div className="dashCalendarHead">
+          <h2>Розклад на сьогодні {todayAgenda.length ? <span className="dashAgendaCount">{todayAgenda.length}</span> : null}</h2>
+          <div className="dashCalActions">
+            <a href="/staff/appointments">Календар записів →</a>
+            <a href="/staff/book" className="dashCalNew">+ Записати пацієнта</a>
+          </div>
+        </div>
+        {todayAgenda.length === 0
+          ? <p className="dashListEmpty">На сьогодні записів немає.</p>
+          : <ul className="dashAgenda">
+              {todayAgenda.map(b => <li key={b.id} className="dashAgendaRow">
+                <time>{b.desiredTime || "—"}</time>
+                <div className="dashAgendaWho">
+                  <b>{b.name || "Без імені"}</b>
+                  <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</small>
+                </div>
+                <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
+              </li>)}
+            </ul>}
       </section>
 
       {/* Завантаженість апаратів за 7 днів (сьогодні та 6 попередніх) — адмін-аналітика */}
