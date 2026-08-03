@@ -40,8 +40,8 @@ test("rate-limit fingerprint no longer trusts client x-forwarded-for", async () 
   assert.doesNotMatch(src, /x-forwarded-for/);
 });
 
-test("public booking enforces the clinic working-day schedule", async () => {
+test("public booking assigns appointments from the clinic schedule", async () => {
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /isDayOpen\(desiredDate, schedule\)/);
   assert.match(route, /parseSchedule\(await getSetting\(db, SCHEDULE_KEY\)\)/);
+  assert.match(route, /assignEarliestAppointments\(/);
 });

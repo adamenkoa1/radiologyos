@@ -146,11 +146,7 @@ openCart = function () {
     if (items) items.style.display = '';
   }
   _openCart();
-  refreshSlotPicker();
 };
-
-const _dd = document.getElementById('desiredDate');
-if (_dd) _dd.min = new Date().toISOString().slice(0, 10);
 
 renderCart();
 

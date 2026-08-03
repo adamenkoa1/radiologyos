@@ -92,16 +92,20 @@ test("public site-content endpoint returns merged content with short caching", a
   assert.match(worker, /pathname === "\/api\/site-content"/);
 });
 
-test("site content editor is merged into the editable structure", async () => {
+test("site content editor is a visual storefront with dedicated tariff navigation", async () => {
   const legacy = await read("app/staff/site/page.tsx");
   const page = await read("app/staff/structure/page.tsx");
   assert.match(legacy, /redirect\("\/staff\/structure"\)/);
   assert.match(page, /\/api\/staff\/structure/);
   assert.match(page, /active="structure"/);
-  assert.match(page, /siteContent/);
+  assert.match(page, /storefrontCanvas/);
+  assert.match(page, /Редагуйте текст прямо на макеті/);
+  assert.match(page, /href="\/staff\/tariffs"/);
+  assert.match(page, /Редагувати тарифи/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/structure"/);
-  assert.doesNotMatch(shell, /Вітрина/);
+  assert.match(shell, /Публічна вітрина/);
+  assert.match(shell, /Редактор публічного сайту/);
 });
 
 test("landing pulls storefront config from the API and gates on published", async () => {
@@ -169,15 +173,14 @@ test("paid_only storefront redirects the military page to the price page", async
   assert.match(worker, /\/site\/price\.html/);
 });
 
-test("structure editor contains public content but no appearance controls", async () => {
+test("visual storefront editor keeps appearance fixed and structure available below", async () => {
   const page = await read("app/staff/structure/page.tsx");
-  assert.match(page, /title="Структура відділення"/);
-  assert.match(page, /Показники 2025 року/);
+  assert.match(page, /title="Публічна вітрина"/);
+  assert.match(page, /Службова структура відділення/);
+  assert.match(page, /sfStats/);
   assert.match(page, /siteContent/);
   assert.doesNotMatch(page, /storefrontType/);
-  assert.doesNotMatch(page, /brandColor/);
-  assert.doesNotMatch(page, /logoUrl|onLogoFile|type="file"/);
+  assert.doesNotMatch(page, /type="color"|logoUrl|onLogoFile|type="file"/);
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /Структура і контент/);
-  assert.doesNotMatch(shell, /Вітрина/);
+  assert.match(shell, /Редактор публічного сайту/);
 });

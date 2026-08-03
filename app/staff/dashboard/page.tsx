@@ -190,7 +190,7 @@ export default function DashboardPage() {
 
       {/* Об'єднаний календар записів прямо в пульті */}
       <section className="dashCalendar">
-        <div className="dashCalendarHead"><h2>Розклад</h2><a href="/staff/book" className="dashCalNew">+ Нова запис</a></div>
+        <div className="dashCalendarHead"><h2>Розклад</h2><a href="/staff/book" className="dashCalNew">+ Записати пацієнта</a></div>
         <WeekCalendar bookings={bookings} options={options} initialView="week" />
       </section>
 

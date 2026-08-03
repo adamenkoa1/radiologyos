@@ -1,6 +1,6 @@
 import { addMinutes, serviceByCode } from "../../../../lib/catalog";
 import { isBookableDate } from "../../../../lib/booking-rules";
-import { candidateTimesFor, hoursFor, isDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
+import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
 import { getSetting } from "../../../../lib/settings";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { normalizeDob } from "../../../../lib/dob";
@@ -24,7 +24,7 @@ function clean(value: unknown, max: number) {
 
 const REFERRAL_TYPES = ["military_referral", "eh_referral", "paper_referral", "none", "other"];
 
-// Ручне створення запису персоналом («Нова запис»). Реєстратор/адмін.
+// Ручне створення запису персоналом від імені пацієнта. Реєстратор/медсестра або адмін.
 // Запис одразу підтверджений (status='confirmed'), тож займає слот на апараті.
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canManageBookings(member.role)) {
-    return Response.json({ error: "Створювати записи може реєстратор або адміністратор" }, { status: 403 });
+    return Response.json({ error: "Створювати записи може реєстратор, медсестра з правами реєстратора або адміністратор" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
@@ -49,15 +49,17 @@ export async function POST(request: Request) {
   let referralType = clean(body.referralType, 30);
   if (!REFERRAL_TYPES.includes(referralType)) referralType = "none";
   const comment = clean(body.comment, 700);
-  const radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
-  const radiographer = clean(body.assignedRadiographerEmail, 254).toLowerCase();
+  let radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
+  let radiographer = clean(body.assignedRadiographerEmail, 254).toLowerCase();
 
   if (!name || !phoneNormalized || !service) {
     return Response.json({ error: "Вкажіть імʼя, телефон і послугу" }, { status: 400 });
   }
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+  radiologist ||= schedule.equipment[service.equipmentId]?.radiologistEmail || "";
+  radiographer ||= schedule.equipment[service.equipmentId]?.radiographerEmail || "";
   const validTimes = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes);
-  if (!isBookableDate(desiredDate) || !isDayOpen(desiredDate, schedule) || !validTimes.includes(desiredTime)) {
+  if (!isBookableDate(desiredDate) || !validTimes.includes(desiredTime) || !isEquipmentDayOpen(desiredDate, schedule, service.equipmentId)) {
     return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
   }
 
@@ -97,8 +99,8 @@ export async function POST(request: Request) {
   const bookingId = result.meta.last_row_id;
   if (bookingId) {
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created', ?, ?)"
-    ).bind(bookingId, `${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
+      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created_by_staff', ?, ?)"
+    ).bind(bookingId, `Запис від імені пацієнта: ${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
   }
   return Response.json({ ok: true, code }, { status: 201 });
 }
@@ -414,7 +416,7 @@ export async function PATCH(request: Request) {
     ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     const service = booking && serviceByCode(booking.serviceCode);
     const rSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!booking || !service || !isBookableDate(body.desiredDate) || !isDayOpen(body.desiredDate, rSched)
+    if (!booking || !service || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, service.equipmentId)
         || !candidateTimesFor(hoursFor(rSched, service.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
     }
@@ -459,7 +461,7 @@ export async function PATCH(request: Request) {
     }
     const service = serviceByCode(booking.serviceCode);
     const cSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!service || !isBookableDate(booking.desiredDate) || !isDayOpen(booking.desiredDate, cSched)
+    if (!service || !isBookableDate(booking.desiredDate) || !isEquipmentDayOpen(booking.desiredDate, cSched, service.equipmentId)
         || !candidateTimesFor(hoursFor(cSched, service.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
       return Response.json({ error: "Бажаний час поза розкладом — перенесіть запис на вільний слот" }, { status: 400 });
     }

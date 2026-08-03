@@ -9,7 +9,7 @@ test("shared week calendar component offers list/day/week views", async () => {
   assert.match(cal, /view === "list"/);
   assert.match(cal, /view === "day"/);
   assert.match(cal, /view === "week"/);
-  assert.match(cal, /apptTimeline/); // таймлайн по годинах
+  assert.match(cal, /roomSlotBoard/); // таймлайн по годинах
   assert.match(cal, /apptWeek/); // сітка тижня
   assert.match(cal, /weekDates\(/); // тиждень від понеділка
   assert.match(cal, /stateLabel\(/); // людські підписи станів

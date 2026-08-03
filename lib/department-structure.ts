@@ -157,10 +157,13 @@ export function sanitizeDepartmentStructure(input: unknown): DepartmentStructure
     const fallback = defaults.rooms[roomIndex] ?? { id: `room-${roomIndex + 1}`, name: "Кабінет", devices: [] };
     const devices = Array.isArray(room?.devices) ? room.devices.slice(0, 50).map((device, deviceIndex) => {
       const deviceFallback = fallback.devices[deviceIndex] ?? { name: "Обладнання", kind: "Інше" };
+      const rawName = text(device?.name, deviceFallback.name, 220);
+      const legacyCt = fallback.id === "ct" && /^Комп['’]ютерний томограф Siemens SOMATOM$/i.test(rawName);
+      const rawDetails = text(device?.details, deviceFallback.details ?? "", 160);
       return {
-        name: text(device?.name, deviceFallback.name, 220),
+        name: legacyCt ? deviceFallback.name : rawName,
         kind: text(device?.kind, deviceFallback.kind, 60),
-        details: text(device?.details, deviceFallback.details ?? "", 160),
+        details: legacyCt && rawDetails.includes("Модифікацію уточнити") ? deviceFallback.details : rawDetails,
         status: device?.status === "stored" ? "stored" as const : "active" as const,
       };
     }) : fallback.devices;

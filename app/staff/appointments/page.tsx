@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
-import WeekCalendar, { type CalBooking, type CalStaffOption, type CalView } from "../week-calendar";
+import WeekCalendar, { type CalBooking, type CalEquipmentBlock, type CalStaffOption, type CalView } from "../week-calendar";
+import { SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../../lib/schedule";
 
 type StaffOption = { email: string; displayName: string; role: string };
 
@@ -10,21 +11,31 @@ export default function StaffAppointmentsPage() {
   const [staff, setStaff] = useState<StaffOption | null>(null);
   const [items, setItems] = useState<CalBooking[]>([]);
   const [options, setOptions] = useState<CalStaffOption[]>([]);
+  const [schedule, setSchedule] = useState<ScheduleConfig>(SCHEDULE_DEFAULTS);
+  const [blocks, setBlocks] = useState<CalEquipmentBlock[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [forbidden, setForbidden] = useState(false);
-  const [initialView, setInitialView] = useState<CalView>("week");
+  const [initialView, setInitialView] = useState<CalView>("day");
   const [initialDate, setInitialDate] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const res = await fetch("/api/staff/bookings", { cache: "no-store" });
+      const [res, scheduleRes, equipmentRes] = await Promise.all([
+        fetch("/api/staff/bookings", { cache: "no-store" }),
+        fetch("/api/staff/schedule", { cache: "no-store" }),
+        fetch("/api/staff/equipment", { cache: "no-store" }),
+      ]);
       if (res.status === 401 || res.status === 403) { if (active) setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { bookings?: CalBooking[]; staffOptions?: StaffOption[]; staff?: StaffOption };
+      const scheduleData = await scheduleRes.json().catch(() => ({})) as { schedule?: ScheduleConfig };
+      const equipmentData = await equipmentRes.json().catch(() => ({})) as { blocks?: CalEquipmentBlock[] };
       if (!active) return;
       setItems(data.bookings || []);
       setOptions(data.staffOptions || []);
       if (data.staff) setStaff(data.staff);
+      if (scheduleData.schedule) setSchedule(scheduleData.schedule);
+      setBlocks(equipmentData.blocks || []);
       setLoaded(true);
     })();
     return () => { active = false; };
@@ -46,13 +57,13 @@ export default function StaffAppointmentsPage() {
     ? <p className="notice error" role="alert">Доступ лише для персоналу.</p>
     : !loaded
       ? <p className="notice">Завантаження…</p>
-      : <WeekCalendar bookings={items} options={options} initialView={initialView} initialDate={initialDate} />;
+      : <WeekCalendar bookings={items} options={options} schedule={schedule} blocks={blocks} initialView={initialView} initialDate={initialDate} />;
 
   return (
     <StaffWorkspaceShell
       active="appointments"
-      title="Календар записів"
-      description="Тиждень, день або список — із фільтрами за станом."
+      title="Записи і слоти"
+      description="Один робочий екран: вільні слоти кабінетів, заявки, запис пацієнта, прибуття та оплата."
       staffName={staff?.displayName}
       staffRole={staff?.role}
     >

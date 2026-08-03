@@ -76,6 +76,13 @@ header{padding:0 14px;margin-bottom:18px}
 .actions .btn{width:auto;flex:1;min-width:150px;min-height:44px}
 .pay-row{display:flex;gap:10px;align-items:center;background:#eef7f8;border:1px solid #d9eef0;border-radius:13px;padding:12px 14px;margin-top:14px;font-size:14px;color:#0e454c}
 .pay-row strong{font-weight:800}
+.payment-details{margin-top:12px;border:1px solid #d9eef0;border-radius:13px;overflow:hidden;background:#fff}
+.payment-detail{display:grid;grid-template-columns:100px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #edf2f4;font-size:13px}
+.payment-detail:last-child{border-bottom:0}.payment-detail span{color:var(--muted)}.payment-detail b{overflow-wrap:anywhere}.copy-one{border:0;border-radius:8px;padding:7px 9px;background:#e6f4f6;color:#0e5f67;font-weight:800;cursor:pointer}.copy-one:hover{background:#d7edf0}
+.copy-payment{margin-top:10px}.pay-note{margin:8px 2px 0;color:var(--muted);font-size:12px;text-align:center}
+.pay-toggle{margin-top:10px}.payment-panel{margin-top:10px;padding:14px;border:1px solid #d9eef0;border-radius:14px;background:#f7fbfc}
+.payment-panel[hidden]{display:none}.payment-instructions{font-size:13px;color:#33434d}.payment-instructions b{font-size:15px;color:#0e454c}.payment-instructions ol{margin:8px 0 2px;padding-left:22px}.payment-instructions li{margin:5px 0}
+.bank-choice{margin-top:10px}.bank-details{margin-top:10px;border:1px solid #d9eef0;border-radius:13px;overflow:hidden;background:#fff}.bank-details[hidden]{display:none}.bank-title{padding:11px 12px;background:#eef7f8;font-size:14px;font-weight:800;color:#0e454c}
 
 .protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:14px;padding:18px;background:#fdfefe}
 .protocol.open{display:block}
@@ -125,7 +132,7 @@ header{padding:0 14px;margin-bottom:18px}
     </div>
     <div class="code-wrap">
       <label for="gateDob">Дата народження</label>
-      <input id="gateDob" type="date" max="2100-12-31" min="1920-01-01" aria-label="Дата народження" autocomplete="bday"/>
+      <input id="gateDob" type="date" min="1900-01-01" aria-label="Дата народження" autocomplete="bday"/>
     </div>
     <span class="gate-error" id="gateError"></span>
     <button class="btn" id="gateBtn" type="button">Переглянути заявки</button>
@@ -155,9 +162,10 @@ header{padding:0 14px;margin-bottom:18px}
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
+const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
 const statusMeta = {
-  new:               { badge: 'new',       label: 'Нова',              step: 'new' },
+  new:               { badge: 'new',       label: 'Заявку отримано',    step: 'new' },
   requested:         { badge: 'new',       label: 'Заявка',            step: 'new' },
   needs_verification:{ badge: 'new',       label: 'Потребує перевірки',step: 'new' },
   scheduled:         { badge: 'booked',    label: 'Заплановано',       step: 'booked' },
@@ -191,12 +199,31 @@ const errorBox = document.getElementById('gateError');
 let phoneDigits = '';
 let dobValue = '';
 let payLink = '';
+let savedAutoEnter = false;
+
+function adultDobLimit() {
+  const today = new Date();
+  const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+  return `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
+}
+
+document.getElementById('gateDob').max = adultDobLimit();
+try {
+  const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || 'null');
+  if (saved && /^\d{9}$/.test(String(saved.phone || ''))) {
+    document.getElementById('gatePhone').value = saved.phone;
+  }
+  if (saved && /^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob || ''))) {
+    document.getElementById('gateDob').value = saved.dob;
+  }
+  savedAutoEnter = Boolean(saved && saved.autoEnter);
+} catch (e) { /* залишаємо поля порожніми */ }
 
 function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
 
 function stepper(status) {
   const order = ['new', 'booked', 'done'];
-  const labels = ['Заявку подано', 'Записано', 'Виконано'];
+  const labels = ['Заявку отримано', 'Запис підтверджено', 'Виконано'];
   const step = (statusMeta[status] || {}).step || 'new';
   const idx = order.indexOf(step);
   return '<div class="stepper">' + labels.map((l, i) =>
@@ -207,23 +234,48 @@ function cardHtml(b) {
   const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
   const badgeLabel = b.statusLabel || meta.label;
   const org = b.organization ? ' · ' + esc(b.organization) : '';
-  const when = b.desiredDate ? `бажана дата: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
+  const whenPrefix = ['new', 'requested', 'needs_verification'].includes(b.status) ? 'Попередньо призначено' : 'Призначено';
+  const when = b.desiredDate ? `${whenPrefix}: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
+  const serviceWithCode = [b.serviceCode, b.service].filter(Boolean).join(' · ');
+  const paymentPurpose = `Сплата за медичні послуги${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
   return `<div class="card app-card" id="card-${esc(b.code)}">
     <div class="app-top">
       <div>
         <div class="app-study">${esc(b.service)}</div>
-        <div class="app-meta">Код ${esc(b.code)}${org}${when ? ' · ' + when : ''}</div>
+        <div class="app-meta"><b>№ заявки: ${esc(b.code)}</b>${(org || when) ? ' · ' : ''}${org ? org.slice(3) : ''}${org && when ? ' · ' : ''}${when}</div>
       </div>
       <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
-    ${awaitingPayment ? `<div class="pay-row">💳 <span>Очікує оплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>` : ''}
-    ${awaitingPayment && payLink ? `<div class="pay-qr" style="text-align:center;margin:4px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Наведіть камеру банку, щоб сплатити</div></div>` : ''}
-    <div class="actions">
-      ${awaitingPayment && isPayUrl(payLink) ? `<a class="btn" href="${esc(payLink)}" target="_blank" rel="noopener">Оплатити</a>` : ''}
-      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
+    ${awaitingPayment ? `<div class="pay-row">💳 <span>До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>
+      <button class="btn pay-toggle" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button>
+      <div class="payment-panel" id="payment-${esc(b.code)}" hidden>
+        <div class="payment-instructions"><b>Як оплатити</b><ol>
+          <li>Для швидкої оплати натисніть «Сплатити карткою будь-якого банку».</li>
+          <li>Можна використати картку Monobank, Ощадбанку або іншого українського банку.</li>
+          <li>Або відкрийте реквізити IBAN і створіть платіж у застосунку свого банку.</li>
+        </ol></div>
+        <div class="payment-details">
+          <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b><button class="copy-one" type="button" data-copy-value="${esc(b.patientName || '')}">Копіювати</button></div>
+          <div class="payment-detail"><span>Послуга</span><b>${esc(serviceWithCode)}</b><button class="copy-one" type="button" data-copy-value="${esc(serviceWithCode)}">Копіювати</button></div>
+          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
+          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
+        </div>
+        ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
+        ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Сплатити карткою будь-якого банку</button>` : ''}
+        <button class="btn secondary bank-choice" type="button" data-bank-toggle="${esc(b.code)}">Оплатити через Monobank / Ощад за IBAN</button>
+        <div class="bank-details" id="bank-${esc(b.code)}" hidden>
+          <div class="bank-title">Реквізити для платежу за IBAN</div>
+          <div class="payment-detail"><span>Отримувач</span><b>Військова частина А3120</b><button class="copy-one" type="button" data-copy-value="Військова частина А3120">Копіювати</button></div>
+          <div class="payment-detail"><span>IBAN</span><b>UA27 820172 0313 2510 0120 2006000</b><button class="copy-one" type="button" data-copy-value="UA278201720313251001202006000">Копіювати</button></div>
+          <div class="payment-detail"><span>ЄДРПОУ</span><b>08296098</b><button class="copy-one" type="button" data-copy-value="08296098">Копіювати</button></div>
+          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
+          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
+        </div>
+      </div>` : ''}
+    <div class="actions">      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
       ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
     </div>
     <div class="protocol" id="prot-${esc(b.code)}"></div>
@@ -247,10 +299,47 @@ async function loadBookings() {
   document.getElementById('emptyState').hidden = bookings.length > 0;
   list.innerHTML = bookings.map(cardHtml).join('');
   list.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => cancelBooking(b.dataset.cancel)));
+  list.querySelectorAll('[data-pay-toggle]').forEach((button) => button.addEventListener('click', () => togglePayment(button)));
+  list.querySelectorAll('[data-copy-value]').forEach((button) => button.addEventListener('click', () => copySingleValue(button)));
+  list.querySelectorAll('[data-open-payment]').forEach((button) => button.addEventListener('click', () => openPayment(button)));
+  list.querySelectorAll('[data-bank-toggle]').forEach((button) => button.addEventListener('click', () => toggleBankDetails(button)));
   list.querySelectorAll('[data-protocol]').forEach((b) => b.addEventListener('click', () => toggleProtocol(b.dataset.protocol, b)));
   return true;
 }
 
+function togglePayment(button) {
+  const panel = document.getElementById('payment-' + button.dataset.payToggle);
+  if (!panel) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  button.textContent = opening ? 'Сховати оплату' : 'Сплатити';
+}
+async function copySingleValue(button) {
+  const value = button.dataset.copyValue || '';
+  try {
+    await navigator.clipboard.writeText(value);
+    const old = button.textContent;
+    button.textContent = 'Скопійовано ✓';
+    window.setTimeout(() => { button.textContent = old; }, 1600);
+  } catch (e) {
+    window.prompt('Скопіюйте значення', value);
+  }
+}
+
+function toggleBankDetails(button) {
+  const panel = document.getElementById('bank-' + button.dataset.bankToggle);
+  if (!panel) return;
+  const opening = panel.hidden;
+  panel.hidden = !opening;
+  button.textContent = opening ? 'Сховати реквізити IBAN' : 'Оплатити через Monobank / Ощад за IBAN';
+}
+function openPayment(button) {
+  const name = button.dataset.name || '';
+  if (name) navigator.clipboard?.writeText(name).catch(() => {});
+  window.open(button.dataset.url || payLink, '_blank', 'noopener');
+  button.textContent = 'Privat24 відкрито · ПІБ скопійовано';
+  window.setTimeout(() => { button.textContent = 'Сплатити карткою будь-якого банку'; }, 2200);
+}
 async function enter(digits, dob) {
   phoneDigits = digits;
   dobValue = dob;
@@ -319,6 +408,19 @@ document.getElementById('gateBtn').addEventListener('click', () => {
 });
 document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
 document.getElementById('gateDob').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
+if (savedAutoEnter && new URLSearchParams(window.location.search).get('new') === '1') {
+  const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
+  const dob = document.getElementById('gateDob').value.trim();
+  if (digits.length === 9 && /^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || '{}');
+      saved.autoEnter = false;
+      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify(saved));
+    } catch (e) {}
+    window.history.replaceState({}, '', '/site/cabinet.html');
+    enter(digits, dob);
+  }
+}
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
   phoneDigits = '';
@@ -326,6 +428,7 @@ document.getElementById('logoutBtn').addEventListener('click', async () => {
   cabinet.hidden = true; gate.hidden = false;
   document.getElementById('gatePhone').value = '';
   document.getElementById('gateDob').value = '';
+  try { sessionStorage.removeItem(PATIENT_PREFILL_KEY); } catch (e) {}
 });
 </script>
 </body>

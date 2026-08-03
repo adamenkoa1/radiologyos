@@ -6,7 +6,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("site-booking endpoint saves v22 cart requests into D1 bookings", async () => {
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /serviceByCode\(/);
+  assert.match(route, /configuredServiceByCode\(/);
   assert.match(route, /INSERT INTO bookings/);
   assert.match(route, /INSERT INTO booking_events/);
   assert.match(route, /isRateLimited\(/);
@@ -15,13 +15,14 @@ test("site-booking endpoint saves v22 cart requests into D1 bookings", async () 
   assert.match(route, /status:\s*201/);
 });
 
-test("the client bridge posts the cart to /api/site-booking and reuses v22 success UI", async () => {
+test("the client bridge posts the cart and opens the authorized patient cabinet", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /\/api\/site-booking/);
   assert.match(bridge, /stopImmediatePropagation\(\)/); // takes over cart.js submit
   assert.match(bridge, /items:\s*items\.map/);
-  assert.match(bridge, /showSuccess\(/); // shows v22 confirmation panel with the RD code
-  assert.match(bridge, /Код заявки|Коди заявок/);
+  assert.match(bridge, /autoEnter:\s*true/);
+  assert.match(bridge, /cabinet\.html\?new=1/);
+  assert.doesNotMatch(bridge, /Код заявки|Коди заявок/);
 });
 
 test("the booking pages load the D1 bridge after cart.js", async () => {
@@ -100,7 +101,7 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /assets\/notify\.js/); // obsolete client-side gateway removed
   const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /Очікує оплати/);
+  assert.match(cabinet, /До сплати/);
 });
 
 test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
@@ -113,16 +114,18 @@ test("the payment QR renders on the site and in the cabinet; button only for rea
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  assert.match(cabinet, /awaitingPayment && payLink \? `<div class="pay-qr"/);
-  assert.match(cabinet, /awaitingPayment && isPayUrl\(payLink\)/); // link button gated on http(s)
+  assert.match(cabinet, /payLink \? `<div class="pay-qr"/);
+  assert.match(cabinet, /isPayUrl\(payLink\)/); // link button gated on http(s)
 });
 
-test("the slot picker uses the real department schedule", async () => {
-  const slots = await read("public/site/assets/slots.js");
-  assert.match(slots, /\/api\/availability\?date=/);
-  assert.match(slots, /serviceCode=/);
-  const cart = await read("public/site/assets/cart.js");
-  assert.match(cart, /serviceCode:\s*code/); // cart drives the picker by service code
+test("the public request does not force patients to choose a slot", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /const desiredDate = ''/);
+  assert.match(bridge, /const desiredTime = ''/);
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+    const html = await read(page);
+    assert.doesNotMatch(html, /id="(?:mil)?[Ss]lotPicker"/);
+  }
 });
 
 test("the military free-booking form saves to D1 as category 'military'", async () => {
@@ -132,5 +135,5 @@ test("the military free-booking form saves to D1 as category 'military'", async 
   assert.match(bridge, /referralType:\s*'military_referral'/);
   const military = await read("public/site/military.html");
   assert.match(military, /assets\/d1-bridge\.js/); // bridge loaded on the military page
-  assert.match(military, /serviceCode:\s*String\(militaryCart\[0\]\.code\)/); // picker fixed to new signature
+  assert.doesNotMatch(military, /id="milSlotPicker"/);
 });

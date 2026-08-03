@@ -67,6 +67,15 @@ test("the worker serves the established teal storefront at /", async () => {
   assert.match(html, /v22-landing/);
 });
 
+test("the worker serves the same public storefront at /site/", async () => {
+  const marker = "<main>site-path-landing</main>";
+  for (const path of ["/site", "/site/", "/site/index.html"]) {
+    const response = await renderWithAssets(path, { "/site/index.html": marker });
+    assert.equal(response.status, 200, `${path} should open the storefront`);
+    assert.match(await response.text(), /site-path-landing/);
+  }
+});
+
 test("renders development preview metadata", async () => {
   const response = await renderHome();
 
@@ -78,14 +87,14 @@ test("renders development preview metadata", async () => {
   assert.match(await response.text(), developmentPreviewMeta);
 });
 
-test("home combines patient categories, services, booking and staff login", async () => {
+test("home separates patient categories and links to booking and staff login", async () => {
   const response = await renderHome();
   const html = await response.text();
   assert.match(html, /Чернігівський військовий госпіталь/);
   assert.match(html, /Військовослужбовцям/);
   assert.match(html, /Цивільним особам/);
-  assert.match(html, /Дослідження та вартість/);
-  assert.match(html, /id=["']homeTariffs["']/);
+  assert.doesNotMatch(html, /Дослідження та вартість/);
+  assert.doesNotMatch(html, /id=["']homeTariffs["']/);
   assert.match(html, /href=["']\/staff\/login["']/);
   assert.doesNotMatch(html, /radiologyos-app\.adamenko-artem96\.chatgpt\.site/);
 });

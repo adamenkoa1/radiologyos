@@ -1,22 +1,148 @@
 /* RadiologyOS — міст між заявками v22 і базою даних відділення (D1).
    Перехоплює надсилання «Моєї заявки» (цивільна форма на index/price та
    військова форма на military) і зберігає її через /api/site-booking, щоб
-   замовлення одразу з'являлось у кабінеті персоналу. Екрани «Заявку прийнято»
-   лишаємо від v22 — додаємо лише реальний код заявки. */
+   замовлення одразу з'являлось у кабінеті персоналу. Після надсилання показуємо
+   попередньо призначені дату й час, номер заявки та її поточний статус. */
 (function () {
-  const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
-  const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-  const REFERRAL_MAP = {
-    'Є направлення': 'paper_referral',
-    'Направлення ще немає': 'none',
-    'Потрібна консультація': 'other',
-  };
+  const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
-  function codesLine(codes) {
-    if (!codes.length) return '';
-    return `<div style="margin-top:6px"><strong>${codes.length > 1 ? 'Коди заявок' : 'Код заявки'}:</strong> ${codes.map(esc).join(', ')}</div>` +
-      `<div style="margin-top:4px;color:#4e5d46;font-size:13px">Збережіть код — за ним і номером телефону можна відстежити статус у кабінеті пацієнта.</div>`;
+  function adultDobLimit() {
+    const today = new Date();
+    const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
+    const y = limit.getFullYear();
+    const m = String(limit.getMonth() + 1).padStart(2, '0');
+    const d = String(limit.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
   }
+
+  function enhanceDobInput(dobInput) {
+    if (!dobInput || dobInput.dataset.segmented === 'true') return;
+    dobInput.dataset.segmented = 'true';
+
+    const previousValue = dobInput.value || '';
+    const group = document.createElement('div');
+    group.className = 'dob-segmented';
+    group.setAttribute('role', 'group');
+    group.setAttribute('aria-label', 'Дата народження: день, місяць і рік');
+
+    const makeSelect = (suffix, label, placeholder) => {
+      const select = document.createElement('select');
+      select.id = `${dobInput.id}${suffix}`;
+      select.required = true;
+      select.setAttribute('aria-label', label);
+      const empty = document.createElement('option');
+      empty.value = '';
+      empty.textContent = placeholder;
+      select.appendChild(empty);
+      return select;
+    };
+
+    const day = makeSelect('Day', 'День народження', 'День');
+    const month = makeSelect('Month', 'Місяць народження', 'Місяць');
+    const year = makeSelect('Year', 'Рік народження', 'Рік');
+    const monthNames = ['Січень', 'Лютий', 'Березень', 'Квітень', 'Травень', 'Червень', 'Липень', 'Серпень', 'Вересень', 'Жовтень', 'Листопад', 'Грудень'];
+    monthNames.forEach((name, index) => {
+      const option = document.createElement('option');
+      option.value = String(index + 1);
+      option.textContent = name;
+      month.appendChild(option);
+    });
+    const lastAdultYear = Number(adultDobLimit().slice(0, 4));
+    for (let value = lastAdultYear; value >= 1900; value -= 1) {
+      const option = document.createElement('option');
+      option.value = String(value);
+      option.textContent = String(value);
+      year.appendChild(option);
+    }
+
+    const fillDays = () => {
+      const selected = day.value;
+      const max = month.value && year.value
+        ? new Date(Number(year.value), Number(month.value), 0).getDate()
+        : 31;
+      while (day.options.length > 1) day.remove(1);
+      for (let value = 1; value <= max; value += 1) {
+        const option = document.createElement('option');
+        option.value = String(value);
+        option.textContent = String(value);
+        day.appendChild(option);
+      }
+      if (Number(selected) <= max) day.value = selected;
+    };
+
+    const sync = () => {
+      day.setCustomValidity('');
+      if (!day.value || !month.value || !year.value) {
+        dobInput.value = '';
+        return;
+      }
+      const iso = `${year.value}-${String(month.value).padStart(2, '0')}-${String(day.value).padStart(2, '0')}`;
+      if (iso > adultDobLimit()) {
+        dobInput.value = '';
+        year.setCustomValidity('Онлайн-запис доступний пацієнтам від 18 років');
+        return;
+      }
+      year.setCustomValidity('');
+      dobInput.value = iso;
+    };
+
+    group.append(day, month, year);
+    dobInput.insertAdjacentElement('beforebegin', group);
+    dobInput.type = 'hidden';
+    dobInput.required = false;
+
+    if (!document.getElementById('radiologyDobSegmentedStyles')) {
+      const style = document.createElement('style');
+      style.id = 'radiologyDobSegmentedStyles';
+      style.textContent = '.dob-segmented{display:grid;grid-template-columns:.72fr 1.38fr 1fr;gap:8px}.dob-segmented select{width:100%;min-width:0;padding:12px 9px;border:1px solid #dbe3e8;border-radius:11px;background:#fff;color:#0e161c;font:inherit;font-size:16px}.dob-segmented select:focus-visible{outline:2px solid var(--brand,#0c7a85);outline-offset:1px}.was-validated .dob-segmented select:invalid{border-color:#d9705f;background:#fdf0ee}@media(max-width:390px){.dob-segmented{grid-template-columns:.68fr 1.42fr .9fr;gap:6px}.dob-segmented select{padding:11px 6px;font-size:15px}}';
+      document.head.appendChild(style);
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(previousValue)) {
+      const [savedYear, savedMonth, savedDay] = previousValue.split('-').map(Number);
+      year.value = String(savedYear);
+      month.value = String(savedMonth);
+      fillDays();
+      day.value = String(savedDay);
+    } else {
+      fillDays();
+    }
+    month.addEventListener('change', () => { fillDays(); sync(); });
+    year.addEventListener('change', () => { fillDays(); sync(); });
+    day.addEventListener('change', sync);
+    sync();
+  }
+
+  function prepareIdentityFields(nameId, dobId) {
+    const nameInput = document.getElementById(nameId);
+    const dobInput = document.getElementById(dobId);
+    if (dobInput) {
+      dobInput.max = adultDobLimit();
+      enhanceDobInput(dobInput);
+    }
+    if (nameInput) {
+      const validate = () => nameInput.setCustomValidity(
+        nameInput.value.trim().split(/\s+/).filter(Boolean).length >= 3
+          ? ''
+          : 'Вкажіть прізвище, ім’я та по батькові повністю'
+      );
+      nameInput.addEventListener('input', validate);
+      validate();
+    }
+  }
+
+  function rememberPatient(phone, dob) {
+    try {
+      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify({
+        phone: String(phone).replace(/\D/g, '').slice(-9),
+        dob: String(dob || ''),
+        autoEnter: true,
+      }));
+    } catch (e) { /* приватний режим може блокувати storage */ }
+  }
+
+  prepareIdentityFields('patientName', 'patientDob');
+  prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
   async function postBooking(payload, requestKey) {
     const response = await fetch('/api/site-booking', {
@@ -26,7 +152,7 @@
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Не вдалося надіслати заявку');
-    return data.codes || (data.code ? [data.code] : []);
+    return data;
   }
 
   // Fill the confirmation screen's payment block from the department pay link.
@@ -53,6 +179,31 @@
     } catch (e) { /* leave hidden on failure */ }
   }
 
+  async function applyPublicServiceAvailability() {
+    try {
+      const response = await fetch('/api/public-services', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      const services = Array.isArray(data.services) ? data.services : [];
+      if (!response.ok || !services.length) return;
+      const militaryPage = /military/i.test(location.pathname);
+      const byCode = Object.fromEntries(services.map((item) => [String(item.code), item]));
+      document.querySelectorAll('button.row-add').forEach((button) => {
+        const source = button.getAttribute('onclick') || '';
+        const match = source.match(/\(['"]([^'"]+)['"]/);
+        const item = match ? byCode[match[1]] : null;
+        if (!item) return;
+        const available = militaryPage ? item.availableToMilitary : item.availableToCivilian;
+        button.disabled = !available;
+        button.setAttribute('aria-disabled', available ? 'false' : 'true');
+        if (!available) {
+          button.textContent = 'Тимчасово недоступно';
+          button.title = 'Послугу вимкнено адміністратором';
+        }
+      });
+    } catch (e) { /* сервер додатково перевіряє доступність при надсиланні */ }
+  }
+  applyPublicServiceAvailability();
+
   // ----- Civilian request (index.html, price.html) -----
   const civilForm = document.getElementById('requestForm');
   if (civilForm) {
@@ -61,6 +212,8 @@
       event.stopImmediatePropagation();
       const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
       if (!items.length) { alert('Спочатку додайте послугу до заявки.'); return; }
+      const nameInput = document.getElementById('patientName');
+      if (nameInput) nameInput.dispatchEvent(new Event('input'));
       if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       // Category comes from the form selector when present (home page), else the page.
@@ -72,13 +225,10 @@
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('patientDob') || {}).value || '';
-      const picked = (typeof pickedSlot !== 'undefined') ? pickedSlot : { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('desiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('desiredTime').value || '';
-      const referralType = category === 'military'
-        ? 'military_referral'
-        : (REFERRAL_MAP[document.getElementById('referral').value] || 'other');
-      const comment = document.getElementById('comment').value.trim();
+      const desiredDate = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.date) ? pickedSlot.date : '';
+      const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
+      const referralType = category === 'military' ? 'military_referral' : 'other';
+      const comment = (document.getElementById('comment') || {}).value?.trim() || '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
       const submitBtn = civilForm.querySelector('.send-request');
@@ -88,20 +238,15 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        const codes = await postBooking({
+        const result = await postBooking({
           name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        if (typeof showSuccess === 'function') {
-          showSuccess(
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes)
-          );
-        }
-        if (category === 'civilian') populatePayBlock();
+        rememberPatient(phone, dob);
+        try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
+        window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
         alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');
@@ -117,17 +262,17 @@
       event.stopImmediatePropagation();
       const items = (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart)) ? militaryCart : [];
       if (!items.length) { alert('Оберіть хоча б одне дослідження.'); return; }
+      const nameInput = document.getElementById('militaryPatientName');
+      if (nameInput) nameInput.dispatchEvent(new Event('input'));
       if (!milForm.checkValidity()) { milForm.classList.add('was-validated'); const bad = milForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       const name = document.getElementById('militaryPatientName').value.trim();
       const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
-      const picked = window.milPickedSlot || { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('militaryDesiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('militaryDesiredTime').value || '';
-      const refText = (document.getElementById('militaryReferral') || {}).value || '';
       const commentRaw = (document.getElementById('militaryComment') || {}).value || '';
-      const comment = [refText, commentRaw.trim()].filter(Boolean).join('. ');
+      const comment = commentRaw.trim();
+      const desiredDate = '';
+      const desiredTime = '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
       const submitBtn = milForm.querySelector('.send-request');
@@ -137,26 +282,16 @@
       if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
-        const codes = await postBooking({
+        const result = await postBooking({
           name, phone, dob, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        const summary = document.getElementById('milSuccessSummary');
-        if (summary) {
-          summary.innerHTML =
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes);
-        }
-        milForm.hidden = true;
-        const panel = document.getElementById('milSuccessPanel');
-        if (panel) panel.hidden = false;
-        const milList = document.getElementById('militaryCartItems');
-        if (milList) milList.style.display = 'none';
-        if (typeof militaryCart !== 'undefined') { militaryCart.length = 0; if (typeof saveMilitaryCart === 'function') saveMilitaryCart(); }
+        rememberPatient(phone, dob);
+        try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
+        window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Надіслати заявку'; }
         alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');

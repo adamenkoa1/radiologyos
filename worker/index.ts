@@ -105,10 +105,11 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // The established teal storefront is the public homepage. Keep its URL at
-    // `/` while serving the same tested document that also remains available
-    // under `/site/index.html`.
-    if (url.pathname === "/" || url.pathname === "/index.html") {
+    // The established teal storefront is available both at the domain root
+    // and at the public `/site/` address used in links shared with patients.
+    // Serve the same tested document instead of letting Vinext treat `/site/`
+    // as an application route and return a 404.
+    if (["/", "/index.html", "/site", "/site/", "/site/index.html"].includes(url.pathname)) {
       const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
       return secure(await env.ASSETS.fetch(storefrontRequest), request);
     }

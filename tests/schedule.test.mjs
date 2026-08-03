@@ -61,7 +61,7 @@ test("isDayOpen respects weekdays and specific days-off", () => {
 
 test("sanitizeSchedule clamps invalid input to safe defaults", () => {
   const c = sanitizeSchedule({ equipment: { ct: { start: "25:99", end: "08:00", slotMinutes: 9999 } }, weekdays: [0, 9], daysOff: ["bad", "2026-01-01"] });
-  assert.deepEqual(c.equipment.ct, SCHEDULE_DEFAULTS.equipment.ct); // некоректні години → типові
+  for (const key of ["open", "close", "breakStart", "breakEnd", "slotStep"]) assert.equal(c.equipment.ct[key], SCHEDULE_DEFAULTS.equipment.ct[key]); // некоректні години → типові
   assert.deepEqual(c.weekdays, SCHEDULE_DEFAULTS.weekdays); // 0/9 відкинуто → типові
   assert.deepEqual(c.daysOff, ["2026-01-01"]); // лишилась лише валідна дата
 });
@@ -74,13 +74,13 @@ test("parseSchedule returns defaults for empty/invalid JSON", () => {
 test("availability and staff booking read the configurable schedule", async () => {
   const avail = await read("app/api/availability/route.ts");
   assert.match(avail, /parseSchedule\(await getSetting\(db, SCHEDULE_KEY\)\)/);
-  assert.match(avail, /isDayOpen\(date, schedule\)/);
+  assert.match(avail, /isEquipmentDayOpen\(date, schedule, service\.equipmentId\)/);
   assert.match(avail, /candidateTimesFor\(hoursFor\(schedule/);
   assert.match(avail, /equipment_blocks/); // збережено фільтр блокувань
-  assert.match(avail, /status IN \('confirmed','rescheduled'\)/);
+  assert.match(avail, /status IN \('new','confirmed','rescheduled'\)/);
   const book = await read("app/api/staff/bookings/route.ts");
   assert.match(book, /candidateTimesFor\(hoursFor\(schedule/);
-  assert.match(book, /isDayOpen\(desiredDate, schedule\)/);
+  assert.match(book, /isEquipmentDayOpen\(desiredDate, schedule, service\.equipmentId\)/);
 });
 
 test("schedule editor and admin API are wired and guarded", async () => {
@@ -90,7 +90,7 @@ test("schedule editor and admin API are wired and guarded", async () => {
   assert.match(route, /setSetting\(db, SCHEDULE_KEY/);
   const page = await read("app/staff/schedule/page.tsx");
   assert.match(page, /active="schedule"/);
-  assert.match(page, /Робочі дні тижня/);
+  assert.match(page, /Робочі дні/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/schedule"/);
 });

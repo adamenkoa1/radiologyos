@@ -24,6 +24,7 @@ export default function StaffBookPage() {
   const [serviceCode, setServiceCode] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
+  const [requestedTime, setRequestedTime] = useState("");
   const [times, setTimes] = useState<string[]>([]);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [status, setStatus] = useState<"idle" | "saving">("idle");
@@ -48,17 +49,31 @@ export default function StaffBookPage() {
   }, []);
 
   useEffect(() => {
+    const t = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const requestedDate = params.get("date") || "";
+      const requestedSlot = params.get("time") || "";
+      const equipment = params.get("equipment") || "";
+      if (/^\d{4}-\d{2}-\d{2}$/.test(requestedDate)) setDate(requestedDate);
+      if (/^\d{2}:\d{2}$/.test(requestedSlot)) setRequestedTime(requestedSlot);
+      const firstService = Object.values(serviceGroups).flat().find(service => service.equipmentId === equipment);
+      if (firstService) setServiceCode(firstService.code);
+    }, 0);
+    return () => window.clearTimeout(t);
+  }, [serviceGroups]);
+
+  useEffect(() => {
     let active = true;
     const t = window.setTimeout(() => {
       if (!date || !serviceCode) { setTimes([]); setSlotsLoading(false); return; }
       setSlotsLoading(true); setTime("");
       fetch(`/api/availability?date=${encodeURIComponent(date)}&serviceCode=${encodeURIComponent(serviceCode)}`, { cache: "no-store" })
-        .then(r => r.json()).then((d: { times?: string[] }) => { if (active) setTimes(d.times || []); })
+        .then(r => r.json()).then((d: { times?: string[] }) => { if (active) { const available=d.times || []; setTimes(available); if (requestedTime && available.includes(requestedTime)) setTime(requestedTime); } })
         .catch(() => { if (active) setTimes([]); })
         .finally(() => { if (active) setSlotsLoading(false); });
     }, 0);
     return () => { active = false; window.clearTimeout(t); };
-  }, [date, serviceCode]);
+  }, [date, serviceCode, requestedTime]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -83,7 +98,7 @@ export default function StaffBookPage() {
     if (!res.ok || !result.ok) { setError(result.error || "Не вдалося створити запис"); return; }
     setCode(result.code || "");
     (event.target as HTMLFormElement).reset();
-    setServiceCode(""); setDate(""); setTime(""); setTimes([]);
+    setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
   }
 
   const price = serviceByCode(serviceCode)?.price;
@@ -91,10 +106,11 @@ export default function StaffBookPage() {
   const body = forbidden
     ? <p className="notice error" role="alert">Створювати записи може реєстратор або адміністратор.</p>
     : <form className="settingsCard" onSubmit={submit}>
-        {code && <p className="notice success" role="status">Запис створено. Код: <b>{code}</b>. <a className="textLink" href="/staff/appointments">До календаря →</a></p>}
+        {code && <p className="notice success" role="status">Пацієнта записано, час підтверджено. <a className="textLink" href="/staff/appointments">Переглянути в календарі →</a></p>}
+        <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
         <section className="settingsBlock">
-          <h3>Пацієнт</h3>
-          <label className="settingsField"><span>Імʼя та прізвище *</span><input name="name" required maxLength={120} placeholder="Іван Іваненко" /></label>
+          <h3>Дані пацієнта</h3>
+          <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><input name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" /></label>
           <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" /></label>
           <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" /></label>
           <label className="settingsField"><span>Категорія</span>
@@ -157,7 +173,7 @@ export default function StaffBookPage() {
       </form>;
 
   return (
-    <StaffWorkspaceShell active="appointments" title="Нова запис" description="Створення запису вручну: пацієнт, послуга, час, лікар." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="appointments" title="Записати пацієнта" description="Оформлення запису працівником від імені пацієнта." staffName={staff?.displayName} staffRole={staff?.role}>
       {body}
     </StaffWorkspaceShell>
   );
