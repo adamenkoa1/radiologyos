@@ -86,12 +86,23 @@ export default function DashboardPage() {
       fetch("/api/staff/dashboard", { cache:"no-store" }),
       fetch("/api/staff/bookings", { cache:"no-store" }),
     ]);
-    const payload = await dashRes.json() as Data & { error?:string };
-    if (!dashRes.ok) { setError(payload.error || "Немає доступу"); return; }
-    setData(payload); setStaff(payload.staff || null); setError("");
-    const bookingsData = await bookingsRes.json().catch(() => ({})) as { bookings?:CalBooking[]; staffOptions?:CalStaffOption[] };
+    // Доступ визначаємо за заявками (доступні реєстратору й лікарям), а не за
+    // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
+    // корисним для всіх ролей, а не блокується стіною «лише адмін».
+    const bookingsData = await bookingsRes.json().catch(() => ({})) as
+      { bookings?:CalBooking[]; staffOptions?:CalStaffOption[]; staff?:StaffInfo; error?:string };
+    if (!bookingsRes.ok || !bookingsData.staff) { setError(bookingsData.error || "Немає доступу"); return; }
+    setStaff(bookingsData.staff);
     setBookings(bookingsData.bookings || []);
     setOptions(bookingsData.staffOptions || []);
+    setError("");
+    // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
+    if (dashRes.ok) {
+      const payload = await dashRes.json().catch(() => null) as Data | null;
+      if (payload?.kpi) setData(payload);
+    } else {
+      setData(null);
+    }
   }
 
   useEffect(() => {
@@ -141,55 +152,17 @@ export default function DashboardPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
-    !k ? <p className="dashLoading">Завантаження зведення…</p> :
+    !staff ? <p className="dashLoading">Завантаження зведення…</p> :
     <>
       {toast && <p className="dashToast" role="status" onClick={()=>setToast("")}>{toast}</p>}
 
-      {/* Компактна стрічка показників замість великих блоків */}
-      <div className="dashKpiStrip">
-        <a className="dashStat hero" href="/staff"><b>{k.scheduledToday}</b><span>сьогодні у розкладі</span><small>{k.newToday} нових · {k.confirmedToday} підтв.</small></a>
-        <a className="dashStat" href="/staff/protocols"><b className={k.awaitingProtocol?"warn":""}>{k.awaitingProtocol}</b><span>потребують протоколу</span><small>{k.readyToIssue} до видачі</small></a>
-        <a className="dashStat" href="/staff/imaging"><b className={k.needImaging?"warn":""}>{k.needImaging}</b><span>без знімків</span><small>{k.pacsEnabled?"PACS on":"PACS off"}</small></a>
-        <a className="dashStat" href="/staff/reports"><b className={k.outstandingCount?"warn":""}>{k.outstandingCount}</b><span>очікують оплати</span><small>{k.outstandingSum.toLocaleString("uk-UA")} грн</small></a>
-        <a className="dashStat" href="/staff/patients"><b>{k.patients}</b><span>пацієнтів</span><small>{k.repeatPatients} повторних</small></a>
-        <div className="dashStat equip">
-          <span>апарати сьогодні</span>
-          <div className="dashStatEquip">
-            {["ct","xray","fluoro"].map((id)=>{
-              const value = data?.equipmentToday.find((e)=>e.id===id)?.c || 0;
-              return <span key={id}><b>{value}</b>{equipmentNames[id]}</span>;
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Завантаженість апаратів за 7 днів (сьогодні та 6 попередніх) */}
-      {data && <section className="dashLoad">
-        <div className="dashListHead"><h3>Завантаженість апаратів · 7 днів</h3><span>{data.weekStart} — {data.today}</span></div>
-        {(() => {
-          const days:string[] = [];
-          for (let i = 6; i >= 0; i--) { const dt = new Date(`${data.today}T12:00:00Z`); dt.setUTCDate(dt.getUTCDate() - i); days.push(dt.toISOString().slice(0,10)); }
-          const at = (id:string, d:string) => data.equipmentWeek.find((e)=>e.id===id && e.d===d)?.c || 0;
-          const peak = Math.max(1, ...data.equipmentWeek.filter((e)=>["ct","xray","fluoro"].includes(e.id)).map((e)=>e.c));
-          const dow = (d:string) => ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"][new Date(`${d}T12:00:00Z`).getUTCDay()];
-          return <div className="dashLoadGrid" style={{ gridTemplateColumns:`120px repeat(${days.length}, 1fr)` }}>
-            <span className="dashLoadCorner" />
-            {days.map((d)=><span key={d} className={`dashLoadDay${d===data.today?" today":""}`}>{dow(d)}<small>{d.slice(8,10)}.{d.slice(5,7)}</small></span>)}
-            {["ct","xray","fluoro"].map((id)=><Fragment key={id}>
-              <span className="dashLoadRow">{equipmentNames[id]}</span>
-              {days.map((d)=>{ const v = at(id,d); return <span key={d} className="dashLoadCell" title={`${equipmentNames[id]} · ${d}: ${v}`}>
-                <i style={{ height:`${Math.round((v/peak)*100)}%` }} className={v?"":"empty"} /><b>{v||""}</b>
-              </span>; })}
-            </Fragment>)}
-          </div>;
-        })()}
-      </section>}
-
-      {/* Нові заявки: миготять, доки не підтвердять; підтвердження одним кліком */}
+      {/* Дія передусім: нові заявки миготять, доки їх не підтвердять; підтвердження одним кліком. */}
       <section className="dashPending">
         <div className="dashPendingHead">
           <h2>Нові заявки {pending.length ? <span className="dashPendingBadge">{pending.length}</span> : null}</h2>
-          <small>Натисніть «Підтвердити» — пацієнту одразу піде повідомлення у WhatsApp.</small>
+          <small>{canManage
+            ? "Натисніть «Підтвердити» — пацієнту одразу піде повідомлення у WhatsApp."
+            : "Заявки, що очікують підтвердження реєстратури."}</small>
         </div>
         {pending.length === 0
           ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
@@ -212,13 +185,44 @@ export default function DashboardPage() {
             </ul>}
       </section>
 
+      {/* Зведені показники — лише для адміністратора (аналітика по відділенню). */}
+      {k && <div className="dashKpiStrip">
+        <a className="dashStat hero" href="/staff/appointments"><b>{k.scheduledToday}</b><span>сьогодні у розкладі</span><small>{k.newToday} нових · {k.confirmedToday} підтв.</small></a>
+        <a className="dashStat" href="/staff/protocols"><b className={k.awaitingProtocol?"warn":""}>{k.awaitingProtocol}</b><span>потребують протоколу</span><small>{k.readyToIssue} до видачі</small></a>
+        <a className="dashStat" href="/staff/imaging"><b className={k.needImaging?"warn":""}>{k.needImaging}</b><span>без знімків</span><small>{k.pacsEnabled?"PACS активний":"PACS вимкнено"}</small></a>
+        <a className="dashStat" href="/staff/reports"><b className={k.outstandingCount?"warn":""}>{k.outstandingCount}</b><span>очікують оплати</span><small>{k.outstandingSum.toLocaleString("uk-UA")} грн</small></a>
+        <a className="dashStat" href="/staff/patients"><b>{k.patients}</b><span>пацієнтів</span><small>{k.repeatPatients} повторних</small></a>
+      </div>}
+
       {/* Об'єднаний календар записів прямо в пульті */}
       <section className="dashCalendar">
         <div className="dashCalendarHead"><h2>Розклад</h2><a href="/staff/book" className="dashCalNew">+ Записати пацієнта</a></div>
         <WeekCalendar bookings={bookings} options={options} initialView="week" />
       </section>
 
-      {data?.clinicalQueue?.length ? <a className="dashQueue" href="/staff/studies" aria-label="Відкрити реєстр досліджень">
+      {/* Завантаженість апаратів за 7 днів (сьогодні та 6 попередніх) — адмін-аналітика */}
+      {k && data && <section className="dashLoad">
+        <div className="dashListHead"><h3>Завантаженість апаратів · 7 днів</h3><span>{data.weekStart} — {data.today}</span></div>
+        {(() => {
+          const days:string[] = [];
+          for (let i = 6; i >= 0; i--) { const dt = new Date(`${data.today}T12:00:00Z`); dt.setUTCDate(dt.getUTCDate() - i); days.push(dt.toISOString().slice(0,10)); }
+          const at = (id:string, d:string) => data.equipmentWeek.find((e)=>e.id===id && e.d===d)?.c || 0;
+          const peak = Math.max(1, ...data.equipmentWeek.filter((e)=>["ct","xray","fluoro"].includes(e.id)).map((e)=>e.c));
+          const dow = (d:string) => ["Нд","Пн","Вт","Ср","Чт","Пт","Сб"][new Date(`${d}T12:00:00Z`).getUTCDay()];
+          return <div className="dashLoadGrid" style={{ gridTemplateColumns:`120px repeat(${days.length}, 1fr)` }}>
+            <span className="dashLoadCorner" />
+            {days.map((d)=><span key={d} className={`dashLoadDay${d===data.today?" today":""}`}>{dow(d)}<small>{d.slice(8,10)}.{d.slice(5,7)}</small></span>)}
+            {["ct","xray","fluoro"].map((id)=><Fragment key={id}>
+              <span className="dashLoadRow">{equipmentNames[id]}</span>
+              {days.map((d)=>{ const v = at(id,d); return <span key={d} className="dashLoadCell" title={`${equipmentNames[id]} · ${d}: ${v}`}>
+                <i style={{ height:`${Math.round((v/peak)*100)}%` }} className={v?"":"empty"} /><b>{v||""}</b>
+              </span>; })}
+            </Fragment>)}
+          </div>;
+        })()}
+      </section>}
+
+      {k && data?.clinicalQueue?.length ? <a className="dashQueue" href="/staff/studies" aria-label="Відкрити реєстр досліджень">
         <div className="dashQueueHead"><b>Клінічна черга</b><small>Активні стани дослідження · відкрити реєстр →</small></div>
         <div className="dashQueueRow">
           {data.clinicalQueue.map((q)=><div key={q.v} className="dashQueueCell">
@@ -227,17 +231,17 @@ export default function DashboardPage() {
         </div>
       </a> : null}
 
-      <div className="dashLists">
-        <ActionList title="Потребують протоколу" items={data!.lists.needProtocol}
+      {k && data && <div className="dashLists">
+        <ActionList title="Потребують протоколу" items={data.lists.needProtocol}
           hint="Виконані дослідження без готового висновку" empty="Усі виконані дослідження мають протокол."
           href={(item)=>`/staff/protocols?open=${item.id}`}/>
-        <ActionList title="Готові до видачі" items={data!.lists.readyToIssue}
+        <ActionList title="Готові до видачі" items={data.lists.readyToIssue}
           hint="Протокол готовий — лишилось видати пацієнту" empty="Немає протоколів, що очікують видачі."
           href={(item)=>`/staff/protocols?open=${item.id}`}/>
-        <ActionList title="Без прив’язки знімків" items={data!.lists.needImaging}
+        <ActionList title="Без прив’язки знімків" items={data.lists.needImaging}
           hint="Виконані дослідження без DICOM-студії" empty="Усі дослідження прив’язані до знімків."
           href={(item)=>`/staff/imaging?open=${item.id}`}/>
-      </div>
+      </div>}
       <ExternalCalendar/>
     </>}
   </StaffWorkspaceShell>;

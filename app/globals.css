@@ -250,7 +250,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 @media(max-width:600px){.equipmentRegistryHead{align-items:flex-start;flex-direction:column}.equipmentFields{grid-template-columns:1fr}.equipmentFields label.wide{grid-column:auto}.equipmentCard summary{grid-template-columns:34px minmax(0,1fr)}.equipmentCard summary em{grid-column:2;justify-self:start}}
 /* Пульт — компактна стрічка показників (замість великих блоків) */
 .dashToast{max-width:1500px;margin:0 auto 12px;padding:10px 14px;background:#e6f4ec;border:1px solid #bfe0cc;border-radius:10px;color:#1f5c39;font-size:13px;font-weight:600;cursor:pointer}
-.dashKpiStrip{max-width:1500px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.dashKpiStrip{max-width:1500px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
 .dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:.15s}
 a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashStat>b{display:block;font-size:22px;font-weight:750;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
