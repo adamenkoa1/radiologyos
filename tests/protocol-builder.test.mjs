@@ -35,6 +35,25 @@ test("protocol library ships structured templates for every modality", async () 
   assert.match(source, /повинен містити висновок/);
 });
 
+test("template pool covers the department's high-volume studies", async () => {
+  const source = await read("lib/protocols.ts");
+  // New high-volume templates present.
+  for (const k of ["ct_sinuses", "ct_spine", "ct_urography", "xray_abdomen", "xray_spine", "xray_sinuses"]) {
+    assert.match(source, new RegExp(`key: "${k}"`), `template ${k} present`);
+  }
+  // generic must remain the LAST template (protocolTemplateByKey falls back to it).
+  const genericAt = source.indexOf('key: "generic"');
+  for (const k of ["ct_chest", "ct_brain", "ct_abdomen", "xray_chest", "xray_bone", "fluoro_chest",
+    "ct_sinuses", "ct_spine", "ct_urography", "xray_abdomen", "xray_spine", "xray_sinuses"]) {
+    const at = source.indexOf(`key: "${k}"`);
+    assert.ok(at >= 0 && at < genericAt, `${k} declared before generic`);
+  }
+  // Auto-suggest routes the new modalities.
+  for (const r of ['return "ct_sinuses"', 'return "ct_spine"', 'return "ct_urography"', 'return "xray_abdomen"', 'return "xray_spine"', 'return "xray_sinuses"']) {
+    assert.ok(source.includes(r), `routing ${r} present`);
+  }
+});
+
 test("protocol API guards writes and never defines schema at runtime", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
