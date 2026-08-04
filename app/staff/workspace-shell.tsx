@@ -21,7 +21,7 @@ type StaffWorkspaceShellProps = {
 type NavChild = { label:string; href:string };
 type NavLink = { label:string; href:string; section:WorkspaceSection; icon:string };
 // section — головний розділ модуля; sections — усі розділи, що його підсвічують.
-type NavModule = { label:string; href:string; sections:WorkspaceSection[]; icon:string; defaultOpen?:boolean; items:NavChild[] };
+type NavModule = { label:string; href:string; sections:WorkspaceSection[]; icon:string; items:NavChild[] };
 
 // Швидкий доступ: найчастіші екрани реєстратури — угорі, з піктограмами.
 const overview: NavLink[] = [
@@ -50,14 +50,13 @@ const systemModules: NavModule[] = [
     { label:"Звіти відділення", href:"/staff/reports" },
     { label:"Тарифи", href:"/staff/tariffs" },
   ]},
-  { label:"Адміністрування", href:"/staff/settings", sections:["settings","structure","organization","whatsapp","audit"], icon:"⚙️", defaultOpen:false, items:[
+  { label:"Адміністрування", href:"/staff/settings", sections:["settings","structure","organization","whatsapp","audit"], icon:"⚙️", items:[
+    { label:"Налаштування", href:"/staff/settings" },
     { label:"Сайт і структура відділення", href:"/staff/structure" },
     { label:"Організація та профіль", href:"/staff/organization" },
     { label:"Персонал і ролі", href:"/staff#staff-admin" },
-    { label:"WhatsApp", href:"/staff/whatsapp" },
+    { label:"WhatsApp і чат-бот", href:"/staff/whatsapp" },
     { label:"Журнал дій", href:"/staff/audit" },
-    { label:"Реєстрація працівника", href:"/staff/register" },
-    { label:"Налаштування", href:"/staff/settings" },
   ]},
 ];
 
@@ -141,7 +140,9 @@ export default function StaffWorkspaceShell({
         <p>Модулі</p>
         {systemModules.map((item)=>{
           const isActive = item.sections.includes(active);
-          const isOpen = openModules[item.href] ?? item.defaultOpen ?? true;
+          // Акордеон: типово розгорнутий лише модуль поточного розділу, решта
+          // згорнуті в один рядок. Користувач може розгортати вручну.
+          const isOpen = openModules[item.href] ?? isActive;
           return <div className="workspaceModuleGroup" key={item.href}>
             <div className="workspaceModuleRow">
               <Link
