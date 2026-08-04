@@ -111,6 +111,12 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
   .civilian-heading-card{align-items:flex-start;flex-direction:column;padding:20px}
   .civilian-heading-card h1{font-size:30px}
 }
+.civ-benefits{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+.civ-benefit{background:#fffdf5;border:1px solid #e7cf7a;border-radius:16px;padding:14px 16px;box-shadow:0 8px 24px rgba(126,91,0,.06)}
+.civ-benefit b{display:block;font-size:15px;color:#302400;margin-bottom:4px}
+.civ-benefit span{font-size:13px;color:#68551b;line-height:1.4}
+@media(max-width:900px){.civ-benefits{grid-template-columns:1fr 1fr}}
+@media(max-width:520px){.civ-benefits{grid-template-columns:1fr}}
 
 .hospital-brand-text{display:flex;flex-direction:column;gap:3px;min-width:0}
 .hospital-brand-title{font-size:24px;font-weight:700;line-height:1.15;color:#fff}
@@ -219,6 +225,13 @@ body{background:#fff9e8}
 <div><div class="eyebrow" style="color:var(--brand)">Цивільним особам</div>
 <h1 id="scPriceTitle">Платні дослідження</h1>
 <p id="scPriceSub">Вартість указана відповідно до чинних тарифів.</p></div>
+<a class="btn" href="#priceGroups">Обрати дослідження →</a>
+</div>
+<div class="civ-benefits">
+  <div class="civ-benefit"><b>🩻 Сучасне цифрове обладнання</b><span>КТ, цифрова рентгенографія та флюорографія — низька доза й висока якість зображення.</span></div>
+  <div class="civ-benefit"><b>👨‍⚕️ Висновок лікаря-рентгенолога</b><span>Кожне дослідження — письмовий опис фахівця, а не лише знімок.</span></div>
+  <div class="civ-benefit"><b>📀 Результат зручно</b><span>Знімки на CD, опис — в електронну карту та на email.</span></div>
+  <div class="civ-benefit"><b>🗓️ Онлайн-запис без черг</b><span>Оберіть дослідження й зручний вільний час прямо на сайті.</span></div>
 </div>
 </div></section>
 <div class="wrap"><div class="price-intro" id="scPriceIntro"><strong>Цивільним особам — платні послуги.</strong> Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані. Після надсилання в особистому кабінеті з’являться номер заявки, попередній слот і статус підтвердження.</div><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)">Офіційний перелік</div><h1 style="color:var(--ink);margin:10px 0" id="scPriceListTitle">Тарифи на платні медичні послуги</h1><p class="lead" id="scPriceLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
