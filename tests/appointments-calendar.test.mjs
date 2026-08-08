@@ -20,6 +20,13 @@ test("shared week calendar component offers list/day/week views", async () => {
   const css = await read("app/globals.css");
   assert.match(css, /\.apptCardRow\.mod-ct\b/); // смуга КТ
   assert.match(css, /\.apptCardName\{[^}]*font-size:16px/); // ім'я більше за мету
+  // Єдиний Workspace: клік по запису відкриває drawer, а не перехід на сторінку.
+  assert.match(cal, /setOpenId\(/); // клік відкриває панель
+  assert.match(cal, /apptDrawer/); // права панель
+  assert.match(cal, /openHistory/); // історія пацієнта в панелі
+  assert.match(cal, /Escape/); // закриття по ESC
+  assert.match(css, /\.apptDrawerPanel\b/);
+  assert.match(css, /button\.apptCardRow/); // скидання UA-стилів кнопки-рядка
 });
 
 test("status filter groups map to real booking statuses", async () => {
