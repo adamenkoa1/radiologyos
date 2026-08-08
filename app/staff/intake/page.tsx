@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import BookingDrawer from "../booking-drawer";
+import { type CalBooking } from "../week-calendar";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
 
@@ -88,6 +90,16 @@ export default function IntakePage() {
   }, [data]);
 
   const selected = data?.bookings.find(b => b.id === selectedId) || null;
+
+  // Drawer у Дошці: швидкий контекст попередніх досліджень пацієнта.
+  const [drawerId,setDrawerId] = useState<number | null>(null);
+  const drawerBookings = useMemo<CalBooking[]>(() => (data?.bookings || []).map((b) => ({
+    id:b.id, code:b.code, name:b.name, phone:b.phone, service:b.service, serviceCode:b.serviceCode,
+    equipmentId:b.equipmentId, durationMinutes:b.durationMinutes, desiredDate:b.desiredDate,
+    desiredTime:b.desiredTime, status:b.status, patientCategory:b.patientCategory,
+    paymentStatus:b.paymentStatus, paymentAmount:b.paymentAmount,
+  })), [data]);
+  const drawerBooking = drawerBookings.find((b) => b.id === drawerId) || null;
 
   // Попередні дослідження цього пацієнта — за номером телефону (без окремого
   // бекенду: беремо з уже завантаженого списку заявок). Пацієнт як центр.
@@ -256,11 +268,11 @@ export default function IntakePage() {
                 {history.length === 0
                   ? <p className="intakeHistoryEmpty">Перше звернення цього пацієнта (за номером телефону).</p>
                   : <ul>{history.slice(0,8).map(h => <li key={h.id}>
-                      <a href={`/staff?open=${h.id}#bookings`}>
+                      <button type="button" onClick={()=>setDrawerId(h.id)}>
                         <span className="ihDate">{h.desiredDate}</span>
                         <span className="ihSvc">{h.service}{h.equipmentId?` · ${EQUIP_UK[h.equipmentId]||h.equipmentId}`:""}</span>
                         <span className={`ihStatus st-${h.status}`}>{STATUS_LABELS[h.status]||h.status}</span>
-                      </a></li>)}
+                      </button></li>)}
                     {history.length>8 && <li className="ihMore">…і ще {history.length-8}</li>}
                   </ul>}
               </div>
@@ -280,7 +292,16 @@ export default function IntakePage() {
         {toast && <div className="intakeToast" role="status">{toast}</div>}
       </div>;
 
-  return <StaffWorkspaceShell active="intake" title="Дошка прийому" description="Заявки з сайту й ручні — перегляд, корекція та обробка в одному місці." staffName={data?.staff.displayName} staffRole={data?.staff.role}>{body}</StaffWorkspaceShell>;
+  return <StaffWorkspaceShell active="intake" title="Дошка прийому" description="Заявки з сайту й ручні — перегляд, корекція та обробка в одному місці." staffName={data?.staff.displayName} staffRole={data?.staff.role}>
+    {body}
+    {drawerBooking && <BookingDrawer
+      key={drawerBooking.id}
+      booking={drawerBooking}
+      all={drawerBookings}
+      onClose={()=>setDrawerId(null)}
+      onOpen={setDrawerId}
+    />}
+  </StaffWorkspaceShell>;
 }
 
 function IntakeForm({ form, set, times, serviceGroups, readOnly=false }:{

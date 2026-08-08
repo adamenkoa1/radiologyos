@@ -92,6 +92,10 @@ test("CRM card shows a loading state, a book action, and context-correct visit l
   // Майбутні візити ведуть у календар, виконані — у протокол.
   assert.match(page, /\/staff\/appointments\?date=/);
   assert.match(page, /performedAt \|\| \["ready","issued","in_progress"\]/);
+  // Drawer у CRM: клік по візиту відкриває спільну панель (контекст + дії).
+  assert.match(page, /<BookingDrawer/);
+  assert.match(page, /button type="button" className="crmVisitHead"/);
+  assert.match(page, /drawerPatch/); // підтвердження/перенесення з панелі
 });
 
 test("booking form pre-fills patient data from query params (CRM → book)", async () => {

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import BookingDrawer from "../booking-drawer";
+import { type CalBooking } from "../week-calendar";
 import {
   CHANNEL_LABELS,
   COMMUNICATION_CHANNELS,
@@ -193,6 +195,29 @@ export default function PatientsPage() {
   }
 
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
+
+  // Drawer у CRM: візити пацієнта у форматі спільної панелі (контекст + дії),
+  // без переходу зі сторінки. Будуємо CalBooking із візиту + даних пацієнта.
+  const [openId,setOpenId] = useState<number | null>(null);
+  const [drawerBusy,setDrawerBusy] = useState<number | null>(null);
+  const drawerBookings = useMemo<CalBooking[]>(() => (card?.bookings || []).map((v) => ({
+    id:v.id, code:v.code, name:card?.profile?.displayName || card?.patient?.name || "", phone:card?.phone || "",
+    service:v.service, serviceCode:v.serviceCode, equipmentId:v.equipmentId, durationMinutes:30,
+    desiredDate:v.desiredDate, desiredTime:v.desiredTime, status:v.status,
+    patientCategory:card?.patient?.category, paymentStatus:v.paymentStatus, paymentAmount:v.paymentAmount,
+  })), [card]);
+  const openBooking = drawerBookings.find((b) => b.id === openId) || null;
+
+  async function drawerPatch(body:Record<string,unknown>) {
+    const id = body.id as number;
+    setDrawerBusy(id);
+    try {
+      const res = await fetch("/api/staff/bookings", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
+      if (res.ok && card) await openPatient(card.phone);
+      else { const d = await res.json().catch(()=>({})) as { error?:string }; setActionError(d.error || "Не вдалося виконати дію"); }
+    } finally { setDrawerBusy(null); }
+  }
+
   const counts = useMemo(() => segmentCounts(patients), [patients]);
   const visible = useMemo(() => patients
     .filter((item) => matchesSegment(item, segment))
@@ -316,11 +341,11 @@ export default function PatientsPage() {
               <h3>Історія візитів</h3>
               {card.bookings.length === 0 ? <p className="empty">Візитів ще немає.</p> : <ol>
                 {card.bookings.map((booking)=><li key={booking.id}>
-                  <div className="crmVisitHead">
+                  <button type="button" className="crmVisitHead" onClick={()=>setOpenId(booking.id)} title="Швидкий перегляд у панелі">
                     <span className={`statusTag ${booking.status}`}>{statusLabels[booking.status] || booking.status}</span>
                     <b>{booking.service}</b>
                     <small>{booking.code} · {formatDate(booking.desiredDate)} {booking.desiredTime}</small>
-                  </div>
+                  </button>
                   <div className="crmVisitMeta">
                     <span>Протокол: {protocolLabels[booking.protocolStatus] || booking.protocolStatus}{booking.protocolNumber?` (№ ${booking.protocolNumber})`:""}</span>
                     <span>Оплата: {paymentLabels[booking.paymentStatus] || booking.paymentStatus}{booking.paidAmount?` · ${booking.paidAmount} грн`:""}</span>
@@ -354,6 +379,17 @@ export default function PatientsPage() {
           </div>
         </>}
       </section>
+      {openBooking && <BookingDrawer
+        key={openBooking.id}
+        booking={openBooking}
+        all={drawerBookings}
+        onClose={()=>setOpenId(null)}
+        onOpen={setOpenId}
+        onConfirm={canManage ? (id)=>void drawerPatch({ id, confirm:true }) : undefined}
+        confirming={drawerBusy===openBooking.id}
+        onReschedule={canManage ? (id,date,time)=>void drawerPatch({ id, desiredDate:date, desiredTime:time }) : undefined}
+        rescheduling={drawerBusy===openBooking.id}
+      />}
     </div>}
   </StaffWorkspaceShell>;
 }

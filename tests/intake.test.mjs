@@ -59,6 +59,9 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   // Пацієнт як центр: із Дошки — перехід у повну картку пацієнта (CRM).
   assert.match(page, /Картка пацієнта/);
   assert.match(page, /\/staff\/patients\?phone=/);
+  // Drawer у Дошці: клік по попередньому дослідженню відкриває спільну панель.
+  assert.match(page, /<BookingDrawer/);
+  assert.match(page, /setDrawerId\(h\.id\)/);
   const css = await read("app/globals.css");
   assert.match(css, /\.intakeHistory\b/); // стилі історії
   assert.match(css, /\.intakeFacts\b/);   // сітка фактів

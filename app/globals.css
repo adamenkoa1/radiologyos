@@ -237,7 +237,9 @@ footer { display:flex;justify-content:space-between;align-items:center;gap:25px;
 .crmCreateActions .crmCancel{background:#fff;color:#41544f;border-color:#d5ddd9}
 @media(max-width:600px){.crmCreateForm{grid-template-columns:1fr}}
 .crmColumns{display:grid;grid-template-columns:1.3fr 1fr;gap:16px;align-items:start}.crmColumns h3{font-family:var(--font-serif);font-size:20px;margin-bottom:12px;color:#20423d}
-.crmVisits ol,.crmCommList{margin:0;padding:0;list-style:none}.crmVisits li{padding:14px;margin-bottom:8px;border:1px solid #e4e9e6;border-radius:7px;background:#f8fbfa}.crmVisitHead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}.crmVisitHead b{font-size:13px}.crmVisitHead small{color:#71807c;font-size:11px}.crmVisitMeta{display:flex;flex-direction:column;gap:3px;margin:8px 0}.crmVisitMeta span{color:#5b6d69;font-size:11px}.crmVisitLink{color:#0d5b50;font-size:11px;font-weight:800}.crmVisitLink:hover{text-decoration:underline}
+.crmVisits ol,.crmCommList{margin:0;padding:0;list-style:none}.crmVisits li{padding:14px;margin-bottom:8px;border:1px solid #e4e9e6;border-radius:7px;background:#f8fbfa}.crmVisitHead{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+button.crmVisitHead{width:100%;text-align:left;background:transparent;border:0;padding:0;font:inherit;cursor:pointer;color:inherit}
+button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;color:#0d5b50}.crmVisitHead b{font-size:13px}.crmVisitHead small{color:#71807c;font-size:11px}.crmVisitMeta{display:flex;flex-direction:column;gap:3px;margin:8px 0}.crmVisitMeta span{color:#5b6d69;font-size:11px}.crmVisitLink{color:#0d5b50;font-size:11px;font-weight:800}.crmVisitLink:hover{text-decoration:underline}
 .crmComms .crmCommForm{padding:16px;border:1px solid #e4e9e6;border-radius:7px;background:#f8fbfa;margin-bottom:14px}.crmCommRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.crmComms .crmCommForm>label{margin-bottom:10px}.crmComms .crmCommForm button{width:100%}
 .crmCommList li{padding:12px 0;border-bottom:1px solid #eceeea}.crmCommList li>div{display:flex;align-items:center;gap:8px}.crmCommList b{font-size:12px}.crmCommTag{display:inline-block;padding:3px 8px;border-radius:20px;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em;background:#eef1f0;color:#5f706c}.crmCommTag.inbound{background:#e0f2ea;color:#0d6b52}.crmCommTag.outbound{background:#dcecf6;color:#155e86}.crmCommList p{margin:8px 0 5px;font-size:12px;line-height:1.5;color:#2d3f3b}.crmCommList small{color:#71807c;font-size:10px}
 .crmStatDivider{display:none}
@@ -492,8 +494,9 @@ button.dashAgendaRow:hover{background:#f7faf9}
 .intakeHistoryHead span{font-size:11px;font-weight:800;color:#5b6a66;background:#fff;border:1px solid #e0e7e4;padding:1px 9px;border-radius:20px}
 .intakeHistoryEmpty{margin:0;padding:12px 13px;color:#8a9995;font-size:12px}
 .intakeHistory ul{list-style:none;margin:0;padding:4px}
-.intakeHistory li a{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:inherit}
-.intakeHistory li a:hover{background:#f4f8f7}
+.intakeHistory li a,.intakeHistory li button{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:inherit}
+.intakeHistory li button{width:100%;background:transparent;border:0;font:inherit;text-align:left;cursor:pointer}
+.intakeHistory li a:hover,.intakeHistory li button:hover{background:#f4f8f7}
 .ihDate{font-size:11.5px;font-weight:700;color:#41544f;font-variant-numeric:tabular-nums}
 .ihSvc{font-size:12.5px;color:#3a4a45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .ihStatus{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;background:#eef2f0;color:#5b6a66;white-space:nowrap}
