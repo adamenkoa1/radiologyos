@@ -13,6 +13,8 @@ type Booking = {
   service:string; serviceCode:string; equipmentId:string; durationMinutes:number;
   desiredDate:string; desiredTime:string; patientCategory:string; comment:string;
   status:string; createdAt:string; dateOfBirth?:string; paymentStatus?:string;
+  referralType?:string; referralNumber?:string; marketingSource?:string;
+  paymentAmount?:number; paymentMethod?:string; protocolNumber?:string;
 };
 type EventRow = { bookingId:number; action:string };
 type StaffInfo = { email:string; displayName:string; role:string };
@@ -21,7 +23,27 @@ type Data = { bookings:Booking[]; events:EventRow[]; staff:StaffInfo };
 const STATUS_LABELS:Record<string,string> = {
   new:"Нова", confirmed:"Підтверджена", rescheduled:"Перенесена",
   arrived:"Прибув", no_show:"Неявка", completed:"Завершена", cancelled:"Скасована",
+  queued:"У черзі", in_progress:"Виконується", images_ready:"Є знімки",
+  reporting:"Опис", protocol_ready:"Протокол готовий", issued:"Видано", performed:"Виконано",
 };
+const REFERRAL_UK:Record<string,string> = {
+  military_referral:"Військове направлення", eh_referral:"Електронне направлення (ЕЗ)",
+  paper_referral:"Паперове направлення", other:"Інше направлення", none:"Без направлення",
+};
+const EQUIP_UK:Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
+// Ознаки без окремих полів у БД.
+const isContrast = (svc:string) => /контраст|ангіограф/i.test(svc || "");
+const digits = (s:string) => (s || "").replace(/[^\d]/g, "");
+// Вік із дати народження (роки), Київ не критичний для року.
+function ageFrom(dob?:string) {
+  if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
+  const [y,m,d] = dob.split("-").map(Number);
+  const now = new Date();
+  let a = now.getUTCFullYear() - y;
+  const mm = now.getUTCMonth()+1;
+  if (mm < m || (mm === m && now.getUTCDate() < d)) a--;
+  return a >= 0 && a < 130 ? a : null;
+}
 const serviceGroups = groupedServices();
 const emptyForm = { name:"", phone:"", email:"", dob:"", patientCategory:"civilian", serviceCode:SERVICES[0].code, comment:"", date:"", time:"" };
 type Form = typeof emptyForm;
@@ -66,6 +88,17 @@ export default function IntakePage() {
   }, [data]);
 
   const selected = data?.bookings.find(b => b.id === selectedId) || null;
+
+  // Попередні дослідження цього пацієнта — за номером телефону (без окремого
+  // бекенду: беремо з уже завантаженого списку заявок). Пацієнт як центр.
+  const history = useMemo(() => {
+    if (!selected) return [] as Booking[];
+    const ph = digits(selected.phone);
+    if (!ph) return [];
+    return (data?.bookings ?? [])
+      .filter(b => b.id !== selected.id && digits(b.phone) === ph)
+      .sort((a,b) => (b.desiredDate+b.desiredTime).localeCompare(a.desiredDate+a.desiredTime));
+  }, [data, selected]);
 
   // Чи форма розходиться зі збереженою заявкою (лише поля корекції).
   function formMatchesSelected() {
@@ -186,16 +219,61 @@ export default function IntakePage() {
             </div>
           </> : !selected ? <div className="intakePlaceholder"><p>Оберіть заявку ліворуч або створіть нову.</p></div> : <>
             <div className="intakeDetailHead">
-              <div><h2>{selected.name || "—"}</h2><small>{selected.code} · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i></small></div>
-              <a className="intakeWa" href={`https://wa.me/${selected.phone.replace(/[^\d]/g,"")}`} target="_blank" rel="noreferrer">WhatsApp</a>
+              <div>
+                <h2>{selected.name || "—"}</h2>
+                <small>{selected.code} · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i>{ageFrom(selected.dateOfBirth)!==null ? ` · ${ageFrom(selected.dateOfBirth)} р.` : ""}</small>
+              </div>
+              <div className="intakeHeadActions">
+                <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
+                <a className="intakeWa" href={`https://wa.me/${digits(selected.phone)}`} target="_blank" rel="noreferrer">WhatsApp</a>
+                {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
+              </div>
             </div>
-            <IntakeForm form={form} set={set} times={times} serviceGroups={serviceGroups} readOnly={readOnly} />
-            {!readOnly && <div className="intakeActions">
-              <button className="primary" disabled={busy} onClick={saveEdits}>Зберегти зміни</button>
-              {(selected.status==="new"||selected.status==="rescheduled") && <button className="ok" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
-              <button disabled={busy || !form.date || !form.time} onClick={reschedule}>Перенести на {form.date} {form.time}</button>
-              <button className="danger" disabled={busy} onClick={cancelBooking}>Скасувати заявку</button>
-            </div>}
+
+            {/* Notion-стиль: картка «живе» — контекст пацієнта, а не лише форма. */}
+            <div className="intakeCtx">
+              <div className="intakeChips">
+                <span className={`intakeChip route-${selected.patientCategory}`}>{selected.patientCategory==="military"?"Військовий":"Цивільний"}</span>
+                {isContrast(selected.service) && <span className="intakeChip contrast">Контраст</span>}
+                {selected.patientCategory==="civilian" && <span className={`intakeChip ${selected.paymentStatus==="paid"?"paid":"pay"}`}>{selected.paymentStatus==="paid"?`Оплачено${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`:`Перевірити оплату${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`}</span>}
+                <span className="intakeChip src">{sourceOf.get(selected.id)==="staff"?"✍️ Внесено вручну":"🌐 Через сайт"}</span>
+              </div>
+
+              <dl className="intakeFacts">
+                <div><dt>Дослідження</dt><dd>{selected.service}{selected.equipmentId?` · ${EQUIP_UK[selected.equipmentId]||selected.equipmentId}`:""}</dd></div>
+                <div><dt>Дата й час</dt><dd>{selected.desiredDate} · {selected.desiredTime || "—"}</dd></div>
+                <div><dt>Направлення</dt><dd>{REFERRAL_UK[selected.referralType||"none"]||"Без направлення"}{selected.referralNumber?` · № ${selected.referralNumber}`:""}</dd></div>
+                <div><dt>Створено</dt><dd>{(selected.createdAt||"").slice(0,10)}{selected.marketingSource?` · ${selected.marketingSource}`:""}</dd></div>
+              </dl>
+
+              {isContrast(selected.service) && <p className="intakeNote contrast">Дослідження з контрастуванням — попередьте пацієнта про підготовку (креатинін, алергоанамнез, натще).</p>}
+
+              {selected.comment && <div className="intakeCtxComment"><b>Коментар</b><p>{selected.comment}</p></div>}
+
+              <div className="intakeHistory">
+                <div className="intakeHistoryHead"><b>Попередні дослідження</b><span>{history.length}</span></div>
+                {history.length === 0
+                  ? <p className="intakeHistoryEmpty">Перше звернення цього пацієнта (за номером телефону).</p>
+                  : <ul>{history.slice(0,8).map(h => <li key={h.id}>
+                      <a href={`/staff?open=${h.id}#bookings`}>
+                        <span className="ihDate">{h.desiredDate}</span>
+                        <span className="ihSvc">{h.service}{h.equipmentId?` · ${EQUIP_UK[h.equipmentId]||h.equipmentId}`:""}</span>
+                        <span className={`ihStatus st-${h.status}`}>{STATUS_LABELS[h.status]||h.status}</span>
+                      </a></li>)}
+                    {history.length>8 && <li className="ihMore">…і ще {history.length-8}</li>}
+                  </ul>}
+              </div>
+            </div>
+
+            {!readOnly && <details className="intakeEdit">
+              <summary>Корекція заявки</summary>
+              <IntakeForm form={form} set={set} times={times} serviceGroups={serviceGroups} readOnly={readOnly} />
+              <div className="intakeActions">
+                <button className="primary" disabled={busy} onClick={saveEdits}>Зберегти зміни</button>
+                <button disabled={busy || !form.date || !form.time} onClick={reschedule}>Перенести на {form.date} {form.time}</button>
+                <button className="danger" disabled={busy} onClick={cancelBooking}>Скасувати заявку</button>
+              </div>
+            </details>}
           </>}
         </section>
         {toast && <div className="intakeToast" role="status">{toast}</div>}

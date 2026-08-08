@@ -50,6 +50,15 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
   // Виправлено (аудит): помилки завантаження не кладуться в data (не білий екран).
   assert.match(page, /!Array\.isArray\(payload\.bookings\) \|\| !payload\.staff/);
+  // Notion-стиль: картка «живе» — контекст пацієнта, направлення, історія.
+  assert.match(page, /intakeCtx/); // блок контексту
+  assert.match(page, /Попередні дослідження/); // історія за телефоном
+  assert.match(page, /REFERRAL_UK/); // направлення людською мовою
+  assert.match(page, /intakeEdit/); // форма корекції — згорнута
+  assert.match(page, /digits\(b\.phone\) === ph/); // історія за номером телефону
+  const css = await read("app/globals.css");
+  assert.match(css, /\.intakeHistory\b/); // стилі історії
+  assert.match(css, /\.intakeFacts\b/);   // сітка фактів
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/intake"/);
   assert.match(shell, /Дошка прийому/);

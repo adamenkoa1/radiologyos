@@ -169,6 +169,10 @@ footer { display:flex;justify-content:space-between;align-items:center;gap:25px;
 .workspacePage{min-height:calc(100vh - 64px);padding:22px clamp(20px,3.2vw,50px) 60px}.workspacePageHead{max-width:1500px;margin:0 auto 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:30px}.workspaceBreadcrumb{margin:0 0 8px!important;color:#7a8b88!important;font-size:10px!important;font-weight:800;text-transform:uppercase;letter-spacing:.09em}.workspaceBreadcrumb span{margin:0 7px;color:#ef744d}.workspacePageHead h1{font-family:var(--font-sans);font-size:clamp(21px,2.2vw,30px);font-weight:650;line-height:1.1;letter-spacing:-.02em}.workspacePageHead>div:first-child>p:last-child{max-width:760px;margin:8px 0 0;color:#667b77;font-size:12.5px;line-height:1.5}.workspacePageActions{display:flex;gap:9px}.workspacePageActions a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 15px;border:1px solid #cbd8d6;border-radius:5px;background:#fff;color:#285b55;font-size:11px;font-weight:800}.workspacePageActions a.primary{border-color:#0d5b50;background:#0d5b50;color:#fff}
 .workspaceQuickGrid{max-width:1500px;margin:0 auto 16px;display:grid;grid-template-columns:1.35fr repeat(3,1fr);gap:12px}.workspaceQuickGrid>a{min-height:104px;display:flex;flex-direction:column;justify-content:center;padding:17px;background:#fff;border:1px solid #dce4e3;border-radius:7px;box-shadow:0 8px 24px rgba(23,54,52,.035);transition:.15s}.workspaceQuickGrid>a:hover{border-color:#8db7af;transform:translateY(-2px);box-shadow:0 12px 28px rgba(23,54,52,.07)}.workspaceQuickGrid a>b,.workspaceQuickGrid a>small{display:block}.workspaceQuickGrid a>b{margin-top:10px;font-size:12.5px}.workspaceQuickGrid a>small{margin-top:5px;color:#718480;font-size:10px;line-height:1.4}.workspaceQuickGrid .workspaceTodayCard{position:relative;display:block;background:linear-gradient(125deg,#0d5b50,#174641);color:#fff;border-color:#0d5b50;overflow:hidden}.workspaceTodayCard:after{content:"";position:absolute;width:150px;height:150px;right:-40px;bottom:-75px;border:24px solid rgba(255,255,255,.07);border-radius:50%}.workspaceTodayCard>span{display:block;color:#a9d3ca;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.workspaceTodayCard>strong{display:inline-block;margin-top:9px;font-family:var(--font-serif);font-size:28px;line-height:1}.workspaceTodayCard>b{display:inline-block!important;margin-left:8px!important;color:#fff;font-size:12px!important}.workspaceTodayCard>small{color:#b8d6d0!important}.quickGlyph{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:#e5f2ee;color:#0d5b50;font-size:15px}
 .workspaceWide .workspacePageHead{max-width:var(--dash-w)}
+/* Рейл «Робочий процес»: тонкий конектор між кроками — читається як потік */
+.workspaceNavigation .processStep{position:relative}
+.workspaceNavigation .processStep+.processStep::before{content:"";position:absolute;left:21px;top:-3px;width:2px;height:5px;background:rgba(255,255,255,.16);border-radius:2px}
+.workspaceCollapsed .processStep+.processStep::before{display:none}
 .workspaceCollapsed{--workspace-sidebar:76px}.workspaceCollapsed .workspaceBrand{padding:0 18px}.workspaceCollapsed .workspaceBrandCopy,.workspaceCollapsed .workspaceNavigation a>b,.workspaceCollapsed .workspaceNavigation p,.workspaceCollapsed .workspaceSidebarFoot>span:last-child{opacity:0;pointer-events:none}.workspaceCollapsed .workspaceNavigation a{justify-content:center;padding:0}.workspaceCollapsed .workspaceNavigation a.active:before{left:-12px}.workspaceCollapsed .workspaceSidebarFoot{justify-content:center}
 .workspaceShell .staffShell,.workspaceShell .reportShell{min-height:0;padding:0;background:transparent}.workspaceShell .staffHead,.workspaceShell .reportHead{display:none}.workspaceShell .staffStats{margin-top:0}.workspaceShell .staffStats article,.workspaceShell .bookingRow,.workspaceShell .equipmentAdmin,.workspaceShell .staffAdmin,.workspaceShell .reportBuilder,.workspaceShell .reportPanel,.workspaceShell .reportStats article{border-color:#dce4e3;border-radius:7px;box-shadow:0 8px 24px rgba(23,54,52,.035)}.workspaceShell .staffTools,.workspaceShell .reportFilterGrid,.workspaceShell .reportTableScroll th{background:#164945}.workspaceShell .staffTools{border-radius:7px}.workspaceShell .reportBuilder{margin-top:0}.workspaceShell .accessDenied{border-radius:8px}
 @media(max-width:1100px){.workspaceQuickGrid{grid-template-columns:1fr 1fr}.workspaceTodayCard{grid-column:1/-1}.workspaceOnline{display:none}}
@@ -450,7 +454,51 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeActions button.danger{background:#fbf3f3;border-color:#d9c2c2;color:#9a4b4b}
 .intakeActions button:disabled{opacity:.5;cursor:not-allowed}
 .intakeToast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25332f;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.2)}
-@media(max-width:900px){.intakeBoard{grid-template-columns:1fr}.intakeQueue{position:static}.intakeForm{grid-template-columns:1fr}}
+.intakeHeadActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.intakeCall{color:#0c7a85;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap}
+.intakeConfirm{border:0;background:#0c7a85;color:#fff;border-radius:8px;padding:8px 13px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
+.intakeConfirm:disabled{opacity:.55;cursor:progress}
+/* Notion-стиль: контекст пацієнта у правій картці */
+.intakeCtx{display:flex;flex-direction:column;gap:14px}
+.intakeChips{display:flex;flex-wrap:wrap;gap:7px}
+.intakeChip{font-size:11px;font-weight:800;padding:3px 10px;border-radius:20px;background:#eef3f1;color:#51635e}
+.intakeChip.route-military{background:#dcefe9;color:#0e6b63}.intakeChip.route-civilian{background:#e7eef5;color:#2f5c9a}
+.intakeChip.contrast{background:#eae2fb;color:#5a37a3}
+.intakeChip.paid{background:#e2efe0;color:#2f5c2a}.intakeChip.pay{background:#fdece0;color:#a5670f}
+.intakeChip.src{background:#f2f6f4;color:#5b6a66}
+.intakeFacts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;background:#eef2f0;border:1px solid #eef2f0;border-radius:12px;overflow:hidden}
+.intakeFacts>div{background:#fff;padding:10px 13px}
+.intakeFacts dt{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a9995;margin:0 0 3px}
+.intakeFacts dd{margin:0;font-size:13px;font-weight:650;color:#25332f}
+.intakeNote{margin:0;padding:10px 13px;border-radius:10px;font-size:12px;line-height:1.5}
+.intakeNote.contrast{background:#f4efff;border:1px solid #e0d5f7;color:#5a37a3}
+.intakeCtxComment{background:#fbfaf4;border:1px solid #ece7d6;border-radius:10px;padding:11px 13px}
+.intakeCtxComment b{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a7d55;margin-bottom:4px}
+.intakeCtxComment p{margin:0;font-size:13px;color:#4a4636;line-height:1.5;white-space:pre-wrap}
+.intakeHistory{border:1px solid #e7ece9;border-radius:12px;overflow:hidden}
+.intakeHistoryHead{display:flex;justify-content:space-between;align-items:center;padding:11px 13px;background:#f7faf9;border-bottom:1px solid #eef2f0}
+.intakeHistoryHead b{font-size:13px;color:#25332f}
+.intakeHistoryHead span{font-size:11px;font-weight:800;color:#5b6a66;background:#fff;border:1px solid #e0e7e4;padding:1px 9px;border-radius:20px}
+.intakeHistoryEmpty{margin:0;padding:12px 13px;color:#8a9995;font-size:12px}
+.intakeHistory ul{list-style:none;margin:0;padding:4px}
+.intakeHistory li a{display:grid;grid-template-columns:84px 1fr auto;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;text-decoration:none;color:inherit}
+.intakeHistory li a:hover{background:#f4f8f7}
+.ihDate{font-size:11.5px;font-weight:700;color:#41544f;font-variant-numeric:tabular-nums}
+.ihSvc{font-size:12.5px;color:#3a4a45;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ihStatus{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;background:#eef2f0;color:#5b6a66;white-space:nowrap}
+.ihMore{padding:6px 12px;color:#8a9995;font-size:11.5px}
+.intakeEdit{margin-top:16px;border-top:1px solid #eef2f0;padding-top:12px}
+.intakeEdit>summary{cursor:pointer;list-style:none;font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#0c7a85}
+.intakeEdit>summary::-webkit-details-marker{display:none}
+.intakeEdit>summary::before{content:"▸ ";color:#0c7a85}
+.intakeEdit[open]>summary::before{content:"▾ "}
+.intakeEdit .intakeForm{margin-top:12px}
+.themeDark .intakeFacts{background:#1b2731;border-color:#22303a}.themeDark .intakeFacts>div{background:#121a20}
+.themeDark .intakeFacts dd{color:#e6edf1}
+.themeDark .intakeHistory,.themeDark .intakeCtxComment{border-color:#22303a}
+.themeDark .intakeHistoryHead{background:#0e151a;border-bottom-color:#22303a}.themeDark .intakeHistoryHead b{color:#e6edf1}
+.themeDark .intakeCtxComment{background:#161c14}.themeDark .intakeCtxComment p{color:#d6dcc9}
+@media(max-width:900px){.intakeBoard{grid-template-columns:1fr}.intakeQueue{position:static}.intakeForm{grid-template-columns:1fr}.intakeFacts{grid-template-columns:1fr}}
 /* Журнал дій (аудит) */
 .auditWrap{max-width:1100px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
 .auditFilters{display:flex;flex-wrap:wrap;gap:14px;align-items:end}
