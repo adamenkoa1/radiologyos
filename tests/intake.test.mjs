@@ -56,6 +56,9 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /REFERRAL_UK/); // направлення людською мовою
   assert.match(page, /intakeEdit/); // форма корекції — згорнута
   assert.match(page, /digits\(b\.phone\) === ph/); // історія за номером телефону
+  // Пацієнт як центр: із Дошки — перехід у повну картку пацієнта (CRM).
+  assert.match(page, /Картка пацієнта/);
+  assert.match(page, /\/staff\/patients\?phone=/);
   const css = await read("app/globals.css");
   assert.match(css, /\.intakeHistory\b/); // стилі історії
   assert.match(css, /\.intakeFacts\b/);   // сітка фактів

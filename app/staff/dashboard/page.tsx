@@ -53,6 +53,8 @@ const NEEDS_REPORT = new Set(["performed", "images_ready", "reporting"]);
 const needsReport = (b:CalBooking) => NEEDS_REPORT.has(b.status);
 // Посилання «написати у WhatsApp»: лишаємо тільки цифри номера.
 const waLink = (phone:string) => `https://wa.me/${(phone || "").replace(/[^\d]/g, "")}`;
+// Пацієнт як центр: імʼя веде в єдину картку пацієнта (CRM за номером).
+const patientHref = (phone:string) => `/staff/patients?phone=${(phone || "").replace(/[^\d]/g, "")}`;
 // Кольорова смужка за типом дослідження — розпізнавання за частку секунди.
 const modClass = (equipmentId:string) => `mod-${equipmentId || "other"}`;
 // Лікар: маємо лише email — показуємо частину до «@» з великої літери.
@@ -291,7 +293,7 @@ export default function DashboardPage() {
                     {isContrast(b) && <span className="dashCardFlag">Контраст</span>}
                     {needsPay(b) && <span className="dashCardFlag pay">Оплата</span>}
                   </div>
-                  <b className="dashCardName">{b.name || "Без імені"}</b>
+                  <b className="dashCardName">{b.phone ? <a className="patLink" href={patientHref(b.phone)}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</b>
                   <span className="dashCardSvc">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</span>
                   <span className="dashCardWhen">{b.desiredDate} · {b.desiredTime || "—"}{doctorShort(b.assignedRadiologistEmail) ? ` · 👨‍⚕️ ${doctorShort(b.assignedRadiologistEmail)}` : ""}</span>
                   <div className="dashCardActions">
@@ -338,7 +340,7 @@ export default function DashboardPage() {
                 return <li key={b.id} className={`dashAgendaRow ${modClass(b.equipmentId)}`}>
                   <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
                   <div className="dashAgendaWho">
-                    <b>{b.name || "Без імені"}</b>
+                    <b>{b.phone ? <a className="patLink" href={patientHref(b.phone)}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</b>
                     <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
                   </div>
                   {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}

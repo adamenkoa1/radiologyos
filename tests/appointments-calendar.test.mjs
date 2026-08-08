@@ -20,6 +20,13 @@ test("shared week calendar component offers list/day/week views", async () => {
   const css = await read("app/globals.css");
   assert.match(css, /\.apptCardRow\.mod-ct\b/); // смуга КТ
   assert.match(css, /\.apptCardName\{[^}]*font-size:16px/); // ім'я більше за мету
+  // Єдиний Workspace: клік по запису відкриває drawer, а не перехід на сторінку.
+  assert.match(cal, /setOpenId\(/); // клік відкриває панель
+  assert.match(cal, /apptDrawer/); // права панель
+  assert.match(cal, /openHistory/); // історія пацієнта в панелі
+  assert.match(cal, /Escape/); // закриття по ESC
+  assert.match(css, /\.apptDrawerPanel\b/);
+  assert.match(css, /button\.apptCardRow/); // скидання UA-стилів кнопки-рядка
 });
 
 test("status filter groups map to real booking statuses", async () => {
@@ -85,4 +92,8 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /<details className="dashAnalytics"/); // аналітика у details (згорнута)
   assert.match(dash, /filter\(l => l\.items\.length > 0\)/); // порожні списки ховаємо
   assert.match(css, /details\.dashAnalytics\[open\]/); // стилі згорнутого стану
+  // Пацієнт як центр: імʼя веде в картку пацієнта (CRM за телефоном).
+  assert.match(dash, /patientHref/);
+  assert.match(dash, /\/staff\/patients\?phone=/);
+  assert.match(css, /\.patLink\b/);
 });

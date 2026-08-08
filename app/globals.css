@@ -352,6 +352,10 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .dashAgendaWhen{display:block;margin-top:3px;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.01em;color:#8a9995}
 .dashAgendaWhen.now{color:#c33a2e}.dashAgendaWhen.soon{color:#b5761a}.dashAgendaWhen.past{color:#b3bdb9}
 .themeDark .dashTier{color:#8b98a1}
+/* Імʼя пацієнта як вхід у картку (пацієнт як центр) */
+.patLink{color:inherit;text-decoration:none}
+.patLink:hover{text-decoration:underline;text-underline-offset:2px;color:#0c7a85}
+.themeDark .patLink:hover{color:#7fd4dc}
 .themeDark .dashMcItem,.themeDark .dashChip{background:#121a20;border-color:#22303a;color:#cdd9df}
 .themeDark .dashMcItem b{color:#e6edf1}
 .themeDark .dashChip.on{background:#2aa198;border-color:#2aa198;color:#08201f}
@@ -456,6 +460,11 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeToast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25332f;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.2)}
 .intakeHeadActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .intakeCall{color:#0c7a85;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap}
+.intakePatientLink{color:#0c7a85;font-weight:800;font-size:12.5px;text-decoration:none;white-space:nowrap;border:1px solid #bfe0dd;background:#eef7f6;padding:6px 11px;border-radius:8px}
+.intakePatientLink:hover{background:#e2f1ef}
+.intakeHistoryAll{color:#0c7a85;font-weight:800;font-size:11.5px;text-decoration:none;white-space:nowrap}
+.intakeHistoryAll:hover{text-decoration:underline}
+.themeDark .intakePatientLink{background:#0e2b2e;border-color:#1c4a4d;color:#7fd4dc}
 .intakeConfirm{border:0;background:#0c7a85;color:#fff;border-radius:8px;padding:8px 13px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
 .intakeConfirm:disabled{opacity:.55;cursor:progress}
 /* Notion-стиль: контекст пацієнта у правій картці */
@@ -736,6 +745,44 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .apptTag.mil{background:#dcefe9;color:#0e6b63}
 .apptTag.paid{background:#e2efe0;color:#2f5c2a}
 .apptTag.pay{background:#fdece0;color:#a5670f}
+/* Клікабельні записи — тепер кнопки (відкривають drawer): скидання UA-стилів */
+button.apptCardRow,button.apptEvent,button.roomSlot{font:inherit;cursor:pointer;text-align:left;-webkit-appearance:none;appearance:none;color:inherit}
+button.apptEvent{border-top:0;border-right:0;border-bottom:0}
+/* Єдиний Workspace: права панель-drawer із контекстом запису */
+.apptDrawer{position:fixed;inset:0;z-index:60;display:flex;justify-content:flex-end}
+.apptDrawerBackdrop{position:absolute;inset:0;background:rgba(16,32,30,.28);animation:apptDrawerFade .15s ease}
+.apptDrawerPanel{position:relative;width:min(440px,92vw);height:100%;overflow-y:auto;background:#fff;border-left:1px solid #e0e7e4;box-shadow:-12px 0 40px rgba(16,32,30,.16);padding:18px;display:flex;flex-direction:column;gap:14px;animation:apptDrawerIn .18s ease}
+@keyframes apptDrawerFade{from{opacity:0}to{opacity:1}}
+@keyframes apptDrawerIn{from{transform:translateX(24px);opacity:.4}to{transform:none;opacity:1}}
+.apptDrawerHead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px}
+.apptDrawerHead h3{margin:0;font-size:18px;font-weight:750}
+.apptDrawerHead small{color:#5b6a66;font-size:12px}
+.apptDrawerClose{border:0;background:#f2f6f4;border-radius:8px;width:32px;height:32px;cursor:pointer;font-size:14px;flex:none}
+.apptDrawerChips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.apptDrawerFacts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;background:#eef2f0;border:1px solid #eef2f0;border-radius:12px;overflow:hidden}
+.apptDrawerFacts>div{background:#fff;padding:9px 12px}
+.apptDrawerFacts dt{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a9995;margin:0 0 3px}
+.apptDrawerFacts dd{margin:0;font-size:13px;font-weight:650;color:#25332f}
+.apptDrawerNote{margin:0;padding:10px 12px;border-radius:10px;background:#f4efff;border:1px solid #e0d5f7;color:#5a37a3;font-size:12px;line-height:1.5}
+.apptDrawerHistory{border:1px solid #e7ece9;border-radius:12px;overflow:hidden}
+.apptDrawerHistoryHead{display:flex;justify-content:space-between;align-items:center;padding:10px 12px;background:#f7faf9;border-bottom:1px solid #eef2f0}
+.apptDrawerHistoryHead b{font-size:13px}.apptDrawerHistoryHead span{font-size:11px;font-weight:800;color:#5b6a66;background:#fff;border:1px solid #e0e7e4;padding:1px 9px;border-radius:20px}
+.apptDrawerHistoryEmpty{margin:0;padding:11px 12px;color:#8a9995;font-size:12px}
+.apptDrawerHistory ul{list-style:none;margin:0;padding:4px}
+.apptDrawerHistory li button{display:grid;grid-template-columns:80px 1fr auto;align-items:center;gap:10px;width:100%;padding:8px 10px;border:0;background:transparent;border-radius:8px;cursor:pointer;font:inherit;text-align:left;color:inherit}
+.apptDrawerHistory li button:hover{background:#f4f8f7}
+.apptDrawerActions{display:flex;flex-wrap:wrap;gap:8px;margin-top:auto;padding-top:6px}
+.apptDrawerBtn{display:inline-flex;align-items:center;justify-content:center;min-height:38px;padding:0 13px;border:1px solid #d8e0dd;border-radius:8px;background:#fff;color:#25332f;font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap;cursor:pointer}
+.apptDrawerBtn:hover{border-color:#bcc9c4}
+.apptDrawerBtn.wa{background:#e8f6ec;border-color:#bfe3c9;color:#1c7a3a}
+.apptDrawerBtn.primary{background:#0c7a85;border-color:#0c7a85;color:#fff}
+@media(max-width:560px){.apptDrawerFacts{grid-template-columns:1fr}.apptDrawerPanel{width:100vw}}
+.themeDark .apptDrawerPanel{background:#121a20;border-left-color:#22303a}
+.themeDark .apptDrawerHead h3{color:#e6edf1}.themeDark .apptDrawerHead small{color:#8b98a1}
+.themeDark .apptDrawerFacts{background:#1b2731;border-color:#22303a}.themeDark .apptDrawerFacts>div{background:#121a20}.themeDark .apptDrawerFacts dd{color:#e6edf1}
+.themeDark .apptDrawerHistory{border-color:#22303a}.themeDark .apptDrawerHistoryHead{background:#0e151a;border-bottom-color:#22303a}.themeDark .apptDrawerHistoryHead b{color:#e6edf1}
+.themeDark .apptDrawerClose{background:#1b2731;color:#cdd9df}
+.themeDark .apptDrawerBtn{background:#161d24;border-color:#2a3843;color:#cdd8de}
 .apptBadge{flex-shrink:0;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;white-space:nowrap}
 .apptBadge.grp-planned{background:#fdf2df;color:#8a5a12}
 .apptBadge.grp-confirmed{background:#e0eef3;color:#1d5a72}
