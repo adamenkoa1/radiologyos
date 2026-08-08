@@ -780,6 +780,17 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptDrawerBtn.primary{background:#0c7a85;border-color:#0c7a85;color:#fff}
 .apptDrawerBtn.confirm{flex:1 0 100%;background:#1c7a3a;border-color:#1c7a3a;color:#fff}
 .apptDrawerBtn.confirm:disabled{opacity:.6;cursor:progress}
+.apptDrawerResched{border:1px solid #e0e7e4;border-radius:12px;padding:12px;background:#f7faf9;display:flex;flex-direction:column;gap:10px}
+.apptDrawerReschedRow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.apptDrawerReschedRow label{display:flex;flex-direction:column;gap:4px}
+.apptDrawerReschedRow span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#41544f}
+.apptDrawerReschedRow input,.apptDrawerReschedRow select{padding:9px 10px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}
+.apptDrawerReschedHint{margin:0;font-size:11.5px;color:#a5670f}
+.apptDrawerReschedActions{display:flex;gap:8px}
+.apptDrawerReschedActions .apptDrawerBtn.primary{flex:1}
+.themeDark .apptDrawerResched{background:#0e151a;border-color:#22303a}
+.themeDark .apptDrawerReschedRow span{color:#93a3ad}
+.themeDark .apptDrawerReschedRow input,.themeDark .apptDrawerReschedRow select{background:#121a20;border-color:#2a3843;color:#e6edf1}
 @media(max-width:560px){.apptDrawerFacts{grid-template-columns:1fr}.apptDrawerPanel{width:100vw}}
 .themeDark .apptDrawerPanel{background:#121a20;border-left-color:#22303a}
 .themeDark .apptDrawerHead h3{color:#e6edf1}.themeDark .apptDrawerHead small{color:#8b98a1}

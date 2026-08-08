@@ -220,6 +220,24 @@ export default function DashboardPage() {
     }
   }
 
+  async function rescheduleBooking(id:number, date:string, time:string) {
+    setBusyId(id); setToast("");
+    try {
+      const res = await fetch("/api/staff/bookings", {
+        method:"PATCH", headers:{"content-type":"application/json"},
+        body:JSON.stringify({ id, desiredDate:date, desiredTime:time }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?:string };
+      if (!res.ok) { setToast(data.error || "Не вдалося перенести запис"); return; }
+      setBookings(cur => cur.map(b => b.id === id ? { ...b, desiredDate:date, desiredTime:time, status:"rescheduled" } : b));
+      setToast(`✓ Перенесено на ${date} ${time}`);
+    } catch {
+      setToast("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   const k = data?.kpi;
 
   // Розклад на сьогодні (Київ). Пульт дає лише короткий огляд — повний
@@ -424,6 +442,7 @@ export default function DashboardPage() {
       {(() => {
         const ob = bookings.find(b => b.id === openId) || null;
         return ob ? <BookingDrawer
+          key={ob.id}
           booking={ob}
           all={bookings}
           doctorName={doctorShort(ob.assignedRadiologistEmail)}
@@ -431,6 +450,8 @@ export default function DashboardPage() {
           onOpen={setOpenId}
           onConfirm={canManage ? (id)=>void confirmBooking(id) : undefined}
           confirming={busyId===ob.id}
+          onReschedule={canManage ? (id,date,time)=>void rescheduleBooking(id,date,time) : undefined}
+          rescheduling={busyId===ob.id}
         /> : null;
       })()}
     </>}

@@ -11,7 +11,7 @@ import { stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
 
 export type CalBooking = {
-  id: number; code: string; name: string; phone: string; service: string;
+  id: number; code: string; name: string; phone: string; service: string; serviceCode?: string;
   equipmentId: string; durationMinutes: number; desiredDate: string; desiredTime: string;
   status: string; patientCategory?: string; paymentStatus?: string; paymentAmount?: number; paidAmount?: number;
   assignedRadiologistEmail?: string; assignedRadiographerEmail?: string;
@@ -101,6 +101,7 @@ function nowMinutesKyiv(): number {
 
 export default function WeekCalendar({
   bookings, options = [], schedule = SCHEDULE_DEFAULTS, blocks = [], initialView = "day", initialDate,
+  onConfirm, onReschedule, busyId = null,
 }: {
   bookings: CalBooking[];
   options?: CalStaffOption[];
@@ -108,6 +109,9 @@ export default function WeekCalendar({
   blocks?: CalEquipmentBlock[];
   initialView?: CalView;
   initialDate?: string;
+  onConfirm?: (id: number) => void;
+  onReschedule?: (id: number, date: string, time: string) => void;
+  busyId?: number | null;
 }) {
   const [date, setDate] = useState(initialDate || todayKyiv());
   const [view, setView] = useState<CalView>(initialView);
@@ -305,11 +309,16 @@ export default function WeekCalendar({
               ))}</div>}
 
       {openBooking && <BookingDrawer
+        key={openBooking.id}
         booking={openBooking}
         all={bookings}
         doctorName={doctorOf(openBooking)}
         onClose={()=>setOpenId(null)}
         onOpen={setOpenId}
+        onConfirm={onConfirm}
+        confirming={busyId===openBooking.id}
+        onReschedule={onReschedule}
+        rescheduling={busyId===openBooking.id}
       />}
     </div>
   );
