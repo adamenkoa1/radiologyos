@@ -152,7 +152,7 @@ footer { display:flex;justify-content:space-between;align-items:center;gap:25px;
 @media print{.reportBuilder{display:none!important}.reportContent{max-width:none}.operationDates{display:none!important}}
 
 /* Staff workspace */
-.workspaceShell{--workspace-sidebar:244px;min-height:100vh;background:#f3f6f8;color:#18302f}
+.workspaceShell{--workspace-sidebar:244px;--dash-w:min(2560px,100%);min-height:100vh;background:#f3f6f8;color:#18302f}
 .workspaceSidebar{position:fixed;inset:0 auto 0 0;width:var(--workspace-sidebar);display:flex;flex-direction:column;background:#123d3a;color:#fff;border-right:1px solid rgba(255,255,255,.08);z-index:40;transition:width .2s ease}
 .workspaceBrand{height:64px;display:flex;align-items:center;gap:11px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.1)}
 .workspaceBrandMark{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:8px;background:#fff;color:#0d5b50;font-family:var(--font-serif);font-size:18px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.14)}
@@ -168,6 +168,7 @@ footer { display:flex;justify-content:space-between;align-items:center;gap:25px;
 .workspaceProfile{position:relative}.workspaceProfile summary{display:flex;align-items:center;gap:10px;min-width:200px;padding:7px 10px;border-radius:7px;cursor:pointer;list-style:none}.workspaceProfile summary::-webkit-details-marker{display:none}.workspaceProfile summary:hover{background:#f1f5f4}.workspaceProfile summary>span:last-child{min-width:0}.workspaceProfile b,.workspaceProfile small{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.workspaceProfile b{font-size:11px}.workspaceProfile small{margin-top:3px;color:#73827f;font-size:9px}.workspaceAvatar{width:36px;height:36px;flex:0 0 36px;display:grid;place-items:center;border-radius:50%;background:#dff0eb;color:#0d5b50;font-weight:900}.workspaceProfile>div{position:absolute;right:0;top:46px;width:220px;padding:8px;background:#fff;border:1px solid #dbe3e2;border-radius:8px;box-shadow:0 18px 45px rgba(18,61,58,.16)}.workspaceProfile>div a{display:block;padding:11px 12px;border-radius:5px;font-size:12px;font-weight:700}.workspaceProfile>div a:hover{background:#edf4f2;color:#0d5b50}
 .workspacePage{min-height:calc(100vh - 64px);padding:22px clamp(20px,3.2vw,50px) 60px}.workspacePageHead{max-width:1500px;margin:0 auto 18px;display:flex;justify-content:space-between;align-items:flex-end;gap:30px}.workspaceBreadcrumb{margin:0 0 8px!important;color:#7a8b88!important;font-size:10px!important;font-weight:800;text-transform:uppercase;letter-spacing:.09em}.workspaceBreadcrumb span{margin:0 7px;color:#ef744d}.workspacePageHead h1{font-family:var(--font-sans);font-size:clamp(21px,2.2vw,30px);font-weight:650;line-height:1.1;letter-spacing:-.02em}.workspacePageHead>div:first-child>p:last-child{max-width:760px;margin:8px 0 0;color:#667b77;font-size:12.5px;line-height:1.5}.workspacePageActions{display:flex;gap:9px}.workspacePageActions a{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 15px;border:1px solid #cbd8d6;border-radius:5px;background:#fff;color:#285b55;font-size:11px;font-weight:800}.workspacePageActions a.primary{border-color:#0d5b50;background:#0d5b50;color:#fff}
 .workspaceQuickGrid{max-width:1500px;margin:0 auto 16px;display:grid;grid-template-columns:1.35fr repeat(3,1fr);gap:12px}.workspaceQuickGrid>a{min-height:104px;display:flex;flex-direction:column;justify-content:center;padding:17px;background:#fff;border:1px solid #dce4e3;border-radius:7px;box-shadow:0 8px 24px rgba(23,54,52,.035);transition:.15s}.workspaceQuickGrid>a:hover{border-color:#8db7af;transform:translateY(-2px);box-shadow:0 12px 28px rgba(23,54,52,.07)}.workspaceQuickGrid a>b,.workspaceQuickGrid a>small{display:block}.workspaceQuickGrid a>b{margin-top:10px;font-size:12.5px}.workspaceQuickGrid a>small{margin-top:5px;color:#718480;font-size:10px;line-height:1.4}.workspaceQuickGrid .workspaceTodayCard{position:relative;display:block;background:linear-gradient(125deg,#0d5b50,#174641);color:#fff;border-color:#0d5b50;overflow:hidden}.workspaceTodayCard:after{content:"";position:absolute;width:150px;height:150px;right:-40px;bottom:-75px;border:24px solid rgba(255,255,255,.07);border-radius:50%}.workspaceTodayCard>span{display:block;color:#a9d3ca;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.08em}.workspaceTodayCard>strong{display:inline-block;margin-top:9px;font-family:var(--font-serif);font-size:28px;line-height:1}.workspaceTodayCard>b{display:inline-block!important;margin-left:8px!important;color:#fff;font-size:12px!important}.workspaceTodayCard>small{color:#b8d6d0!important}.quickGlyph{width:28px;height:28px;display:grid;place-items:center;border-radius:7px;background:#e5f2ee;color:#0d5b50;font-size:15px}
+.workspaceWide .workspacePageHead{max-width:var(--dash-w)}
 .workspaceCollapsed{--workspace-sidebar:76px}.workspaceCollapsed .workspaceBrand{padding:0 18px}.workspaceCollapsed .workspaceBrandCopy,.workspaceCollapsed .workspaceNavigation a>b,.workspaceCollapsed .workspaceNavigation p,.workspaceCollapsed .workspaceSidebarFoot>span:last-child{opacity:0;pointer-events:none}.workspaceCollapsed .workspaceNavigation a{justify-content:center;padding:0}.workspaceCollapsed .workspaceNavigation a.active:before{left:-12px}.workspaceCollapsed .workspaceSidebarFoot{justify-content:center}
 .workspaceShell .staffShell,.workspaceShell .reportShell{min-height:0;padding:0;background:transparent}.workspaceShell .staffHead,.workspaceShell .reportHead{display:none}.workspaceShell .staffStats{margin-top:0}.workspaceShell .staffStats article,.workspaceShell .bookingRow,.workspaceShell .equipmentAdmin,.workspaceShell .staffAdmin,.workspaceShell .reportBuilder,.workspaceShell .reportPanel,.workspaceShell .reportStats article{border-color:#dce4e3;border-radius:7px;box-shadow:0 8px 24px rgba(23,54,52,.035)}.workspaceShell .staffTools,.workspaceShell .reportFilterGrid,.workspaceShell .reportTableScroll th{background:#164945}.workspaceShell .staffTools{border-radius:7px}.workspaceShell .reportBuilder{margin-top:0}.workspaceShell .accessDenied{border-radius:8px}
 @media(max-width:1100px){.workspaceQuickGrid{grid-template-columns:1fr 1fr}.workspaceTodayCard{grid-column:1/-1}.workspaceOnline{display:none}}
@@ -264,7 +265,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 @media(max-width:600px){.equipmentRegistryHead{align-items:flex-start;flex-direction:column}.equipmentFields{grid-template-columns:1fr}.equipmentFields label.wide{grid-column:auto}.equipmentCard summary{grid-template-columns:34px minmax(0,1fr)}.equipmentCard summary em{grid-column:2;justify-self:start}}
 /* Пульт — компактна стрічка показників (замість великих блоків) */
 .dashToast{max-width:1500px;margin:0 auto 12px;padding:10px 14px;background:#e6f4ec;border:1px solid #bfe0cc;border-radius:10px;color:#1f5c39;font-size:13px;font-weight:600;cursor:pointer}
-.dashKpiStrip{max-width:1500px;margin:0 auto 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.dashKpiStrip{max-width:var(--dash-w);margin:0 auto 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start}
 .dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:.15s}
 a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashStat>b{display:block;font-size:22px;font-weight:750;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
@@ -276,7 +277,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 @media(max-width:1000px){.dashKpiStrip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:620px){.dashKpiStrip{grid-template-columns:repeat(2,1fr)}}
 /* Пульт як «місія»: головні числа дня в один рядок */
-.dashMc{max-width:1500px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dashMc{max-width:var(--dash-w);margin:0 auto 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
 .dashMcItem{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;text-decoration:none;background:#fff;border:1px solid #e7ece9;border-left:5px solid #cbd5d1;transition:.15s}
 .dashMcItem:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,40,35,.08)}
 .dashMcItem b{font-size:26px;font-weight:800;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
@@ -318,14 +319,33 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashAgendaFlag{flex:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;background:#eae2fb;color:#5a37a3}
 .dashAgendaFlag.pay{background:#fde3e0;color:#b5352a}
 /* Аналітика — нижче агенди */
-.dashAnalytics{max-width:1500px;margin:26px auto 0;border-top:1px solid #e7ece9;padding-top:18px}
+.dashAnalytics{max-width:var(--dash-w);margin:26px auto 0;border-top:1px solid #e7ece9;padding-top:18px}
 .dashAnalyticsHead{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a9995;margin:0 auto 14px}
+/* Три рівні пріоритету — маркери-заголовки */
+.dashTier{max-width:var(--dash-w);margin:24px auto 11px;display:flex;align-items:center;gap:9px;font-size:11.5px;font-weight:900;text-transform:uppercase;letter-spacing:.08em;color:#6b7a76}
+.dashTier:first-of-type{margin-top:2px}
+.dashTier:before{content:"";width:10px;height:10px;border-radius:50%;flex:none}
+.dashTier.t1:before{background:#dc4b3e}.dashTier.t2:before{background:#e0a11e}.dashTier.t3:before{background:#b7c2be}
+.dashAnalytics .dashTier{margin-top:0}
+/* Кольорова смужка за типом дослідження — картки й рядки розкладу */
+.dashCard.mod-ct{border-left:4px solid #2f7db0}
+.dashCard.mod-xray{border-left:4px solid #5a37a3}
+.dashCard.mod-fluoro{border-left:4px solid #b5761a}
+.dashCard.mod-other{border-left:4px solid #8a9995}
+.dashAgendaRow.mod-ct{box-shadow:inset 3px 0 0 0 #2f7db0}
+.dashAgendaRow.mod-xray{box-shadow:inset 3px 0 0 0 #5a37a3}
+.dashAgendaRow.mod-fluoro{box-shadow:inset 3px 0 0 0 #b5761a}
+.dashAgendaRow.mod-other{box-shadow:inset 3px 0 0 0 #cdd6d2}
+/* «Через N хв» під часом у розкладі */
+.dashAgendaWhen{display:block;margin-top:3px;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.01em;color:#8a9995}
+.dashAgendaWhen.now{color:#c33a2e}.dashAgendaWhen.soon{color:#b5761a}.dashAgendaWhen.past{color:#b3bdb9}
+.themeDark .dashTier{color:#8b98a1}
 .themeDark .dashMcItem,.themeDark .dashChip{background:#121a20;border-color:#22303a;color:#cdd9df}
 .themeDark .dashMcItem b{color:#e6edf1}
 .themeDark .dashChip.on{background:#2aa198;border-color:#2aa198;color:#08201f}
 .themeDark .dashAnalytics{border-top-color:#22303a}
 /* Пульт — нові заявки з миготінням і підтвердженням у 1 клік */
-.dashLoad{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
+.dashLoad{max-width:var(--dash-w);margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
 .dashLoadGrid{display:grid;gap:6px 8px;align-items:end;margin-top:12px}
 .dashLoadCorner{grid-row:1}
 .dashLoadDay{grid-row:1;text-align:center;font-size:11px;font-weight:800;color:#8a9995;display:flex;flex-direction:column;gap:1px}
@@ -337,7 +357,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashLoadCell i.empty{background:transparent;min-height:0}
 .dashLoadCell b{position:absolute;top:3px;font-size:11px;font-weight:800;color:#25332f}
 @media(max-width:640px){.dashLoadRow{font-size:11px}.dashLoadCell{height:40px}}
-.dashPending{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
+.dashPending{max-width:var(--dash-w);margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
 .dashPendingHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
 .dashPendingHead h2{font-size:16px;font-weight:750;margin:0}
 .dashPendingHead small{color:#71807c;font-size:12px}
@@ -355,7 +375,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashConfirmBtn:hover:not(:disabled){background:#0a4b42}.dashConfirmBtn:disabled{opacity:.55;cursor:progress}
 @media(prefers-reduced-motion:reduce){.dashPendingRow{animation:none;box-shadow:0 0 0 3px rgba(181,118,26,.14)}}
 /* Пульт — вбудований календар */
-.dashCalendar{max-width:1500px;margin:0 auto 16px}
+.dashCalendar{max-width:var(--dash-w);margin:0 auto 16px}
 .dashCalendarHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
 .dashCalendarHead h2{font-size:16px;font-weight:750;margin:0}
 .dashCalNew{font-size:13px;font-weight:800;color:var(--green,#0c7a85)}
@@ -721,7 +741,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .chatReply button{padding:0 18px;border:0;border-radius:8px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.chatReply button:disabled{opacity:.5;cursor:not-allowed}
 @media(max-width:720px){.chatShell{grid-template-columns:1fr;height:auto}.chatThread{min-height:420px}}
 .settingsCard .notice{margin:0;padding:11px 13px;border-radius:7px;font-size:13px}.settingsCard .notice.success{background:#eef4e6;color:#33632c}.settingsCard .notice.error{background:#fdf1ee;color:#a23c1d}
-.dashLists{max-width:1500px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.dashLists{max-width:var(--dash-w);margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .dashList{padding:0;background:#fff;border:1px solid #e7ece9;border-radius:18px;box-shadow:0 1px 2px rgba(24,40,30,.04),0 8px 24px rgba(24,40,30,.05);overflow:hidden}
 .dashListHead{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:15px 17px;border-bottom:1px solid #eef2f0}.dashListHead h3{font-size:14.5px;font-weight:700;color:#1b211e}.dashListHead span{font-size:12px;font-weight:700;color:#6b7672;background:#f2f6f4;border:1px solid #e7ece9;padding:2px 10px;border-radius:20px;font-variant-numeric:tabular-nums}
 .dashListHint{margin:0;padding:11px 17px 2px;color:#8b948f;font-size:11.5px}
@@ -1442,7 +1462,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .studiesTable select.studiesAssign{min-width:130px}
 
 /* Пульт: клінічна черга за станами (state machine) */
-.dashQueue{display:block;max-width:1500px;margin:0 auto 16px;padding:16px 18px;border:1px solid #dce4e3;border-radius:14px;background:#fff;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s}
+.dashQueue{display:block;max-width:var(--dash-w);margin:0 auto 16px;padding:16px 18px;border:1px solid #dce4e3;border-radius:14px;background:#fff;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s}
 .dashQueue:hover{border-color:var(--ws-accent);box-shadow:0 6px 22px rgba(12,122,133,.1)}
 .dashQueueHead{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
 .dashQueueHead b{font-size:14px;color:var(--ink)}
