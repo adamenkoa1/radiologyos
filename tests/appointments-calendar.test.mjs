@@ -45,6 +45,14 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /dashPending/); // черга нових заявок
   assert.match(dash, /confirm:true/); // підтвердження одним кліком
   assert.match(dash, /WhatsApp/); // повідомлення пацієнту
+  // Пульт як «місія»: рядок головних чисел дня + фільтри розкладу + аналітика внизу.
+  assert.match(dash, /dashMc/); // панель головних показників дня
+  assert.match(dash, /нових заявок/);
+  assert.match(dash, /dashCards/); // нові заявки картками
+  assert.match(dash, /dashChips/); // швидкі фільтри розкладу
+  assert.match(dash, /dashAnalytics/); // аналітика — нижче агенди
   const css = await read("app/globals.css");
   assert.match(css, /@keyframes dashBlink/); // миготіння нових заявок
+  assert.match(css, /\.dashMc\{/); // стилі панелі місії
+  assert.match(css, /\.dashChip\b/); // стилі фільтрів
 });
