@@ -349,25 +349,30 @@ export default function DashboardPage() {
             </ul>}
       </section>
 
-      {/* Рівень 2 — робота на сьогодні: що треба довести до кінця (лише адмін). */}
-      {k && data && <>
-      <p className="dashTier t2">Робота сьогодні</p>
-      <div className="dashLists">
-        <ActionList title="Потребують протоколу" items={data.lists.needProtocol}
-          hint="Виконані дослідження без готового висновку" empty="Усі виконані дослідження мають протокол."
-          href={(item)=>`/staff/protocols?open=${item.id}`}/>
-        <ActionList title="Готові до видачі" items={data.lists.readyToIssue}
-          hint="Протокол готовий — лишилось видати пацієнту" empty="Немає протоколів, що очікують видачі."
-          href={(item)=>`/staff/protocols?open=${item.id}`}/>
-        <ActionList title="Без прив’язки знімків" items={data.lists.needImaging}
-          hint="Виконані дослідження без DICOM-студії" empty="Усі дослідження прив’язані до знімків."
-          href={(item)=>`/staff/imaging?open=${item.id}`}/>
-      </div>
-      </>}
+      {/* Рівень 2 — робота на сьогодні: показуємо лише те, що справді потребує
+          дії. Порожні списки не малюємо — жодних карток «усе гаразд» (лише адмін). */}
+      {k && data && (() => {
+        const lists = [
+          { key:"np", title:"Потребують протоколу", items:data.lists.needProtocol,
+            hint:"Виконані дослідження без готового висновку", href:(item:ListItem)=>`/staff/protocols?open=${item.id}` },
+          { key:"ri", title:"Готові до видачі", items:data.lists.readyToIssue,
+            hint:"Протокол готовий — лишилось видати пацієнту", href:(item:ListItem)=>`/staff/protocols?open=${item.id}` },
+          { key:"ni", title:"Без прив’язки знімків", items:data.lists.needImaging,
+            hint:"Виконані дослідження без DICOM-студії", href:(item:ListItem)=>`/staff/imaging?open=${item.id}` },
+        ].filter(l => l.items.length > 0);
+        if (!lists.length) return null;
+        return <>
+          <p className="dashTier t2">Робота сьогодні</p>
+          <div className="dashLists">
+            {lists.map(l => <ActionList key={l.key} title={l.title} items={l.items} hint={l.hint} href={l.href} empty=""/>)}
+          </div>
+        </>;
+      })()}
 
-      {/* Рівень 3 — аналітика: потрібна рідше, ніж «хто наступний». Лише адмін. */}
-      {k && data && <section className="dashAnalytics">
-        <p className="dashTier t3">Аналітика</p>
+      {/* Рівень 3 — аналітика: керівникові, не лікарю. Згорнута за замовчуванням,
+          щоб Пульт лишався фокусованим; розгортається одним кліком (лише адмін). */}
+      {k && data && <details className="dashAnalytics">
+        <summary className="dashTier t3">Аналітика відділення <span className="dashTierToggle">розгорнути</span></summary>
 
         <div className="dashKpiStrip">
           <a className="dashStat hero" href="/staff/appointments"><b>{k.scheduledToday}</b><span>сьогодні у розкладі</span><small>{k.newToday} нових · {k.confirmedToday} підтв.</small></a>
@@ -406,7 +411,7 @@ export default function DashboardPage() {
             </div>)}
           </div>
         </a> : null}
-      </section>}
+      </details>}
       <ExternalCalendar/>
     </>}
   </StaffWorkspaceShell>;

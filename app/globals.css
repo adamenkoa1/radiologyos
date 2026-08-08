@@ -327,6 +327,14 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashTier:before{content:"";width:10px;height:10px;border-radius:50%;flex:none}
 .dashTier.t1:before{background:#dc4b3e}.dashTier.t2:before{background:#e0a11e}.dashTier.t3:before{background:#b7c2be}
 .dashAnalytics .dashTier{margin-top:0}
+/* Аналітика згорнута за замовчуванням — Пульт лишається фокусованим */
+details.dashAnalytics>summary{cursor:pointer;list-style:none;margin:0}
+details.dashAnalytics>summary::-webkit-details-marker{display:none}
+.dashTierToggle{margin-left:auto;font-size:0;letter-spacing:0}
+.dashTierToggle::after{content:"▾ розгорнути";font-size:11px;font-weight:800;color:#0c7a85;text-transform:none;letter-spacing:0}
+details.dashAnalytics[open]>summary>.dashTierToggle::after{content:"▴ згорнути"}
+details.dashAnalytics[open]>summary{margin-bottom:14px}
+.themeDark .dashTierToggle::after{color:#25b4c0}
 /* Кольорова смужка за типом дослідження — картки й рядки розкладу */
 .dashCard.mod-ct{border-left:4px solid #2f7db0}
 .dashCard.mod-xray{border-left:4px solid #5a37a3}

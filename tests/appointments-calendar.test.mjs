@@ -72,4 +72,8 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(css, /\.dashMc\{max-width:var\(--dash-w\)/);
   assert.match(css, /\.dashTier\b/); // маркери рівнів пріоритету
   assert.match(css, /\.dashCard\.mod-ct\b/); // смужка за модальністю
+  // Пульт для лікаря: аналітика згорнута за замовчуванням, порожні списки не малюються.
+  assert.match(dash, /<details className="dashAnalytics"/); // аналітика у details (згорнута)
+  assert.match(dash, /filter\(l => l\.items\.length > 0\)/); // порожні списки ховаємо
+  assert.match(css, /details\.dashAnalytics\[open\]/); // стилі згорнутого стану
 });
