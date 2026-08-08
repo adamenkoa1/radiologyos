@@ -225,6 +225,7 @@ export default function IntakePage() {
               </div>
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
+                {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
                 <a className="intakeWa" href={`https://wa.me/${digits(selected.phone)}`} target="_blank" rel="noreferrer">WhatsApp</a>
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
               </div>
@@ -251,7 +252,7 @@ export default function IntakePage() {
               {selected.comment && <div className="intakeCtxComment"><b>Коментар</b><p>{selected.comment}</p></div>}
 
               <div className="intakeHistory">
-                <div className="intakeHistoryHead"><b>Попередні дослідження</b><span>{history.length}</span></div>
+                <div className="intakeHistoryHead"><b>Попередні дослідження</b>{digits(selected.phone) ? <a className="intakeHistoryAll" href={`/staff/patients?phone=${digits(selected.phone)}`}>уся картка →</a> : <span>{history.length}</span>}</div>
                 {history.length === 0
                   ? <p className="intakeHistoryEmpty">Перше звернення цього пацієнта (за номером телефону).</p>
                   : <ul>{history.slice(0,8).map(h => <li key={h.id}>

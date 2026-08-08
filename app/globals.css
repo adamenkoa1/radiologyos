@@ -352,6 +352,10 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .dashAgendaWhen{display:block;margin-top:3px;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.01em;color:#8a9995}
 .dashAgendaWhen.now{color:#c33a2e}.dashAgendaWhen.soon{color:#b5761a}.dashAgendaWhen.past{color:#b3bdb9}
 .themeDark .dashTier{color:#8b98a1}
+/* Імʼя пацієнта як вхід у картку (пацієнт як центр) */
+.patLink{color:inherit;text-decoration:none}
+.patLink:hover{text-decoration:underline;text-underline-offset:2px;color:#0c7a85}
+.themeDark .patLink:hover{color:#7fd4dc}
 .themeDark .dashMcItem,.themeDark .dashChip{background:#121a20;border-color:#22303a;color:#cdd9df}
 .themeDark .dashMcItem b{color:#e6edf1}
 .themeDark .dashChip.on{background:#2aa198;border-color:#2aa198;color:#08201f}
@@ -456,6 +460,11 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeToast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25332f;color:#fff;padding:11px 18px;border-radius:10px;font-size:13px;z-index:50;box-shadow:0 6px 24px rgba(0,0,0,.2)}
 .intakeHeadActions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
 .intakeCall{color:#0c7a85;font-weight:800;font-size:13px;text-decoration:none;white-space:nowrap}
+.intakePatientLink{color:#0c7a85;font-weight:800;font-size:12.5px;text-decoration:none;white-space:nowrap;border:1px solid #bfe0dd;background:#eef7f6;padding:6px 11px;border-radius:8px}
+.intakePatientLink:hover{background:#e2f1ef}
+.intakeHistoryAll{color:#0c7a85;font-weight:800;font-size:11.5px;text-decoration:none;white-space:nowrap}
+.intakeHistoryAll:hover{text-decoration:underline}
+.themeDark .intakePatientLink{background:#0e2b2e;border-color:#1c4a4d;color:#7fd4dc}
 .intakeConfirm{border:0;background:#0c7a85;color:#fff;border-radius:8px;padding:8px 13px;font:inherit;font-weight:800;cursor:pointer;white-space:nowrap}
 .intakeConfirm:disabled{opacity:.55;cursor:progress}
 /* Notion-стиль: контекст пацієнта у правій картці */

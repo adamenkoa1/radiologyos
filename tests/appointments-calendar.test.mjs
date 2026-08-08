@@ -85,4 +85,8 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /<details className="dashAnalytics"/); // аналітика у details (згорнута)
   assert.match(dash, /filter\(l => l\.items\.length > 0\)/); // порожні списки ховаємо
   assert.match(css, /details\.dashAnalytics\[open\]/); // стилі згорнутого стану
+  // Пацієнт як центр: імʼя веде в картку пацієнта (CRM за телефоном).
+  assert.match(dash, /patientHref/);
+  assert.match(dash, /\/staff\/patients\?phone=/);
+  assert.match(css, /\.patLink\b/);
 });
