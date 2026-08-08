@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import BookingDrawer from "../booking-drawer";
 import { type CalBooking } from "../week-calendar";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -151,6 +152,7 @@ export default function DashboardPage() {
   const [busyId,setBusyId] = useState<number | null>(null);
   const [agendaFilter,setAgendaFilter] = useState<AgendaFilter>("all");
   const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
+  const [openId,setOpenId] = useState<number | null>(null);
 
   async function load() {
     const [dashRes, bookingsRes] = await Promise.all([
@@ -337,15 +339,17 @@ export default function DashboardPage() {
                 const active = b.status !== "completed" && b.status !== "performed" && b.status !== "issued";
                 const when = active ? whenLabel(minsUntil(b.desiredTime, nowMin)) : null;
                 const doc = doctorShort(b.assignedRadiologistEmail);
-                return <li key={b.id} className={`dashAgendaRow ${modClass(b.equipmentId)}`}>
-                  <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
-                  <div className="dashAgendaWho">
-                    <b>{b.phone ? <a className="patLink" href={patientHref(b.phone)}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</b>
-                    <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
-                  </div>
-                  {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
-                  {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
-                  <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
+                return <li key={b.id}>
+                  <button type="button" className={`dashAgendaRow ${modClass(b.equipmentId)}`} onClick={()=>setOpenId(b.id)}>
+                    <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
+                    <div className="dashAgendaWho">
+                      <b>{b.name || "Без імені"}</b>
+                      <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
+                    </div>
+                    {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
+                    {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
+                    <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
+                  </button>
                 </li>;
               })}
             </ul>}
@@ -415,6 +419,20 @@ export default function DashboardPage() {
         </a> : null}
       </details>}
       <ExternalCalendar/>
+
+      {/* Єдиний Workspace на Пульті: клік по розкладу відкриває контекст + дію. */}
+      {(() => {
+        const ob = bookings.find(b => b.id === openId) || null;
+        return ob ? <BookingDrawer
+          booking={ob}
+          all={bookings}
+          doctorName={doctorShort(ob.assignedRadiologistEmail)}
+          onClose={()=>setOpenId(null)}
+          onOpen={setOpenId}
+          onConfirm={canManage ? (id)=>void confirmBooking(id) : undefined}
+          confirming={busyId===ob.id}
+        /> : null;
+      })()}
     </>}
   </StaffWorkspaceShell>;
 }
