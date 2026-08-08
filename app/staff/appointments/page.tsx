@@ -17,6 +17,7 @@ export default function StaffAppointmentsPage() {
   const [forbidden, setForbidden] = useState(false);
   const [initialView, setInitialView] = useState<CalView>("day");
   const [initialDate, setInitialDate] = useState<string | undefined>(undefined);
+  const [busyId, setBusyId] = useState<number | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -41,6 +42,22 @@ export default function StaffAppointmentsPage() {
     return () => { active = false; };
   }, []);
 
+  // Оновити лише заявки (після дії з drawer), не чіпаючи графік/обладнання.
+  async function refetchBookings() {
+    const res = await fetch("/api/staff/bookings", { cache: "no-store" });
+    const data = await res.json().catch(() => ({})) as { bookings?: CalBooking[] };
+    if (res.ok && Array.isArray(data.bookings)) setItems(data.bookings);
+  }
+  const canManage = staff?.role === "admin" || staff?.role === "registrar";
+  async function patchBooking(body: Record<string, unknown>) {
+    const id = body.id as number;
+    setBusyId(id);
+    try {
+      const res = await fetch("/api/staff/bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      if (res.ok) await refetchBookings();
+    } finally { setBusyId(null); }
+  }
+
   // Дозволяємо відкрити календар на конкретній даті/вигляді (напр. після
   // підтвердження запису: /staff/appointments?date=…&view=week).
   useEffect(() => {
@@ -57,7 +74,12 @@ export default function StaffAppointmentsPage() {
     ? <p className="notice error" role="alert">Доступ лише для персоналу.</p>
     : !loaded
       ? <p className="notice">Завантаження…</p>
-      : <WeekCalendar bookings={items} options={options} schedule={schedule} blocks={blocks} initialView={initialView} initialDate={initialDate} />;
+      : <WeekCalendar
+          bookings={items} options={options} schedule={schedule} blocks={blocks}
+          initialView={initialView} initialDate={initialDate} busyId={busyId}
+          onConfirm={canManage ? (id) => void patchBooking({ id, confirm: true }) : undefined}
+          onReschedule={canManage ? (id, date, time) => void patchBooking({ id, desiredDate: date, desiredTime: time }) : undefined}
+        />;
 
   return (
     <StaffWorkspaceShell

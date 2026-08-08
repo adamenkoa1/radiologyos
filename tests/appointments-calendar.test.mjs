@@ -28,7 +28,16 @@ test("shared week calendar component offers list/day/week views", async () => {
   assert.match(drawer, /Попередні дослідження/); // історія пацієнта в панелі
   assert.match(drawer, /Escape/); // закриття по ESC
   assert.match(drawer, /onConfirm/); // дія-мутація (Підтвердити) — опційно
+  // Перенесення прямо з панелі: дата + вільний слот (перевірка доступності).
+  assert.match(drawer, /onReschedule/);
+  assert.match(drawer, /\/api\/availability\?date=/); // вільні слоти
+  assert.match(drawer, /Перенести на/);
+  assert.match(cal, /onReschedule/); // календар прокидає обробник у панель
+  const appts = await read("app/staff/appointments/page.tsx");
+  assert.match(appts, /onReschedule=\{canManage/); // сторінка календаря реалізує перенесення
+  assert.match(appts, /desiredDate: date, desiredTime: time/);
   assert.match(css, /\.apptDrawerPanel\b/);
+  assert.match(css, /\.apptDrawerResched\b/);
   assert.match(css, /button\.apptCardRow/); // скидання UA-стилів кнопки-рядка
 });
 
