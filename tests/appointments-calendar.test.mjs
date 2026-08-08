@@ -51,8 +51,18 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /dashCards/); // нові заявки картками
   assert.match(dash, /dashChips/); // швидкі фільтри розкладу
   assert.match(dash, /dashAnalytics/); // аналітика — нижче агенди
+  // Три рівні пріоритету + збагачені картки/рядки.
+  assert.match(dash, /dashTier/); // маркери «Робота зараз / сьогодні / Аналітика»
+  assert.match(dash, /Робота зараз/);
+  assert.match(dash, /modClass/); // кольорова смужка за типом дослідження
+  assert.match(dash, /whenLabel/); // «через N хв» на розкладі
   const css = await read("app/globals.css");
   assert.match(css, /@keyframes dashBlink/); // миготіння нових заявок
   assert.match(css, /\.dashMc\{/); // стилі панелі місії
   assert.match(css, /\.dashChip\b/); // стилі фільтрів
+  // Робоча область на всю ширину (Variant B): fluid-змінна замість фіксованих 1500px.
+  assert.match(css, /--dash-w:/);
+  assert.match(css, /\.dashMc\{max-width:var\(--dash-w\)/);
+  assert.match(css, /\.dashTier\b/); // маркери рівнів пріоритету
+  assert.match(css, /\.dashCard\.mod-ct\b/); // смужка за модальністю
 });

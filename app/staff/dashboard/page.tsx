@@ -53,6 +53,35 @@ const NEEDS_REPORT = new Set(["performed", "images_ready", "reporting"]);
 const needsReport = (b:CalBooking) => NEEDS_REPORT.has(b.status);
 // Посилання «написати у WhatsApp»: лишаємо тільки цифри номера.
 const waLink = (phone:string) => `https://wa.me/${(phone || "").replace(/[^\d]/g, "")}`;
+// Кольорова смужка за типом дослідження — розпізнавання за частку секунди.
+const modClass = (equipmentId:string) => `mod-${equipmentId || "other"}`;
+// Лікар: маємо лише email — показуємо частину до «@» з великої літери.
+function doctorShort(email?:string) {
+  if (!email) return "";
+  const local = email.split("@")[0].replace(/[._-]+/g, " ").trim();
+  return local ? local.charAt(0).toUpperCase() + local.slice(1) : "";
+}
+// Хвилини від «зараз» (Київ) до часу запису сьогодні. Від'ємні — вже минув.
+function nowMinutesKyiv() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone:"Europe/Kyiv", hour:"2-digit", minute:"2-digit", hour12:false }).formatToParts(new Date());
+  const h = Number(parts.find(p=>p.type==="hour")?.value || 0);
+  const m = Number(parts.find(p=>p.type==="minute")?.value || 0);
+  return h * 60 + m;
+}
+function minsUntil(time:string, now:number) {
+  const [h, m] = (time || "").split(":").map(Number);
+  if (Number.isNaN(h)) return null;
+  return h * 60 + (m || 0) - now;
+}
+// Короткий підпис «коли»: зараз / через N хв / N год / −N хв (минув).
+function whenLabel(delta:number|null) {
+  if (delta === null) return null;
+  if (delta <= -60) return { text:`−${Math.round(-delta/60)} год`, cls:"past" };
+  if (delta < 0) return { text:`−${-delta} хв`, cls:"past" };
+  if (delta <= 5) return { text:"зараз", cls:"now" };
+  if (delta < 60) return { text:`через ${delta} хв`, cls:"soon" };
+  return { text:`через ${Math.round(delta/60)} год`, cls:"" };
+}
 
 // Швидкі фільтри агенди — кожен відповідає реальній ознаці запису.
 type AgendaFilter = "all" | "contrast" | "pay" | "ct" | "xray";
@@ -119,6 +148,7 @@ export default function DashboardPage() {
   const [toast,setToast] = useState("");
   const [busyId,setBusyId] = useState<number | null>(null);
   const [agendaFilter,setAgendaFilter] = useState<AgendaFilter>("all");
+  const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
 
   async function load() {
     const [dashRes, bookingsRes] = await Promise.all([
@@ -146,6 +176,12 @@ export default function DashboardPage() {
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  // «Через N хв» на розкладі має лишатися свіжим — оновлюємо щохвилини.
+  useEffect(() => {
+    const id = window.setInterval(() => setNowMin(nowMinutesKyiv()), 30000);
+    return () => window.clearInterval(id);
   }, []);
 
   // Нові/перенесені заявки, що чекають на реакцію реєстратури — миготять,
@@ -234,6 +270,9 @@ export default function DashboardPage() {
         </a>
       </nav>
 
+      {/* Три рівні пріоритету: 1) робота зараз, 2) робота сьогодні, 3) аналітика. */}
+      <p className="dashTier t1">Робота зараз</p>
+
       {/* Дія передусім: нові заявки — картками, з телефоном, WhatsApp і підтвердженням. */}
       <section className="dashPending" id="dash-pending">
         <div className="dashPendingHead">
@@ -246,7 +285,7 @@ export default function DashboardPage() {
           ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
           : <div className="dashCards">
               {pending.map(b => (
-                <article key={b.id} className={`dashCard ${b.status}`}>
+                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}`}>
                   <div className="dashCardTop">
                     <span className={`dashCardTag ${b.status}`}>{b.status === "rescheduled" ? "Перенесено" : "Нова"}</span>
                     {isContrast(b) && <span className="dashCardFlag">Контраст</span>}
@@ -254,7 +293,7 @@ export default function DashboardPage() {
                   </div>
                   <b className="dashCardName">{b.name || "Без імені"}</b>
                   <span className="dashCardSvc">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</span>
-                  <span className="dashCardWhen">{b.desiredDate} · {b.desiredTime || "—"}</span>
+                  <span className="dashCardWhen">{b.desiredDate} · {b.desiredTime || "—"}{doctorShort(b.assignedRadiologistEmail) ? ` · 👨‍⚕️ ${doctorShort(b.assignedRadiologistEmail)}` : ""}</span>
                   <div className="dashCardActions">
                     <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone}>📞</a>
                     <a className="dashCardBtn wa" href={waLink(b.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
@@ -292,22 +331,43 @@ export default function DashboardPage() {
           : agendaShown.length === 0
           ? <p className="dashListEmpty">За фільтром «{AGENDA_FILTERS.find(f=>f.id===agendaFilter)?.label}» записів немає.</p>
           : <ul className="dashAgenda">
-              {agendaShown.map(b => <li key={b.id} className="dashAgendaRow">
-                <time>{b.desiredTime || "—"}</time>
-                <div className="dashAgendaWho">
-                  <b>{b.name || "Без імені"}</b>
-                  <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</small>
-                </div>
-                {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
-                {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
-                <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
-              </li>)}
+              {agendaShown.map(b => {
+                const active = b.status !== "completed" && b.status !== "performed" && b.status !== "issued";
+                const when = active ? whenLabel(minsUntil(b.desiredTime, nowMin)) : null;
+                const doc = doctorShort(b.assignedRadiologistEmail);
+                return <li key={b.id} className={`dashAgendaRow ${modClass(b.equipmentId)}`}>
+                  <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
+                  <div className="dashAgendaWho">
+                    <b>{b.name || "Без імені"}</b>
+                    <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
+                  </div>
+                  {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
+                  {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
+                  <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
+                </li>;
+              })}
             </ul>}
       </section>
 
-      {/* Аналітика — нижче: потрібна рідше, ніж «хто наступний». Лише адмін. */}
+      {/* Рівень 2 — робота на сьогодні: що треба довести до кінця (лише адмін). */}
+      {k && data && <>
+      <p className="dashTier t2">Робота сьогодні</p>
+      <div className="dashLists">
+        <ActionList title="Потребують протоколу" items={data.lists.needProtocol}
+          hint="Виконані дослідження без готового висновку" empty="Усі виконані дослідження мають протокол."
+          href={(item)=>`/staff/protocols?open=${item.id}`}/>
+        <ActionList title="Готові до видачі" items={data.lists.readyToIssue}
+          hint="Протокол готовий — лишилось видати пацієнту" empty="Немає протоколів, що очікують видачі."
+          href={(item)=>`/staff/protocols?open=${item.id}`}/>
+        <ActionList title="Без прив’язки знімків" items={data.lists.needImaging}
+          hint="Виконані дослідження без DICOM-студії" empty="Усі дослідження прив’язані до знімків."
+          href={(item)=>`/staff/imaging?open=${item.id}`}/>
+      </div>
+      </>}
+
+      {/* Рівень 3 — аналітика: потрібна рідше, ніж «хто наступний». Лише адмін. */}
       {k && data && <section className="dashAnalytics">
-        <h2 className="dashAnalyticsHead">Аналітика відділення</h2>
+        <p className="dashTier t3">Аналітика</p>
 
         <div className="dashKpiStrip">
           <a className="dashStat hero" href="/staff/appointments"><b>{k.scheduledToday}</b><span>сьогодні у розкладі</span><small>{k.newToday} нових · {k.confirmedToday} підтв.</small></a>
@@ -346,18 +406,6 @@ export default function DashboardPage() {
             </div>)}
           </div>
         </a> : null}
-
-        <div className="dashLists">
-          <ActionList title="Потребують протоколу" items={data.lists.needProtocol}
-            hint="Виконані дослідження без готового висновку" empty="Усі виконані дослідження мають протокол."
-            href={(item)=>`/staff/protocols?open=${item.id}`}/>
-          <ActionList title="Готові до видачі" items={data.lists.readyToIssue}
-            hint="Протокол готовий — лишилось видати пацієнту" empty="Немає протоколів, що очікують видачі."
-            href={(item)=>`/staff/protocols?open=${item.id}`}/>
-          <ActionList title="Без прив’язки знімків" items={data.lists.needImaging}
-            hint="Виконані дослідження без DICOM-студії" empty="Усі дослідження прив’язані до знімків."
-            href={(item)=>`/staff/imaging?open=${item.id}`}/>
-        </div>
       </section>}
       <ExternalCalendar/>
     </>}
