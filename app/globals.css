@@ -401,7 +401,9 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .dashAgendaCount{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:99px;background:#e6f4f5;border:1px solid #bfe0e3;color:#0a5f68;font-size:12px;font-weight:800;vertical-align:middle}
 .dashAgenda{list-style:none;margin:0;padding:0;background:#fff;border:1px solid #e7ece9;border-radius:14px;overflow:hidden}
 .dashAgendaRow{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid #f0f3f1}
-.dashAgendaRow:first-child{border-top:0}
+button.dashAgendaRow{width:100%;background:transparent;border-left:0;border-right:0;border-bottom:0;font:inherit;text-align:left;cursor:pointer}
+button.dashAgendaRow:hover{background:#f7faf9}
+.dashAgenda>li:first-child .dashAgendaRow{border-top:0}
 .dashAgendaRow time{flex:none;width:52px;font-weight:800;font-size:13.5px;color:#123d3a;font-variant-numeric:tabular-nums}
 .dashAgendaWho{flex:1;min-width:0}
 .dashAgendaWho b{display:block;font-size:13.5px;color:#1b211e}
@@ -776,6 +778,8 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptDrawerBtn:hover{border-color:#bcc9c4}
 .apptDrawerBtn.wa{background:#e8f6ec;border-color:#bfe3c9;color:#1c7a3a}
 .apptDrawerBtn.primary{background:#0c7a85;border-color:#0c7a85;color:#fff}
+.apptDrawerBtn.confirm{flex:1 0 100%;background:#1c7a3a;border-color:#1c7a3a;color:#fff}
+.apptDrawerBtn.confirm:disabled{opacity:.6;cursor:progress}
 @media(max-width:560px){.apptDrawerFacts{grid-template-columns:1fr}.apptDrawerPanel{width:100vw}}
 .themeDark .apptDrawerPanel{background:#121a20;border-left-color:#22303a}
 .themeDark .apptDrawerHead h3{color:#e6edf1}.themeDark .apptDrawerHead small{color:#8b98a1}

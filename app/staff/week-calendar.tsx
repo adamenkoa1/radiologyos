@@ -5,7 +5,8 @@
 // презентаційний: дані (bookings, staffOptions) приходять пропсами, а стан
 // вигляду/дати/фільтра — локальний.
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import BookingDrawer from "./booking-drawer";
 import { stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
 
@@ -155,23 +156,9 @@ export default function WeekCalendar({
   const filtersApply = view === "week" || view === "list";
 
   // Єдиний Workspace: клік по запису відкриває контекст у правій панелі, без
-  // переходу на іншу сторінку. Дані вже є у пропсі bookings — без бекенду.
+  // переходу на іншу сторінку. Спільний компонент BookingDrawer.
   const [openId, setOpenId] = useState<number | null>(null);
   const openBooking = useMemo(() => bookings.find(b => b.id === openId) || null, [bookings, openId]);
-  const openHistory = useMemo(() => {
-    if (!openBooking) return [] as CalBooking[];
-    const ph = (openBooking.phone || "").replace(/[^\d]/g, "");
-    if (!ph) return [];
-    return bookings
-      .filter(b => b.id !== openBooking.id && (b.phone || "").replace(/[^\d]/g, "") === ph)
-      .sort((a, b) => (b.desiredDate + b.desiredTime).localeCompare(a.desiredDate + a.desiredTime));
-  }, [bookings, openBooking]);
-  useEffect(() => {
-    if (openId === null) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpenId(null); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [openId]);
 
   const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const doctorOf = (b: CalBooking) => nameByEmail[b.assignedRadiologistEmail || ""] || nameByEmail[b.assignedRadiographerEmail || ""] || "";
@@ -317,60 +304,13 @@ export default function WeekCalendar({
                 </button>
               ))}</div>}
 
-      {openBooking && (() => {
-        const b = openBooking;
-        const ph = (b.phone || "").replace(/[^\d]/g, "");
-        const doc = doctorOf(b);
-        return <div className="apptDrawer" role="dialog" aria-modal="false" aria-label={`Заявка ${b.name || ""}`}>
-          <div className="apptDrawerBackdrop" onClick={()=>setOpenId(null)} />
-          <aside className="apptDrawerPanel">
-            <div className="apptDrawerHead">
-              <div>
-                <h3>{ph ? <a className="patLink" href={`/staff/patients?phone=${ph}`}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</h3>
-                <small>{b.code} · {b.desiredDate} · {b.desiredTime || "—"}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
-              </div>
-              <button type="button" className="apptDrawerClose" onClick={()=>setOpenId(null)} aria-label="Закрити">✕</button>
-            </div>
-
-            <div className="apptDrawerChips">
-              <span className={`apptTag ${b.patientCategory==="military"?"mil":"paid"}`}>{b.patientCategory==="military"?"Військовий":"Цивільний"}</span>
-              {isContrast(b) && <span className="apptTag contrast">Контраст</span>}
-              {b.patientCategory==="civilian" && <span className={`apptTag ${b.paymentStatus==="paid"?"paid":"pay"}`}>{b.paymentStatus==="paid"?`Оплачено${b.paymentAmount?` · ${b.paymentAmount} грн`:""}`:`Перевірити оплату${b.paymentAmount?` · ${b.paymentAmount} грн`:""}`}</span>}
-              <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span>
-            </div>
-
-            <dl className="apptDrawerFacts">
-              <div><dt>Дослідження</dt><dd>{b.service}{b.equipmentId?` · ${EQUIP[b.equipmentId]||b.equipmentId}`:""}</dd></div>
-              <div><dt>Дата й час</dt><dd>{b.desiredDate} · {b.desiredTime || "—"}</dd></div>
-              {doc && <div><dt>Лікар</dt><dd>{doc}</dd></div>}
-              <div><dt>Телефон</dt><dd>{b.phone || "—"}</dd></div>
-            </dl>
-
-            {isContrast(b) && <p className="apptDrawerNote">Дослідження з контрастуванням — попередьте про підготовку (креатинін, алергоанамнез, натще).</p>}
-
-            <div className="apptDrawerHistory">
-              <div className="apptDrawerHistoryHead"><b>Попередні дослідження</b><span>{openHistory.length}</span></div>
-              {openHistory.length === 0
-                ? <p className="apptDrawerHistoryEmpty">Перше звернення (за номером телефону).</p>
-                : <ul>{openHistory.slice(0,8).map(h => <li key={h.id}>
-                    <button type="button" onClick={()=>setOpenId(h.id)}>
-                      <span className="ihDate">{h.desiredDate}</span>
-                      <span className="ihSvc">{h.service}{h.equipmentId?` · ${EQUIP[h.equipmentId]||h.equipmentId}`:""}</span>
-                      <span className="ihStatus">{stateLabel(h.status)}</span>
-                    </button></li>)}
-                  {openHistory.length>8 && <li className="ihMore">…і ще {openHistory.length-8}</li>}
-                </ul>}
-            </div>
-
-            <div className="apptDrawerActions">
-              {ph && <a className="apptDrawerBtn" href={`tel:${b.phone}`}>📞 Подзвонити</a>}
-              {ph && <a className="apptDrawerBtn wa" href={`https://wa.me/${ph}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-              {ph && <a className="apptDrawerBtn" href={`/staff/patients?phone=${ph}`}>Картка пацієнта →</a>}
-              <a className="apptDrawerBtn primary" href={`/staff?open=${b.id}#bookings`}>Відкрити повну заявку →</a>
-            </div>
-          </aside>
-        </div>;
-      })()}
+      {openBooking && <BookingDrawer
+        booking={openBooking}
+        all={bookings}
+        doctorName={doctorOf(openBooking)}
+        onClose={()=>setOpenId(null)}
+        onOpen={setOpenId}
+      />}
     </div>
   );
 }

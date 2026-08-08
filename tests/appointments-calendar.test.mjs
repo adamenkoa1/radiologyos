@@ -20,11 +20,14 @@ test("shared week calendar component offers list/day/week views", async () => {
   const css = await read("app/globals.css");
   assert.match(css, /\.apptCardRow\.mod-ct\b/); // смуга КТ
   assert.match(css, /\.apptCardName\{[^}]*font-size:16px/); // ім'я більше за мету
-  // Єдиний Workspace: клік по запису відкриває drawer, а не перехід на сторінку.
+  // Єдиний Workspace: клік по запису відкриває спільний drawer, без переходу.
   assert.match(cal, /setOpenId\(/); // клік відкриває панель
-  assert.match(cal, /apptDrawer/); // права панель
-  assert.match(cal, /openHistory/); // історія пацієнта в панелі
-  assert.match(cal, /Escape/); // закриття по ESC
+  assert.match(cal, /<BookingDrawer/); // спільний компонент панелі
+  const drawer = await read("app/staff/booking-drawer.tsx");
+  assert.match(drawer, /apptDrawer/); // права панель
+  assert.match(drawer, /Попередні дослідження/); // історія пацієнта в панелі
+  assert.match(drawer, /Escape/); // закриття по ESC
+  assert.match(drawer, /onConfirm/); // дія-мутація (Підтвердити) — опційно
   assert.match(css, /\.apptDrawerPanel\b/);
   assert.match(css, /button\.apptCardRow/); // скидання UA-стилів кнопки-рядка
 });
@@ -96,4 +99,7 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /patientHref/);
   assert.match(dash, /\/staff\/patients\?phone=/);
   assert.match(css, /\.patLink\b/);
+  // Єдиний Workspace на Пульті: клік по розкладу відкриває drawer + дію.
+  assert.match(dash, /<BookingDrawer/);
+  assert.match(dash, /onConfirm=\{canManage/); // мутація підтвердження з панелі
 });
