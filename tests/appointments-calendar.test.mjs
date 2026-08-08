@@ -37,7 +37,16 @@ test("appointments page renders the shared calendar in the staff shell", async (
   assert.match(page, /WeekCalendar/);
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/appointments"/);
-  assert.match(shell, /Календар записів/);
+  assert.match(shell, /Календар записів/); // лишається як заголовок сторінки (breadcrumb)
+  // Меню за процесом: Прийом → Розклад → Опис → Видача (а не за модулями).
+  assert.match(shell, /processRail/);
+  assert.match(shell, /Робочий процес/);
+  for (const step of ["Прийом", "Розклад", "Опис", "Видача"]) {
+    assert.match(shell, new RegExp(`label:"${step}"`), `process step ${step}`);
+  }
+  // «Опис» веде у протоколи, «Видача» — у реєстр досліджень.
+  assert.match(shell, /label:"Опис", href:"\/staff\/protocols"/);
+  assert.match(shell, /label:"Видача", href:"\/staff\/studies"/);
 });
 
 test("dashboard shows a compact today agenda and a one-click confirm queue", async () => {

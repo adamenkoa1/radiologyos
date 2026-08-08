@@ -23,24 +23,23 @@ type NavLink = { label:string; href:string; section:WorkspaceSection; icon:strin
 // section — головний розділ модуля; sections — усі розділи, що його підсвічують.
 type NavModule = { label:string; href:string; sections:WorkspaceSection[]; icon:string; items:NavChild[] };
 
-// Швидкий доступ: найчастіші екрани реєстратури — угорі, з піктограмами.
-const overview: NavLink[] = [
+// Меню за процесом роботи, а не за модулями системи: як думає відділення —
+// Прийом → Розклад → Опис → Видача. Пульт зверху як загальний огляд дня.
+const processRail: NavLink[] = [
   { label:"Пульт", href:"/staff/dashboard", section:"dashboard", icon:"🏠" },
-  { label:"Дошка прийому", href:"/staff/intake", section:"intake", icon:"📋" },
-  { label:"Календар записів", href:"/staff/appointments", section:"appointments", icon:"🗓️" },
+  { label:"Прийом", href:"/staff/intake", section:"intake", icon:"📥" },
+  { label:"Розклад", href:"/staff/appointments", section:"appointments", icon:"🗓️" },
+  { label:"Опис", href:"/staff/protocols", section:"protocols", icon:"✍️" },
+  { label:"Видача", href:"/staff/studies", section:"studies", icon:"✅" },
 ];
 
-// Модулі — згруповані за напрямом роботи, з піктограмами й підпунктами.
+// Модулі — усе, що поза щоденним потоком: довідники, фінанси, адміністрування.
 const systemModules: NavModule[] = [
   { label:"Пацієнти", href:"/staff/patients", sections:["patients","chat"], icon:"👥", items:[
     { label:"Картки пацієнтів", href:"/staff/patients" },
     { label:"Чат із пацієнтами", href:"/staff/chat" },
   ]},
-  { label:"Дослідження", href:"/staff/studies", sections:["studies","protocols","imaging"], icon:"🩻", items:[
-    { label:"Реєстр досліджень", href:"/staff/studies" },
-    { label:"Протоколи", href:"/staff/protocols" },
-    { label:"Знімки DICOM", href:"/staff/imaging" },
-  ]},
+  { label:"Знімки DICOM", href:"/staff/imaging", sections:["imaging"], icon:"🩻", items:[] },
   { label:"Кабінети й обладнання", href:"/staff/schedule", sections:["schedule","equipment","services"], icon:"🛠️", items:[
     { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
     { label:"Обладнання", href:"/staff/equipment" },
@@ -132,13 +131,14 @@ export default function StaffWorkspaceShell({
       </Link>
 
       <nav className="workspaceNavigation" aria-label="Модулі системи">
-        <p>Огляд</p>
-        {overview.map((o)=><Link
+        <p>Робочий процес</p>
+        {processRail.map((o, i)=><Link
           key={o.href}
           href={o.href}
-          className={`workspaceModuleLink${active === o.section ? " active":""}`}
+          className={`workspaceModuleLink processStep${active === o.section ? " active":""}`}
           aria-current={active === o.section ? "page":undefined}
           title={collapsed ? o.label:undefined}
+          data-step={i + 1}
         ><span aria-hidden="true">{o.icon}</span><b>{o.label}</b></Link>)}
         <p>Модулі</p>
         {systemModules.map((item)=>{
