@@ -13,6 +13,13 @@ test("shared week calendar component offers list/day/week views", async () => {
   assert.match(cal, /apptWeek/); // сітка тижня
   assert.match(cal, /weekDates\(/); // тиждень від понеділка
   assert.match(cal, /stateLabel\(/); // людські підписи станів
+  // Список = агенда у стилі TickTick: велике ім'я + кольорова смуга за типом.
+  assert.match(cal, /apptCardName/); // ім'я пацієнта як головний елемент
+  assert.match(cal, /modClass\(/); // кольорова смуга за модальністю
+  assert.match(cal, /apptCardTags/); // компактні теги (контраст/оплата/військовий)
+  const css = await read("app/globals.css");
+  assert.match(css, /\.apptCardRow\.mod-ct\b/); // смуга КТ
+  assert.match(css, /\.apptCardName\{[^}]*font-size:16px/); // ім'я більше за мету
 });
 
 test("status filter groups map to real booking statuses", async () => {

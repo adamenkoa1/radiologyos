@@ -121,9 +121,9 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  // Пульт — операційний центр: працює на всю ширину (Variant B), тому заголовок
+  // Робочі екрани лікаря працюють на всю ширину (Variant B), тому заголовок
   // сторінки теж розтягуємо, щоб він не «висів» вужчою колонкою над контентом.
-  const wide = active === "dashboard";
+  const wide = active === "dashboard" || active === "appointments" || active === "intake";
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff/appointments" aria-label="RadiologyOS — календар заявок">
