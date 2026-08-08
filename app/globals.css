@@ -275,6 +275,55 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashStat.equip>span{margin-bottom:6px}.dashStatEquip{display:flex;gap:6px}.dashStatEquip>span{flex:1;text-align:center;font-size:9.5px;font-weight:800;text-transform:uppercase;color:#71807c}.dashStatEquip b{display:block;font-size:16px;color:#123d3a;font-weight:750}
 @media(max-width:1000px){.dashKpiStrip{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:620px){.dashKpiStrip{grid-template-columns:repeat(2,1fr)}}
+/* Пульт як «місія»: головні числа дня в один рядок */
+.dashMc{max-width:1500px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dashMcItem{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;text-decoration:none;background:#fff;border:1px solid #e7ece9;border-left:5px solid #cbd5d1;transition:.15s}
+.dashMcItem:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,40,35,.08)}
+.dashMcItem b{font-size:26px;font-weight:800;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
+.dashMcItem span{font-size:12px;font-weight:750;color:#697873;text-transform:uppercase;letter-spacing:.03em}
+.dashMcItem.red{border-left-color:#dc4b3e}.dashMcItem.red b{color:#c33a2e}
+.dashMcItem.orange{border-left-color:#e08a1e}.dashMcItem.orange b{color:#b5761a}
+.dashMcItem.green{border-left-color:#2f9e44}.dashMcItem.green b{color:#2f7d33}
+.dashMcItem.blue{border-left-color:#2f7db0}.dashMcItem.blue b{color:#256291}
+.dashMcItem.violet{border-left-color:#7048c4}.dashMcItem.violet b{color:#5a37a3}
+@media(max-width:1000px){.dashMc{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:620px){.dashMc{grid-template-columns:repeat(2,1fr)}.dashMcItem b{font-size:22px}}
+/* Нові заявки — картки (TickTick-стиль) */
+.dashCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
+.dashCard{display:flex;flex-direction:column;gap:5px;padding:12px 13px;border:1px solid #f0d9b6;background:#fffaf1;border-radius:12px;animation:dashBlink 1.8s ease-in-out infinite}
+.dashCard:hover{animation-play-state:paused}
+.dashCard.rescheduled{border-color:#c4dcef;background:#f4f9fd}
+.dashCardTop{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.dashCardTag{font-size:10.5px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;padding:2px 9px;border-radius:20px;background:#f7e4c4;color:#a5670f}
+.dashCardTag.rescheduled{background:#d8ebfa;color:#256291}
+.dashCardFlag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;background:#eae2fb;color:#5a37a3}
+.dashCardFlag.pay{background:#fde3e0;color:#b5352a}
+.dashCardName{font-size:15px;font-weight:750;color:#1b211e}
+.dashCardSvc{font-size:12.5px;color:#5c6b67}
+.dashCardWhen{font-size:12px;font-weight:700;color:#123d3a;font-variant-numeric:tabular-nums}
+.dashCardActions{display:flex;gap:6px;margin-top:6px;flex-wrap:wrap}
+.dashCardBtn{flex:none;min-height:36px;display:inline-flex;align-items:center;justify-content:center;padding:0 12px;border:1px solid #d8e0dd;border-radius:8px;background:#fff;color:#25332f;font-weight:800;font-size:12.5px;text-decoration:none;cursor:pointer;white-space:nowrap}
+.dashCardBtn:hover{border-color:#bcc9c4}
+.dashCardBtn.wa{background:#e8f6ec;border-color:#bfe3c9;color:#1c7a3a}
+.dashCardBtn.ok{flex:1;border:0;background:var(--green,#0c7a85);color:#fff}
+.dashCardBtn.ok:hover:not(:disabled){background:#0a4b42}.dashCardBtn.ok:disabled{opacity:.55;cursor:progress}
+.dashCardBtn.wait{flex:1;background:#f2f2f2;border:0;color:#8a8a8a}
+/* Швидкі фільтри розкладу */
+.dashChips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.dashChip{display:inline-flex;align-items:center;gap:6px;padding:6px 13px;border:1px solid #d8e0dd;border-radius:99px;background:#fff;color:#3a4a45;font-size:12.5px;font-weight:750;cursor:pointer;transition:.12s}
+.dashChip:hover{border-color:#bcc9c4}
+.dashChip.on{background:#123d3a;border-color:#123d3a;color:#fff}
+.dashChip i{font-style:normal;font-size:11px;font-weight:800;padding:0 6px;border-radius:99px;background:#eef3f1;color:#5c6b67}
+.dashChip.on i{background:rgba(255,255,255,.22);color:#fff}
+.dashAgendaFlag{flex:none;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:2px 8px;border-radius:20px;background:#eae2fb;color:#5a37a3}
+.dashAgendaFlag.pay{background:#fde3e0;color:#b5352a}
+/* Аналітика — нижче агенди */
+.dashAnalytics{max-width:1500px;margin:26px auto 0;border-top:1px solid #e7ece9;padding-top:18px}
+.dashAnalyticsHead{font-size:14px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;color:#8a9995;margin:0 auto 14px}
+.themeDark .dashMcItem,.themeDark .dashChip{background:#121a20;border-color:#22303a;color:#cdd9df}
+.themeDark .dashMcItem b{color:#e6edf1}
+.themeDark .dashChip.on{background:#2aa198;border-color:#2aa198;color:#08201f}
+.themeDark .dashAnalytics{border-top-color:#22303a}
 /* Пульт — нові заявки з миготінням і підтвердженням у 1 клік */
 .dashLoad{max-width:1500px;margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:14px;padding:16px}
 .dashLoadGrid{display:grid;gap:6px 8px;align-items:end;margin-top:12px}
