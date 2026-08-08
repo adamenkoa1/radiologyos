@@ -663,10 +663,23 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .apptEmpty span{font-size:34px;display:block;margin-bottom:10px;opacity:.6}
 .apptEmpty p{margin:0;font-size:14px}
 .apptListWrap{display:flex;flex-direction:column;gap:8px}
-.apptCardRow{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #dce4e3;border-radius:10px;padding:12px 16px}
+/* Список = агенда у стилі TickTick: час · кольорова смуга · велике ім'я. */
+.apptCardRow{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dce4e3;border-left:4px solid #cdd6d2;border-radius:10px;padding:12px 16px;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s,transform .12s}
+.apptCardRow:hover{box-shadow:0 6px 18px rgba(23,54,52,.08);transform:translateY(-1px)}
+.apptCardRow.mod-ct{border-left-color:#2f7db0}
+.apptCardRow.mod-xray{border-left-color:#5a37a3}
+.apptCardRow.mod-fluoro{border-left-color:#b5761a}
+.apptCardRow.mod-other{border-left-color:#8a9995}
 .apptCardTime{font-weight:800;font-size:15px;color:var(--ink);min-width:52px}
-.apptCardBody{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0}
-.apptCardBody b{font-size:14px}.apptCardBody span{font-size:12.5px;color:#66756f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apptCardBody{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
+.apptCardName{font-size:16px;font-weight:750;color:var(--ink);line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apptCardMeta{font-size:12px;color:#7a8b88;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.apptCardTags{display:flex;gap:6px;flex-shrink:0;flex-wrap:wrap;justify-content:flex-end;max-width:230px}
+.apptTag{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.03em;padding:3px 9px;border-radius:20px;white-space:nowrap}
+.apptTag.contrast{background:#eae2fb;color:#5a37a3}
+.apptTag.mil{background:#dcefe9;color:#0e6b63}
+.apptTag.paid{background:#e2efe0;color:#2f5c2a}
+.apptTag.pay{background:#fdece0;color:#a5670f}
 .apptBadge{flex-shrink:0;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;white-space:nowrap}
 .apptBadge.grp-planned{background:#fdf2df;color:#8a5a12}
 .apptBadge.grp-confirmed{background:#e0eef3;color:#1d5a72}
@@ -1259,6 +1272,9 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .themeDark .apptManage{border-top-color:#22303a}
 .themeDark .apptEmpty{background:#121a20!important;border-color:#22303a!important}
 .themeDark .apptEmpty p{color:#93a3ad}
+.themeDark .apptCardRow{background:#121a20;border-color:#22303a}
+.themeDark .apptCardName{color:#e6edf1}.themeDark .apptCardMeta{color:#8b98a1}
+.themeDark .apptCardRow:hover{box-shadow:0 6px 18px rgba(0,0,0,.35)}
 
 /* ================= Комерційний лендинг RadiologyOS (стиль Doctime) ================= */
 .rosLanding{--ros-bg:#f6f3ec;--ros-bg2:#ece7db;--ros-ink:#2b2621;--ros-muted:#6b655e;--ros-teal:#2e9e85;--ros-teal-deep:#256f60;--ros-orange:#e8794b;--ros-card:#fff;--ros-line:#e6e0d1;--ros-footer:#2b2621;background:var(--ros-bg);color:var(--ros-ink);font-family:var(--font-sans);line-height:1.5;letter-spacing:-.005em}

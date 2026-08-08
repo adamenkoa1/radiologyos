@@ -156,6 +156,9 @@ export default function WeekCalendar({
 
   const hours = Array.from({ length: DAY_END - DAY_START }, (_, i) => DAY_START + i);
   const doctorOf = (b: CalBooking) => nameByEmail[b.assignedRadiologistEmail || ""] || nameByEmail[b.assignedRadiographerEmail || ""] || "";
+  // Кольорова смужка за типом дослідження + контраст — розпізнавання за мить.
+  const modClass = (equipmentId: string) => `mod-${equipmentId || "other"}`;
+  const isContrast = (b: CalBooking) => /контраст|ангіограф/i.test(b.service || "");
 
   function eventBlock(b: CalBooking, compact: boolean, pos?: { lane: number; lanes: number }) {
     const mins = minutesOf(b.desiredTime);
@@ -276,14 +279,23 @@ export default function WeekCalendar({
           : dayItems.length === 0
             ? <div className="apptEmpty"><span aria-hidden="true">🗓</span><p>Записів на цей день немає</p></div>
             : <div className="apptListWrap">{dayItems.map(b => (
-                <div className="apptCardRow" key={b.id}>
+                <a className={`apptCardRow ${modClass(b.equipmentId)}`} key={b.id} href={`/staff?open=${b.id}#bookings`}>
                   <span className="apptCardTime">{b.desiredTime || "—"}<small>{b.desiredDate}</small></span>
                   <div className="apptCardBody">
-                    <div className="apptCardRoute"><span className={`patientRoute ${b.patientCategory}`}>{b.patientCategory==="military"?"Військовий":"Цивільний"}</span>{b.patientCategory==="civilian"&&<span className={`paymentOverview ${b.paymentStatus==="paid"?"paid":"pending"}`}>{b.paymentStatus==="paid"?"Оплату перевірено":`Перевірити оплату · ${b.paymentAmount || 0} грн`}</span>}</div><b>{b.name || "Без імені"}</b>
-                    <span>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · ${doctorOf(b)}` : ""}</span>
+                    <b className="apptCardName">{b.name || "Без імені"}</b>
+                    <span className="apptCardMeta">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · 👨‍⚕️ ${doctorOf(b)}` : ""}</span>
                   </div>
-                  <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span><a className="apptOpenRecord" href={`/staff?open=${b.id}#bookings`}>Відкрити</a>
-                </div>
+                  <div className="apptCardTags">
+                    {isContrast(b) && <span className="apptTag contrast">Контраст</span>}
+                    {b.patientCategory==="military"
+                      ? <span className="apptTag mil">Військовий</span>
+                      : b.paymentStatus==="paid"
+                        ? <span className="apptTag paid">Оплачено</span>
+                        : <span className="apptTag pay">Перевірити оплату</span>}
+                  </div>
+                  <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span>
+                  <span className="apptOpenRecord" aria-hidden="true">Відкрити</span>
+                </a>
               ))}</div>}
     </div>
   );
