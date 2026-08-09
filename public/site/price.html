@@ -70,7 +70,7 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
  .fixed a{min-height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700}.fixed a:first-child{background:var(--dark2);color:white}.fixed a:last-child{background:var(--beige)}
 }
 
-.cart-button{position:relative;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:13px;background:#fff;color:#0f1a20;font-weight:700;border:0;cursor:pointer}.cart-count{min-width:23px;height:23px;padding:0 6px;border-radius:99px;background:#25b4c0;display:grid;place-items:center;font-size:12px}.add-cart{margin-top:8px;width:100%;border:0;cursor:pointer;background:var(--brand);color:#fff}.add-cart.added{background:#7c8a94}.row-add{border:0;background:var(--brand);color:#fff;border-radius:10px;padding:9px 12px;font-weight:650;cursor:pointer;white-space:nowrap}.cart-overlay{position:fixed;inset:0;background:rgba(8,12,7,.55);z-index:120;opacity:0;pointer-events:none;transition:.2s}.cart-overlay.open{opacity:1;pointer-events:auto}.cart-drawer{position:absolute;right:0;top:0;height:100%;width:min(520px,100%);background:#f7fafb;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.22)}.cart-head{display:flex;justify-content:space-between;align-items:center;gap:15px}.cart-close{border:0;background:#e5ecf0;width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer}.cart-empty{padding:35px 15px;text-align:center;color:#5c6c78}.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid #dbe3e8;border-radius:16px;padding:14px;margin:10px 0}.cart-item small{display:block;color:#5c6c78}.remove-item{border:0;background:none;color:#c0392b;cursor:pointer;font-weight:650}.cart-total{display:flex;justify-content:space-between;padding:18px 4px;font-size:21px;font-weight:750}.request-form h3{margin-top:0}.field{margin:11px 0}.cart-note{font-size:12px;color:#5c6c78;margin:10px 0}.floating-cart{position:fixed;right:18px;bottom:20px;z-index:95;border:0;border-radius:999px;background:#d9eef0;color:#0f1a20;padding:14px 18px;font-weight:750;box-shadow:0 12px 30px rgba(0,0,0,.2);cursor:pointer}.floating-cart .cart-count{display:inline-grid;margin-left:6px}
+.cart-button{position:relative;display:inline-flex;align-items:center;gap:8px;padding:12px 16px;border-radius:13px;background:#fff;color:#0f1a20;font-weight:700;border:0;cursor:pointer}.cart-count{min-width:23px;height:23px;padding:0 6px;border-radius:99px;background:#ef744d;display:grid;place-items:center;font-size:12px}.add-cart{margin-top:8px;width:100%;border:0;cursor:pointer;background:var(--brand);color:#fff}.add-cart.added{background:#7c8a94}.row-add{border:0;background:var(--brand);color:#fff;border-radius:10px;padding:9px 12px;font-weight:650;cursor:pointer;white-space:nowrap}.cart-overlay{position:fixed;inset:0;background:rgba(8,12,7,.55);z-index:120;opacity:0;pointer-events:none;transition:.2s}.cart-overlay.open{opacity:1;pointer-events:auto}.cart-drawer{position:absolute;right:0;top:0;height:100%;width:min(520px,100%);background:#f7fafb;padding:22px;overflow:auto;box-shadow:-20px 0 60px rgba(0,0,0,.22)}.cart-head{display:flex;justify-content:space-between;align-items:center;gap:15px}.cart-close{border:0;background:#e5ecf0;width:42px;height:42px;border-radius:50%;font-size:22px;cursor:pointer}.cart-empty{padding:35px 15px;text-align:center;color:#5c6c78}.cart-item{display:grid;grid-template-columns:1fr auto;gap:10px;background:#fff;border:1px solid #dbe3e8;border-radius:16px;padding:14px;margin:10px 0}.cart-item small{display:block;color:#5c6c78}.remove-item{border:0;background:none;color:#c0392b;cursor:pointer;font-weight:650}.cart-total{display:flex;justify-content:space-between;padding:18px 4px;font-size:21px;font-weight:750}.request-form h3{margin-top:0}.field{margin:11px 0}.cart-note{font-size:12px;color:#5c6c78;margin:10px 0}.floating-cart{position:fixed;right:18px;bottom:20px;z-index:95;border:0;border-radius:999px;background:#d9eef0;color:#0f1a20;padding:14px 18px;font-weight:750;box-shadow:0 12px 30px rgba(0,0,0,.2);cursor:pointer}.floating-cart .cart-count{display:inline-grid;margin-left:6px}
 @media(max-width:700px){body{padding-bottom:86px}header{position:relative;top:auto}.cart-button{padding:10px 12px}.cart-button .cart-label{display:none}.floating-cart{bottom:calc(10px + env(safe-area-inset-bottom));right:10px;padding:10px 12px;font-size:13px;box-shadow:0 8px 22px rgba(0,0,0,.18)}.price-group tr{grid-template-columns:46px 1fr auto}.row-add{grid-column:2/4;margin:0 8px 10px}.cart-drawer{padding:16px}}
 
 
@@ -112,9 +112,9 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
   .civilian-heading-card h1{font-size:30px}
 }
 .civ-benefits{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:14px}
-.civ-benefit{background:#fffdf5;border:1px solid #e7cf7a;border-radius:16px;padding:14px 16px;box-shadow:0 8px 24px rgba(126,91,0,.06)}
-.civ-benefit b{display:block;font-size:15px;color:#302400;margin-bottom:4px}
-.civ-benefit span{font-size:13px;color:#68551b;line-height:1.4}
+.civ-benefit{background:#fff;border:1px solid #dbe3e8;border-radius:16px;padding:14px 16px;box-shadow:0 8px 24px rgba(18,40,30,.06)}
+.civ-benefit b{display:block;font-size:15px;color:#18302f;margin-bottom:4px}
+.civ-benefit span{font-size:13px;color:#5c6c78;line-height:1.4}
 @media(max-width:900px){.civ-benefits{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.civ-benefits{grid-template-columns:1fr}}
 
@@ -176,34 +176,34 @@ header .brand{flex:1;min-width:0}
 .success-panel p{color:#0a5f68;font-size:14px;line-height:1.5;margin:0 0 16px}
 @media(max-width:520px){.field-row{grid-template-columns:1fr}}
 
-/* Цивільний маршрут: уся тарифна частина має тепле жовте кодування. */
-body{background:#fff9e8}
-.civilian-heading-card{background:linear-gradient(135deg,#fff4bd,#f2da79);border:1px solid #e4c65f}
-.civilian-heading-card p{color:#68551b}
-.price-page{background:#fff9e8}
-.price-intro{background:#fff6cb;border-color:#e7cf7a;color:#594918}
-.price-group{background:#fffdf5;border-color:#e7cf7a;box-shadow:0 8px 24px rgba(126,91,0,.09)}
-.price-group h2{background:linear-gradient(135deg,#f1d36b,#d8ae2f);color:#3e3000;border-bottom:1px solid #d2a725}
-.price-group tbody tr{background:#fffdf5}
-.price-group tbody tr:nth-child(even){background:#fff9e8}
-.price-group th{background:#fff4c3;color:#69551a}
-.price-group td{border-color:#eddda7}
-.service-title{color:#302400}
-.service-help,.code{color:#766536}
-.row-add,.add-cart,.send-request{background:#e8c34f;color:#342700}
-.row-add:hover,.add-cart:hover,.send-request:hover{background:#dab137}
-.note,.offline-note{background:#fff5c7;border-color:#e5cd74;color:#594816}
-.request-form,.success-panel,.cart-item{background:#fffdf5;border-color:#e7cf7a}
-.cart-drawer{background:#fff9e8}
-.cart-close{background:#f5e6a7;color:#473600}
-.cart-button,.floating-cart{background:#ffe58a;color:#342700;border:1px solid #e3c354}
-.cart-count{background:#d2a72d;color:#241b00}
-.field input,.field select,.field textarea,.dob-segmented select{background:#fffdf7;border-color:#ddc879}
-.phone-prefix,.upload-box,.slot-picker,.success-summary{background:#fff4c8;border-color:#e3cf89}
-.step-num,.success-icon{background:#c99613;color:#fff}
-.fixed{background:rgba(255,250,232,.97);border-color:#e3cf89}
-.fixed a:first-child{background:#d6ad32;color:#302300}
-.fixed a:last-child{background:#fff0aa;color:#302300}
+/* Цивільна тарифна частина — у бренді дизайн-системи: нейтральні поверхні, бірюзові заголовки/CTA. */
+body{background:#f3f6f8}
+.civilian-heading-card{background:linear-gradient(135deg,#eef7f8,#d9eef0);border:1px solid #bfe0e4}
+.civilian-heading-card p{color:#5c6c78}
+.price-page{background:#f3f6f8}
+.price-intro{background:#eef7f8;border-color:#bfe0e4;color:#18302f}
+.price-group{background:#fff;border-color:#dbe3e8;box-shadow:0 8px 24px rgba(18,40,30,.06)}
+.price-group h2{background:linear-gradient(135deg,#123d3a,#0d302e);color:#fff;border-bottom:1px solid #0d302e}
+.price-group tbody tr{background:#fff}
+.price-group tbody tr:nth-child(even){background:#f7fafb}
+.price-group th{background:#eef7f8;color:#3a4a52}
+.price-group td{border-color:#e5ecf0}
+.service-title{color:#18302f}
+.service-help,.code{color:#5c6c78}
+.row-add,.add-cart,.send-request{background:#123d3a;color:#fff}
+.row-add:hover,.add-cart:hover,.send-request:hover{background:#0d302e}
+.note,.offline-note{background:#eef7f8;border-color:#bfe0e4;color:#3a4a52}
+.request-form,.success-panel,.cart-item{background:#fff;border-color:#dbe3e8}
+.cart-drawer{background:#f7fafb}
+.cart-close{background:#e5ecf0;color:#18302f}
+.cart-button,.floating-cart{background:#123d3a;color:#fff;border:1px solid #0d302e}
+.cart-count{background:#ef744d;color:#fff}
+.field input,.field select,.field textarea,.dob-segmented select{background:#fff;border-color:#dbe3e8}
+.phone-prefix,.upload-box,.slot-picker,.success-summary{background:#f7fafb;border-color:#dbe3e8}
+.step-num,.success-icon{background:#123d3a;color:#fff}
+.fixed{background:rgba(247,250,251,.97);border-color:#dbe3e8}
+.fixed a:first-child{background:#123d3a;color:#fff}
+.fixed a:last-child{background:#eef7f8;color:#18302f}
 
 /* Вибір вільного часу */
 .slot-picker{border:1px solid #dbe3e8;border-radius:14px;padding:12px;background:#fbfdfe;margin:10px 0}
