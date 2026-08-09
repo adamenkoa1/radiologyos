@@ -263,7 +263,7 @@ function cardHtml(b) {
           <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
           <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
         </div>
-        ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#6b7280;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
+        ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#7c8a94;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
         ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Сплатити карткою будь-якого банку</button>` : ''}
         <button class="btn secondary bank-choice" type="button" data-bank-toggle="${esc(b.code)}">Оплатити через Monobank / Ощад за IBAN</button>
         <div class="bank-details" id="bank-${esc(b.code)}" hidden>
