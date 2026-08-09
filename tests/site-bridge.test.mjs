@@ -167,3 +167,19 @@ test("visit reminder: cabinet tells patients what to bring; military form mentio
   const military = await read("public/site/military.html");
   assert.match(military, /Візьміть із собою направлення, документ, що посвідчує особу/);
 });
+
+test("ПІБ field suggests Ukrainian given names + patronymics by token", async () => {
+  const js = await read("public/site/assets/name-suggest.js");
+  assert.match(js, /var NAMES =/);
+  assert.match(js, /var PATRO =/);
+  assert.match(js, /Олександрович/); // по батькові у списку
+  assert.match(js, /Іванівна/);
+  // Токен: 2-е слово → імена, 3-є → по батькові.
+  assert.match(js, /p\.idx === 1 \? NAMES : p\.idx === 2 \? PATRO/);
+  assert.match(js, /'patientName', 'militaryPatientName'/);
+  // Підключено на публічних booking-сторінках.
+  for (const p of ["index", "price", "military"]) {
+    const html = await read(`public/site/${p}.html`);
+    assert.match(html, /assets\/name-suggest\.js/, `${p} лінкує name-suggest.js`);
+  }
+});
