@@ -25,4 +25,12 @@ timeout \
   "${SITES_BUILD_TIMEOUT:-3m}" \
   "${vinext}" build
 
+# Публічний статичний сайт /site/* не має кеш-хешів у іменах файлів, тож без
+# явного правила браузер/edge кешують стару версію і оновлення «не видно».
+# Просимо щоразу перевіряти свіжість (revalidate; 304 коли без змін).
+headers_file="${SITES_PROJECT_ROOT}/dist/client/_headers"
+if [[ -f "${headers_file}" ]] && ! grep -q '^/site/\*' "${headers_file}"; then
+  printf '\n# Публічний сайт: без кеш-хешів — завжди перевіряти свіжість\n/site/*\n  Cache-Control: no-cache\n' >> "${headers_file}"
+fi
+
 "${script_dir}/validate-artifact.sh"
