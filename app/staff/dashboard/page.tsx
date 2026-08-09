@@ -150,6 +150,9 @@ export default function DashboardPage() {
   const [error,setError] = useState("");
   const [toast,setToast] = useState("");
   const [busyId,setBusyId] = useState<number | null>(null);
+  // Підтверджені, кому сповіщення НЕ дійшло — робочий список «передзвонити»
+  // (на сесію; сам факт збою також лишається в patient_notifications).
+  const [needsCall,setNeedsCall] = useState<CalBooking[]>([]);
   const [agendaFilter,setAgendaFilter] = useState<AgendaFilter>("all");
   const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
   const [openId,setOpenId] = useState<number | null>(null);
@@ -212,11 +215,20 @@ export default function DashboardPage() {
       if (!res.ok) { setToast(data.error || "Не вдалося підтвердити запис"); return; }
       setBookings(cur => cur.map(b => b.id === id ? { ...b, status:"confirmed" } : b));
       const r = data.reminder;
-      setToast(r?.sent
-        ? "✓ Підтверджено · повідомлення у WhatsApp надіслано пацієнту"
-        : r?.failed
-          ? "✓ Підтверджено, але WhatsApp не надіслався — перевірте підключення у розділі WhatsApp"
-          : "✓ Підтверджено · WhatsApp-сповіщення вимкнено або не підключено");
+      // r===null → відправлення впало з помилкою; r.failed>0 → шлюз не доставив.
+      // В обох випадках пацієнта не попереджено — у робочий список «передзвонити».
+      const notNotified = !r || (r.failed ?? 0) > 0;
+      if (notNotified) {
+        const b = bookings.find(x => x.id === id);
+        if (b) setNeedsCall(cur => cur.some(x => x.id === id) ? cur : [...cur, { ...b, status:"confirmed" }]);
+        setToast(!r
+          ? "⚠ Підтверджено, але сповіщення НЕ надіслано (помилка системи) — зателефонуйте пацієнту"
+          : "⚠ Підтверджено, але WhatsApp НЕ доставлено — зателефонуйте пацієнту");
+      } else {
+        setToast((r?.sent ?? 0) > 0
+          ? "✓ Підтверджено · повідомлення у WhatsApp надіслано пацієнту"
+          : "✓ Підтверджено · сповіщення пропущено (вимкнено або немає телефону)");
+      }
     } catch {
       setToast("Помилка мережі — спробуйте ще раз");
     } finally {
@@ -274,7 +286,29 @@ export default function DashboardPage() {
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
     !staff ? <p className="dashLoading">Завантаження зведення…</p> :
     <>
-      {toast && <p className="dashToast" role="status" onClick={()=>setToast("")}>{toast}</p>}
+      {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
+
+      {/* Стійкий робочий список: підтверджено, але сповіщення не дійшло —
+          реєстратор має зателефонувати вручну, а не покладатись на зниклий тост. */}
+      {needsCall.length > 0 &&
+        <section className="dashNeedsCall" aria-label="Потребує дзвінка">
+          <div className="dashNeedsCallHead">
+            <b>☎ Потребує дзвінка · {needsCall.length}</b>
+            <small>Підтверджено, але сповіщення пацієнту не доставлено. Зателефонуйте вручну.</small>
+          </div>
+          <ul>
+            {needsCall.map(b => (
+              <li key={b.id}>
+                <span className="dashNeedsCallWho"><b>{b.name || "Без імені"}</b><small>{b.service}{b.desiredDate ? ` · ${b.desiredDate} ${b.desiredTime || ""}` : ""}</small></span>
+                <span className="dashNeedsCallActions">
+                  <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone}>📞 {b.phone || "—"}</a>
+                  <a className="dashCardBtn wa" href={waLink(b.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button type="button" className="dashCardBtn ok" onClick={()=>setNeedsCall(cur => cur.filter(x => x.id !== b.id))}>✓ Подзвонив</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>}
 
       {/* Панель місії: головні числа дня в один рядок. Клік веде до дії. */}
       <nav className="dashMc" aria-label="Головні показники дня">

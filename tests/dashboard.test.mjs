@@ -71,3 +71,21 @@ test("dashboard page renders inside the staff workspace", async () => {
   const html = await response.text();
   assert.match(html, /Пульт відділення/);
 });
+
+test("confirm surfaces a persistent call-back list when notification fails", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // null (крах) і failed>0 трактуються як «не попереджено».
+  assert.match(page, /const notNotified = !r \|\| \(r\.failed \?\? 0\) > 0/);
+  // Невдача → у стійкий список needsCall (а не лише зниклий тост).
+  assert.match(page, /setNeedsCall\(cur =>/);
+  assert.match(page, /const \[needsCall,setNeedsCall\]/);
+  // Попереджувальний тост і блок із дзвінком.
+  assert.match(page, /dashToast\$\{toast\.startsWith\("⚠"\)/);
+  assert.match(page, /className="dashNeedsCall"/);
+  assert.match(page, /href=\{`tel:\$\{b\.phone\}`\}/);
+  // Успіх лишається лише коли реально надіслано.
+  assert.match(page, /\(r\?\.sent \?\? 0\) > 0/);
+  const css = await read("app/globals.css");
+  assert.match(css, /\.dashNeedsCall\{[^}]*var\(--mod-urgent\)/);
+  assert.match(css, /\.dashToast\.warn\{/);
+});
