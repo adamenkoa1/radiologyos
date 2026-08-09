@@ -49,6 +49,34 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
   const [rTimes, setRTimes] = useState<string[]>([]);
   const [rLoading, setRLoading] = useState(false);
 
+  // Разове повідомлення пацієнту (результат готовий, затримка, жива черга).
+  const NOTIFY_PRESETS = [
+    "Ваш результат готовий — можна забрати опис у відділенні.",
+    "Невелика затримка за розкладом, дякуємо за очікування.",
+    "Підійдіть, будь ласка, до реєстратури відділення.",
+  ];
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [sending, setSending] = useState(false);
+  const [notifyResult, setNotifyResult] = useState("");
+  async function sendNotify() {
+    if (msg.trim().length < 3) return;
+    setSending(true); setNotifyResult("");
+    try {
+      const res = await fetch("/api/staff/notify", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ bookingId: b.id, message: msg.trim() }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?: string; summary?: { sent: number; skipped: number; failed: number } };
+      if (!res.ok) { setNotifyResult(data.error || "Не вдалося надіслати"); return; }
+      const s = data.summary || { sent: 0, skipped: 0, failed: 0 };
+      if (s.sent > 0) { setNotifyResult("✓ Надіслано пацієнту"); setMsg(""); }
+      else if (s.failed > 0) setNotifyResult("⚠ Не доставлено — перевірте канал або номер");
+      else setNotifyResult("Пропущено: канал вимкнено або пацієнт у «не турбувати»");
+    } catch { setNotifyResult("Помилка мережі — спробуйте ще раз"); }
+    finally { setSending(false); }
+  }
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     window.addEventListener("keydown", onKey);
@@ -126,9 +154,22 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
         </div>
       </div>}
 
+      {notifyOpen && <div className="apptDrawerResched">
+        <div className="apptDrawerNotifyPresets">
+          {NOTIFY_PRESETS.map((p, i) => <button key={i} type="button" className="apptDrawerChipBtn" onClick={()=>setMsg(p)}>{p.length > 30 ? p.slice(0, 30) + "…" : p}</button>)}
+        </div>
+        <textarea className="apptDrawerNotifyText" rows={3} maxLength={500} value={msg} onChange={e=>setMsg(e.target.value)} placeholder="Текст повідомлення пацієнту (WhatsApp / SMS)…" />
+        {notifyResult && <p className="apptDrawerReschedHint">{notifyResult}</p>}
+        <div className="apptDrawerReschedActions">
+          <button type="button" className="apptDrawerBtn primary" disabled={sending || msg.trim().length < 3} onClick={sendNotify}>{sending ? "…" : "Надіслати повідомлення"}</button>
+          <button type="button" className="apptDrawerBtn" onClick={()=>{ setNotifyOpen(false); setNotifyResult(""); }}>Закрити</button>
+        </div>
+      </div>}
+
       <div className="apptDrawerActions">
         {canConfirm && <button type="button" className="apptDrawerBtn confirm" disabled={confirming} onClick={() => onConfirm!(b.id)}>{confirming ? "…" : "✓ Підтвердити"}</button>}
         {canReschedule && !reschedOpen && <button type="button" className="apptDrawerBtn" onClick={()=>setReschedOpen(true)}>↻ Перенести</button>}
+        {ph && <button type="button" className="apptDrawerBtn" onClick={()=>setNotifyOpen(v=>!v)}>✉ Повідомити</button>}
         {ph && <a className="apptDrawerBtn" href={`tel:${b.phone}`}>📞 Подзвонити</a>}
         {ph && <a className="apptDrawerBtn wa" href={`https://wa.me/${ph}`} target="_blank" rel="noreferrer">WhatsApp</a>}
         {ph && <a className="apptDrawerBtn" href={`/staff/patients?phone=${ph}`}>Картка пацієнта →</a>}
