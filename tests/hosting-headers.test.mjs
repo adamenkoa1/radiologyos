@@ -39,3 +39,14 @@ test("public booking pages share one stylesheet (dedup, no per-page copies)", as
     assert.doesNotMatch(html, /\.sp-day\.on\{/, `${p}: .sp-day.on лишилось в inline`);
   }
 });
+
+test("brand + radius tokens live once in site.css (all public pages link it)", async () => {
+  const shared = await read("public/site/assets/site.css");
+  assert.match(shared, /:root\{--brand:#123d3a;--brand-dark:#0d302e;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;--r-pill:999px\}/);
+  for (const p of ["index", "price", "military", "cabinet"]) {
+    const html = await read(`public/site/${p}.html`);
+    assert.match(html, /<link rel="stylesheet" href="\/site\/assets\/site\.css">/, `${p} лінкує site.css`);
+    // Окремий дубль-блок брендових токенів більше не сидить у сторінці.
+    assert.doesNotMatch(html, /:root\{--brand:#123d3a;--brand-dark:#0d302e;--r-sm:8px;--r-md:12px;--r-lg:16px;--r-xl:20px;--r-pill:999px\}/, `${p}: дубль токенів у inline`);
+  }
+});

@@ -128,12 +128,14 @@ test("stage 2: color and storefront type are validated while logo stays disabled
 
 test("landing themes via CSS variable, honors storefront type and has no logo", async () => {
   const html = await read("public/site/index.html");
-  assert.match(html, /--brand:#123d3a/); // дефолт бренду = бренд /staff (дизайн-система)
+  const shared = await read("public/site/assets/site.css");
+  assert.match(shared, /--brand:#123d3a/); // дефолт бренду = бренд /staff (у спільному site.css)
+  assert.match(html, /<link rel="stylesheet" href="\/site\/assets\/site\.css">/); // сторінка лінкує токени
   assert.match(html, /setProperty\('--brand',c\.brandColor\)/); // застосування кольору
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
   assert.doesNotMatch(html, /id="scLogo"|brand-logo/);
-  // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
+  // Токени винесено в site.css — у самій сторінці #123d3a лишається хіба в meta theme-color.
   assert.ok((html.match(/#123d3a/g) || []).length <= 2);
 });
 
