@@ -46,3 +46,17 @@ test("card system: .ds-card primitives + dashboard surfaces use token radius/ele
   // Радіуси уніфіковано на токен (без розкиду 12/14/18).
   assert.doesNotMatch(css, /\.dashList\{[^}]*border-radius:18px/);
 });
+
+test("typography: headings bound to the token scale", async () => {
+  const css = await read("app/globals.css");
+  // Заголовок сторінки масштабується до --fs-h1 (більша присутність на 27\").
+  assert.match(css, /\.workspacePageHead h1\{[^}]*font-size:clamp\(24px,2\.4vw,var\(--fs-h1\)\)/);
+  // Опис і хлібні крихти — на токенах.
+  assert.match(css, /\.workspaceBreadcrumb\{[^}]*font-size:var\(--fs-xs\)!important/);
+  assert.match(css, /p:last-child\{[^}]*font-size:var\(--fs-sm\)/);
+  // Заголовки секцій Пульта — єдиний розмір із шкали.
+  assert.match(css, /\.dashPendingHead h2\{[^}]*font-size:var\(--fs-lg\)/);
+  assert.match(css, /\.dashCalendarHead h2\{[^}]*font-size:var\(--fs-lg\)/);
+  // Утиліти заголовків для подальшого впровадження.
+  assert.match(css, /\.ds-h2\{[^}]*font-size:var\(--fs-h2\)/);
+});
