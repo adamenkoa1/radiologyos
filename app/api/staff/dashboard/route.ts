@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     outstanding, nszuPending,
     patients, repeatPatients, doNotContact,
     equipmentToday,
-    needProtocolList, readyList, needImagingList, confirmList,
+    needProtocolList, readyList, needImagingList, confirmList, undeliveredList,
     clinicalQueueRows,
     equipmentWeekRows,
   ] = await Promise.all([
@@ -61,6 +61,17 @@ export async function GET(request: Request) {
     many("SELECT id, code, name, service_code AS serviceCode, protocol_number AS protocolNumber FROM bookings WHERE protocol_status = 'ready' ORDER BY protocol_updated_at DESC LIMIT 6"),
     many("SELECT b.id, b.code, b.name, b.service_code AS serviceCode, b.performed_at AS performedAt FROM bookings b LEFT JOIN imaging_studies i ON i.booking_id = b.id WHERE b.performed_at != '' AND b.status != 'cancelled' AND i.booking_id IS NULL ORDER BY b.performed_at DESC LIMIT 6"),
     many("SELECT id, code, name, service_code AS serviceCode, desired_date AS desiredDate, desired_time AS desiredTime FROM bookings WHERE status = 'new' ORDER BY desired_date, desired_time LIMIT 6"),
+    // Недоставлені сповіщення: остання невдала спроба на заявку (tenant-scoped),
+    // щоб реєстратор бачив стійкий список «передзвонити», а не лише сесійний.
+    many(
+      `SELECT b.id, b.code, b.name, b.phone, b.service_code AS serviceCode,
+              b.desired_date AS desiredDate, b.desired_time AS desiredTime,
+              MAX(n.created_at) AS failedAt
+       FROM patient_notifications n JOIN bookings b ON b.id = n.booking_id
+       WHERE n.organization_id = ? AND n.status = 'failed' AND b.status != 'cancelled'
+       GROUP BY b.id ORDER BY failedAt DESC LIMIT 8`,
+      orgId,
+    ),
     // Клінічна черга — лічильники активних станів дослідження (tenant-scoped).
     many(
       `SELECT status AS s, COUNT(*) AS c FROM bookings
@@ -116,6 +127,7 @@ export async function GET(request: Request) {
       readyToIssue: withTitle(readyList),
       needImaging: withTitle(needImagingList),
       confirmQueue: withTitle(confirmList),
+      undelivered: withTitle(undeliveredList),
     },
     staff: member,
   }, { headers: { "cache-control": "no-store" } });
