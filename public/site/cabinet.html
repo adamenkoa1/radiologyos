@@ -58,6 +58,7 @@ header{padding:0 14px;margin-bottom:18px}
 .visit-head b{font-size:14px}.visit-head small{color:#7c8a94}.visit-head strong{color:#123d3a}
 .visit-group{border-left:3px solid #bfe0e4;border-radius:var(--r-sm);padding-left:12px;margin-bottom:14px}
 .visit-group .app-card:last-child{margin-bottom:0}
+.bring-note{margin:10px 0 0;padding:9px 12px;background:#eef7f8;border:1px solid #cfe9ec;border-radius:var(--r-sm);color:#0e454c;font-size:12px}
 .app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .app-study{font-weight:800;font-size:16px}
 .app-meta{font-size:13px;color:var(--muted);margin-top:3px}
@@ -255,6 +256,7 @@ function cardHtml(b) {
       <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
     </div>
     ${b.status !== 'cancelled' ? stepper(b.status) : ''}
+    ${(b.status !== 'cancelled' && b.status !== 'completed') ? `<div class="bring-note">🪪 Візьміть із собою: ${b.category === 'military' ? 'направлення та ' : ''}документ, що посвідчує особу.</div>` : ''}
     ${awaitingPayment ? `<div class="pay-row">💳 <span>До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>
       <button class="btn pay-toggle" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button>
       <div class="payment-panel" id="payment-${esc(b.code)}" hidden>
