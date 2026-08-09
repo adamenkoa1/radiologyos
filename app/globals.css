@@ -675,6 +675,13 @@ button.dashAgendaRow:hover{background:#f7faf9}
 .settingsCard input[readonly]{background:#f4f8f6;color:#41544f}
 .settingsCard textarea{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);resize:vertical;min-height:72px;margin-top:6px}.settingsCard textarea:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
 .settingsCard select{width:100%;padding:11px 12px;border:1px solid #cbd8d6;border-radius:7px;font:inherit;color:var(--ink);background:#fff}.settingsCard select:focus{outline:2px solid var(--green);outline-offset:1px;border-color:var(--green)}
+.nameSuggestField{position:relative}
+.nameSuggest.nameSuggestInline{position:absolute;left:0;right:0;top:calc(100% + 2px);z-index:40;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #cbd8d6;border-radius:8px;box-shadow:0 12px 30px rgba(18,40,30,.16);max-height:260px;overflow:auto}
+.nameSuggest.nameSuggestInline li{padding:9px 12px;border-radius:6px;font-size:14px;color:var(--ink);cursor:pointer}
+.nameSuggest.nameSuggestInline li:hover,.nameSuggest.nameSuggestInline li.on{background:#eef7f8}
+.themeDark .nameSuggest.nameSuggestInline{background:#132a31;border-color:#2b4048}
+.themeDark .nameSuggest.nameSuggestInline li{color:#dfe9ec}
+.themeDark .nameSuggest.nameSuggestInline li:hover,.themeDark .nameSuggest.nameSuggestInline li.on{background:#1c3a42}
 .importErrors{margin:8px 0 0;padding-left:18px;color:#a23c1d;font-size:12.5px;line-height:1.6}
 .weekdayRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
 .weekdayChip{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border:1px solid #cbd8d6;border-radius:99px;font-size:13px;font-weight:700;color:#5c6c78;cursor:pointer;background:#fff}
