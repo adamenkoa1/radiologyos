@@ -33,3 +33,16 @@ test("modality colours reference tokens (no duplicated hex across surfaces)", as
   // Рух прив'язаний до токенів на ключових інтерактивних елементах.
   assert.match(css, /\.dashMcItem\{[^}]*transition:var\(--dur-fast\) var\(--ease\)\}/);
 });
+
+test("card system: .ds-card primitives + dashboard surfaces use token radius/elevation", async () => {
+  const css = await read("app/globals.css");
+  // Примітив картки й рівні елевації.
+  assert.match(css, /\.ds-card\{[^}]*border-radius:var\(--r-lg\)[^}]*box-shadow:var\(--sh-1\)/);
+  assert.match(css, /\.ds-card\.raised\{box-shadow:var\(--sh-2\)\}/);
+  assert.match(css, /\.ds-card\.flat\{box-shadow:none\}/);
+  // Ієрархія на Пульті: нові заявки — Primary (підняті), аналітика — пласкіша.
+  assert.match(css, /\.dashPending\{[^}]*border-radius:var\(--r-lg\)[^}]*box-shadow:var\(--sh-2\)/);
+  assert.match(css, /\.dashLoad\{[^}]*box-shadow:var\(--sh-1\)/);
+  // Радіуси уніфіковано на токен (без розкиду 12/14/18).
+  assert.doesNotMatch(css, /\.dashList\{[^}]*border-radius:18px/);
+});
