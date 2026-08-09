@@ -240,7 +240,8 @@ function cardHtml(b) {
   const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
   const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
   const serviceWithCode = [b.serviceCode, b.service].filter(Boolean).join(' · ');
-  const paymentPurpose = `Сплата за медичні послуги${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
+  // Номер заявки (RD-…) у призначенні — єдиний ключ звірки платежу з бронюванням.
+  const paymentPurpose = `Сплата за медичні послуги, заявка ${b.code}${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
   return `<div class="card app-card" id="card-${esc(b.code)}">
     <div class="app-top">
       <div>

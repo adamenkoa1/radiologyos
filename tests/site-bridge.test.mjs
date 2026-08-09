@@ -102,6 +102,8 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   assert.doesNotMatch(index, /assets\/notify\.js/); // obsolete client-side gateway removed
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /До сплати/);
+  // Призначення платежу містить номер заявки (RD-…) — ключ звірки з бронюванням.
+  assert.match(cabinet, /const paymentPurpose = `Сплата за медичні послуги, заявка \$\{b\.code\}/);
 });
 
 test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
