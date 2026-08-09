@@ -139,3 +139,12 @@ test("the military free-booking form saves to D1 as category 'military'", async 
   assert.match(military, /assets\/d1-bridge\.js/); // bridge loaded on the military page
   assert.doesNotMatch(military, /id="milSlotPicker"/);
 });
+
+test("civilian booking warns about the 18+ rule up front, not only on submit error", async () => {
+  for (const page of ["index", "price"]) {
+    const html = await read(`public/site/${page}.html`);
+    // Проактивна нотатка (завжди видима), а не лише .field-error після сабміту.
+    assert.match(html, /Онлайн-запис — для пацієнтів <strong>від 18 років<\/strong>/, `${page}: нема проактивної 18\+ нотатки`);
+    assert.match(html, /tel:\+380972808899/, `${page}: нема телефону реєстратури в нотатці`);
+  }
+});
