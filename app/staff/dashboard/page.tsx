@@ -188,12 +188,16 @@ export default function DashboardPage() {
     return () => window.clearInterval(id);
   }, []);
 
+  // Дата «сьогодні» (Київ) — потрібна і для черги заявок, і для розкладу нижче.
+  const today = data?.today || new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Kyiv" }).format(new Date());
+
   // Нові/перенесені заявки, що чекають на реакцію реєстратури — миготять,
-  // доки їх не підтвердять. Найновіші згори.
+  // доки їх не підтвердять. Минулі (дата дослідження вже пройшла) не показуємо —
+  // підтверджувати вже пізно. Найновіші згори.
   const pending = useMemo(() => bookings
-    .filter(b => b.status === "new" || b.status === "rescheduled")
+    .filter(b => (b.status === "new" || b.status === "rescheduled") && (b.desiredDate || "") >= today)
     .sort((a, b) => (b.code || "").localeCompare(a.code || "")),
-  [bookings]);
+  [bookings, today]);
 
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
 
@@ -242,7 +246,6 @@ export default function DashboardPage() {
 
   // Розклад на сьогодні (Київ). Пульт дає лише короткий огляд — повний
   // тижневий календар живе в окремому розділі «Календар записів».
-  const today = data?.today || new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Kyiv" }).format(new Date());
   const todayAgenda = useMemo(() => bookings
     .filter(b => b.desiredDate === today && b.status !== "cancelled")
     .sort((a, b) => (a.desiredTime || "").localeCompare(b.desiredTime || "")),
