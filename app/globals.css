@@ -308,6 +308,20 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 @media(max-width:600px){.equipmentRegistryHead{align-items:flex-start;flex-direction:column}.equipmentFields{grid-template-columns:1fr}.equipmentFields label.wide{grid-column:auto}.equipmentCard summary{grid-template-columns:34px minmax(0,1fr)}.equipmentCard summary em{grid-column:2;justify-self:start}}
 /* Пульт — компактна стрічка показників (замість великих блоків) */
 .dashToast{max-width:1500px;margin:0 auto 12px;padding:10px 14px;background:#e6f4ec;border:1px solid #bfe0cc;border-radius:10px;color:#1f5c39;font-size:13px;font-weight:600;cursor:pointer}
+.dashToast.warn{background:#fdece9;border-color:#f3c3ba;color:#a5311f}
+/* Робочий список «передзвонити»: підтверджено, але сповіщення не дійшло. */
+.dashNeedsCall{max-width:var(--dash-w);margin:0 auto 16px;border:1px solid #f1c7bd;border-left:4px solid var(--mod-urgent);border-radius:var(--r-lg);background:#fef6f4;box-shadow:var(--sh-1);overflow:hidden}
+.dashNeedsCallHead{padding:12px 16px 8px}
+.dashNeedsCallHead b{display:block;color:#a5311f;font-size:var(--fs-lg);font-weight:800;letter-spacing:-.01em}
+.dashNeedsCallHead small{display:block;margin-top:2px;color:#8a5b52;font-size:var(--fs-xs)}
+.dashNeedsCall ul{list-style:none;margin:0;padding:0}
+.dashNeedsCall li{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;padding:11px 16px;border-top:1px solid #f4d7d0}
+.dashNeedsCallWho{min-width:0;display:flex;flex-direction:column;gap:2px}
+.dashNeedsCallWho b{font-size:13px;color:#18302f}
+.dashNeedsCallWho small{color:#7a6a66;font-size:var(--fs-xs)}
+.dashNeedsCallActions{display:flex;flex-wrap:wrap;gap:8px}
+.themeDark .dashNeedsCall{background:#241715;border-color:#5a2c24}
+.themeDark .dashToast.warn{background:#241715;border-color:#5a2c24;color:#f0a99b}
 .dashKpiStrip{max-width:var(--dash-w);margin:0 auto 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start}
 .dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:var(--dur-fast) var(--ease)}
 a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
