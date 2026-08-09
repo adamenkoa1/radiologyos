@@ -54,6 +54,10 @@ header{padding:0 14px;margin-bottom:18px}
 .logout{border:0;background:none;color:#0e454c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
 
 .app-card{margin-bottom:14px}
+.visit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:6px 2px 8px;color:#123d3a;font-size:13px}
+.visit-head b{font-size:14px}.visit-head small{color:#7c8a94}.visit-head strong{color:#123d3a}
+.visit-group{border-left:3px solid #bfe0e4;border-radius:var(--r-sm);padding-left:12px;margin-bottom:14px}
+.visit-group .app-card:last-child{margin-bottom:0}
 .app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
 .app-study{font-weight:800;font-size:16px}
 .app-meta{font-size:13px;color:var(--muted);margin-top:3px}
@@ -284,6 +288,28 @@ function cardHtml(b) {
   </div>`;
 }
 
+// Заявки одного сабміту (КТ+рентген тощо) мають однаковий created_at і йдуть
+// поспіль — групуємо їх в один «візит», щоб не виглядало як задвоєння.
+function studyWord(n) { const t = n % 10, h = n % 100; return (t === 1 && h !== 11) ? 'дослідження' : (t >= 2 && t <= 4 && (h < 12 || h > 14)) ? 'дослідження' : 'досліджень'; }
+function renderBookings(items) {
+  let html = '', i = 0;
+  while (i < items.length) {
+    const group = [items[i]];
+    while (i + 1 < items.length && items[i + 1].createdAt && items[i + 1].createdAt === items[i].createdAt) { group.push(items[i + 1]); i += 1; }
+    i += 1;
+    if (group.length > 1) {
+      const pending = group.filter((b) => b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed');
+      const total = pending.reduce((s, b) => s + Number(b.paymentAmount || 0), 0);
+      const day = (group[0].createdAt || '').slice(0, 10);
+      html += `<div class="visit-head"><b>Візит · ${group.length} ${studyWord(group.length)}</b>${day ? ` · <small>${esc(day)}</small>` : ''}${total > 0 ? ` · <span>разом до сплати: <strong>${esc(money(total))} грн</strong></span>` : ''}</div>`;
+      html += `<div class="visit-group">${group.map(cardHtml).join('')}</div>`;
+    } else {
+      html += cardHtml(group[0]);
+    }
+  }
+  return html;
+}
+
 async function loadBookings() {
   try {
     const pr = await fetch('/api/pay-link', { cache: 'no-store' });
@@ -299,7 +325,7 @@ async function loadBookings() {
   const list = document.getElementById('appList');
   const bookings = data.bookings || [];
   document.getElementById('emptyState').hidden = bookings.length > 0;
-  list.innerHTML = bookings.map(cardHtml).join('');
+  list.innerHTML = renderBookings(bookings);
   list.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => cancelBooking(b.dataset.cancel)));
   list.querySelectorAll('[data-pay-toggle]').forEach((button) => button.addEventListener('click', () => togglePayment(button)));
   list.querySelectorAll('[data-copy-value]').forEach((button) => button.addEventListener('click', () => copySingleValue(button)));

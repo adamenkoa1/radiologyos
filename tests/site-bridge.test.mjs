@@ -148,3 +148,14 @@ test("civilian booking warns about the 18+ rule up front, not only on submit err
     assert.match(html, /tel:\+380972808899/, `${page}: нема телефону реєстратури в нотатці`);
   }
 });
+
+test("cabinet groups a multi-study submission into one visit", async () => {
+  const cabinet = await read("public/site/cabinet.html");
+  assert.match(cabinet, /function renderBookings\(items\)/);
+  // Групування поспіль-заявок з однаковим created_at.
+  assert.match(cabinet, /items\[i \+ 1\]\.createdAt === items\[i\]\.createdAt/);
+  assert.match(cabinet, /Візит ·/);
+  // Спільна сума до сплати по візиту.
+  assert.match(cabinet, /разом до сплати/);
+  assert.match(cabinet, /list\.innerHTML = renderBookings\(bookings\)/);
+});
