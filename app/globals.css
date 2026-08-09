@@ -153,6 +153,32 @@ footer { display:flex;justify-content:space-between;align-items:center;gap:25px;
 
 /* Staff workspace */
 .workspaceShell{--workspace-sidebar:244px;--dash-w:min(2560px,100%);min-height:100vh;background:#f3f6f8;color:#18302f}
+/* ============================================================
+   RadiologyOS v2 — Design Tokens (єдина основа дизайн-системи).
+   Типографіка · Простір (8pt) · Радіуси · Тіні · Рух · Модальності.
+   Скоуп: .workspaceShell — робочий кабінет. Публічний сайт має свою айдентику.
+   ============================================================ */
+.workspaceShell{
+  /* Типографіка */
+  --fs-display:48px; --fs-h1:36px; --fs-h2:28px; --fs-h3:22px;
+  --fs-lg:18px; --fs-base:16px; --fs-sm:14px; --fs-xs:12px;
+  --lh-tight:1.15; --lh-base:1.5;
+  /* Простір — 8pt-сітка */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px;
+  --sp-6:24px; --sp-8:32px; --sp-10:40px; --sp-12:48px;
+  /* Радіуси */
+  --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-pill:999px;
+  /* Тіні (елевація) */
+  --sh-1:0 1px 2px rgba(16,32,44,.05);
+  --sh-2:0 4px 14px rgba(20,40,35,.08);
+  --sh-3:0 12px 40px rgba(16,32,30,.16);
+  /* Рух — лише дві тривалості + одна крива */
+  --dur-fast:150ms; --dur-base:250ms; --ease:cubic-bezier(.2,.6,.2,1);
+  /* Кольори модальностей — єдине джерело правди */
+  --mod-ct:#2f7db0; --mod-xray:#5a37a3; --mod-fluoro:#b5761a;
+  --mod-us:#0e8f8a; --mod-other:#8a9995;
+  --mod-contrast:#7048c4; --mod-urgent:#dc4b3e;
+}
 .workspaceSidebar{position:fixed;inset:0 auto 0 0;width:var(--workspace-sidebar);display:flex;flex-direction:column;background:#123d3a;color:#fff;border-right:1px solid rgba(255,255,255,.08);z-index:40;transition:width .2s ease}
 .workspaceBrand{height:64px;display:flex;align-items:center;gap:11px;padding:0 18px;border-bottom:1px solid rgba(255,255,255,.1)}
 .workspaceBrandMark{width:34px;height:34px;flex:0 0 34px;display:grid;place-items:center;border-radius:8px;background:#fff;color:#0d5b50;font-family:var(--font-serif);font-size:18px;font-weight:700;box-shadow:0 8px 24px rgba(0,0,0,.14)}
@@ -272,7 +298,7 @@ a.dashKpi:hover{border-color:#c9d6d0;transform:translateY(-1px);box-shadow:0 2px
 /* Пульт — компактна стрічка показників (замість великих блоків) */
 .dashToast{max-width:1500px;margin:0 auto 12px;padding:10px 14px;background:#e6f4ec;border:1px solid #bfe0cc;border-radius:10px;color:#1f5c39;font-size:13px;font-weight:600;cursor:pointer}
 .dashKpiStrip{max-width:var(--dash-w);margin:0 auto 14px;display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:start}
-.dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:.15s}
+.dashStat{display:block;padding:10px 12px;background:#fff;border:1px solid #e7ece9;border-radius:12px;transition:var(--dur-fast) var(--ease)}
 a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashStat>b{display:block;font-size:22px;font-weight:750;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
 .dashStat>b.warn{color:#b5761a}
@@ -284,7 +310,7 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 @media(max-width:620px){.dashKpiStrip{grid-template-columns:repeat(2,1fr)}}
 /* Пульт як «місія»: головні числа дня в один рядок */
 .dashMc{max-width:var(--dash-w);margin:0 auto 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
-.dashMcItem{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;text-decoration:none;background:#fff;border:1px solid #e7ece9;border-left:5px solid #cbd5d1;transition:.15s}
+.dashMcItem{display:flex;flex-direction:column;gap:2px;padding:12px 14px;border-radius:14px;text-decoration:none;background:#fff;border:1px solid #e7ece9;border-left:5px solid #cbd5d1;transition:var(--dur-fast) var(--ease)}
 .dashMcItem:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,40,35,.08)}
 .dashMcItem b{font-size:26px;font-weight:800;line-height:1;color:#1b211e;font-variant-numeric:tabular-nums}
 .dashMcItem span{font-size:12px;font-weight:750;color:#697873;text-transform:uppercase;letter-spacing:.03em}
@@ -342,14 +368,16 @@ details.dashAnalytics[open]>summary>.dashTierToggle::after{content:"▴ згор
 details.dashAnalytics[open]>summary{margin-bottom:14px}
 .themeDark .dashTierToggle::after{color:#25b4c0}
 /* Кольорова смужка за типом дослідження — картки й рядки розкладу */
-.dashCard.mod-ct{border-left:4px solid #2f7db0}
-.dashCard.mod-xray{border-left:4px solid #5a37a3}
-.dashCard.mod-fluoro{border-left:4px solid #b5761a}
-.dashCard.mod-other{border-left:4px solid #8a9995}
-.dashAgendaRow.mod-ct{box-shadow:inset 3px 0 0 0 #2f7db0}
-.dashAgendaRow.mod-xray{box-shadow:inset 3px 0 0 0 #5a37a3}
-.dashAgendaRow.mod-fluoro{box-shadow:inset 3px 0 0 0 #b5761a}
+.dashCard.mod-ct{border-left:4px solid var(--mod-ct)}
+.dashCard.mod-xray{border-left:4px solid var(--mod-xray)}
+.dashCard.mod-fluoro{border-left:4px solid var(--mod-fluoro)}
+.dashCard.mod-other{border-left:4px solid var(--mod-other)}
+.dashCard.mod-us{border-left:4px solid var(--mod-us)}
+.dashAgendaRow.mod-ct{box-shadow:inset 3px 0 0 0 var(--mod-ct)}
+.dashAgendaRow.mod-xray{box-shadow:inset 3px 0 0 0 var(--mod-xray)}
+.dashAgendaRow.mod-fluoro{box-shadow:inset 3px 0 0 0 var(--mod-fluoro)}
 .dashAgendaRow.mod-other{box-shadow:inset 3px 0 0 0 #cdd6d2}
+.dashAgendaRow.mod-us{box-shadow:inset 3px 0 0 0 var(--mod-us)}
 /* «Через N хв» під часом у розкладі */
 .dashAgendaWhen{display:block;margin-top:3px;font-style:normal;font-size:10px;font-weight:800;letter-spacing:.01em;color:#8a9995}
 .dashAgendaWhen.now{color:#c33a2e}.dashAgendaWhen.soon{color:#b5761a}.dashAgendaWhen.past{color:#b3bdb9}
@@ -734,12 +762,13 @@ button.dashAgendaRow:hover{background:#f7faf9}
 .apptEmpty p{margin:0;font-size:14px}
 .apptListWrap{display:flex;flex-direction:column;gap:8px}
 /* Список = агенда у стилі TickTick: час · кольорова смуга · велике ім'я. */
-.apptCardRow{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dce4e3;border-left:4px solid #cdd6d2;border-radius:10px;padding:12px 16px;text-decoration:none;color:inherit;transition:border-color .12s,box-shadow .12s,transform .12s}
+.apptCardRow{display:flex;align-items:center;gap:16px;background:#fff;border:1px solid #dce4e3;border-left:4px solid #cdd6d2;border-radius:10px;padding:12px 16px;text-decoration:none;color:inherit;transition:border-color var(--dur-fast) var(--ease),box-shadow var(--dur-fast) var(--ease),transform var(--dur-fast) var(--ease)}
 .apptCardRow:hover{box-shadow:0 6px 18px rgba(23,54,52,.08);transform:translateY(-1px)}
-.apptCardRow.mod-ct{border-left-color:#2f7db0}
-.apptCardRow.mod-xray{border-left-color:#5a37a3}
-.apptCardRow.mod-fluoro{border-left-color:#b5761a}
-.apptCardRow.mod-other{border-left-color:#8a9995}
+.apptCardRow.mod-ct{border-left-color:var(--mod-ct)}
+.apptCardRow.mod-xray{border-left-color:var(--mod-xray)}
+.apptCardRow.mod-fluoro{border-left-color:var(--mod-fluoro)}
+.apptCardRow.mod-other{border-left-color:var(--mod-other)}
+.apptCardRow.mod-us{border-left-color:var(--mod-us)}
 .apptCardTime{font-weight:800;font-size:15px;color:var(--ink);min-width:52px}
 .apptCardBody{flex:1;display:flex;flex-direction:column;gap:3px;min-width:0}
 .apptCardName{font-size:16px;font-weight:750;color:var(--ink);line-height:1.15;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
