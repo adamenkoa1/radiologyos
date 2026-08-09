@@ -16,7 +16,7 @@ test("landing has social preview + rich SEO markup", async () => {
   assert.match(html, /"@type":"FAQPage"/);
   assert.match(html, /Скільки коштує КТ у Чернігові\?/);
   assert.match(html, /id="faq"/);
-  // Довгі ключі: види досліджень + локація.
-  assert.match(html, /Види досліджень у Чернігові/);
-  assert.match(html, /КТ головного мозку/);
+  // Довгі ключі: локація + модальності (лишаються в блоці «Про відділення»).
+  assert.match(html, /КТ у Чернігові/);
+  assert.match(html, /цифрова рентгенографія/);
 });

@@ -49,6 +49,8 @@ a{text-decoration:none;color:inherit}
 
 /* ===== Шапка ===== */
 header{position:sticky;top:10px;z-index:50;padding:0 14px}
+/* Маска над липким хедером: ховає контент, що «протікає» у 10px-щілину зверху при прокрутці */
+header::before{content:"";position:absolute;left:0;right:0;top:-16px;height:16px;background:var(--bg);pointer-events:none}
 .header-row{
   width:min(960px,100%);min-height:92px;margin:0 auto;padding:18px 20px;
   border-radius:22px;background:var(--grad);box-shadow:var(--shadow);
@@ -415,7 +417,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
       <details class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title" style="font-size:clamp(16px,2vw,19px)">Скільки коштує КТ у Чернігові?</strong></span></summary><div class="experience-body"><p class="experience-seo">Вартість КТ залежить від ділянки та контрастування. Актуальні ціни — на <a href="/site/price.html">сторінці тарифів</a>, там же можна одразу записатися.</p></div></details>
       <details class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title" style="font-size:clamp(16px,2vw,19px)">Чи роблять КТ з контрастуванням?</strong></span></summary><div class="experience-body"><p class="experience-seo">Так, доступне КТ з внутрішньовенним контрастуванням за медичними показаннями.</p></div></details>
       <details class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title" style="font-size:clamp(16px,2vw,19px)">Як записатися на дослідження?</strong></span></summary><div class="experience-body"><p class="experience-seo">Онлайн на сайті: оберіть дослідження, вкажіть дані та зручний час. Або за телефоном реєстратури +380 97 280 88 99.</p></div></details>
-      <p class="experience-seo" style="margin:12px 4px 0">Види досліджень у Чернігові: КТ головного мозку, КТ органів грудної клітки, КТ черевної порожнини, КТ з контрастуванням, цифрова рентгенографія, флюорографія ОГК. <a href="/site/price.html">Переглянути ціни й записатися →</a></p>
     </div>
   </section>
 
