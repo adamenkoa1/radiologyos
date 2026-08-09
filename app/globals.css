@@ -861,6 +861,12 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptDrawerReschedRow span{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#41544f}
 .apptDrawerReschedRow input,.apptDrawerReschedRow select{padding:9px 10px;border:1px solid #cbd8d6;border-radius:8px;font:inherit}
 .apptDrawerReschedHint{margin:0;font-size:11.5px;color:#a5670f}
+.apptDrawerNotifyPresets{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.apptDrawerChipBtn{border:1px solid #d7e1e1;background:#fff;border-radius:var(--r-pill);padding:6px 10px;font-size:11px;color:#355b57;cursor:pointer}
+.apptDrawerChipBtn:hover{border-color:#9ebbb3}
+.apptDrawerNotifyText{width:100%;box-sizing:border-box;border:1px solid #ccd9d6;border-radius:var(--r-sm);padding:9px 11px;font:inherit;font-size:13px;resize:vertical;background:#fff}
+.themeDark .apptDrawerChipBtn{background:#121a20;border-color:#2a3843;color:#9fb0bb}
+.themeDark .apptDrawerNotifyText{background:#0f1720;border-color:#22303a;color:#e6edf1}
 .apptDrawerReschedActions{display:flex;gap:8px}
 .apptDrawerReschedActions .apptDrawerBtn.primary{flex:1}
 .themeDark .apptDrawerResched{background:#0e151a;border-color:#22303a}
