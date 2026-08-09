@@ -128,13 +128,13 @@ test("stage 2: color and storefront type are validated while logo stays disabled
 
 test("landing themes via CSS variable, honors storefront type and has no logo", async () => {
   const html = await read("public/site/index.html");
-  assert.match(html, /--brand:#0c7a85/); // змінна визначена
+  assert.match(html, /--brand:#123d3a/); // дефолт бренду = бренд /staff (дизайн-система)
   assert.match(html, /setProperty\('--brand',c\.brandColor\)/); // застосування кольору
   assert.match(html, /storefrontType==='paid_only'/); // ховає картку військових
   assert.match(html, /id="scMilCard"/);
   assert.doesNotMatch(html, /id="scLogo"|brand-logo/);
   // Колірні літерали замінено на var(--brand) — лишились тільки meta + визначення змінної.
-  assert.ok((html.match(/#0c7a85/g) || []).length <= 2);
+  assert.ok((html.match(/#123d3a/g) || []).length <= 2);
 });
 
 test("legacy logo values are ignored", () => {
