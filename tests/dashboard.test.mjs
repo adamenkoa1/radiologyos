@@ -46,6 +46,14 @@ test("dashboard exposes a tenant-scoped clinical queue by machine state", async 
   assert.match(page, /\/staff\/studies/);
 });
 
+test("pending queue hides bookings whose date has already passed", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Черга «Нові заявки» лишає тільки заявки з датою дослідження ≥ сьогодні.
+  assert.match(page, /\(b\.status === "new" \|\| b\.status === "rescheduled"\) && \(b\.desiredDate \|\| ""\) >= today/);
+  // today визначено до pending, щоб фільтр міг ним користуватися.
+  assert.match(page, /const today = data\?\.today \|\|/);
+});
+
 async function renderPath(path) {
   const workerUrl = new URL("../dist/server/index.js", import.meta.url);
   workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
