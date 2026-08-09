@@ -430,6 +430,16 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 @media(max-width:640px){.dashLoadRow{font-size:11px}.dashLoadCell{height:40px}}
 .dashPending{max-width:var(--dash-w);margin:0 auto 16px;background:#fff;border:1px solid #e7ece9;border-radius:var(--r-lg);box-shadow:var(--sh-2);padding:var(--sp-4)}
 .dashPendingHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
+/* Пакетне підтвердження: панель у заголовку + чекбокси на картках. */
+.dashPendingTools{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.dashSelAll{border:1px solid #d7e1e1;background:#fff;border-radius:var(--r-sm);padding:8px 12px;font-size:12px;font-weight:700;color:#355b57;cursor:pointer}
+.dashSelAll:hover{border-color:#9ebbb3}
+.dashBatchBtn{border:0;border-radius:var(--r-sm);padding:8px 14px;font-size:12px;font-weight:800;background:var(--ws-brand,#123d3a);color:#fff;cursor:pointer;transition:opacity var(--dur-fast) var(--ease)}
+.dashBatchBtn:disabled{opacity:.45;cursor:default}
+.dashCardPick{display:inline-flex;align-items:center;cursor:pointer}
+.dashCardPick input{width:17px;height:17px;accent-color:var(--ws-brand,#123d3a);cursor:pointer}
+.dashCard.picked{outline:2px solid var(--ws-brand,#123d3a);outline-offset:1px}
+.themeDark .dashSelAll{background:#121a20;border-color:#2a3843;color:#9fb0bb}
 .dashPendingHead h2{font-size:var(--fs-lg);font-weight:750;margin:0;letter-spacing:-.01em}
 .dashPendingHead small{color:#71807c;font-size:12px}
 .dashPendingBadge{display:inline-block;margin-left:6px;padding:1px 9px;border-radius:99px;background:#b5761a;color:#fff;font-size:12px;font-weight:800;vertical-align:middle}

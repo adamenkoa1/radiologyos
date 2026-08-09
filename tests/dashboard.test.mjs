@@ -89,3 +89,19 @@ test("confirm surfaces a persistent call-back list when notification fails", asy
   assert.match(css, /\.dashNeedsCall\{[^}]*var\(--mod-urgent\)/);
   assert.match(css, /\.dashToast\.warn\{/);
 });
+
+test("pending queue supports batch confirmation", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Спільна логіка одного підтвердження, якою користуються поштучний і пакетний режим.
+  assert.match(page, /async function sendConfirm\(id:number\)/);
+  assert.match(page, /async function confirmSelected\(\)/);
+  // Пакет іде послідовно й агрегує підсумок; невдалі — у needsCall (через sendConfirm).
+  assert.match(page, /for \(const id of ids\)/);
+  assert.match(page, /const \[selected,setSelected\] = useState<Set<number>>/);
+  // UI: чекбокс на картці, кнопки «Обрати всі» / «Підтвердити обрані».
+  assert.match(page, /className="dashCardPick"/);
+  assert.match(page, /Підтвердити обрані · \$\{selected\.size\}/);
+  const css = await read("app/globals.css");
+  assert.match(css, /\.dashCard\.picked\{/);
+  assert.match(css, /\.dashBatchBtn\{/);
+});

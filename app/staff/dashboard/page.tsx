@@ -153,6 +153,10 @@ export default function DashboardPage() {
   // Підтверджені, кому сповіщення НЕ дійшло — робочий список «передзвонити»
   // (на сесію; сам факт збою також лишається в patient_notifications).
   const [needsCall,setNeedsCall] = useState<CalBooking[]>([]);
+  // Пакетне підтвердження: вибрані заявки + індикатор виконання.
+  const [selected,setSelected] = useState<Set<number>>(new Set());
+  const [batchBusy,setBatchBusy] = useState(false);
+  const toggleSel = (id:number) => setSelected(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const [agendaFilter,setAgendaFilter] = useState<AgendaFilter>("all");
   const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
   const [openId,setOpenId] = useState<number | null>(null);
@@ -204,36 +208,61 @@ export default function DashboardPage() {
 
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
 
+  // Одне підтвердження: мутує стан заявки, повертає підсумок (без тосту),
+  // щоб і поштучний, і пакетний режим користувались тією самою логікою.
+  async function sendConfirm(id:number): Promise<{ ok:boolean; outcome:"delivered"|"failed"|"skipped"; error?:string }> {
+    const res = await fetch("/api/staff/bookings", {
+      method:"PATCH", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ id, confirm:true }),
+    });
+    const data = await res.json().catch(() => ({})) as { error?:string; reminder?:{ sent:number; skipped:number; failed:number } | null };
+    if (!res.ok) return { ok:false, outcome:"failed", error:data.error };
+    setBookings(cur => cur.map(b => b.id === id ? { ...b, status:"confirmed" } : b));
+    const r = data.reminder;
+    // r відсутнє/null → відправлення впало; r.failed>0 → шлюз не доставив.
+    const notNotified = !r || (r.failed ?? 0) > 0;
+    if (notNotified) {
+      const b = bookings.find(x => x.id === id);
+      if (b) setNeedsCall(cur => cur.some(x => x.id === id) ? cur : [...cur, { ...b, status:"confirmed" }]);
+      return { ok:true, outcome:"failed" };
+    }
+    return { ok:true, outcome:(r?.sent ?? 0) > 0 ? "delivered" : "skipped" };
+  }
+
   async function confirmBooking(id:number) {
     setBusyId(id); setToast("");
     try {
-      const res = await fetch("/api/staff/bookings", {
-        method:"PATCH", headers:{"content-type":"application/json"},
-        body:JSON.stringify({ id, confirm:true }),
-      });
-      const data = await res.json().catch(() => ({})) as { error?:string; reminder?:{ sent:number; skipped:number; failed:number } | null };
-      if (!res.ok) { setToast(data.error || "Не вдалося підтвердити запис"); return; }
-      setBookings(cur => cur.map(b => b.id === id ? { ...b, status:"confirmed" } : b));
-      const r = data.reminder;
-      // r===null → відправлення впало з помилкою; r.failed>0 → шлюз не доставив.
-      // В обох випадках пацієнта не попереджено — у робочий список «передзвонити».
-      const notNotified = !r || (r.failed ?? 0) > 0;
-      if (notNotified) {
-        const b = bookings.find(x => x.id === id);
-        if (b) setNeedsCall(cur => cur.some(x => x.id === id) ? cur : [...cur, { ...b, status:"confirmed" }]);
-        setToast(!r
-          ? "⚠ Підтверджено, але сповіщення НЕ надіслано (помилка системи) — зателефонуйте пацієнту"
-          : "⚠ Підтверджено, але WhatsApp НЕ доставлено — зателефонуйте пацієнту");
-      } else {
-        setToast((r?.sent ?? 0) > 0
+      const o = await sendConfirm(id);
+      if (!o.ok) { setToast(o.error || "Не вдалося підтвердити запис"); return; }
+      setToast(o.outcome === "failed"
+        ? "⚠ Підтверджено, але сповіщення НЕ доставлено — зателефонуйте пацієнту"
+        : o.outcome === "delivered"
           ? "✓ Підтверджено · повідомлення у WhatsApp надіслано пацієнту"
           : "✓ Підтверджено · сповіщення пропущено (вимкнено або немає телефону)");
-      }
     } catch {
       setToast("Помилка мережі — спробуйте ще раз");
     } finally {
       setBusyId(null);
     }
+  }
+
+  // Пакетне підтвердження обраних заявок: послідовно (щоб не перевантажити
+  // WhatsApp-шлюз), з агрегованим підсумком; невдалі — у «Потребує дзвінка».
+  async function confirmSelected() {
+    const ids = pending.filter(b => selected.has(b.id)).map(b => b.id);
+    if (!ids.length) return;
+    setBatchBusy(true); setToast("");
+    let done = 0, failed = 0, errors = 0;
+    for (const id of ids) {
+      try { const o = await sendConfirm(id); if (!o.ok) errors += 1; else { done += 1; if (o.outcome === "failed") failed += 1; } }
+      catch { errors += 1; }
+    }
+    setSelected(new Set());
+    setBatchBusy(false);
+    const parts = [`Підтверджено ${done}`];
+    if (failed) parts.push(`${failed} без сповіщення — у списку дзвінків`);
+    if (errors) parts.push(`${errors} з помилкою`);
+    setToast((failed || errors ? "⚠ " : "✓ ") + parts.join(" · "));
   }
 
   async function rescheduleBooking(id:number, date:string, time:string) {
@@ -337,15 +366,30 @@ export default function DashboardPage() {
         <div className="dashPendingHead">
           <h2>Нові заявки {pending.length ? <span className="dashPendingBadge">{pending.length}</span> : null}</h2>
           <small>{canManage
-            ? "Натисніть «Підтвердити» — пацієнту одразу піде повідомлення у WhatsApp."
+            ? "Позначте кілька й підтвердьте разом, або по одній. Пацієнту йде WhatsApp."
             : "Заявки, що очікують підтвердження реєстратури."}</small>
+          {canManage && pending.length > 0 &&
+            <div className="dashPendingTools">
+              <button type="button" className="dashSelAll"
+                onClick={()=>setSelected(selected.size === pending.length ? new Set() : new Set(pending.map(b=>b.id)))}>
+                {selected.size === pending.length ? "Зняти вибір" : "Обрати всі"}
+              </button>
+              <button type="button" className="dashBatchBtn" disabled={selected.size === 0 || batchBusy}
+                onClick={()=>void confirmSelected()}>
+                {batchBusy ? "Підтверджую…" : `✓ Підтвердити обрані · ${selected.size}`}
+              </button>
+            </div>}
         </div>
         {pending.length === 0
           ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
           : <div className="dashCards">
               {pending.map(b => (
-                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}`}>
+                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}${selected.has(b.id) ? " picked" : ""}`}>
                   <div className="dashCardTop">
+                    {canManage &&
+                      <label className="dashCardPick" title="Обрати для пакетного підтвердження">
+                        <input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleSel(b.id)} />
+                      </label>}
                     <span className={`dashCardTag ${b.status}`}>{b.status === "rescheduled" ? "Перенесено" : "Нова"}</span>
                     {isContrast(b) && <span className="dashCardFlag">Контраст</span>}
                     {needsPay(b) && <span className="dashCardFlag pay">Оплата</span>}
