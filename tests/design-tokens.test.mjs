@@ -74,3 +74,13 @@ test("staff chrome identity: brand vars drive sidebar/logo/topbar", async () => 
   // Активний пункт навігації — акцент зі змінної.
   assert.match(css, /\.workspaceNavigation a\.active:before\{[^}]*background:var\(--ws-accent\)/);
 });
+
+test("public site radii are unified on the design-system token scale", async () => {
+  for (const page of ["index", "price", "military", "cabinet"]) {
+    const html = await read(`public/site/${page}.html`);
+    // Радіус-токени визначені в :root сторінки.
+    assert.match(html, /--r-lg:16px/, `${page}: нема радіус-токенів`);
+    // Радіуси зведені на var(--r-*) — жодного сирого border-radius:Npx.
+    assert.doesNotMatch(html, /border-radius:\d+px/, `${page}: лишились сирі px-радіуси`);
+  }
+});
