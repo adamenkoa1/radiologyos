@@ -14,7 +14,7 @@ type Kpi = {
   outstandingCount:number; outstandingSum:number; nszuPending:number;
   patients:number; repeatPatients:number; doNotContact:number;
 };
-type ListItem = { id:number; code:string; name:string; serviceTitle:string; performedAt?:string; protocolNumber?:string; desiredDate?:string; desiredTime?:string };
+type ListItem = { id:number; code:string; name:string; serviceTitle:string; performedAt?:string; protocolNumber?:string; desiredDate?:string; desiredTime?:string; phone?:string; failedAt?:string };
 type QueueState = { v:string; l:string; count:number };
 type Data = {
   today:string; kpi:Kpi;
@@ -22,7 +22,7 @@ type Data = {
   equipmentWeek:Array<{ d:string; id:string; c:number }>;
   weekStart:string;
   clinicalQueue:QueueState[];
-  lists:{ needProtocol:ListItem[]; readyToIssue:ListItem[]; needImaging:ListItem[]; confirmQueue:ListItem[] };
+  lists:{ needProtocol:ListItem[]; readyToIssue:ListItem[]; needImaging:ListItem[]; confirmQueue:ListItem[]; undelivered:ListItem[] };
   staff:StaffInfo;
 };
 
@@ -473,6 +473,25 @@ export default function DashboardPage() {
           </div>
         </>;
       })()}
+
+      {/* Стійкий звіт із patient_notifications: кому система НЕ доставила
+          нагадування (і від cron, і від підтверджень) — переживає перезавантаження. */}
+      {data && data.lists.undelivered.length > 0 &&
+        <section className="dashList dashUndelivered" id="dash-undelivered">
+          <div className="dashListHead"><h3>Недоставлені сповіщення</h3><span>{data.lists.undelivered.length}{data.lists.undelivered.length === 8 ? "+" : ""}</span></div>
+          <p className="dashListHint">Пацієнти, яким система не змогла надіслати нагадування. Зателефонуйте вручну.</p>
+          <ul>
+            {data.lists.undelivered.map(item => (
+              <li key={item.id} className="dashUndItem">
+                <span className="dashUndWho"><b>{item.name || "—"}</b><small>{item.serviceTitle}{item.desiredDate ? ` · ${item.desiredDate} ${item.desiredTime || ""}` : ""}</small></span>
+                <span className="dashUndActions">
+                  <a className="dashCardBtn" href={`tel:${item.phone || ""}`} title={item.phone}>📞 {item.phone || "—"}</a>
+                  <a className="dashCardBtn wa" href={waLink(item.phone || "")} target="_blank" rel="noreferrer">WhatsApp</a>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>}
 
       {/* Рівень 3 — аналітика: керівникові, не лікарю. Згорнута за замовчуванням,
           щоб Пульт лишався фокусованим; розгортається одним кліком (лише адмін). */}

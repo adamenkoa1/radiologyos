@@ -105,3 +105,17 @@ test("pending queue supports batch confirmation", async () => {
   assert.match(css, /\.dashCard\.picked\{/);
   assert.match(css, /\.dashBatchBtn\{/);
 });
+
+test("dashboard reports undelivered notifications (persistent, tenant-scoped)", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  assert.match(route, /patient_notifications n JOIN bookings b/);
+  assert.match(route, /n\.status = 'failed'/);
+  assert.match(route, /n\.organization_id = \?/); // tenant-scoped
+  assert.match(route, /undelivered: withTitle\(undeliveredList\)/);
+  // Лишається SELECT-only (жодних мутацій схеми/даних).
+  assert.doesNotMatch(route, /UPDATE\s+patient_notifications/i);
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /Недоставлені сповіщення/);
+  assert.match(page, /data\.lists\.undelivered/);
+  assert.match(page, /className="dashUndItem"/);
+});
