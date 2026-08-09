@@ -159,3 +159,11 @@ test("cabinet groups a multi-study submission into one visit", async () => {
   assert.match(cabinet, /разом до сплати/);
   assert.match(cabinet, /list\.innerHTML = renderBookings\(bookings\)/);
 });
+
+test("visit reminder: cabinet tells patients what to bring; military form mentions ID", async () => {
+  const cabinet = await read("public/site/cabinet.html");
+  assert.match(cabinet, /Візьміть із собою:/);
+  assert.match(cabinet, /b\.category === 'military' \? 'направлення та '/); // військовим — з направленням
+  const military = await read("public/site/military.html");
+  assert.match(military, /Візьміть із собою направлення, документ, що посвідчує особу/);
+});
