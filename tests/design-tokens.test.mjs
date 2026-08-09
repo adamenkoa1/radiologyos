@@ -60,3 +60,17 @@ test("typography: headings bound to the token scale", async () => {
   // Утиліти заголовків для подальшого впровадження.
   assert.match(css, /\.ds-h2\{[^}]*font-size:var\(--fs-h2\)/);
 });
+
+test("staff chrome identity: brand vars drive sidebar/logo/topbar", async () => {
+  const css = await read("app/globals.css");
+  // Брендові змінні хрому визначені на shell.
+  assert.match(css, /--ws-brand:#123d3a;--ws-brand-deep:#0d302e;--ws-accent:#ef744d/);
+  // Сайдбар — брендовий градієнт (глибина).
+  assert.match(css, /\.workspaceSidebar\{[^}]*background:linear-gradient\(180deg,var\(--ws-brand\),var\(--ws-brand-deep\)\)/);
+  // Лого-мітка з акцентною крапкою.
+  assert.match(css, /\.workspaceBrandMark::after\{[^}]*background:var\(--ws-accent\)/);
+  // Топбар — брендова стрічка-підпис зверху.
+  assert.match(css, /\.workspaceTopbar::before\{[^}]*background:linear-gradient\(90deg,var\(--ws-brand\),var\(--ws-accent\)\)/);
+  // Активний пункт навігації — акцент зі змінної.
+  assert.match(css, /\.workspaceNavigation a\.active:before\{[^}]*background:var\(--ws-accent\)/);
+});

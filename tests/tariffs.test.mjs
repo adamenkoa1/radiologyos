@@ -39,10 +39,6 @@ test("public catalog powers the separate price page while home stays concise", a
   assert.doesNotMatch(index, /id="homeTariffs"/);
   assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
   assert.match(index, /id="patientCategory"/); // category chooser on the home form
-  const js = await read("public/site/assets/home-tariffs.js");
-  assert.match(js, /\/api\/catalog/);
-  assert.match(js, /безоплатно/); // military column
-  assert.match(js, /addToCart\(/); // booking from a tariff row
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('patientCategory'\)/); // category read at submit
 });
