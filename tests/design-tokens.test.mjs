@@ -76,10 +76,11 @@ test("staff chrome identity: brand vars drive sidebar/logo/topbar", async () => 
 });
 
 test("public site radii are unified on the design-system token scale", async () => {
+  // Радіус-токени тепер живуть у спільному site.css (дедуплікація).
+  const shared = await read("public/site/assets/site.css");
+  assert.match(shared, /--r-lg:16px/, "site.css: нема радіус-токенів");
   for (const page of ["index", "price", "military", "cabinet"]) {
     const html = await read(`public/site/${page}.html`);
-    // Радіус-токени визначені в :root сторінки.
-    assert.match(html, /--r-lg:16px/, `${page}: нема радіус-токенів`);
     // Радіуси зведені на var(--r-*) — жодного сирого border-radius:Npx.
     assert.doesNotMatch(html, /border-radius:\d+px/, `${page}: лишились сирі px-радіуси`);
   }
