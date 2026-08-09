@@ -25,3 +25,17 @@ test("military mobile: bottom padding clears the fixed action bar", async () => 
   assert.doesNotMatch(html, /body\{padding:0 12px 12px/);
   assert.match(html, /body\{padding:0 12px 86px/);
 });
+
+test("public booking pages share one stylesheet (dedup, no per-page copies)", async () => {
+  const shared = await read("public/site/assets/site.css");
+  // Спільний файл містить витягнуті booking-правила (слот-пікер тощо).
+  assert.match(shared, /\.slot-picker/);
+  assert.match(shared, /\.sp-day/);
+  // Три booking-сторінки підключають його; логіни-кабінет — ні (немає кошика).
+  for (const p of ["index", "price", "military"]) {
+    const html = await read(`public/site/${p}.html`);
+    assert.match(html, /<link rel="stylesheet" href="\/site\/assets\/site\.css">/, `${p} має підключати site.css`);
+    // Витягнуті правила більше не дублюються в inline <style>.
+    assert.doesNotMatch(html, /\.sp-day\.on\{/, `${p}: .sp-day.on лишилось в inline`);
+  }
+});
