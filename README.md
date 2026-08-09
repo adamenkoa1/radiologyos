@@ -8,7 +8,7 @@
 
 - поточного вебсайту RadiologyOS;
 - коду `radiologyos-site-v22`;
-- публічних сторінок `index.html`, `about.html`, `price.html`, `military.html`, `cabinet.html`;
+- публічних сторінок `index.html`, `price.html`, `military.html`, `cabinet.html`;
 - внутрішньої панелі `staff.html`;
 - модулів `cart.js`, `department.js`, `notify.js`, `pricelist.js`, `qrgen.js`, `slots.js`;
 - Google Apps Script інтеграції;

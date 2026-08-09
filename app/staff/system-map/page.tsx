@@ -88,7 +88,6 @@ const PUBLIC_PAGES: Record<string, string> = {
   "price.html": "/site/price.html",
   "military.html": "/site/military.html",
   "cabinet.html": "/site/cabinet.html",
-  "about.html": "/site/about.html",
 };
 
 function hrefForToken(token: string): string | null {
