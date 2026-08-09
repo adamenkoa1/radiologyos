@@ -18,3 +18,10 @@ test("build script appends the /site rule after vinext build", async () => {
   assert.match(script, /dist\/client\/_headers/);
   assert.match(script, /\/site\/\*\\n\s+Cache-Control: no-cache/);
 });
+
+test("military mobile: bottom padding clears the fixed action bar", async () => {
+  const html = await read("public/site/military.html");
+  // Вужчий брейк не має скидати нижній відступ під фіксованою панеллю (86px).
+  assert.doesNotMatch(html, /body\{padding:0 12px 12px/);
+  assert.match(html, /body\{padding:0 12px 86px/);
+});
