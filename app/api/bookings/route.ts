@@ -6,6 +6,7 @@ import { isRateLimited } from "../../../lib/rate-limit";
 import { effectivePrice } from "../../../lib/tariffs";
 import { getSetting } from "../../../lib/settings";
 import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
+import { nextBookingCode } from "../../../lib/booking-code";
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
       return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
     }
 
-    const code = `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`;
+    const code = await nextBookingCode(db);
     const endTime = addMinutes(desiredTime, service.durationMinutes);
     const referral = referralType === "none" ? "Немає направлення" : referralType;
     const paymentStatus = patientCategory === "civilian" ? "pending" : "verification_required";

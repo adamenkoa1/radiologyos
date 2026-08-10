@@ -16,6 +16,7 @@ import {
   type StaffRole,
 } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
+import { nextBookingCode } from "../../../../lib/booking-code";
 import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
@@ -76,7 +77,7 @@ export async function POST(request: Request) {
   ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
   if (blocked) return Response.json({ error: "Апарат недоступний у цей період" }, { status: 409 });
 
-  const code = `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`;
+  const code = await nextBookingCode(db);
   const price = await effectivePrice(db, service.code);
   const paymentStatus = category === "civilian" ? "pending" : "verification_required";
   const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
