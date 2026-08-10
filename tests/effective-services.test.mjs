@@ -15,10 +15,11 @@ test("effective service resolver is the single merge point for config and tariff
   assert.match(lib, /export async function effectiveServiceByCode/);
 });
 
-test("tariff reads are explicitly organization-scoped", async () => {
+test("tariff overrides are tenant-scoped through organization-specific settings", async () => {
   const tariffs = await read("lib/tariffs.ts");
-  assert.match(tariffs, /WHERE organization_id = \?/);
-  assert.match(tariffs, /WHERE organization_id = \? AND code = \?/);
+  assert.match(tariffs, /tariffOverridesKey\(organizationId\)/);
+  assert.match(tariffs, /getSetting\(db, tariffOverridesKey\(organizationId\)\)/);
+  assert.match(tariffs, /organizationId === 1 \? legacyPriceOverrides\(db\) : \{\}/);
   assert.match(tariffs, /priceOverrides\(db, organizationId\)/);
 });
 
@@ -53,7 +54,8 @@ test("public service visibility and availability use the effective resolver", as
   assert.match(publicServices, /price: service\.price/);
   assert.doesNotMatch(publicServices, /configuredService\(/);
 
-  assert.match(availability, /effectiveServiceByCode\(db, serviceCode\)/);
+  assert.match(availability, /effectiveServiceByCode\(db, serviceCode, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(availability, /WHERE organization_id = \? AND equipment_id = \?/);
   assert.match(availability, /service\.durationMinutes/);
   assert.match(availability, /price: service\.price/);
   assert.doesNotMatch(availability, /configuredServiceByCode/);
