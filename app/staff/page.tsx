@@ -196,6 +196,9 @@ export default function StaffPage() {
   const [paymentFilter,setPaymentFilter] = useState("all");
   const [dayFilter,setDayFilter] = useState("");
   const [query,setQuery] = useState("");
+  // Глибоке посилання ?open=<id> з drawer («Відкрити повну заявку →»): показати
+  // саме цю заявку, розгорнути її картку керування і підсвітити.
+  const [openId,setOpenId] = useState<number | null>(null);
 
   async function load() {
     const [bookingsResponse,equipmentResponse] = await Promise.all([
@@ -234,6 +237,38 @@ export default function StaffPage() {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  // Прочитати ?open=<id> один раз і зняти всі фільтри, щоб заявка була видима
+  // незалежно від активного табу/пошуку.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("open");
+    const id = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+    if (!id) return;
+    const timer = window.setTimeout(() => {
+      setFilter("all"); setDayFilter(""); setEquipmentFilter("all");
+      setCategoryFilter("all"); setPaymentFilter("all"); setQuery("");
+      setOpenId(id);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Коли заявка з'явилась у списку — прокрутити до неї, розгорнути «Керування» і
+  // коротко підсвітити. Одноразово (далі openId скидається).
+  useEffect(() => {
+    if (openId == null || !items.some(i => i.id === openId)) return;
+    const timer = window.setTimeout(() => {
+      const node = document.getElementById(`booking-${openId}`);
+      if (node) {
+        const details = node.querySelector("details.apptManage");
+        if (details) (details as HTMLDetailsElement).open = true;
+        node.scrollIntoView({ behavior: "smooth", block: "center" });
+        node.classList.add("bookingRowFocus");
+        window.setTimeout(() => node.classList.remove("bookingRowFocus"), 2600);
+      }
+      setOpenId(null);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [openId, items]);
 
   async function changeStatus(id:number,status:string) {
     setActionError(""); setActionSuccess("");
@@ -508,7 +543,7 @@ export default function StaffPage() {
         {visible.length === 0 ? <div className="apptEmpty"><span className="apptEmptyIcon" aria-hidden="true">🗓</span><b>Записів немає</b><p>На обрані фільтри записів не знайдено. Змініть дату, статус або пошук.</p></div> :
         groupedByDay.map(([groupDate, rows]) => <div className="apptDay" key={groupDate || "nodate"}>
         <div className="apptDayHead"><b>{formatApptDay(groupDate)}</b><span>{rows.length} {pluralAppt(rows.length)}</span></div>
-        {rows.map(item => <article className={`bookingRow appointmentRow route-${item.patientCategory} ${item.paymentStatus==="paid"?"payment-ok":"payment-due"}`} key={item.id}>
+        {rows.map(item => <article id={`booking-${item.id}`} className={`bookingRow appointmentRow route-${item.patientCategory} ${item.paymentStatus==="paid"?"payment-ok":"payment-due"}`} key={item.id}>
           <div className="bookingPrimary">
             <div className="bookingBadges"><span className={`patientRoute ${item.patientCategory}`}>{item.patientCategory==="military"?"Військовослужбовець":"Цивільний пацієнт"}</span><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span></div>
             <b>{item.name}</b>
