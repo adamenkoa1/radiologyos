@@ -170,11 +170,12 @@ export default function StudiesPage() {
       <div className="studiesTableWrap">
         <table className="studiesTable">
           <thead><tr>
-            <th>Пацієнт</th><th>Дослідження</th><th>Дата / час</th>
+            <th>Код</th><th>Пацієнт</th><th>Дослідження</th><th>Дата / час</th>
             <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th>{data.features?.dicomPacs ? <th>Знімки</th> : null}<th>Дія</th>
           </tr></thead>
           <tbody>
             {visible.map((s)=><tr key={s.id}>
+              <td className="studiesCode">{s.code}</td>
               <td>{s.name || "—"}</td>
               <td>{s.service}</td>
               <td className="studiesWhen">{s.desiredDate}{s.desiredTime ? ` ${s.desiredTime}` : ""}</td>
