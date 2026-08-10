@@ -25,7 +25,10 @@ export default function MwlBridgeAdminPage() {
     setStatus(data); setError("");
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   async function rotate() {
     setBusy(true); setError(""); setToken("");
