@@ -13,10 +13,10 @@ ON `mwl_bridge_tokens` (`token_hash`);
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS `mwl_patient_ids` (
   `organization_id` integer NOT NULL,
-  `phone_normalized` text NOT NULL,
+  `identity_key` text NOT NULL,
   `patient_id` text NOT NULL,
   `created_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`organization_id`, `phone_normalized`)
+  PRIMARY KEY (`organization_id`, `identity_key`)
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX IF NOT EXISTS `mwl_patient_ids_org_patient_idx`
