@@ -5,6 +5,7 @@ import { getSetting } from "../../../lib/settings";
 import { dbBinding } from "../../../lib/db";
 import { requirePatientSession } from "../../../lib/patient-auth";
 import { createPendingPayment, latestPaymentForBooking } from "../../../lib/payments";
+import { recordAnalyticsEvent } from "../../../lib/analytics";
 
 const DEFAULT_PRIVAT24_PAY_LINK = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params=%7B%22token%22%3A%22cadc7a4d-d56c-4005-9cfe-04a96077f8c1%22%7D';
 
@@ -68,6 +69,13 @@ export async function POST(request: Request) {
       providerReference,
     });
     const payment = await latestPaymentForBooking(db as never, session.organizationId, booking.id);
+    await recordAnalyticsEvent(db, {
+      eventName: "payment_started",
+      organizationId: session.organizationId,
+      serviceCode: booking.serviceCode,
+      patientCategory: "civilian",
+      source: "server",
+    });
     return Response.json({
       booking: {
         code: booking.code,
