@@ -24,8 +24,21 @@ export async function POST(request: Request) {
        b.desired_date AS desiredDate, b.desired_time AS desiredTime,
        b.status, b.created_at AS createdAt, b.patient_category AS category,
        b.payment_status AS paymentStatus, b.payment_amount AS paymentAmount,
+       b.paid_amount AS paidAmount, b.payment_method AS paymentMethod,
        COALESCE(o.name, '') AS organization,
-       CASE WHEN b.protocol_status = 'issued' THEN 1 ELSE 0 END AS hasProtocol
+       CASE WHEN b.protocol_status = 'issued' THEN 1 ELSE 0 END AS hasProtocol,
+       (SELECT pt.id FROM payment_transactions pt
+         WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
+         ORDER BY pt.id DESC LIMIT 1) AS paymentTransactionId,
+       COALESCE((SELECT pt.status FROM payment_transactions pt
+         WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
+         ORDER BY pt.id DESC LIMIT 1), '') AS paymentTransactionStatus,
+       COALESCE((SELECT pt.provider FROM payment_transactions pt
+         WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
+         ORDER BY pt.id DESC LIMIT 1), '') AS paymentProvider,
+       COALESCE((SELECT pt.provider_reference FROM payment_transactions pt
+         WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
+         ORDER BY pt.id DESC LIMIT 1), '') AS paymentReference
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
      WHERE b.organization_id = ? AND b.phone_normalized = ?
      ORDER BY b.created_at DESC, b.id DESC
