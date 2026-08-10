@@ -1,84 +1,91 @@
-// Поведінковий тест справжнього шляху ідентифікації пацієнта:
-// /api/my-bookings проти живої SQLite-схеми (не перевірка рядків у коді).
+// Поведінкові тести кабінету після OTP: /api/my-bookings не автентифікує
+// знанням DOB/телефону, а лише читає вже підтверджену tenant-scoped session.
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { withD1, jsonRequest, callWorker } from "./helpers/d1.mjs";
+import { withD1, jsonRequest, callWorker, seedPatientSession } from "./helpers/d1.mjs";
 
-const post = (db, body, opts) => callWorker(jsonRequest("/api/my-bookings", body, opts), db);
+const post = (db, cookie = "", opts = {}) => callWorker(
+  jsonRequest("/api/my-bookings", undefined, {
+    ...opts,
+    headers: cookie ? { cookie, ...(opts.headers || {}) } : (opts.headers || {}),
+  }),
+  db,
+);
 
 async function seedBooking(db, over = {}) {
   const b = {
     code: "RD-AAAA1111", name: "Іваненко Іван", phone: "+380971112233", phoneNormalized: "380971112233",
     service: "КТ головного мозку", serviceCode: "CT-01", desiredDate: "2026-09-01", desiredTime: "10:00",
-    status: "new", dob: "1990-05-05", category: "civilian", ...over,
+    status: "new", dob: "1990-05-05", category: "civilian", organizationId: 1, ...over,
   };
   await db.prepare(
     `INSERT INTO bookings (code, name, phone, phone_normalized, service, service_code,
        desired_date, desired_time, status, date_of_birth, patient_category, organization_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(b.code, b.name, b.phone, b.phoneNormalized, b.service, b.serviceCode,
-    b.desiredDate, b.desiredTime, b.status, b.dob, b.category).run();
+    b.desiredDate, b.desiredTime, b.status, b.dob, b.category, b.organizationId).run();
   return b;
 }
 
-test("correct phone + DOB returns the patient's bookings and opens a session", async () => {
+test("knowledge-only phone + DOB cannot establish cabinet access", async () => {
   await withD1(async (db) => {
     await seedBooking(db);
-    const res = await post(db, { phone: "+380971112233", dob: "1990-05-05" });
+    const res = await callWorker(jsonRequest("/api/my-bookings", {
+      phone: "+380971112233", dob: "1990-05-05",
+    }), db);
+    assert.equal(res.status, 401);
+    assert.equal(await db.prepare("SELECT COUNT(*) AS n FROM patient_sessions").first("n"), 0);
+  });
+});
+
+test("verified patient session returns only that patient's bookings", async () => {
+  await withD1(async (db) => {
+    await seedBooking(db, { desiredTime: "10:00" });
+    await seedBooking(db, {
+      code: "RD-BBBB2222", name: "Петренко", phone: "+380975556677",
+      phoneNormalized: "380975556677", dob: "1985-03-03", desiredTime: "10:30",
+    });
+    const cookie = await seedPatientSession(db, "380971112233", 1);
+    const before = await db.prepare("SELECT COUNT(*) AS n FROM patient_sessions").first("n");
+    const res = await post(db, cookie);
     assert.equal(res.status, 200);
     const data = await res.json();
     assert.equal(data.bookings.length, 1);
     assert.equal(data.bookings[0].code, "RD-AAAA1111");
-    // Сесію відкрито — cookie й реальний рядок у patient_sessions.
-    assert.match(res.headers.get("set-cookie") || "", /rid_patient=/);
-    const sessions = await db.prepare("SELECT COUNT(*) AS n FROM patient_sessions").first("n");
-    assert.equal(sessions, 1);
+    const after = await db.prepare("SELECT COUNT(*) AS n FROM patient_sessions").first("n");
+    assert.equal(after, before, "cabinet read must not mint another session");
   });
 });
 
-test("wrong DOB is rejected as unverified (identity proof actually enforced)", async () => {
+test("patient session is explicitly tenant-scoped", async () => {
   await withD1(async (db) => {
-    await seedBooking(db);
-    const res = await post(db, { phone: "+380971112233", dob: "1980-01-01" });
-    assert.equal(res.status, 401);
-    const sessions = await db.prepare("SELECT COUNT(*) AS n FROM patient_sessions").first("n");
-    assert.equal(sessions, 0); // жодної сесії при невдалій перевірці
-  });
-});
-
-test("a phone with no bookings cannot open a session", async () => {
-  await withD1(async (db) => {
-    const res = await post(db, { phone: "+380500000000", dob: "1990-05-05" });
-    assert.equal(res.status, 401);
-  });
-});
-
-test("malformed input is a 400 before any lookup", async () => {
-  await withD1(async (db) => {
-    const res = await post(db, { phone: "123", dob: "not-a-date" });
-    assert.equal(res.status, 400);
-  });
-});
-
-test("only bookings for the matching phone are returned (no cross-patient leak)", async () => {
-  await withD1(async (db) => {
-    await seedBooking(db, { code: "RD-AAAA1111", phone: "+380971112233", phoneNormalized: "380971112233", dob: "1990-05-05", desiredTime: "10:00" });
-    await seedBooking(db, { code: "RD-BBBB2222", name: "Петренко", phone: "+380975556677", phoneNormalized: "380975556677", dob: "1985-03-03", desiredTime: "10:30" });
-    const res = await post(db, { phone: "+380971112233", dob: "1990-05-05" });
+    await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2,'other','Інша',1)").run();
+    await seedBooking(db, { code: "RD-OWN00001", organizationId: 1, desiredTime: "10:00" });
+    await seedBooking(db, { code: "RD-OTHER001", organizationId: 2, desiredTime: "10:30" });
+    const cookie = await seedPatientSession(db, "380971112233", 1);
+    const res = await post(db, cookie);
     const data = await res.json();
-    assert.equal(data.bookings.length, 1);
-    assert.equal(data.bookings[0].code, "RD-AAAA1111");
+    assert.deepEqual(data.bookings.map((b) => b.code), ["RD-OWN00001"]);
   });
 });
 
-test("brute force is rate-limited after the configured attempts", async () => {
+test("expired or missing session is rejected", async () => {
   await withD1(async (db) => {
+    assert.equal((await post(db)).status, 401);
+    const cookie = await seedPatientSession(db, "380971112233", 1);
+    await db.prepare("UPDATE patient_sessions SET expires_at = datetime('now', '-1 minute')").run();
+    assert.equal((await post(db, cookie)).status, 401);
+  });
+});
+
+test("cabinet reads are rate-limited", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedPatientSession(db, "380971112233", 1);
     let last = 200;
-    for (let i = 0; i < 10; i += 1) {
-      const res = await post(db, { phone: "+380509999999", dob: "1990-05-05" }, { ip: "198.51.100.42" });
-      last = res.status;
+    for (let i = 0; i < 22; i += 1) {
+      last = (await post(db, cookie, { ip: "198.51.100.42" })).status;
     }
-    assert.equal(last, 429); // ліміт 8/15хв — 9-та+ спроби відбиваються
+    assert.equal(last, 429);
   });
 });
