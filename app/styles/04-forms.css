@@ -1,0 +1,34 @@
+/* ================= Уніфіковані поля форм кабінету ================= */
+/* Один колір, шрифт, формат для всіх полів вводу (крім інлайн-фільтрів). */
+.loginCard input,
+.passwordField input,
+.settingsCard input,
+.protocolFields input,.protocolFields select,.protocolFields textarea,
+.crmProfile input,.crmProfile select,.crmProfile textarea,
+.crmCommForm input,.crmCommForm select,.crmCommForm textarea,
+.pacsSettings input,.pacsSettings textarea,
+.staffMemberAdd input,.staffMemberAdd select,
+.staffMemberList input,.staffMemberList select,
+.rescheduleForm input,.rescheduleForm select,
+.protocolQueueTools input,
+.staffNoteForm textarea{
+  width:100%;padding:var(--field-pad);border:1px solid var(--field-border);border-radius:var(--field-radius);
+  background:var(--field-bg);font:inherit;font-size:14px;line-height:1.4;color:var(--ink);appearance:none;-webkit-appearance:none;transition:border-color .12s,box-shadow .12s;
+}
+.staffNoteForm textarea,.crmProfile textarea,.crmCommForm textarea,.protocolFields textarea,.pacsSettings textarea{min-height:76px;resize:vertical}
+.loginCard input:focus,
+.passwordField input:focus,
+.settingsCard input:focus,
+.protocolFields input:focus,.protocolFields select:focus,.protocolFields textarea:focus,
+.crmProfile input:focus,.crmProfile select:focus,.crmProfile textarea:focus,
+.crmCommForm input:focus,.crmCommForm select:focus,.crmCommForm textarea:focus,
+.pacsSettings input:focus,.pacsSettings textarea:focus,
+.staffMemberAdd input:focus,.staffMemberAdd select:focus,
+.staffMemberList input:focus,.staffMemberList select:focus,
+.rescheduleForm input:focus,.rescheduleForm select:focus,
+.protocolQueueTools input:focus,
+.staffNoteForm textarea:focus{
+  outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(13,91,80,.12);
+}
+.passwordField input{padding-right:44px}
+

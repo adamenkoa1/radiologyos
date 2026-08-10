@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -17,7 +18,7 @@ test("shared week calendar component offers list/day/week views", async () => {
   assert.match(cal, /apptCardName/); // ім'я пацієнта як головний елемент
   assert.match(cal, /modClass\(/); // кольорова смуга за модальністю
   assert.match(cal, /apptCardTags/); // компактні теги (контраст/оплата/військовий)
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.apptCardRow\.mod-ct\b/); // смуга КТ
   assert.match(css, /\.apptCardName\{[^}]*font-size:16px/); // ім'я більше за мету
   // Єдиний Workspace: клік по запису відкриває спільний drawer, без переходу.
@@ -91,7 +92,7 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /Робота зараз/);
   assert.match(dash, /modClass/); // кольорова смужка за типом дослідження
   assert.match(dash, /whenLabel/); // «через N хв» на розкладі
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /@keyframes dashBlink/); // миготіння нових заявок
   assert.match(css, /\.dashMc\{/); // стилі панелі місії
   assert.match(css, /\.dashChip\b/); // стилі фільтрів

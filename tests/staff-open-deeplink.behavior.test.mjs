@@ -6,6 +6,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 import { withD1, jsonRequest, callWorker } from "./helpers/d1.mjs";
 
 const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
@@ -38,6 +39,6 @@ test("the root page consumes ?open=, clears filters and targets the booking", as
 test("the drawer still deep-links into the full booking editor", async () => {
   const drawer = await read("app/staff/booking-drawer.tsx");
   assert.match(drawer, /\/staff\?open=\$\{b\.id\}#bookings/);
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.bookingRowFocus\{/);
 });

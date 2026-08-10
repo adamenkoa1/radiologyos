@@ -1,0 +1,61 @@
+/* ================= Армія+ public theme (light military) ================= */
+.publicShell{--mil-grad:linear-gradient(135deg,#4f5d3e,#6c7c59);--mil-solid:#556349;--civ-grad:linear-gradient(135deg,#f4e8cf,#e6cb95);--pub-gold:#f4c64f;--pub-line:#e0e4da;--pub-muted:#667062;--pub-shadow:0 16px 42px rgba(24,34,19,.12);min-height:100vh;background:#f5f3ed;color:#141712}
+/* landing surfaces */
+.publicShell .landingHeader,.publicShell .categoryCard.military,.publicShell .infoCard{background:var(--mil-grad);border:0;color:#fff;box-shadow:var(--pub-shadow)}
+.publicShell .landingHeaderTitle b{color:#fff}.publicShell .landingHeaderTitle small{color:#e6eadf}
+.publicShell .modalityChips li{background:rgba(255,255,255,.09);border-color:rgba(255,255,255,.18);color:#eef3e6}
+.publicShell .modalityChips li span{background:rgba(255,255,255,.18);color:#fff}
+.publicShell .landingLogin>summary{border-color:rgba(255,255,255,.4);color:#fff}
+.publicShell .landingLogin>div{background:#f7f8f4;border:1px solid #d7ddd1;box-shadow:0 18px 46px rgba(14,22,11,.24)}
+.publicShell .landingLogin>div a{color:#1d2419}.publicShell .landingLogin>div a:hover{background:#f1f3ed;color:#4f5d3e}
+.publicShell .categoryIcon{background:rgba(255,255,255,.14)}
+.publicShell .categoryCard.military .categoryCopy b{color:#fff}.publicShell .categoryCard.military .categoryCopy small{color:#e9eee3}
+.publicShell .categoryCard:hover{transform:translateY(-2px);box-shadow:0 20px 48px rgba(24,34,19,.18)}
+.publicShell .categoryCard.civilian{background:var(--civ-grad);color:#2a2417;border:0}
+.publicShell .categoryCard.civilian .categoryIcon{background:rgba(79,93,62,.1);color:#4f5d3e}
+.publicShell .categoryCard.civilian .categoryCopy b{color:#2a2417}.publicShell .categoryCard.civilian .categoryCopy small{color:#5a4c2c;opacity:1}
+.publicShell .categoryChevron{opacity:.85}
+.publicShell .infoText b{color:#fff}.publicShell .infoText>span{color:#e9eee3}
+.landingFoot{display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px;max-width:1140px;margin:6px auto 0;padding:14px 8px 40px;color:#667062;font-size:12px}
+
+/* booking page top bar */
+.bookingTop{max-width:1140px;margin:0 auto;display:flex;align-items:center;gap:20px;padding:22px clamp(14px,4vw,28px) 8px}
+.bookingBack{color:#4f5d3e;font-weight:800;font-size:13px;white-space:nowrap}.bookingBack:hover{color:#3c4a30}
+.bookingTopTitle b{display:block;font-family:var(--font-serif);font-size:19px;color:#141712;line-height:1.2}.bookingTopTitle small{display:block;margin-top:3px;color:#667062;font-size:12px}
+.bookingPage .section{max-width:1140px;padding-top:44px;padding-bottom:44px}
+
+/* shared light typography + surfaces for booking sections */
+.publicShell .eyebrow{color:#4f5d3e}.publicShell .eyebrow span{background:#556349}
+.publicShell h1,.publicShell h2,.publicShell h3{color:#141712}
+.publicShell .sectionHead>p,.publicShell .lead,.publicShell .bookingIntro>p:not(.eyebrow){color:#4e5d46}
+.publicShell .serviceCard{background:#fff;border:1px solid var(--pub-line);box-shadow:0 10px 26px rgba(24,34,19,.06)}
+.publicShell .serviceCard h3{color:#141712}.publicShell .serviceCard p{color:#4e5d46}
+.publicShell .serviceIcon{background:rgba(85,99,73,.12);color:#4f5d3e}
+.publicShell .serviceCard>div{border-top-color:var(--pub-line)}.publicShell .serviceCard b{color:#141712}.publicShell .serviceCard>div a{color:#4f5d3e}
+.publicShell .catalogCount,.publicShell .tariffNote{color:#667062}
+.publicShell .prepGrid article{background:#fff;border:1px solid var(--pub-line)}.publicShell .prepGrid span{color:#556349}.publicShell .prepGrid h3{color:#141712}.publicShell .prepGrid p{color:#4e5d46}
+.publicShell .included{background:#eef1e9;border:1px solid #dbe2d1;color:#3c4a30}.publicShell .included b{color:#3c4a30}.publicShell .included span{border-left-color:#cdd6bf}
+.publicShell .steps>span{background:rgba(85,99,73,.14);color:#4f5d3e}.publicShell .steps b{color:#141712}.publicShell .steps small{color:#667062}
+.publicShell .bookingSummary{background:#fff;border:1px solid var(--pub-line);box-shadow:0 10px 26px rgba(24,34,19,.06)}.publicShell .bookingSummaryTitle{color:#4f5d3e!important}.publicShell .bookingSummaryService{color:#141712!important}.publicShell .bookingSummaryEmpty{color:#667062!important}
+.publicShell .bookingSummary ul,.publicShell .bookingSummary li{border-color:var(--pub-line)}.publicShell .bookingSummary li span{color:#667062}.publicShell .bookingSummary li b{color:#141712}.publicShell .bookingSummary li.price b{color:#4f5d3e}.publicShell .bookingSummary>small{color:#8a927f}
+.publicShell .bookingForm{background:#fff;border:1px solid var(--pub-line);box-shadow:var(--pub-shadow)}
+.publicShell .formSection>legend{color:#141712}.publicShell .formSection>legend>span{background:#c7cebc;color:#3c4a30}.publicShell .formSection>legend.done>span{background:#556349;color:#fff}
+.publicShell label span{color:#41544f}
+.publicShell .bookingForm input,.publicShell .bookingForm select,.publicShell .bookingForm textarea{background:#fff;border:1px solid #cfd4c8;color:#141712}
+.publicShell .bookingForm input:focus,.publicShell .bookingForm select:focus,.publicShell .bookingForm textarea:focus{outline:2px solid #556349;border-color:#556349}
+.publicShell .bookingForm select option{color:#111}
+.publicShell .slotDetails{color:#4f5d3e}
+.publicShell .consent{color:#556050}.publicShell .consent a{color:#4f5d3e}
+.publicShell .button{background:#556349;color:#fff}.publicShell .button:hover{background:#465239}
+.publicShell .notice.success{background:#eef4e6;color:#33632c}.publicShell .notice.error{background:#fdf1ee;color:#a23c1d}
+.publicShell footer{background:transparent;border-top:1px solid var(--pub-line);color:#667062}.publicShell footer a{color:#4e5d46}.publicShell footer a:hover{color:#4f5d3e}
+/* v22-exact typography: Inter sans everywhere on public pages (no serif) */
+.publicShell .landingHeaderTitle b,.publicShell .categoryCopy b,.publicShell h1,.publicShell h2,.publicShell h3,.publicShell .bookingSummaryService,.publicShell .bookingTopTitle b,.publicShell .serviceCard h3,.publicShell .steps b,.publicShell .prepGrid h3{font-family:var(--font-sans)}
+.publicShell .landingHeaderTitle b{font-size:clamp(20px,3vw,27px);font-weight:700;letter-spacing:-.01em}
+.publicShell .landingHeaderTitle small{font-size:14px}
+.publicShell .categoryCopy b{font-size:clamp(22px,3.3vw,29px);font-weight:650;letter-spacing:-.005em}
+.publicShell h2{font-weight:700;letter-spacing:-.03em}
+.publicShell .serviceCard h3{font-weight:700}
+.publicShell .serviceCard>div b{color:#4f6140}
+@media(max-width:600px){.bookingTop{flex-direction:column;align-items:flex-start;gap:10px}}
+

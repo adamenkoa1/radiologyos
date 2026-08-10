@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -15,12 +16,12 @@ test("the public site does not declare a logo favicon", async () => {
 });
 
 test("patient-card link sits on its own line (not glued to the phone)", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.crmCardLink\{display:block;margin-top:6px/);
 });
 
 test("staff member rows keep min column widths so selects don't truncate", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.staffMemberList form\{grid-template-columns:minmax\(/);
 });
 

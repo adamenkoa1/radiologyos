@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -85,7 +86,7 @@ test("confirm surfaces a persistent call-back list when notification fails", asy
   assert.match(page, /href=\{`tel:\$\{b\.phone\}`\}/);
   // Успіх лишається лише коли реально надіслано.
   assert.match(page, /\(r\?\.sent \?\? 0\) > 0/);
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.dashNeedsCall\{[^}]*var\(--mod-urgent\)/);
   assert.match(css, /\.dashToast\.warn\{/);
 });
@@ -101,7 +102,7 @@ test("pending queue supports batch confirmation", async () => {
   // UI: чекбокс на картці, кнопки «Обрати всі» / «Підтвердити обрані».
   assert.match(page, /className="dashCardPick"/);
   assert.match(page, /Підтвердити обрані · \$\{selected\.size\}/);
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.dashCard\.picked\{/);
   assert.match(css, /\.dashBatchBtn\{/);
 });
