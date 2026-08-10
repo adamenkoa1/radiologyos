@@ -1,0 +1,19 @@
+/* ================= Командна палітра (⌘K) ================= */
+.cmdkOverlay{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-start;justify-content:center;padding:12vh 16px 16px;background:rgba(14,26,24,.44);backdrop-filter:blur(2px)}
+.cmdkBox{width:min(620px,100%);background:#fff;border:1px solid #d7e0dd;border-radius:14px;box-shadow:0 24px 64px rgba(12,30,24,.28);overflow:hidden;display:flex;flex-direction:column;max-height:70vh}
+.cmdkInput{width:100%;border:0;border-bottom:1px solid #e7ecea;padding:16px 18px;font:inherit;font-size:16px;color:var(--ink,#18302f);outline:none}
+.cmdkList{list-style:none;margin:0;padding:6px;overflow:auto}
+.cmdkItem{display:flex;align-items:baseline;gap:10px;padding:10px 12px;border-radius:9px;cursor:pointer;color:#18302f}
+.cmdkItem.on{background:#eef7f8}
+.cmdkIcon{flex:0 0 auto;color:#6c8b86;font-size:13px;width:18px;text-align:center}
+.cmdkMain{flex:1 1 auto;font-size:14px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmdkHint{flex:0 0 auto;color:#7a8b88;font-size:12px;max-width:55%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cmdkEmpty{padding:22px 14px;text-align:center;color:#8a9994;font-size:13px}
+.cmdkFoot{border-top:1px solid #eef2f0;padding:9px 14px;color:#8a9994;font-size:11px;display:flex;gap:8px;flex-wrap:wrap}
+.cmdkFoot kbd{background:#f1f5f3;border:1px solid #dde5e2;border-radius:5px;padding:1px 6px;font:inherit;font-size:11px;color:#5a6c68}
+.themeDark .cmdkBox{background:#132a31;border-color:#2b4048}
+.themeDark .cmdkInput{color:#eaf2f3;border-bottom-color:#223a41;background:#132a31}
+.themeDark .cmdkItem{color:#dfe9ec}
+.themeDark .cmdkItem.on{background:#1c3a42}
+.themeDark .cmdkFoot{border-top-color:#223a41}
+.themeDark .cmdkFoot kbd{background:#1c3a42;border-color:#2b4048;color:#aebfc2}

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
+import CommandPalette from "./command-palette";
 
 type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake";
 
@@ -124,6 +125,7 @@ export default function StaffWorkspaceShell({
   // сторінки теж розтягуємо, щоб він не «висів» вужчою колонкою над контентом.
   const wide = active === "dashboard" || active === "appointments" || active === "intake";
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
+    <CommandPalette />
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff/appointments" aria-label="RadiologyOS — календар заявок">
         <span className="workspaceBrandMark">R</span>
