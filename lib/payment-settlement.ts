@@ -1,4 +1,4 @@
-import { paymentBookingSnapshot, type PaymentLedgerDb } from "./payments";
+import { paymentBookingSnapshot, type PaymentLedgerDb } from "./payments.ts";
 
 export async function settleVerifiedProviderPayment(
   db: PaymentLedgerDb,
