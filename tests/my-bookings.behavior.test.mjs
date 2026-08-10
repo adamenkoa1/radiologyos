@@ -63,8 +63,8 @@ test("malformed input is a 400 before any lookup", async () => {
 
 test("only bookings for the matching phone are returned (no cross-patient leak)", async () => {
   await withD1(async (db) => {
-    await seedBooking(db, { code: "RD-AAAA1111", phone: "+380971112233", phoneNormalized: "380971112233", dob: "1990-05-05" });
-    await seedBooking(db, { code: "RD-BBBB2222", name: "Петренко", phone: "+380975556677", phoneNormalized: "380975556677", dob: "1985-03-03" });
+    await seedBooking(db, { code: "RD-AAAA1111", phone: "+380971112233", phoneNormalized: "380971112233", dob: "1990-05-05", desiredTime: "10:00" });
+    await seedBooking(db, { code: "RD-BBBB2222", name: "Петренко", phone: "+380975556677", phoneNormalized: "380975556677", dob: "1985-03-03", desiredTime: "10:30" });
     const res = await post(db, { phone: "+380971112233", dob: "1990-05-05" });
     const data = await res.json();
     assert.equal(data.bookings.length, 1);
