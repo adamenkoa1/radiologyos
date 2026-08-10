@@ -1,11 +1,12 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("RadiologyOS v2 design tokens: single source of truth is declared", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   // Типографіка (48/36/28/22/18/16/14/12).
   for (const [tok, val] of [["--fs-display", "48px"], ["--fs-h1", "36px"], ["--fs-h2", "28px"],
     ["--fs-h3", "22px"], ["--fs-lg", "18px"], ["--fs-base", "16px"], ["--fs-sm", "14px"], ["--fs-xs", "12px"]]) {
@@ -25,7 +26,7 @@ test("RadiologyOS v2 design tokens: single source of truth is declared", async (
 });
 
 test("modality colours reference tokens (no duplicated hex across surfaces)", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   // Пульт, календар використовують змінні модальностей, а не хардкод.
   assert.match(css, /\.dashCard\.mod-ct\{border-left:4px solid var\(--mod-ct\)\}/);
   assert.match(css, /\.dashAgendaRow\.mod-ct\{box-shadow:inset 3px 0 0 0 var\(--mod-ct\)\}/);
@@ -35,7 +36,7 @@ test("modality colours reference tokens (no duplicated hex across surfaces)", as
 });
 
 test("card system: .ds-card primitives + dashboard surfaces use token radius/elevation", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   // Примітив картки й рівні елевації.
   assert.match(css, /\.ds-card\{[^}]*border-radius:var\(--r-lg\)[^}]*box-shadow:var\(--sh-1\)/);
   assert.match(css, /\.ds-card\.raised\{box-shadow:var\(--sh-2\)\}/);
@@ -48,7 +49,7 @@ test("card system: .ds-card primitives + dashboard surfaces use token radius/ele
 });
 
 test("typography: headings bound to the token scale", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   // Заголовок сторінки масштабується до --fs-h1 (більша присутність на 27\").
   assert.match(css, /\.workspacePageHead h1\{[^}]*font-size:clamp\(24px,2\.4vw,var\(--fs-h1\)\)/);
   // Опис і хлібні крихти — на токенах.
@@ -62,7 +63,7 @@ test("typography: headings bound to the token scale", async () => {
 });
 
 test("staff chrome identity: brand vars drive sidebar/logo/topbar", async () => {
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   // Брендові змінні хрому визначені на shell.
   assert.match(css, /--ws-brand:#123d3a;--ws-brand-deep:#0d302e;--ws-accent:#ef744d/);
   // Сайдбар — брендовий градієнт (глибина).

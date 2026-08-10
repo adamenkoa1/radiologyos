@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -62,7 +63,7 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   // Drawer у Дошці: клік по попередньому дослідженню відкриває спільну панель.
   assert.match(page, /<BookingDrawer/);
   assert.match(page, /setDrawerId\(h\.id\)/);
-  const css = await read("app/globals.css");
+  const css = await globalsCss();
   assert.match(css, /\.intakeHistory\b/); // стилі історії
   assert.match(css, /\.intakeFacts\b/);   // сітка фактів
   const shell = await read("app/staff/workspace-shell.tsx");
