@@ -22,18 +22,19 @@ function radiologyAnalyticsJourney() {
   } catch (e) { return ''; }
 }
 
-function trackSlotSelected(serviceCode) {
+function trackRadiologyAnalytics(eventName, options) {
   const journeyId = radiologyAnalyticsJourney();
   if (!journeyId) return;
+  const input = options || {};
   fetch('/api/analytics', {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     body: JSON.stringify({
-      eventName: 'slot_selected',
+      eventName,
       journeyId,
-      serviceCode: String(serviceCode || '').slice(0, 16),
-      patientCategory: /military/i.test(location.pathname) ? 'military' : 'civilian',
-      pageKey: location.pathname.slice(0, 64),
+      serviceCode: String(input.serviceCode || '').slice(0, 16),
+      patientCategory: input.patientCategory === 'military' ? 'military' : (input.patientCategory === 'civilian' ? 'civilian' : ''),
+      pageKey: String(input.pageKey || location.pathname || '').slice(0, 64),
     }),
     keepalive: true,
   }).catch(() => {});
@@ -85,7 +86,10 @@ async function initSlotPicker({ container, serviceCode, onPick }) {
     }));
     container.querySelectorAll('.sp-time').forEach((b) => b.addEventListener('click', () => {
       selTime = b.dataset.time;
-      trackSlotSelected(serviceCode);
+      trackRadiologyAnalytics('slot_selected', {
+        serviceCode,
+        patientCategory: /military/i.test(location.pathname) ? 'military' : 'civilian',
+      });
       render();
       if (onPick) onPick({ date: selDay.iso, time: selTime });
     }));
