@@ -2,9 +2,9 @@
 --
 -- The application still performs friendly pre-flight conflict checks, but
 -- these triggers are the final invariant. Any INSERT/UPDATE that would create
--- overlapping active appointments fails on booking_capacity_locks uniqueness.
--- Because trigger effects are part of the same SQLite statement, a failed
--- reservation rolls the booking write and lock changes back together.
+-- overlapping active appointments fails at the booking_capacity_locks layer.
+-- Trigger effects are part of the same SQLite statement, so failed capacity
+-- reservations roll the booking write and lock changes back together.
 
 CREATE TABLE `booking_minute_offsets` (
   `minute_offset` integer PRIMARY KEY NOT NULL
@@ -17,6 +17,40 @@ WITH RECURSIVE seq(n) AS (
 )
 INSERT INTO booking_minute_offsets (minute_offset)
 SELECT n FROM seq;
+--> statement-breakpoint
+
+-- Public booking also reserves locks explicitly in its D1 batch. Re-inserting
+-- an identical lock for the same booking is therefore an idempotent no-op,
+-- while a different booking competing for the same capacity is aborted with a
+-- stable error message that routes can translate to HTTP 409.
+CREATE TRIGGER `booking_capacity_same_booking_ignore`
+BEFORE INSERT ON `booking_capacity_locks`
+WHEN EXISTS (
+  SELECT 1 FROM booking_capacity_locks l
+  WHERE l.organization_id = NEW.organization_id
+    AND l.equipment_id = NEW.equipment_id
+    AND l.booking_date = NEW.booking_date
+    AND l.minute = NEW.minute
+    AND l.booking_code = NEW.booking_code
+)
+BEGIN
+  SELECT RAISE(IGNORE);
+END;
+--> statement-breakpoint
+
+CREATE TRIGGER `booking_capacity_conflict_abort`
+BEFORE INSERT ON `booking_capacity_locks`
+WHEN EXISTS (
+  SELECT 1 FROM booking_capacity_locks l
+  WHERE l.organization_id = NEW.organization_id
+    AND l.equipment_id = NEW.equipment_id
+    AND l.booking_date = NEW.booking_date
+    AND l.minute = NEW.minute
+    AND l.booking_code <> NEW.booking_code
+)
+BEGIN
+  SELECT RAISE(ABORT, 'booking capacity conflict');
+END;
 --> statement-breakpoint
 
 CREATE TRIGGER `bookings_capacity_after_insert`
