@@ -13,11 +13,11 @@ type PacsRow = {
   dicomwebBaseUrl:string; viewerBaseUrl:string; aeTitle:string; enabled:number;
 };
 
-async function loadPacs(db:D1Database):Promise<PacsRow> {
+async function loadPacs(db:D1Database, organizationId:number):Promise<PacsRow> {
   const row = await db.prepare(
     `SELECT dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
-       ae_title AS aeTitle, enabled FROM pacs_settings WHERE id = 1 LIMIT 1`
-  ).first<PacsRow>();
+       ae_title AS aeTitle, enabled FROM pacs_settings WHERE organization_id = ? LIMIT 1`
+  ).bind(organizationId).first<PacsRow>();
   return row || { dicomwebBaseUrl:"", viewerBaseUrl:"", aeTitle:"", enabled:0 };
 }
 
@@ -62,7 +62,7 @@ export async function GET(request: Request) {
     return Response.json({ error: "Доступ до знімків має лише залучений медичний персонал" }, { status: 403 });
   }
 
-  const pacs = await loadPacs(db);
+  const pacs = await loadPacs(db, ctx.organizationId);
   const bookingId = Number(new URL(request.url).searchParams.get("bookingId"));
 
   if (Number.isInteger(bookingId) && bookingId > 0) {
@@ -73,9 +73,11 @@ export async function GET(request: Request) {
       db.prepare(
         `SELECT id, code, name, service, service_code AS serviceCode, equipment_id AS equipmentId,
           desired_date AS desiredDate, desired_time AS desiredTime, performed_at AS performedAt
-         FROM bookings WHERE id = ? LIMIT 1`
-      ).bind(bookingId).first<Record<string, unknown>>(),
-      db.prepare(`SELECT ${STUDY_COLUMNS} FROM imaging_studies WHERE booking_id = ? LIMIT 1`).bind(bookingId).first<Record<string, unknown>>(),
+         FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
+      ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>(),
+      db.prepare(
+        `SELECT ${STUDY_COLUMNS} FROM imaging_studies WHERE booking_id = ? AND organization_id = ? LIMIT 1`,
+      ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>(),
     ]);
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
 
@@ -86,8 +88,8 @@ export async function GET(request: Request) {
       await db.prepare(
         `UPDATE imaging_studies SET series_count = ?, instances_count = ?,
            study_status = CASE WHEN study_status = 'archived' THEN 'archived' ELSE 'available' END
-         WHERE booking_id = ?`
-      ).bind(series.length, instances, bookingId).run();
+         WHERE booking_id = ? AND organization_id = ?`
+      ).bind(series.length, instances, bookingId, ctx.organizationId).run();
     }
     return Response.json({
       booking, study: study || null, series,
@@ -111,7 +113,8 @@ export async function GET(request: Request) {
        COALESCE(i.study_instance_uid, '') AS studyInstanceUid,
        COALESCE(i.series_count, 0) AS seriesCount
      FROM bookings b
-     LEFT JOIN imaging_studies i ON i.booking_id = b.id
+     LEFT JOIN imaging_studies i
+       ON i.booking_id = b.id AND i.organization_id = b.organization_id
      WHERE b.organization_id = ? AND b.status != 'cancelled' AND (b.performed_at != '' OR i.booking_id IS NOT NULL)
      ${assignmentClause}
      ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
@@ -152,23 +155,28 @@ export async function PUT(request: Request) {
     .bind(bookingId, ctx.organizationId).first();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
 
-  // Нова студія успадковує організацію заявки (tenant tag на запис).
   await db.prepare(
     `INSERT INTO imaging_studies
        (organization_id, booking_id, accession_number, study_instance_uid, modality, study_status, study_datetime, source, updated_by, updated_at)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'manual', ?, CURRENT_TIMESTAMP)
      ON CONFLICT(booking_id) DO UPDATE SET
-       accession_number = excluded.accession_number, study_instance_uid = excluded.study_instance_uid,
-       modality = excluded.modality, study_status = excluded.study_status,
-       study_datetime = excluded.study_datetime, updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+       organization_id = excluded.organization_id,
+       accession_number = excluded.accession_number,
+       study_instance_uid = excluded.study_instance_uid,
+       modality = excluded.modality,
+       study_status = excluded.study_status,
+       study_datetime = excluded.study_datetime,
+       updated_by = excluded.updated_by,
+       updated_at = CURRENT_TIMESTAMP`
   ).bind(
     ctx.organizationId, bookingId, study.accessionNumber, study.studyInstanceUid, study.modality,
     study.studyStatus, study.studyDatetime, member.email,
   ).run();
 
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'imaging_linked', ?, ?)"
+    "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'imaging_linked', ?, ?)"
   ).bind(
+    ctx.organizationId,
     bookingId,
     `${study.studyStatus}${study.accessionNumber ? ` · ${study.accessionNumber}` : ""}${study.studyInstanceUid ? " · UID" : ""}`,
     member.email,
