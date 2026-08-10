@@ -27,7 +27,7 @@ jobs:
     name: Build and deploy
     if: ${{ inputs.confirmation == 'DEPLOY' }}
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     environment: production
     steps:
       - name: Checkout
@@ -44,6 +44,9 @@ jobs:
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
+      - name: Production release gate
+        run: npm run test:production-gate
 
       - name: Build artifact
         run: npm run build
@@ -84,4 +87,8 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Smoke test production
-        run: curl --fail --silent --show-error --retry 5 --retry-all-errors https://radiologyos.tech/ > /dev/null
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 5 --retry-all-errors https://radiologyos.tech/ > /dev/null
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://radiologyos.tech/site/)" = "308"
+          curl --fail --silent --show-error https://radiologyos.tech/robots.txt > /dev/null
