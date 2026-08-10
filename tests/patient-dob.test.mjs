@@ -5,8 +5,6 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-// Міграція 0018 додає date_of_birth до bookings; вхід у кабінет — за
-// збігом телефону і дати народження.
 test("migration adds date_of_birth to bookings and phone+dob lookup works", async () => {
   const dir = new URL("../drizzle/", import.meta.url);
   const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
@@ -30,7 +28,6 @@ test("migration adds date_of_birth to bookings and phone+dob lookup works", asyn
   assert.ok(!wrong, "wrong dob does not match");
 });
 
-// normalizeDob приймає лише правдоподібну YYYY-MM-DD.
 test("normalizeDob validates the date shape and range", async () => {
   const { normalizeDob } = await import("../lib/dob.ts");
   assert.equal(normalizeDob("1990-05-21"), "1990-05-21");
@@ -44,7 +41,6 @@ test("online booking accepts only adults aged 18 or older", async () => {
   assert.equal(isAdultDob("2008-08-02", 18, "2026-08-01"), false);
 });
 
-// Публічний запис (обидві форми) збирає й зберігає дату народження.
 test("site-booking stores date_of_birth and requires it", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /normalizeDob\(body\.dob\)/);
@@ -55,7 +51,7 @@ test("site-booking stores date_of_birth and requires it", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('patientDob'\)/);
   assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
-  assert.match(bridge, /name, phone, dob,/); // dob потрапляє у payload
+  assert.match(bridge, /name, phone, dob,/);
   assert.match(bridge, /dob-segmented/);
   assert.match(bridge, /День народження/);
   assert.match(bridge, /Місяць народження/);
@@ -82,20 +78,23 @@ test("public request is short and receives an automatic appointment", async () =
   }
 });
 
-// Кабінет пацієнта: вхід за телефоном + датою народження (не за кодом).
-test("patient cabinet logs in by phone and date of birth", async () => {
+test("patient cabinet uses DOB only to request a possession OTP, then verifies six digits", async () => {
+  const otp = await read("app/api/patient-otp/route.ts");
+  assert.match(otp, /normalizeDob\(body\.dob\)/);
+  assert.match(otp, /createPatientOtpChallenge/);
+  assert.match(otp, /verifyPatientOtpChallenge/);
+  assert.match(otp, /patientSessionCookie/);
+
   const bookings = await read("app/api/my-bookings/route.ts");
-  assert.match(bookings, /normalizeDob\(body\.dob\)/);
-  assert.match(bookings, /phone_normalized = \? AND date_of_birth = \?/);
-  assert.match(bookings, /дату народження/);
+  assert.match(bookings, /requirePatientSession/);
+  assert.doesNotMatch(bookings, /normalizeDob\(body\.dob\)/);
+  assert.doesNotMatch(bookings, /createPatientSession/);
+
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /id="gateDob"/);
-  assert.match(cabinet, /dob: dobValue/);
+  assert.match(cabinet, /\/api\/patient-otp/);
+  assert.match(cabinet, /6.{0,20}(?:циф|знач)/i);
   assert.match(cabinet, /radiologyos_patient_prefill_v1/);
-  assert.match(cabinet, /sessionStorage\.getItem/);
-  assert.match(cabinet, /savedAutoEnter/);
   assert.match(cabinet, /№ заявки:/);
-  assert.match(cabinet, /Заявку отримано/);
   assert.match(cabinet, /statusMeta/);
-  assert.doesNotMatch(cabinet, /id="gateCode"/);
 });

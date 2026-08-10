@@ -1,11 +1,8 @@
 import {
   clearedPatientSessionCookie,
-  createPatientSession,
   destroyPatientSession,
-  patientSessionCookie,
+  requirePatientSession,
 } from "../../../lib/patient-auth";
-import { normalizeUkrainianPhone } from "../../../lib/phone";
-import { normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { stateLabel } from "../../../lib/study-state";
 import { dbBinding } from "../../../lib/db";
@@ -13,23 +10,13 @@ import { dbBinding } from "../../../lib/db";
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
-  if (await isRateLimited(db, request, "patient-login", 8, 15)) {
-    return Response.json({ error: "Забагато спроб. Повторіть перевірку пізніше." }, { status: 429 });
+  if (await isRateLimited(db, request, "patient-cabinet", 20, 15)) {
+    return Response.json({ error: "Забагато запитів. Повторіть пізніше." }, { status: 429 });
   }
 
-  const body = await request.json().catch(() => ({})) as { phone?: string; dob?: string };
-  const phoneNormalized = normalizeUkrainianPhone(String(body.phone || ""));
-  const dob = normalizeDob(body.dob);
-  if (!phoneNormalized || !dob) {
-    return Response.json({ error: "Введіть повний номер телефону та дату народження" }, { status: 400 });
-  }
-
-  // Підтвердження особи: збіг телефону і дати народження хоча б в одній заявці.
-  const proof = await db.prepare(
-    "SELECT id FROM bookings WHERE phone_normalized = ? AND date_of_birth = ? LIMIT 1"
-  ).bind(phoneNormalized, dob).first();
-  if (!proof) {
-    return Response.json({ error: "Не вдалося підтвердити номер телефону або дату народження" }, { status: 401 });
+  const session = await requirePatientSession(request, db);
+  if (!session) {
+    return Response.json({ error: "Сесію не підтверджено. Отримайте одноразовий код ще раз." }, { status: 401 });
   }
 
   const rows = await db.prepare(
@@ -40,26 +27,20 @@ export async function POST(request: Request) {
        COALESCE(o.name, '') AS organization,
        CASE WHEN b.protocol_status = 'issued' THEN 1 ELSE 0 END AS hasProtocol
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
-     WHERE b.phone_normalized = ? AND b.date_of_birth = ?
+     WHERE b.organization_id = ? AND b.phone_normalized = ?
      ORDER BY b.created_at DESC, b.id DESC
      LIMIT 50`
-  ).bind(phoneNormalized, dob).all();
+  ).bind(session.organizationId, session.phoneNormalized).all();
 
   const bookings = (rows.results || []).map((row) => ({
     ...row,
     hasProtocol: Number((row as { hasProtocol: number }).hasProtocol) === 1,
-    // Людський підпис стану дослідження для пацієнта.
     statusLabel: stateLabel(String((row as { status: string }).status)),
   }));
-  const rawToken = await createPatientSession(db, phoneNormalized);
+
   return Response.json(
     { bookings },
-    {
-      headers: {
-        "set-cookie": patientSessionCookie(rawToken),
-        "cache-control": "no-store",
-      },
-    },
+    { headers: { "cache-control": "no-store" } },
   );
 }
 

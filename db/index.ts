@@ -2,8 +2,9 @@ import { env } from "cloudflare:workers";
 import { drizzle } from "drizzle-orm/d1";
 import * as coreSchema from "./schema";
 import * as capacitySchema from "./capacity-schema";
+import * as patientAuthSchema from "./patient-auth-schema";
 
-const schema = { ...coreSchema, ...capacitySchema };
+const schema = { ...coreSchema, ...capacitySchema, ...patientAuthSchema };
 
 export function getDb() {
   if (!env.DB) {
