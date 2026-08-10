@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("tariffs migration + schema define the overrides table", async () => {
+test("legacy tariff table remains available as migration fallback", async () => {
   const migration = await read("drizzle/0011_service_prices.sql");
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `service_prices`/);
   assert.match(migration, /`code` text PRIMARY KEY/);
@@ -14,12 +14,23 @@ test("tariffs migration + schema define the overrides table", async () => {
   assert.match(schema, /export const servicePrices = sqliteTable\("service_prices"/);
 });
 
-test("tariffs API: all staff read, only admin writes", async () => {
+test("tariffs API is organization-scoped and only admin writes", async () => {
   const route = await read("app/api/staff/tariffs/route.ts");
-  assert.match(route, /tariffList\(/);
-  assert.match(route, /member\.role !== "admin"/); // PUT is admin-only
-  assert.match(route, /INSERT INTO service_prices/);
-  assert.match(route, /DELETE FROM service_prices WHERE code = \?/); // reset to default
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.member\.role !== "admin"/);
+  assert.match(route, /tariffList\(db, ctx\.organizationId\)/);
+  assert.match(route, /tariffOverridesKey\(ctx\.organizationId\)/);
+  assert.match(route, /setSetting\(/);
+  assert.doesNotMatch(route, /INSERT INTO service_prices/);
+  assert.doesNotMatch(route, /DELETE FROM service_prices/);
+});
+
+test("tenant tariff storage uses org-specific settings with legacy fallback only for org 1", async () => {
+  const lib = await read("lib/tariffs.ts");
+  assert.match(lib, /export function tariffOverridesKey/);
+  assert.match(lib, /getSetting\(db, tariffOverridesKey\(organizationId\)\)/);
+  assert.match(lib, /organizationId === 1 \? legacyPriceOverrides\(db\) : \{\}/);
+  assert.match(lib, /WHERE organization_id = 1/);
 });
 
 test("booking paths use server-derived effective prices", async () => {
