@@ -31,28 +31,29 @@ test("bookings charge the effective (override-aware) price", async () => {
   assert.match(legacy, /effectivePrice\(db, service\.code\)/);
 });
 
-test("public catalog powers the separate price page while home stays concise", async () => {
-  const route = await read("app/api/catalog/route.ts");
-  assert.match(route, /priceOverrides\(/);
-  assert.match(route, /groups/);
+test("public catalog and tariff map use the canonical effective service source", async () => {
+  const catalog = await read("app/api/catalog/route.ts");
+  const tariffs = await read("app/api/tariffs/route.ts");
+  assert.match(catalog, /effectiveServices\(db\)/);
+  assert.doesNotMatch(catalog, /priceOverrides\(/);
+  assert.match(tariffs, /effectiveServices\(db\)/);
+  assert.doesNotMatch(tariffs, /priceOverrides\(/);
+
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /id="homeTariffs"/);
   assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
-  assert.match(index, /id="patientCategory"/); // category chooser on the home form
+  assert.match(index, /id="patientCategory"/);
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientCategory'\)/); // category read at submit
+  assert.match(bridge, /getElementById\('patientCategory'\)/);
 });
 
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {
-  // Бічна панель тепер = модулі «Карти системи», що ведуть на робочі сторінки;
-  // Тарифи доступні через клікабельний шлях /staff/tariffs у дереві структури.
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /systemModules/);
   assert.match(shell, /href:"\/staff\/reports"/);
-  // Тарифи доступні прямо з навігації робочого простору.
   assert.match(shell, /href:"\/staff\/tariffs"/);
   const page = await read("app/staff/tariffs/page.tsx");
   assert.match(page, /active="tariffs"/);
   const priceHtml = await read("public/site/price.html");
-  assert.match(priceHtml, /\/api\/tariffs/); // public prices reflect overrides
+  assert.match(priceHtml, /\/api\/tariffs/);
 });
