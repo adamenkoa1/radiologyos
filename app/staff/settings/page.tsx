@@ -31,6 +31,7 @@ export default function StaffSettingsPage() {
   const [smsTestTo, setSmsTestTo] = useState("");
   const [emailTestTo, setEmailTestTo] = useState("");
   const [msgTesting, setMsgTesting] = useState<"" | "sms" | "email">("");
+  const [tgBusy, setTgBusy] = useState(false);
   const [calBusy, setCalBusy] = useState(false);
   const [calCopied, setCalCopied] = useState(false);
   const [notice, setNotice] = useState("");
@@ -96,6 +97,20 @@ export default function StaffSettingsPage() {
     }
   }
 
+  async function enablePatientTelegram() {
+    setTgBusy(true); setNotice(""); setError("");
+    try {
+      const res = await fetch("/api/staff/settings/telegram-webhook", { method: "POST" });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; username?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося увімкнути");
+      setNotice(data.username ? `Telegram-канал для пацієнтів увімкнено (@${data.username})` : "Telegram-канал для пацієнтів увімкнено");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося увімкнути");
+    } finally {
+      setTgBusy(false);
+    }
+  }
+
   async function sendMessagingTest(channel: "sms" | "email") {
     const to = (channel === "sms" ? smsTestTo : emailTestTo).trim();
     if (!to) { setError(channel === "sms" ? "Вкажіть номер для тесту" : "Вкажіть e-mail для тесту"); return; }
@@ -140,6 +155,15 @@ export default function StaffSettingsPage() {
           {testing ? "Надсилаємо…" : "Надіслати тестове повідомлення"}
         </button>
         {!settings?.telegramConfigured && <small className="settingsHint">Спершу збережіть токен і ID чату — тоді кнопку буде розблоковано.</small>}
+      </section>
+
+      <section className="settingsBlock">
+        <h2>Telegram-сповіщення пацієнтам</h2>
+        <p>Пацієнт у своєму кабінеті натискає «Підключити Telegram», відкриває бота й тисне «Старт» — після цього нагадування (підтвердження, перенесення, повідомлення реєстратури) надходитимуть і в Telegram. Використовує того самого бота. Натисніть «Увімкнути», щоб зареєструвати webhook.</p>
+        <button type="button" className="button secondary" onClick={enablePatientTelegram} disabled={tgBusy || !settings?.telegramConfigured}>
+          {tgBusy ? "Вмикаємо…" : "Увімкнути Telegram для пацієнтів"}
+        </button>
+        {!settings?.telegramConfigured && <small className="settingsHint">Спершу налаштуйте бота вище (токен і ID чату).</small>}
       </section>
 
       <section className="settingsBlock">

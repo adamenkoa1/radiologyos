@@ -52,6 +52,10 @@ header{padding:0 14px;margin-bottom:18px}
 .cab-head h1{font-size:20px;margin:0}
 .cab-phone{font-size:13px;color:var(--muted)}
 .logout{border:0;background:none;color:#0e454c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
+.tg-connect{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 2px 14px;padding:12px 14px;background:#eef7f8;border:1px solid #d3e6e8;border-radius:var(--r-md);font-size:13px;color:#18302f}
+.tg-connect .btn-ghost{border:1px solid var(--olive);background:#fff;color:var(--olive);font:inherit;font-weight:800;font-size:13px;border-radius:var(--r-sm);padding:8px 14px;cursor:pointer}
+.tg-connect .btn-ghost:disabled{opacity:.5;cursor:not-allowed}
+.tg-connect-msg{flex-basis:100%;color:#3a5c58;font-size:12px}
 
 .app-card{margin-bottom:14px}
 .visit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:6px 2px 8px;color:#123d3a;font-size:13px}
@@ -152,6 +156,11 @@ header{padding:0 14px;margin-bottom:18px}
         <div class="cab-phone" id="cabPhone"></div>
       </div>
       <button class="logout" id="logoutBtn" type="button">Вийти</button>
+    </div>
+    <div class="tg-connect" id="tgConnect" hidden>
+      <span>📩 Отримувати сповіщення про дослідження в Telegram?</span>
+      <button class="btn-ghost" id="tgConnectBtn" type="button">Підключити Telegram</button>
+      <span class="tg-connect-msg" id="tgConnectMsg"></span>
     </div>
     <div id="appList"></div>
     <div class="empty" id="emptyState" hidden>
@@ -375,7 +384,24 @@ async function enter(digits, dob) {
   dobValue = dob;
   document.getElementById('cabPhone').textContent = '+380 ' + digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
   const loaded = await loadBookings();
-  if (loaded) { gate.hidden = true; cabinet.hidden = false; }
+  if (loaded) { gate.hidden = true; cabinet.hidden = false; document.getElementById('tgConnect').hidden = false; }
+}
+
+async function connectTelegram() {
+  const btn = document.getElementById('tgConnectBtn');
+  const msg = document.getElementById('tgConnectMsg');
+  btn.disabled = true; msg.textContent = '';
+  try {
+    const res = await fetch('/api/my-telegram-link', { method: 'POST' });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || !data.url) { msg.textContent = data.error || 'Не вдалося створити посилання'; return; }
+    window.open(data.url, '_blank', 'noopener');
+    msg.textContent = 'Відкрили Telegram — натисніть «Старт» у боті, щоб підключити.';
+  } catch (e) {
+    msg.textContent = 'Помилка мережі — спробуйте ще раз.';
+  } finally {
+    btn.disabled = false;
+  }
 }
 
 async function cancelBooking(code) {
@@ -451,11 +477,13 @@ if (savedAutoEnter && new URLSearchParams(window.location.search).get('new') ===
     enter(digits, dob);
   }
 }
+document.getElementById('tgConnectBtn').addEventListener('click', connectTelegram);
 document.getElementById('logoutBtn').addEventListener('click', async () => {
   await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
   phoneDigits = '';
   dobValue = '';
   cabinet.hidden = true; gate.hidden = false;
+  document.getElementById('tgConnect').hidden = true;
   document.getElementById('gatePhone').value = '';
   document.getElementById('gateDob').value = '';
   try { sessionStorage.removeItem(PATIENT_PREFILL_KEY); } catch (e) {}
