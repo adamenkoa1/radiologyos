@@ -20,11 +20,15 @@ routes = [
   { pattern = "www.radiologyos.tech", custom_domain = true },
 ]
 
-# Static client bundle (JS/CSS, self-hosted fonts, favicon). Served directly by
-# Cloudflare; the Worker handles every dynamic / server-rendered route.
+# Static client bundle (JS/CSS, self-hosted fonts, favicon). The Worker must run
+# before asset matching so canonical redirects, security headers and access
+# rules apply consistently even to paths backed by HTML assets (for example
+# /site/ -> /site/index.html). The Worker explicitly delegates asset delivery
+# through env.ASSETS.fetch where appropriate.
 [assets]
 directory = "dist/client"
 binding = "ASSETS"
+run_worker_first = true
 
 # D1 database. Create it once (see HOSTING.md) and paste its id below.
 [[d1_databases]]
