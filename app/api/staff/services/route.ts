@@ -1,5 +1,6 @@
 import { audit } from "../../../../lib/audit";
 import { dbBinding } from "../../../../lib/db";
+import { effectiveServices } from "../../../../lib/effective-services";
 import { getSetting, setSetting } from "../../../../lib/settings";
 import {
   parseServiceConfig,
@@ -19,7 +20,11 @@ export async function GET(request: Request) {
   const tenantStored = await getSetting(db, serviceConfigKey(ctx.organizationId));
   const legacyStored = tenantStored ? "" : await getSetting(db, SERVICE_CONFIG_KEY);
   const services = parseServiceConfig(tenantStored || legacyStored);
-  return Response.json({ services, staff: ctx.member }, { headers: { "cache-control": "no-store" } });
+  const effective = await effectiveServices(db, ctx.organizationId);
+  return Response.json(
+    { services, effectiveServices: effective, staff: ctx.member },
+    { headers: { "cache-control": "no-store" } },
+  );
 }
 
 export async function PUT(request: Request) {
