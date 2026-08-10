@@ -7,6 +7,8 @@ export interface PaymentBookingSnapshot {
   paymentAmount: number;
   paymentStatus: string;
   paidAmount: number;
+  serviceCode: string;
+  patientCategory: string;
 }
 
 export interface PaymentLedgerDb {
@@ -40,7 +42,8 @@ export async function paymentBookingSnapshot(
   const row = await db.prepare(
     `SELECT id, organization_id AS organizationId, code,
       payment_amount AS paymentAmount, payment_status AS paymentStatus,
-      paid_amount AS paidAmount
+      paid_amount AS paidAmount, service_code AS serviceCode,
+      patient_category AS patientCategory
      FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1`,
   ).bind(organizationId, bookingId).first<PaymentBookingSnapshot>();
   return row || null;
@@ -133,7 +136,7 @@ export async function recordManualPayment(
       throw new Error("payment_reference_conflict");
     }
     if (existing.status === "paid" && booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
-      return { id: existing.id, created: false, booking };
+      return { id: existing.id, created: false, changed: false, booking };
     }
   }
 
@@ -171,7 +174,7 @@ export async function recordManualPayment(
       ];
 
   await db.batch(statements);
-  return { id: existing?.id || 0, created: !existing, booking };
+  return { id: existing?.id || 0, created: !existing, changed: true, booking };
 }
 
 export async function latestPaymentForBooking(
