@@ -8,6 +8,7 @@
 import { DatabaseSync } from "node:sqlite";
 import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
+import { createHash, randomBytes } from "node:crypto";
 
 const DRIZZLE_DIR = new URL("../../drizzle/", import.meta.url);
 
@@ -118,6 +119,22 @@ function loadWorker() {
     workerPromise = import(url.href).then((m) => m.default);
   }
   return workerPromise;
+}
+
+// Засідити співробітника з роллю і повернути cookie активної сесії.
+// Хеш токена рахуємо так само, як lib/auth.hashToken (SHA-256 hex від UTF-8).
+export async function seedStaffSession(db, { email, role, displayName = "" }) {
+  await db.prepare(
+    `INSERT INTO staff_members (email, display_name, role, active) VALUES (?, ?, ?, 1)
+     ON CONFLICT(email) DO UPDATE SET role = excluded.role, active = 1`
+  ).bind(email, displayName || email, role).run();
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
+  await db.prepare(
+    `INSERT INTO staff_sessions (token_hash, email, expires_at)
+     VALUES (?, ?, datetime('now', '+1 hour'))`
+  ).bind(tokenHash, email).run();
+  return `rid_session=${rawToken}`;
 }
 
 export async function callWorker(request, db) {
