@@ -1,5 +1,6 @@
 import { analyticsEventName, recordAnalyticsEvent } from "../../../lib/analytics";
 import { dbBinding } from "../../../lib/db";
+import { isRateLimited } from "../../../lib/rate-limit";
 
 const CLIENT_EVENTS = new Set(["page_view", "service_view", "booking_started", "slot_selected"]);
 const ALLOWED_KEYS = new Set(["eventName", "journeyId", "serviceCode", "patientCategory", "pageKey"]);
@@ -37,11 +38,19 @@ export async function POST(request: Request) {
     return Response.json({ error: "Invalid journey" }, { status: 400 });
   }
 
+  const db = dbBinding();
+  // Analytics is non-critical. If the binding is unavailable, silently accept
+  // the telemetry request so the patient journey is never affected.
+  if (!db) return new Response(null, { status: 204 });
+  if (await isRateLimited(db, request, "analytics", 120, 15).catch(() => false)) {
+    return Response.json({ error: "Too many analytics events" }, { status: 429 });
+  }
+
   const patientCategory = body.patientCategory === "civilian" || body.patientCategory === "military"
     ? body.patientCategory
     : "";
 
-  await recordAnalyticsEvent(dbBinding(), {
+  await recordAnalyticsEvent(db, {
     eventName,
     organizationId: 1,
     journeyId,
