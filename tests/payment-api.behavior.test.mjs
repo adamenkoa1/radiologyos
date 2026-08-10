@@ -2,22 +2,22 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, jsonRequest, seedPatientSession, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
-async function seedBooking(db, { code, phone = "380501112233", amount = 1500, organizationId = 1 }) {
+async function seedBooking(db, { code, phone = "380501112233", amount = 1500, organizationId = 1, desiredTime = "10:00" }) {
   const result = await db.prepare(
     `INSERT INTO bookings (
       organization_id, code, name, phone, phone_normalized, service, service_code,
       equipment_id, duration_minutes, desired_date, desired_time, patient_category,
       payment_status, payment_amount, paid_amount, status
     ) VALUES (?, ?, 'Пацієнт', '+380501112233', ?, 'КТ ОГК', 'ct-chest',
-      'ct', 30, '2026-08-20', '10:00', 'civilian', 'pending', ?, 0, 'confirmed')`,
-  ).bind(organizationId, code, phone, amount).run();
+      'ct', 30, '2026-08-20', ?, 'civilian', 'pending', ?, 0, 'confirmed')`,
+  ).bind(organizationId, code, phone, desiredTime, amount).run();
   return Number(result.meta.last_row_id);
 }
 
 test("patient payment start is session-scoped and server derives the amount", async () => {
   await withD1(async (db) => {
-    await seedBooking(db, { code: "RD-PAY-001", amount: 1800 });
-    await seedBooking(db, { code: "RD-PAY-002", phone: "380671112233", amount: 2200 });
+    await seedBooking(db, { code: "RD-PAY-001", amount: 1800, desiredTime: "10:00" });
+    await seedBooking(db, { code: "RD-PAY-002", phone: "380671112233", amount: 2200, desiredTime: "10:30" });
     const cookie = await seedPatientSession(db, "380501112233", 1);
 
     const own = await callWorker(jsonRequest("/api/pay-link", { code: "RD-PAY-001", amount: 1 }, {
