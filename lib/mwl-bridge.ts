@@ -1,0 +1,57 @@
+const RF_SERVICE_CODES = new Set(["301", "302", "303"]);
+
+export type MwlFeedItem = {
+  scheduledProcedureStepId: string;
+  accessionNumber: string;
+  patientName: string;
+  patientBirthDate: string;
+  modality: "CT" | "DX" | "RF";
+  scheduledDate: string;
+  scheduledTime: string;
+  procedureDescription: string;
+  serviceCode: string;
+  equipmentId: string;
+};
+
+export function modalityForWorklist(serviceCode: string, equipmentId: string): "CT" | "DX" | "RF" {
+  if (equipmentId === "ct") return "CT";
+  if (RF_SERVICE_CODES.has(serviceCode)) return "RF";
+  return "DX";
+}
+
+export function canonicalWorklistAccession(bookingCode: string, imagingAccession?: string | null): string {
+  const existing = String(imagingAccession || "").trim();
+  return existing || String(bookingCode || "").trim();
+}
+
+export function parseBearerToken(request: Request): string {
+  const value = request.headers.get("authorization") || "";
+  const match = /^Bearer\s+([A-Za-z0-9_-]{32,160})$/i.exec(value.trim());
+  return match?.[1] || "";
+}
+
+export async function hashBridgeToken(token: string): Promise<string> {
+  const bytes = new TextEncoder().encode(token);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest))
+    .map((byte) => byte.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+export function generateBridgeToken(): string {
+  const bytes = new Uint8Array(32);
+  crypto.getRandomValues(bytes);
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export function validIsoDate(value: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T00:00:00Z`));
+}
+
+export function dateSpanDays(from: string, to: string): number {
+  const start = Date.parse(`${from}T00:00:00Z`);
+  const end = Date.parse(`${to}T00:00:00Z`);
+  return Math.floor((end - start) / 86400000) + 1;
+}
