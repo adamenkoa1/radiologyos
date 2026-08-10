@@ -169,7 +169,6 @@
 .studiesTable td{padding:11px 14px;border-bottom:1px solid #eef2f0;font-size:13.5px;color:var(--ink);vertical-align:middle}
 .studiesTable tr:last-child td{border-bottom:0}
 .studiesTable tbody tr:hover{background:#f7faf9}
-.studiesCode{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12.5px;color:var(--ws-deep);font-weight:700}
 .studiesWhen{white-space:nowrap;font-variant-numeric:tabular-nums}
 .studiesState{display:inline-block;padding:4px 10px;border-radius:999px;font-size:11px;font-weight:800;border:1px solid transparent}
 .studiesState.grp-intake{background:#e6f1fb;color:#1f5c94;border-color:#c9e0f4}
@@ -191,7 +190,6 @@
 .themeDark .studiesTable td{border-bottom-color:#1c2831;color:#e6edf1}
 .themeDark .studiesTable tbody tr:hover{background:#17212a}
 .themeDark .studiesTable select{background:#0e151a;border-color:#2a3843;color:#e6edf1}
-.themeDark .studiesCode{color:#7fd4dc}
 .themeDark .studiesState.grp-intake{background:#12283b;color:#8fc2ec;border-color:#1e3d55}
 .themeDark .studiesState.grp-active{background:#3a2a14;color:#e6b072;border-color:#553f1e}
 .themeDark .studiesState.grp-reporting{background:#241d3b;color:#b6a2e6;border-color:#392d55}
