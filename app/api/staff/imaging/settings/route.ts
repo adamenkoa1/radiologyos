@@ -1,6 +1,6 @@
-import { requireStaff } from "../../../../../lib/staff-auth";
 import { sanitizePacsSettings } from "../../../../../lib/dicom";
 import { safeOutboundUrl } from "../../../../../lib/outbound";
+import { requireOrgContext } from "../../../../../lib/tenant";
 import { dbBinding } from "../../../../../lib/db";
 
 const SETTINGS_COLUMNS = `dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
@@ -9,20 +9,26 @@ const SETTINGS_COLUMNS = `dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url 
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Налаштування PACS доступні лише адміністратору" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.member.role !== "admin") {
+    return Response.json({ error: "Налаштування PACS доступні лише адміністратору" }, { status: 403 });
+  }
 
-  const settings = await db.prepare(`SELECT ${SETTINGS_COLUMNS} FROM pacs_settings WHERE id = 1 LIMIT 1`).first();
-  return Response.json({ settings: settings || null, staff: member }, { headers: { "cache-control": "no-store" } });
+  const settings = await db.prepare(
+    `SELECT ${SETTINGS_COLUMNS} FROM pacs_settings WHERE organization_id = ? LIMIT 1`,
+  ).bind(ctx.organizationId).first();
+  return Response.json({ settings: settings || null, staff: ctx.member }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Налаштування PACS може змінювати лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.member.role !== "admin") {
+    return Response.json({ error: "Налаштування PACS може змінювати лише адміністратор" }, { status: 403 });
+  }
 
   const parsed = sanitizePacsSettings(await request.json());
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
@@ -32,12 +38,26 @@ export async function PUT(request: Request) {
   }
 
   await db.prepare(
-    `UPDATE pacs_settings SET dicomweb_base_url = ?, viewer_base_url = ?, ae_title = ?,
-       enabled = ?, notes = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = 1`
+    `INSERT INTO pacs_settings
+      (organization_id, dicomweb_base_url, viewer_base_url, ae_title, enabled, notes, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(organization_id) DO UPDATE SET
+       dicomweb_base_url = excluded.dicomweb_base_url,
+       viewer_base_url = excluded.viewer_base_url,
+       ae_title = excluded.ae_title,
+       enabled = excluded.enabled,
+       notes = excluded.notes,
+       updated_by = excluded.updated_by,
+       updated_at = CURRENT_TIMESTAMP`,
   ).bind(
-    settings.dicomwebBaseUrl, settings.viewerBaseUrl, settings.aeTitle,
-    settings.enabled, settings.notes, member.email,
+    ctx.organizationId,
+    settings.dicomwebBaseUrl,
+    settings.viewerBaseUrl,
+    settings.aeTitle,
+    settings.enabled,
+    settings.notes,
+    ctx.member.email,
   ).run();
 
-  return Response.json({ ok: true, settings: { ...settings, updatedBy: member.email } });
+  return Response.json({ ok: true, settings: { ...settings, updatedBy: ctx.member.email } });
 }
