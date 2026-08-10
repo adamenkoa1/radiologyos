@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "system-map" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -212,7 +212,7 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "system-map" ? "Карта системи":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
