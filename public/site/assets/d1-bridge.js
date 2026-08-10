@@ -145,9 +145,19 @@
   prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
   async function postBooking(payload, requestKey) {
+    const journeyId = typeof radiologyAnalyticsJourney === 'function' ? radiologyAnalyticsJourney() : '';
+    const firstServiceCode = Array.isArray(payload.items) && payload.items[0] ? String(payload.items[0].code || '') : '';
+    if (typeof trackRadiologyAnalytics === 'function') {
+      trackRadiologyAnalytics('booking_started', {
+        serviceCode: firstServiceCode,
+        patientCategory: payload.category === 'military' ? 'military' : 'civilian',
+      });
+    }
+    const headers = { 'content-type': 'application/json', 'idempotency-key': requestKey };
+    if (journeyId) headers['x-analytics-journey-id'] = journeyId;
     const response = await fetch('/api/site-booking', {
       method: 'POST',
-      headers: { 'content-type': 'application/json', 'idempotency-key': requestKey },
+      headers,
       body: JSON.stringify(payload),
     });
     const data = await response.json().catch(() => ({}));
@@ -216,7 +226,6 @@
       if (nameInput) nameInput.dispatchEvent(new Event('input'));
       if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
-      // Category comes from the form selector when present (home page), else the page.
       const catSel = document.getElementById('patientCategory');
       const category = catSel
         ? (catSel.value === 'military' ? 'military' : 'civilian')

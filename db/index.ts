@@ -4,8 +4,15 @@ import * as coreSchema from "./schema";
 import * as capacitySchema from "./capacity-schema";
 import * as patientAuthSchema from "./patient-auth-schema";
 import * as paymentSchema from "./payment-schema";
+import * as analyticsSchema from "./analytics-schema";
 
-const schema = { ...coreSchema, ...capacitySchema, ...patientAuthSchema, ...paymentSchema };
+const schema = {
+  ...coreSchema,
+  ...capacitySchema,
+  ...patientAuthSchema,
+  ...paymentSchema,
+  ...analyticsSchema,
+};
 
 export function getDb() {
   if (!env.DB) {

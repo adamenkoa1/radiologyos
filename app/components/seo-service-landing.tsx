@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { trackClientAnalytics } from "../../lib/client-analytics";
 import type { SeoServicePage } from "../../lib/seo-service-pages";
 
 type PublicService = {
@@ -21,6 +22,8 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
   const [loadError, setLoadError] = useState(false);
 
   useEffect(() => {
+    trackClientAnalytics("page_view", { pageKey: page.path });
+    trackClientAnalytics("service_view", { pageKey: page.path });
     let active = true;
     fetch("/api/public-services", { headers: { accept: "application/json" } })
       .then(async (response) => {
@@ -34,12 +37,20 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         if (active) setLoadError(true);
       });
     return () => { active = false; };
-  }, []);
+  }, [page.path]);
 
   const visible = useMemo(() => {
     const wanted = new Set(page.serviceCodes);
     return services.filter((service) => wanted.has(service.code) && service.availableToCivilian);
   }, [page.serviceCodes, services]);
+
+  const bookingStarted = (serviceCode = "") => {
+    trackClientAnalytics("booking_started", {
+      pageKey: page.path,
+      serviceCode,
+      patientCategory: "civilian",
+    });
+  };
 
   return (
     <main style={{ minHeight: "100vh", background: "#f5fbfa", color: "#173b3a" }}>
@@ -59,7 +70,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         <h1 style={{ fontSize: "clamp(34px, 6vw, 60px)", lineHeight: 1.05, margin: 0, maxWidth: 900 }}>{page.title}</h1>
         <p style={{ fontSize: 20, lineHeight: 1.65, maxWidth: 850, marginTop: 22 }}>{page.intro}</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 }}>
-          <Link href="/site/price.html" style={{ background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Записатися на дослідження</Link>
+          <Link onClick={() => bookingStarted()} href="/site/price.html" style={{ background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Записатися на дослідження</Link>
         </div>
       </section>
 
@@ -74,7 +85,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
               <h3 style={{ fontSize: 20, lineHeight: 1.35 }}>{service.title}</h3>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 16 }}>{money(service.price)}</div>
               <div style={{ opacity: 0.7, marginTop: 6 }}>Орієнтовний слот: {service.durationMinutes} хв</div>
-              <Link href="/site/price.html" style={{ display: "inline-block", marginTop: 18, fontWeight: 700 }}>Обрати час →</Link>
+              <Link onClick={() => bookingStarted(service.code)} href="/site/price.html" style={{ display: "inline-block", marginTop: 18, fontWeight: 700 }}>Обрати час →</Link>
             </article>
           ))}
         </div>
@@ -95,7 +106,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         <div style={{ background: "#dff3f0", borderRadius: 18, padding: 28 }}>
           <h2 style={{ marginTop: 0 }}>Онлайн-запис</h2>
           <p style={{ fontSize: 18, lineHeight: 1.6 }}>Оберіть послугу та доступний час. Остаточна вартість формується з актуального тарифу RadiologyOS на момент запису.</p>
-          <Link href="/site/price.html" style={{ display: "inline-block", background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Перейти до запису</Link>
+          <Link onClick={() => bookingStarted()} href="/site/price.html" style={{ display: "inline-block", background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Перейти до запису</Link>
         </div>
       </section>
     </main>

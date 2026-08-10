@@ -1,3 +1,4 @@
+import { recordAnalyticsEvent } from "../../../../lib/analytics";
 import { dbBinding } from "../../../../lib/db";
 import { recordManualPayment, latestPaymentForBooking } from "../../../../lib/payments";
 import { refundLatestPayment } from "../../../../lib/payment-settlement";
@@ -45,6 +46,15 @@ export async function POST(request: Request) {
       method,
       providerReference,
     });
+    if (result.changed) {
+      await recordAnalyticsEvent(db, {
+        eventName: "payment_completed",
+        organizationId: ctx.organizationId,
+        serviceCode: result.booking.serviceCode,
+        patientCategory: result.booking.patientCategory === "military" ? "military" : "civilian",
+        source: "server",
+      });
+    }
     const payment = await latestPaymentForBooking(db as never, ctx.organizationId, bookingId);
     return Response.json({
       ok: true,

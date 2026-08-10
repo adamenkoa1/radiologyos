@@ -1,3 +1,4 @@
+import { recordAnalyticsEvent } from "../../../lib/analytics";
 import { todayInKyiv } from "../../../lib/booking-rules";
 import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-services";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
@@ -14,9 +15,6 @@ import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
-// Public storefront currently belongs to the initial organization. Once public
-// host/slug tenant resolution lands, replace this constant with that server-side
-// resolver; never accept organization_id from the browser.
 const PUBLIC_ORGANIZATION_ID = 1;
 
 function clean(value: unknown, max = 200) {
@@ -26,6 +24,11 @@ function clean(value: unknown, max = 200) {
 function idempotencyKey(request: Request): string {
   const value = (request.headers.get("idempotency-key") || "").trim();
   return /^[A-Za-z0-9_-]{16,80}$/.test(value) ? value : "";
+}
+
+function analyticsJourney(request: Request): string {
+  const value = (request.headers.get("x-analytics-journey-id") || "").trim();
+  return /^[A-Za-z0-9_-]{8,64}$/.test(value) ? value : "";
 }
 
 function currentTimeInKyiv(): string {
@@ -231,6 +234,16 @@ export async function POST(request: Request) {
       }
       throw error;
     }
+
+    const journeyId = analyticsJourney(request);
+    await Promise.all(services.map((service) => recordAnalyticsEvent(db, {
+      eventName: "booking_created",
+      organizationId: PUBLIC_ORGANIZATION_ID,
+      journeyId,
+      serviceCode: service!.code,
+      patientCategory: category,
+      source: "server",
+    })));
 
     await sendTelegram(db, bookingMessage({
       codes,
