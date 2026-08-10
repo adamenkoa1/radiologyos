@@ -76,3 +76,12 @@ test("same clock time on different equipment or tenant is independent", async ()
     startTime: "08:30", durationMinutes: 30, bookingCode: "RD-260810-003",
   })));
 });
+
+test("public booking writes locks in the same D1 batch and maps races to 409", async () => {
+  const route = await readFile(new URL("../app/api/site-booking/route.ts", import.meta.url), "utf8");
+  assert.match(route, /capacitySlots\(/);
+  assert.match(route, /INSERT INTO booking_capacity_locks/);
+  assert.match(route, /await db\.batch\(statements\)/);
+  assert.match(route, /isCapacityConflict\(error\)/);
+  assert.match(route, /status: 409/);
+});
