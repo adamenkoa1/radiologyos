@@ -102,14 +102,6 @@ export default function StaffBookPage() {
   }, [serviceGroups]);
 
   useEffect(() => {
-    if (serviceCode && !availableServices.some((service) => service.code === serviceCode)) {
-      setServiceCode("");
-      setTime("");
-      setTimes([]);
-    }
-  }, [availableServices, serviceCode]);
-
-  useEffect(() => {
     let active = true;
     const t = window.setTimeout(() => {
       if (!date || !serviceCode) { setTimes([]); setSlotsLoading(false); return; }
@@ -162,7 +154,7 @@ export default function StaffBookPage() {
           <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)} /></label>
           <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" value={dob} onChange={e=>setDob(e.target.value)} /></label>
           <label className="settingsField"><span>Категорія</span>
-            <select name="patientCategory" value={category} onChange={e=>setCategory(e.target.value)}>
+            <select name="patientCategory" value={category} onChange={e=>{ setCategory(e.target.value); setServiceCode(""); setTime(""); setTimes([]); }}>
               <option value="civilian">Цивільний пацієнт</option>
               <option value="military">Військовослужбовець</option>
             </select>
