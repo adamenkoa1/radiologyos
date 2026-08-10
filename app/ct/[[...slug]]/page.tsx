@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { PublicLocalSeo } from "../../components/public-local-seo";
 import { SeoServiceLanding } from "../../components/seo-service-landing";
 import { CT_SEO_PAGES } from "../../../lib/seo-service-pages";
+
+export const dynamic = "force-dynamic";
 
 type Props = { params: Promise<{ slug?: string[] }> };
 
@@ -33,5 +36,10 @@ export default async function CtSeoPage({ params }: Props) {
   const { slug } = await params;
   const page = pageFor(slug);
   if (!page) notFound();
-  return <SeoServiceLanding page={page} />;
+  return (
+    <>
+      <SeoServiceLanding page={page} />
+      <PublicLocalSeo path={page.path} />
+    </>
+  );
 }
