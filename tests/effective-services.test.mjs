@@ -22,6 +22,19 @@ test("tariff reads are explicitly organization-scoped", async () => {
   assert.match(tariffs, /priceOverrides\(db, organizationId\)/);
 });
 
+test("service configuration rejects duplicates and invalid definitions", async () => {
+  const config = await read("lib/service-config.ts");
+  assert.match(config, /export function validateServiceConfig/);
+  assert.match(config, /Код послуги дублюється/);
+  assert.match(config, /Невідомий код послуги/);
+  assert.match(config, /Некоректний апарат/);
+  assert.match(config, /duration % 5 !== 0/);
+
+  const route = await read("app/api/staff/services/route.ts");
+  assert.match(route, /validateServiceConfig\(body\.services\)/);
+  assert.match(route, /status: 400/);
+});
+
 test("staff service configuration is organization-scoped with a legacy fallback", async () => {
   const route = await read("app/api/staff/services/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
