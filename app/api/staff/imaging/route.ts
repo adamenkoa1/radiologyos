@@ -1,9 +1,13 @@
 import { serviceByCode } from "../../../../lib/catalog";
 import { canAccessBooking, canManageImaging } from "../../../../lib/staff-auth";
 import {
+  isValidAccession,
   parseQidoSeries,
+  parseQidoStudies,
   qidoSeriesUrl,
+  qidoStudiesByAccessionUrl,
   sanitizeImagingStudy,
+  viewerUrl,
 } from "../../../../lib/dicom";
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 import { requireOrgContext } from "../../../../lib/tenant";
@@ -94,9 +98,10 @@ export async function GET(request: Request) {
     return Response.json({
       booking, study: study || null, series,
       pacsReachable: reachable,
+      viewerUrl: viewerUrl(pacs.viewerBaseUrl, studyInstanceUid),
       settings: publicSettings(pacs),
       staff: member,
-    }, { headers: { "cache-control": "no-store" } });
+    }, { headers: { "cache-control":"no-store" } });
   }
 
   const assignmentClause = member.role === "radiologist"
@@ -120,40 +125,165 @@ export async function GET(request: Request) {
      ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
      LIMIT 300`
   );
-  const worklistBinds: Array<string | number> = assignmentClause
+  const worklistBinds:Array<string | number> = assignmentClause
     ? [ctx.organizationId, member.email]
     : [ctx.organizationId];
   const worklist = await worklistStatement.bind(...worklistBinds).all();
   const items = (worklist.results as Array<Record<string, unknown>>).map((item) => ({
     ...item,
-    serviceTitle: serviceByCode(String(item.serviceCode))?.title || String(item.service),
+    serviceTitle:serviceByCode(String(item.serviceCode))?.title || String(item.service),
   }));
-  return Response.json({ worklist: items, settings: publicSettings(pacs), staff: member }, { headers: { "cache-control": "no-store" } });
+  return Response.json({ worklist:items, settings:publicSettings(pacs), staff:member }, { headers:{ "cache-control":"no-store" } });
+}
+
+// Resolve a study from PACS by accession. The client supplies only bookingId;
+// accession comes from the existing imaging link or the stable booking code.
+// Zero or multiple exact matches never mutate imaging_studies.
+export async function POST(request: Request) {
+  const db = dbBinding();
+  if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
+  const member = ctx.member;
+  if (!canManageImaging(member.role)) {
+    return Response.json({ error:"Прив’язувати дослідження може лаборант, лікар або адміністратор" }, { status:403 });
+  }
+
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const bookingId = Number(body.bookingId);
+  if (!Number.isInteger(bookingId) || bookingId <= 0) return Response.json({ error:"Некоректні дані" }, { status:400 });
+  if (!await canAccessBooking(db, member, bookingId, ctx.organizationId)) {
+    return Response.json({ error:"Немає доступу до цього дослідження" }, { status:403 });
+  }
+
+  const [booking, existing, pacs] = await Promise.all([
+    db.prepare(
+      `SELECT id, code, service_code AS serviceCode FROM bookings
+       WHERE id = ? AND organization_id = ? LIMIT 1`,
+    ).bind(bookingId, ctx.organizationId).first<{ id:number; code:string; serviceCode:string }>(),
+    db.prepare(
+      `SELECT accession_number AS accessionNumber FROM imaging_studies
+       WHERE booking_id = ? AND organization_id = ? LIMIT 1`,
+    ).bind(bookingId, ctx.organizationId).first<{ accessionNumber:string }>(),
+    loadPacs(db, ctx.organizationId),
+  ]);
+  if (!booking) return Response.json({ error:"Заявку не знайдено" }, { status:404 });
+  if (!pacs.enabled || !pacs.dicomwebBaseUrl) {
+    return Response.json({ error:"PACS не налаштовано або вимкнено", status:"not_configured" }, { status:409 });
+  }
+
+  const accessionNumber = String(existing?.accessionNumber || booking.code).trim();
+  if (!isValidAccession(accessionNumber) || !accessionNumber) {
+    return Response.json({ error:"Для заявки немає коректного AccessionNumber", status:"invalid_accession" }, { status:409 });
+  }
+
+  const queryUrl = safeOutboundUrl(qidoStudiesByAccessionUrl(pacs.dicomwebBaseUrl, accessionNumber));
+  if (!queryUrl) {
+    return Response.json({ error:"Адреса PACS заборонена політикою зовнішніх підключень", status:"unreachable" }, { status:502 });
+  }
+
+  let matches;
+  try {
+    const response = await fetchLimited(queryUrl, { headers:{ accept:"application/dicom+json" } }, 5000);
+    if (!response.ok) {
+      return Response.json({ error:"PACS не відповів на пошук", status:"unreachable" }, { status:502 });
+    }
+    const parsed = parseQidoStudies(JSON.parse(await readLimitedText(response)));
+    matches = parsed.filter((study) => study.accessionNumber === accessionNumber);
+  } catch {
+    return Response.json({ error:"PACS тимчасово недоступний", status:"unreachable" }, { status:502 });
+  }
+
+  if (matches.length === 0) {
+    return Response.json({ ok:false, status:"not_found", accessionNumber }, { status:404 });
+  }
+  if (matches.length !== 1) {
+    return Response.json({ ok:false, status:"ambiguous", accessionNumber, matches:matches.length }, { status:409 });
+  }
+
+  const match = matches[0];
+  const seriesResult = await querySeries(pacs, match.studyInstanceUid);
+  const seriesCount = seriesResult.series.length || match.seriesCount;
+  const instancesCount = seriesResult.series.length
+    ? seriesResult.series.reduce((sum, item) => sum + item.instances, 0)
+    : match.instancesCount;
+
+  await db.prepare(
+    `INSERT INTO imaging_studies
+      (organization_id, booking_id, accession_number, study_instance_uid, modality,
+       series_count, instances_count, study_status, study_datetime, source, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, 'available', ?, 'qido_accession', ?, CURRENT_TIMESTAMP)
+     ON CONFLICT(booking_id) DO UPDATE SET
+       organization_id = excluded.organization_id,
+       accession_number = excluded.accession_number,
+       study_instance_uid = excluded.study_instance_uid,
+       modality = excluded.modality,
+       series_count = excluded.series_count,
+       instances_count = excluded.instances_count,
+       study_status = 'available',
+       study_datetime = excluded.study_datetime,
+       source = 'qido_accession',
+       updated_by = excluded.updated_by,
+       updated_at = CURRENT_TIMESTAMP`,
+  ).bind(
+    ctx.organizationId,
+    bookingId,
+    accessionNumber,
+    match.studyInstanceUid,
+    match.modality,
+    seriesCount,
+    instancesCount,
+    match.studyDatetime,
+    member.email,
+  ).run();
+
+  await db.prepare(
+    `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
+     VALUES (?, ?, 'imaging_auto_linked', ?, ?)`,
+  ).bind(ctx.organizationId, bookingId, `${accessionNumber} · QIDO-RS`, member.email).run();
+
+  return Response.json({
+    ok:true,
+    status:"linked",
+    study:{
+      bookingId,
+      accessionNumber,
+      studyInstanceUid:match.studyInstanceUid,
+      modality:match.modality,
+      seriesCount,
+      instancesCount,
+      studyStatus:"available",
+      studyDatetime:match.studyDatetime,
+      source:"qido_accession",
+    },
+    viewerUrl:viewerUrl(pacs.viewerBaseUrl, match.studyInstanceUid),
+    pacsReachable:seriesResult.reachable,
+  }, { headers:{ "cache-control":"no-store" } });
 }
 
 export async function PUT(request: Request) {
   const db = dbBinding();
-  if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
+  if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
   const ctx = await requireOrgContext(request, db);
-  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
   const member = ctx.member;
   if (!canManageImaging(member.role)) {
-    return Response.json({ error: "Прив’язувати дослідження може лаборант, лікар або адміністратор" }, { status: 403 });
+    return Response.json({ error:"Прив’язувати дослідження може лаборант, лікар або адміністратор" }, { status:403 });
   }
 
   const body = await request.json() as Record<string, unknown>;
   const bookingId = Number(body.bookingId);
-  if (!Number.isInteger(bookingId) || bookingId <= 0) return Response.json({ error: "Некоректні дані" }, { status: 400 });
+  if (!Number.isInteger(bookingId) || bookingId <= 0) return Response.json({ error:"Некоректні дані" }, { status:400 });
   if (!await canAccessBooking(db, member, bookingId, ctx.organizationId)) {
-    return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
+    return Response.json({ error:"Немає доступу до цього дослідження" }, { status:403 });
   }
   const parsed = sanitizeImagingStudy(body);
-  if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
+  if (!parsed.ok) return Response.json({ error:parsed.error }, { status:400 });
   const { study } = parsed;
 
   const booking = await db.prepare("SELECT id FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1")
     .bind(bookingId, ctx.organizationId).first();
-  if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
+  if (!booking) return Response.json({ error:"Заявку не знайдено" }, { status:404 });
 
   await db.prepare(
     `INSERT INTO imaging_studies
@@ -182,5 +312,5 @@ export async function PUT(request: Request) {
     member.email,
   ).run();
 
-  return Response.json({ ok: true, study: { bookingId, ...study } });
+  return Response.json({ ok:true, study:{ bookingId, ...study } });
 }
