@@ -3,6 +3,7 @@ import {
   configuredService,
   parseServiceConfig,
   SERVICE_CONFIG_KEY,
+  serviceConfigKey,
   type ConfiguredService,
 } from "./service-config";
 import { getSetting } from "./settings";
@@ -25,11 +26,12 @@ export async function effectiveServices(
   db: D1Database,
   organizationId = 1,
 ): Promise<EffectiveService[]> {
-  const [storedConfig, overrides] = await Promise.all([
+  const [tenantConfig, legacyConfig, overrides] = await Promise.all([
+    getSetting(db, serviceConfigKey(organizationId)),
     getSetting(db, SERVICE_CONFIG_KEY),
     priceOverrides(db, organizationId),
   ]);
-  const config = parseServiceConfig(storedConfig);
+  const config = parseServiceConfig(tenantConfig || legacyConfig);
 
   return SERVICES.map((service: Service) => {
     const configured = configuredService(service, config);
