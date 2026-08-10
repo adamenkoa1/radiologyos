@@ -3,6 +3,7 @@ import { dbBinding } from "../../../../lib/db";
 import {
   canonicalWorklistAccession,
   dateSpanDays,
+  generateDicomPatientId,
   hashBridgeToken,
   modalityForWorklist,
   parseBearerToken,
@@ -14,6 +15,48 @@ function addDays(date: string, days: number): string {
   const value = new Date(`${date}T12:00:00Z`);
   value.setUTCDate(value.getUTCDate() + days);
   return value.toISOString().slice(0, 10);
+}
+
+type FeedRow = {
+  code: string;
+  phoneNormalized: string;
+  patientName: string;
+  patientBirthDate: string;
+  service: string;
+  serviceCode: string;
+  equipmentId: string;
+  scheduledDate: string;
+  scheduledTime: string;
+  imagingAccession: string;
+};
+
+function identityKey(row: FeedRow): string {
+  const phone = String(row.phoneNormalized || "").trim();
+  return phone ? `phone:${phone}` : `booking:${row.code}`;
+}
+
+async function patientIdsForRows(db: D1Database, organizationId: number, rows: FeedRow[]) {
+  const keys = [...new Set(rows.map(identityKey))];
+  if (!keys.length) return new Map<string, string>();
+  const placeholders = keys.map(() => "?").join(",");
+  const load = async () => db.prepare(
+    `SELECT identity_key AS identityKey, patient_id AS patientId
+     FROM mwl_patient_ids
+     WHERE organization_id = ? AND identity_key IN (${placeholders})`,
+  ).bind(organizationId, ...keys).all<{ identityKey: string; patientId: string }>();
+
+  let existing = await load();
+  const known = new Set(existing.results.map((row) => row.identityKey));
+  const missing = keys.filter((key) => !known.has(key));
+  if (missing.length) {
+    await db.batch(missing.map((key) => db.prepare(
+      `INSERT OR IGNORE INTO mwl_patient_ids
+        (organization_id, identity_key, patient_id, created_at)
+       VALUES (?, ?, ?, CURRENT_TIMESTAMP)`,
+    ).bind(organizationId, key, generateDicomPatientId())));
+    existing = await load();
+  }
+  return new Map(existing.results.map((row) => [row.identityKey, row.patientId]));
 }
 
 export async function GET(request: Request) {
@@ -44,7 +87,8 @@ export async function GET(request: Request) {
   }
 
   const { results } = await db.prepare(
-    `SELECT b.code, b.name AS patientName, b.date_of_birth AS patientBirthDate,
+    `SELECT b.code, b.phone_normalized AS phoneNormalized,
+       b.name AS patientName, b.date_of_birth AS patientBirthDate,
        b.service, b.service_code AS serviceCode, b.equipment_id AS equipmentId,
        b.desired_date AS scheduledDate, b.desired_time AS scheduledTime,
        COALESCE(i.accession_number, '') AS imagingAccession
@@ -56,21 +100,13 @@ export async function GET(request: Request) {
        AND b.desired_date BETWEEN ? AND ?
      ORDER BY b.desired_date, b.desired_time, b.id
      LIMIT 500`,
-  ).bind(bridge.organizationId, from, to).all<{
-    code: string;
-    patientName: string;
-    patientBirthDate: string;
-    service: string;
-    serviceCode: string;
-    equipmentId: string;
-    scheduledDate: string;
-    scheduledTime: string;
-    imagingAccession: string;
-  }>();
+  ).bind(bridge.organizationId, from, to).all<FeedRow>();
 
+  const patientIds = await patientIdsForRows(db, bridge.organizationId, results);
   const items: MwlFeedItem[] = results.map((row) => ({
     scheduledProcedureStepId: row.code,
     accessionNumber: canonicalWorklistAccession(row.code, row.imagingAccession),
+    patientId: patientIds.get(identityKey(row)) || "",
     patientName: row.patientName,
     patientBirthDate: row.patientBirthDate || "",
     modality: modalityForWorklist(row.serviceCode, row.equipmentId),
@@ -79,7 +115,7 @@ export async function GET(request: Request) {
     procedureDescription: row.service,
     serviceCode: row.serviceCode,
     equipmentId: row.equipmentId,
-  })).filter((item) => !modalityFilter || item.modality === modalityFilter);
+  })).filter((item) => item.patientId && (!modalityFilter || item.modality === modalityFilter));
 
   await db.prepare(
     "UPDATE mwl_bridge_tokens SET last_used_at = CURRENT_TIMESTAMP WHERE organization_id = ?",
