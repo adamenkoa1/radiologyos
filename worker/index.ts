@@ -45,11 +45,23 @@ const SECURITY_HEADERS: Record<string, string> = {
   "x-frame-options": "DENY",
 };
 
+const LEGACY_HOME_PATHS = new Set(["/index.html", "/site", "/site/", "/site/index.html"]);
+const PUBLIC_CANONICAL_PATHS = new Set(["/", "/site/price.html", "/site/military.html"]);
+
 function secure(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
   if (request) {
-    const pathname = new URL(request.url).pathname;
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    // Canonical headers cover the static pages that do not all have HTML
+    // metadata. The patient cabinet is intentionally excluded from indexing.
+    if (PUBLIC_CANONICAL_PATHS.has(pathname)) {
+      headers.set("link", `<${new URL(pathname, url.origin).toString()}>; rel="canonical"`);
+    }
+    if (pathname === "/site/cabinet.html" || pathname === "/cabinet") {
+      headers.set("x-robots-tag", "noindex, nofollow");
+    }
     // /api/site-content — публічний контент вітрини, кешується самим маршрутом
     // (short max-age); решта /api та /staff лишаються no-store.
     const publicCacheable = pathname === "/api/site-content";
@@ -105,11 +117,18 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // The established teal storefront is available both at the domain root
-    // and at the public `/site/` address used in links shared with patients.
-    // Serve the same tested document instead of letting Vinext treat `/site/`
-    // as an application route and return a 404.
-    if (["/", "/index.html", "/site", "/site/", "/site/index.html"].includes(url.pathname)) {
+    // There is exactly one indexable public home. Old URLs shared with patients
+    // keep working but permanently consolidate to the domain root, preserving
+    // query parameters such as campaign attribution.
+    if ((request.method === "GET" || request.method === "HEAD") && LEGACY_HOME_PATHS.has(url.pathname)) {
+      const canonicalHome = new URL("/", url);
+      canonicalHome.search = url.search;
+      return secure(Response.redirect(canonicalHome.toString(), 308), request);
+    }
+
+    // The tested teal storefront remains the source document for the canonical
+    // domain root; only its legacy URL aliases redirect above.
+    if (url.pathname === "/") {
       const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
       return secure(await env.ASSETS.fetch(storefrontRequest), request);
     }
