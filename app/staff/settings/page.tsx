@@ -28,6 +28,9 @@ export default function StaffSettingsPage() {
   const [emailGatewayFrom, setEmailGatewayFrom] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
+  const [smsTestTo, setSmsTestTo] = useState("");
+  const [emailTestTo, setEmailTestTo] = useState("");
+  const [msgTesting, setMsgTesting] = useState<"" | "sms" | "email">("");
   const [calBusy, setCalBusy] = useState(false);
   const [calCopied, setCalCopied] = useState(false);
   const [notice, setNotice] = useState("");
@@ -90,6 +93,25 @@ export default function StaffSettingsPage() {
       setError(e instanceof Error ? e.message : "Не вдалося створити посилання");
     } finally {
       setCalBusy(false);
+    }
+  }
+
+  async function sendMessagingTest(channel: "sms" | "email") {
+    const to = (channel === "sms" ? smsTestTo : emailTestTo).trim();
+    if (!to) { setError(channel === "sms" ? "Вкажіть номер для тесту" : "Вкажіть e-mail для тесту"); return; }
+    setMsgTesting(channel); setNotice(""); setError("");
+    try {
+      const res = await fetch("/api/staff/settings/messaging-test", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ channel, to }),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося надіслати");
+      setNotice(channel === "sms" ? "Тестове SMS надіслано" : "Тестовий e-mail надіслано");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося надіслати");
+    } finally {
+      setMsgTesting("");
     }
   }
 
@@ -182,6 +204,14 @@ export default function StaffSettingsPage() {
           <input value={smsGatewayAuth} onChange={(e) => setSmsGatewayAuth(e.target.value)} placeholder={settings?.smsGatewayAuthSet ? "Збережено — введіть, щоб змінити" : "Напр. Bearer <ключ>"} autoComplete="off" />
           <small>Значення заголовка Authorization. Порожнє — лишити збережене, «-» — очистити.</small>
         </label>
+        <label><span>Перевірка SMS-шлюзу</span>
+          <input value={smsTestTo} onChange={(e) => setSmsTestTo(e.target.value)} placeholder="+380 97 000 00 00" autoComplete="off" inputMode="tel" />
+          <small>Введіть номер і натисніть «Тест», щоб надіслати пробне SMS через збережений шлюз.</small>
+        </label>
+        <button type="button" className="button secondary" onClick={() => sendMessagingTest("sms")} disabled={msgTesting === "sms" || !settings?.smsGatewayUrl}>
+          {msgTesting === "sms" ? "Надсилаємо…" : "Тест SMS"}
+        </button>
+        {!settings?.smsGatewayUrl && <small className="settingsHint">Спершу збережіть адресу SMS-шлюзу — тоді кнопку буде розблоковано.</small>}
         <label><span>Адреса e-mail-шлюзу (HTTP POST)</span>
           <input value={emailGatewayUrl} onChange={(e) => setEmailGatewayUrl(e.target.value)} placeholder="https://email-провайдер/api/send" autoComplete="off" inputMode="url" />
           <small>Отримає JSON {"{ to, from, subject, text }"}. Порожнє поле — e-mail-канал вимкнено.</small>
@@ -193,6 +223,14 @@ export default function StaffSettingsPage() {
         <label><span>Адреса відправника e-mail</span>
           <input value={emailGatewayFrom} onChange={(e) => setEmailGatewayFrom(e.target.value)} placeholder="noreply@likarnya.example" autoComplete="off" inputMode="email" />
         </label>
+        <label><span>Перевірка e-mail-шлюзу</span>
+          <input value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} placeholder="admin@likarnya.example" autoComplete="off" inputMode="email" />
+          <small>Введіть адресу й натисніть «Тест», щоб надіслати пробний лист через збережений шлюз.</small>
+        </label>
+        <button type="button" className="button secondary" onClick={() => sendMessagingTest("email")} disabled={msgTesting === "email" || !settings?.emailGatewayUrl}>
+          {msgTesting === "email" ? "Надсилаємо…" : "Тест e-mail"}
+        </button>
+        {!settings?.emailGatewayUrl && <small className="settingsHint">Спершу збережіть адресу e-mail-шлюзу — тоді кнопку буде розблоковано.</small>}
       </section>
 
       {notice && <p className="notice success" role="status">{notice}</p>}
