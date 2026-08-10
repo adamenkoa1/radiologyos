@@ -7,487 +7,108 @@
 <meta name="description" content="Особистий кабінет пацієнта відділення променевої діагностики: статус заявок, дата запису та протокол дослідження."/>
 <meta name="robots" content="noindex"/>
 <meta name="theme-color" content="#123d3a"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%234f5d3e'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23ef744d'/%3E%3C/svg%3E"/>
 <link rel="stylesheet" href="/site/assets/site.css">
 <style>
-
-:root{
-  --bg:#f3f6f8;--ink:#18302f;--muted:#5c6c78;--line:#dbe3e8;
-  --gold:#ef744d;--olive:var(--brand);
-  --grad:linear-gradient(135deg,var(--brand),var(--brand-dark));
-  --shadow:0 12px 32px rgba(18,40,30,.10);
-}
-*{box-sizing:border-box}
-body{margin:0;padding:14px 0 40px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}
-a{text-decoration:none;color:inherit}
-.wrap{width:min(760px,calc(100% - 28px));margin:auto}
-
-header{padding:0 14px;margin-bottom:18px}
-.header-row{width:min(760px,100%);margin:0 auto;padding:18px 20px;border-radius:var(--r-xl);background:var(--grad);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;color:#fff}
-.header-title{flex:1;min-width:0}
-.header-title strong{display:block;font-size:clamp(18px,3vw,24px);font-weight:700}
-.header-title span{display:block;font-size:13px;color:#e5ecf0;margin-top:3px}
-.back-link{flex-shrink:0;padding:9px 14px;border-radius:var(--r-md);background:rgba(255,255,255,.14);font-size:13px;font-weight:700;color:#fff}
-.back-link:hover{background:rgba(255,255,255,.22)}
-
-.card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:0 8px 24px rgba(24,34,19,.06)}
-.gate p{color:var(--muted);font-size:14px;margin:6px 0 14px}
-.phone-wrap{display:flex}
-.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:var(--r-md) 0 0 11px;background:#f2f6f8;font-weight:700;color:var(--brand)}
-.phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #dbe3e8;border-radius:0 11px 11px 0;font:inherit}
-.phone-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
-.code-wrap{margin-top:12px}
-.code-wrap label{display:block;font-size:13px;font-weight:700;color:#33434d;margin-bottom:5px}
-.code-wrap input{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:var(--r-md);font:inherit;text-transform:uppercase}
-.code-wrap input:focus{outline:2px solid var(--olive);outline-offset:1px;border-color:var(--olive)}
-.gate .btn{margin-top:14px}
-.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:var(--r-md);background:var(--olive);color:#fff;font:inherit;font-weight:800;cursor:pointer}
-.btn:disabled{opacity:.6}
-.btn.secondary{background:#eef2f5;color:#0e454c}
-.btn.danger{background:#fbe9e6;color:#a5352a}
-.gate-error{display:none;color:#c0392b;font-size:13px;margin-top:10px}
-.gate-error.show{display:block}
-
-.cab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 14px}
-.cab-head h1{font-size:20px;margin:0}
-.cab-phone{font-size:13px;color:var(--muted)}
-.logout{border:0;background:none;color:#0e454c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}
-.tg-connect{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 2px 14px;padding:12px 14px;background:#eef7f8;border:1px solid #d3e6e8;border-radius:var(--r-md);font-size:13px;color:#18302f}
-.tg-connect .btn-ghost{border:1px solid var(--olive);background:#fff;color:var(--olive);font:inherit;font-weight:800;font-size:13px;border-radius:var(--r-sm);padding:8px 14px;cursor:pointer}
-.tg-connect .btn-ghost:disabled{opacity:.5;cursor:not-allowed}
-.tg-connect-msg{flex-basis:100%;color:#3a5c58;font-size:12px}
-
-.app-card{margin-bottom:14px}
-.visit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:6px 2px 8px;color:#123d3a;font-size:13px}
-.visit-head b{font-size:14px}.visit-head small{color:#7c8a94}.visit-head strong{color:#123d3a}
-.visit-group{border-left:3px solid #bfe0e4;border-radius:var(--r-sm);padding-left:12px;margin-bottom:14px}
-.visit-group .app-card:last-child{margin-bottom:0}
-.bring-note{margin:10px 0 0;padding:9px 12px;background:#eef7f8;border:1px solid #cfe9ec;border-radius:var(--r-sm);color:#0e454c;font-size:12px}
-.app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.app-study{font-weight:800;font-size:16px}
-.app-meta{font-size:13px;color:var(--muted);margin-top:3px}
-.badge{flex-shrink:0;padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:800;white-space:nowrap}
-.badge.new{background:#e6f4f6;color:#0a5f68}
-.badge.progress{background:#e6eef7;color:#3c6ba6}
-.badge.booked{background:#e6f4ea;color:#1e7a3d}
-.badge.done{background:var(--olive);color:#fff}
-.badge.cancelled{background:#fbe9e6;color:#a5352a}
-
-.stepper{display:grid;grid-template-columns:repeat(3,1fr);gap:0;margin:16px 0 4px;counter-reset:step}
-.step{position:relative;text-align:center;font-size:12px;color:#9fb0bb;padding-top:26px}
-.step::before{content:'';position:absolute;top:9px;left:calc(50% + 12px);right:calc(-50% + 12px);height:2px;background:#e0e7ec}
-.step:last-child::before{display:none}
-.step::after{content:'';position:absolute;top:2px;left:50%;transform:translateX(-50%);width:16px;height:16px;border-radius:50%;background:#e0e7ec}
-.step.on{color:#0e454c;font-weight:700}
-.step.on::after{background:var(--olive)}
-.step.on::before{background:var(--olive)}
-
-.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}
-.actions .btn{width:auto;flex:1;min-width:150px;min-height:44px}
-.pay-row{display:flex;gap:10px;align-items:center;background:#eef7f8;border:1px solid #d9eef0;border-radius:var(--r-md);padding:12px 14px;margin-top:14px;font-size:14px;color:#0e454c}
-.pay-row strong{font-weight:800}
-.payment-details{margin-top:12px;border:1px solid #d9eef0;border-radius:var(--r-md);overflow:hidden;background:#fff}
-.payment-detail{display:grid;grid-template-columns:100px minmax(0,1fr) auto;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid #edf2f4;font-size:13px}
-.payment-detail:last-child{border-bottom:0}.payment-detail span{color:var(--muted)}.payment-detail b{overflow-wrap:anywhere}.copy-one{border:0;border-radius:var(--r-sm);padding:7px 9px;background:#e6f4f6;color:#0e5f67;font-weight:800;cursor:pointer}.copy-one:hover{background:#d7edf0}
-.copy-payment{margin-top:10px}.pay-note{margin:8px 2px 0;color:var(--muted);font-size:12px;text-align:center}
-.pay-toggle{margin-top:10px}.payment-panel{margin-top:10px;padding:14px;border:1px solid #d9eef0;border-radius:var(--r-lg);background:#f7fbfc}
-.payment-panel[hidden]{display:none}.payment-instructions{font-size:13px;color:#33434d}.payment-instructions b{font-size:15px;color:#0e454c}.payment-instructions ol{margin:8px 0 2px;padding-left:22px}.payment-instructions li{margin:5px 0}
-.bank-choice{margin-top:10px}.bank-details{margin-top:10px;border:1px solid #d9eef0;border-radius:var(--r-md);overflow:hidden;background:#fff}.bank-details[hidden]{display:none}.bank-title{padding:11px 12px;background:#eef7f8;font-size:14px;font-weight:800;color:#0e454c}
-
-.protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;background:#fdfefe}
-.protocol.open{display:block}
-.protocol h4{margin:0 0 2px;font-size:15px}
-.protocol .p-org{font-size:12px;color:var(--muted);margin-bottom:12px}
-.p-field{margin:10px 0}
-.p-field b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6c7c86;margin-bottom:3px}
-.p-field div{font-size:14px;white-space:pre-wrap}
-.p-caveat{margin-top:12px;font-size:11px;color:#8a98a2}
-.print-btn{margin-top:14px}
-
-.empty{text-align:center;color:var(--muted);padding:30px 10px}
-.empty a{color:#0e454c;font-weight:700}
-.hint{font-size:12px;color:var(--muted);text-align:center;margin-top:18px;line-height:1.5}
-.hint a{color:#0e454c;font-weight:700}
-
-@media print{
-  body{background:#fff;padding:0}
-  header,.cab-head,.gate,.hint,.logout,.actions,.app-top,.stepper{display:none!important}
-  .app-card{border:0;box-shadow:none;padding:0;margin:0}
-  .app-card:not(.printing){display:none!important}
-  .protocol{display:block!important;border:0;padding:0}
-}
+:root{--bg:#f3f6f8;--ink:#18302f;--muted:#5c6c78;--line:#dbe3e8;--olive:var(--brand);--grad:linear-gradient(135deg,var(--brand),var(--brand-dark));--shadow:0 12px 32px rgba(18,40,30,.10)}
+*{box-sizing:border-box}body{margin:0;padding:14px 0 40px;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink);line-height:1.45}a{text-decoration:none;color:inherit}.wrap{width:min(760px,calc(100% - 28px));margin:auto}
+header{padding:0 14px;margin-bottom:18px}.header-row{width:min(760px,100%);margin:0 auto;padding:18px 20px;border-radius:var(--r-xl);background:var(--grad);box-shadow:var(--shadow);display:flex;align-items:center;gap:14px;color:#fff}.header-title{flex:1;min-width:0}.header-title strong{display:block;font-size:clamp(18px,3vw,24px);font-weight:700}.header-title span{display:block;font-size:13px;color:#e5ecf0;margin-top:3px}.back-link{flex-shrink:0;padding:9px 14px;border-radius:var(--r-md);background:rgba(255,255,255,.14);font-size:13px;font-weight:700;color:#fff}
+.card{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:20px;box-shadow:0 8px 24px rgba(24,34,19,.06)}.gate p{color:var(--muted);font-size:14px;margin:6px 0 14px}.phone-wrap{display:flex}.phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:var(--r-md) 0 0 var(--r-md);background:#f2f6f8;font-weight:700;color:var(--brand)}.phone-wrap input{flex:1;min-width:0;padding:12px;border:1px solid #dbe3e8;border-radius:0 var(--r-md) var(--r-md) 0;font:inherit}.field{margin-top:12px}.field label{display:block;font-size:13px;font-weight:700;color:#33434d;margin-bottom:5px}.field input{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:var(--r-md);font:inherit}.otp-input{font-size:24px!important;letter-spacing:.35em;text-align:center;font-weight:800}.btn{display:inline-flex;align-items:center;justify-content:center;width:100%;min-height:48px;padding:0 18px;border:0;border-radius:var(--r-md);background:var(--olive);color:#fff;font:inherit;font-weight:800;cursor:pointer}.btn.secondary{background:#eef2f5;color:#0e454c}.btn.danger{background:#fbe9e6;color:#a5352a}.btn:disabled{opacity:.6}.gate .btn{margin-top:14px}.gate-error{display:none;color:#c0392b;font-size:13px;margin-top:10px}.gate-error.show{display:block}.gate-note{font-size:12px;color:var(--muted);margin-top:10px}.otp-step[hidden],#cabinet[hidden]{display:none}
+.cab-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:4px 2px 14px}.cab-head h1{font-size:20px;margin:0}.cab-phone{font-size:13px;color:var(--muted)}.logout{border:0;background:none;color:#0e454c;font:inherit;font-size:13px;font-weight:700;cursor:pointer;padding:6px}.tg-connect{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin:0 2px 14px;padding:12px 14px;background:#eef7f8;border:1px solid #d3e6e8;border-radius:var(--r-md);font-size:13px}.tg-connect .btn-ghost{border:1px solid var(--olive);background:#fff;color:var(--olive);font:inherit;font-weight:800;font-size:13px;border-radius:var(--r-sm);padding:8px 14px;cursor:pointer}.tg-connect-msg{flex-basis:100%;color:#3a5c58;font-size:12px}
+.app-card{margin-bottom:14px}.visit-head{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin:6px 2px 8px;color:#123d3a;font-size:13px}.visit-head b{font-size:14px}.visit-head small{color:#7c8a94}.visit-group{border-left:3px solid #bfe0e4;border-radius:var(--r-sm);padding-left:12px;margin-bottom:14px}.app-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}.app-study{font-weight:800;font-size:16px}.app-meta{font-size:13px;color:var(--muted);margin-top:3px}.badge{flex-shrink:0;padding:5px 11px;border-radius:var(--r-pill);font-size:12px;font-weight:800}.badge.new{background:#e6f4f6;color:#0a5f68}.badge.booked{background:#e6f4ea;color:#1e7a3d}.badge.done{background:var(--olive);color:#fff}.badge.cancelled{background:#fbe9e6;color:#a5352a}.bring-note{margin:10px 0 0;padding:9px 12px;background:#eef7f8;border:1px solid #cfe9ec;border-radius:var(--r-sm);color:#0e454c;font-size:12px}.actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px}.actions .btn{width:auto;flex:1;min-width:150px;min-height:44px}.pay-row{margin-top:14px;padding:12px 14px;background:#eef7f8;border:1px solid #d9eef0;border-radius:var(--r-md);font-size:14px}.payment-panel{margin-top:10px;padding:14px;border:1px solid #d9eef0;border-radius:var(--r-lg);background:#f7fbfc}.payment-panel[hidden]{display:none}.payment-detail{display:grid;grid-template-columns:100px minmax(0,1fr) auto;gap:10px;padding:8px 0;font-size:13px}.payment-detail span{color:var(--muted)}.copy-one{border:0;border-radius:var(--r-sm);padding:7px 9px;background:#e6f4f6;color:#0e5f67;font-weight:800;cursor:pointer}.protocol{display:none;margin-top:14px;border:1px solid var(--line);border-radius:var(--r-lg);padding:18px;background:#fdfefe}.protocol.open{display:block}.p-field{margin:10px 0}.p-field b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#6c7c86}.p-field div{font-size:14px;white-space:pre-wrap}.empty{text-align:center;color:var(--muted);padding:30px 10px}.hint{font-size:12px;color:var(--muted);text-align:center;margin-top:18px}
+@media print{body{background:#fff;padding:0}header,.cab-head,.gate,.hint,.logout,.actions,.app-top{display:none!important}.app-card{border:0;box-shadow:none;padding:0;margin:0}.app-card:not(.printing){display:none!important}.protocol{display:block!important;border:0;padding:0}}
 </style>
 </head>
 <body>
-
-<header>
-  <div class="header-row">
-    <div class="header-title">
-      <strong>Особистий кабінет</strong>
-      <span>Відділення променевої діагностики</span>
-    </div>
-    <a class="back-link" href="/">← На сайт</a>
-  </div>
-</header>
-
+<header><div class="header-row"><div class="header-title"><strong>Особистий кабінет</strong><span>Відділення променевої діагностики</span></div><a class="back-link" href="/">← На сайт</a></div></header>
 <main class="wrap">
-
-  <!-- Вхід за номером телефону та датою народження -->
   <div class="card gate" id="gate">
-    <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-    <p>Введіть номер телефону та дату народження, які ви вказали під час запису.</p>
-    <div class="phone-wrap">
-      <span class="phone-prefix">+380</span>
-      <input id="gatePhone" inputmode="numeric" maxlength="9" placeholder="97 000 00 00" aria-label="Номер телефону"/>
+    <div id="identityStep">
+      <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
+      <p>Вкажіть номер телефону та дату народження. Після цього ми надішлемо одноразовий SMS-код.</p>
+      <div class="phone-wrap"><span class="phone-prefix">+380</span><input id="gatePhone" inputmode="numeric" maxlength="9" autocomplete="tel-national" placeholder="97 000 00 00" aria-label="Номер телефону"/></div>
+      <div class="field"><label for="gateDob">Дата народження</label><input id="gateDob" type="date" min="1900-01-01" autocomplete="bday"/></div>
+      <button class="btn" id="requestOtpBtn" type="button">Отримати код</button>
+      <div class="gate-note">Медичні результати не відкриваються лише за номером телефону, датою народження або номером заявки.</div>
     </div>
-    <div class="code-wrap">
-      <label for="gateDob">Дата народження</label>
-      <input id="gateDob" type="date" min="1900-01-01" aria-label="Дата народження" autocomplete="bday"/>
+    <div class="otp-step" id="otpStep" hidden>
+      <h1 style="margin:0;font-size:20px">Підтвердження номера</h1>
+      <p id="otpMessage">Введіть 6 цифр із SMS. Код діє 5 хвилин і використовується один раз.</p>
+      <div class="field"><label for="otpCode">Код підтвердження</label><input class="otp-input" id="otpCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000"/></div>
+      <button class="btn" id="verifyOtpBtn" type="button">Увійти до кабінету</button>
+      <button class="btn secondary" id="backOtpBtn" type="button">Змінити номер або дату</button>
     </div>
     <span class="gate-error" id="gateError"></span>
-    <button class="btn" id="gateBtn" type="button">Переглянути заявки</button>
   </div>
 
-  <!-- Кабінет -->
   <div id="cabinet" hidden>
-    <div class="cab-head">
-      <div>
-        <h1>Мої заявки</h1>
-        <div class="cab-phone" id="cabPhone"></div>
-      </div>
-      <button class="logout" id="logoutBtn" type="button">Вийти</button>
-    </div>
-    <div class="tg-connect" id="tgConnect" hidden>
-      <span>📩 Отримувати сповіщення про дослідження в Telegram?</span>
-      <button class="btn-ghost" id="tgConnectBtn" type="button">Підключити Telegram</button>
-      <span class="tg-connect-msg" id="tgConnectMsg"></span>
-    </div>
+    <div class="cab-head"><div><h1>Мої заявки</h1><div class="cab-phone" id="cabPhone"></div></div><button class="logout" id="logoutBtn" type="button">Вийти</button></div>
+    <div class="tg-connect" id="tgConnect" hidden><span>📩 Отримувати сповіщення про дослідження в Telegram?</span><button class="btn-ghost" id="tgConnectBtn" type="button">Підключити Telegram</button><span class="tg-connect-msg" id="tgConnectMsg"></span></div>
     <div id="appList"></div>
-    <div class="empty" id="emptyState" hidden>
-      За цим номером заявок не знайдено.<br/>
-      <a href="/site/price.html">Подати заявку →</a>
-    </div>
-    <p class="hint">Показуються заявки, оформлені на цей номер телефону. Протокол дослідження стає доступним після того, як лікар його видасть.</p>
+    <div class="empty" id="emptyState" hidden>За цим номером заявок не знайдено.<br/><a href="/site/price.html">Подати заявку →</a></div>
+    <p class="hint">Протокол стає доступним після того, як лікар його видасть. Для повторного входу потрібне нове підтвердження номера.</p>
   </div>
-
 </main>
-
 <script src="/site/assets/qrgen.js"></script>
 <script>
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
+const OTP_API = '/api/patient-otp';
 const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
-
 const statusMeta = {
-  new:               { badge: 'new',       label: 'Заявку отримано',    step: 'new' },
-  requested:         { badge: 'new',       label: 'Заявка',            step: 'new' },
-  needs_verification:{ badge: 'new',       label: 'Потребує перевірки',step: 'new' },
-  scheduled:         { badge: 'booked',    label: 'Заплановано',       step: 'booked' },
-  confirmed:         { badge: 'booked',    label: 'Підтверджена',      step: 'booked' },
-  rescheduled:       { badge: 'booked',    label: 'Перенесена',        step: 'booked' },
-  arrived:           { badge: 'booked',    label: 'Прибуття',          step: 'booked' },
-  queued:            { badge: 'booked',    label: 'У черзі',           step: 'booked' },
-  in_progress:       { badge: 'booked',    label: 'Виконується',       step: 'booked' },
-  performed:         { badge: 'booked',    label: 'Виконано',          step: 'done' },
-  images_ready:      { badge: 'booked',    label: 'Зображення готові', step: 'done' },
-  reporting:         { badge: 'booked',    label: 'Готуємо висновок',  step: 'done' },
-  protocol_ready:    { badge: 'done',      label: 'Протокол готовий',  step: 'done' },
-  issued:            { badge: 'done',      label: 'Видано',            step: 'done' },
-  completed:         { badge: 'done',      label: 'Виконана',          step: 'done' },
-  cancelled:         { badge: 'cancelled', label: 'Скасована',         step: 'cancelled' },
-  no_show:           { badge: 'cancelled', label: 'Неявка',            step: 'cancelled' },
+  new:{badge:'new',label:'Заявку отримано'},requested:{badge:'new',label:'Заявка'},needs_verification:{badge:'new',label:'Потребує перевірки'},scheduled:{badge:'booked',label:'Заплановано'},confirmed:{badge:'booked',label:'Підтверджена'},rescheduled:{badge:'booked',label:'Перенесена'},arrived:{badge:'booked',label:'Прибуття'},queued:{badge:'booked',label:'У черзі'},in_progress:{badge:'booked',label:'Виконується'},performed:{badge:'booked',label:'Виконано'},images_ready:{badge:'booked',label:'Зображення готові'},reporting:{badge:'booked',label:'Готуємо висновок'},protocol_ready:{badge:'done',label:'Протокол готовий'},issued:{badge:'done',label:'Видано'},completed:{badge:'done',label:'Виконана'},cancelled:{badge:'cancelled',label:'Скасована'},no_show:{badge:'cancelled',label:'Неявка'}
 };
-const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#2f5aa0;' }[m]));
-const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-const money = (n) => new Intl.NumberFormat('uk-UA').format(Number(n) || 0);
-const isPayUrl = (s) => /^https?:\/\//i.test(String(s || ''));
-function payQrImg(payload) {
-  if (!payload || typeof qrcode !== 'function') return '';
-  try { const qr = qrcode(0, 'M'); qr.addData(payload); qr.make(); return qr.createImgTag(4, 6); }
-  catch (e) { return ''; }
-}
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,(m)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+const humanDate=(iso)=>(iso?String(iso).split('-').reverse().join('.'):'');
+const money=(n)=>new Intl.NumberFormat('uk-UA').format(Number(n)||0);
+const isPayUrl=(s)=>/^https?:\/\//i.test(String(s||''));
+function payQrImg(payload){if(!payload||typeof qrcode!=='function')return '';try{const qr=qrcode(0,'M');qr.addData(payload);qr.make();return qr.createImgTag(4,6)}catch(e){return ''}}
 
-const gate = document.getElementById('gate');
-const cabinet = document.getElementById('cabinet');
-const errorBox = document.getElementById('gateError');
-let phoneDigits = '';
-let dobValue = '';
-let payLink = '';
-let savedAutoEnter = false;
+const gate=document.getElementById('gate');const cabinet=document.getElementById('cabinet');const errorBox=document.getElementById('gateError');const identityStep=document.getElementById('identityStep');const otpStep=document.getElementById('otpStep');
+let phoneDigits='';let dobValue='';let challengeId='';let payLink='';
+function showError(message){errorBox.textContent=message;errorBox.classList.add('show')}
+function clearError(){errorBox.textContent='';errorBox.classList.remove('show')}
+function adultDobLimit(){const today=new Date();const limit=new Date(today.getFullYear()-18,today.getMonth(),today.getDate());return `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,'0')}-${String(limit.getDate()).padStart(2,'0')}`}
+document.getElementById('gateDob').max=adultDobLimit();
+try{const saved=JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY)||'null');if(saved&&/^\d{9}$/.test(String(saved.phone||'')))document.getElementById('gatePhone').value=saved.phone;if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob||'')))document.getElementById('gateDob').value=saved.dob}catch(e){}
 
-function adultDobLimit() {
-  const today = new Date();
-  const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
-  return `${limit.getFullYear()}-${String(limit.getMonth() + 1).padStart(2, '0')}-${String(limit.getDate()).padStart(2, '0')}`;
-}
-
-document.getElementById('gateDob').max = adultDobLimit();
-try {
-  const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || 'null');
-  if (saved && /^\d{9}$/.test(String(saved.phone || ''))) {
-    document.getElementById('gatePhone').value = saved.phone;
-  }
-  if (saved && /^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob || ''))) {
-    document.getElementById('gateDob').value = saved.dob;
-  }
-  savedAutoEnter = Boolean(saved && saved.autoEnter);
-} catch (e) { /* залишаємо поля порожніми */ }
-
-function showError(message) { errorBox.textContent = message; errorBox.classList.add('show'); }
-
-function stepper(status) {
-  const order = ['new', 'booked', 'done'];
-  const labels = ['Заявку отримано', 'Запис підтверджено', 'Виконано'];
-  const step = (statusMeta[status] || {}).step || 'new';
-  const idx = order.indexOf(step);
-  return '<div class="stepper">' + labels.map((l, i) =>
-    `<div class="step ${i <= idx ? 'on' : ''}">${l}</div>`).join('') + '</div>';
-}
-
-function cardHtml(b) {
-  const meta = statusMeta[b.status] || { badge: 'new', label: b.status };
-  const badgeLabel = b.statusLabel || meta.label;
-  const org = b.organization ? ' · ' + esc(b.organization) : '';
-  const whenPrefix = ['new', 'requested', 'needs_verification'].includes(b.status) ? 'Попередньо призначено' : 'Призначено';
-  const when = b.desiredDate ? `${whenPrefix}: ${esc(humanDate(b.desiredDate))}${b.desiredTime ? ' о ' + esc(b.desiredTime) : ''}` : '';
-  const canCancel = ['new', 'confirmed', 'rescheduled'].includes(b.status);
-  const awaitingPayment = b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed';
-  const serviceWithCode = [b.serviceCode, b.service].filter(Boolean).join(' · ');
-  // Номер заявки (RD-…) у призначенні — єдиний ключ звірки платежу з бронюванням.
+function cardHtml(b){
+  const meta=statusMeta[b.status]||{badge:'new',label:b.status};
+  const badgeLabel=b.statusLabel || meta.label;
+  const org=b.organization?` · ${esc(b.organization)}`:'';
+  const when=b.desiredDate?`${esc(humanDate(b.desiredDate))}${b.desiredTime?' о '+esc(b.desiredTime):''}`:'';
+  const canCancel=['new','confirmed','rescheduled'].includes(b.status);
+  const awaitingPayment=b.paymentStatus==='pending'&&Number(b.paymentAmount)>0&&b.status!=='cancelled'&&b.status!=='completed';
+  const serviceWithCode=[b.serviceCode,b.service].filter(Boolean).join(' · ');
   const paymentPurpose = `Сплата за медичні послуги, заявка ${b.code}${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
-  return `<div class="card app-card" id="card-${esc(b.code)}">
-    <div class="app-top">
-      <div>
-        <div class="app-study">${esc(b.service)}</div>
-        <div class="app-meta"><b>№ заявки: ${esc(b.code)}</b>${(org || when) ? ' · ' : ''}${org ? org.slice(3) : ''}${org && when ? ' · ' : ''}${when}</div>
-      </div>
-      <span class="badge ${meta.badge}">${esc(badgeLabel)}</span>
-    </div>
-    ${b.status !== 'cancelled' ? stepper(b.status) : ''}
-    ${(b.status !== 'cancelled' && b.status !== 'completed') ? `<div class="bring-note">🪪 Візьміть із собою: ${b.category === 'military' ? 'направлення та ' : ''}документ, що посвідчує особу.</div>` : ''}
-    ${awaitingPayment ? `<div class="pay-row">💳 <span>До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></span></div>
-      <button class="btn pay-toggle" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button>
-      <div class="payment-panel" id="payment-${esc(b.code)}" hidden>
-        <div class="payment-instructions"><b>Як оплатити</b><ol>
-          <li>Для швидкої оплати натисніть «Сплатити карткою будь-якого банку».</li>
-          <li>Можна використати картку Monobank, Ощадбанку або іншого українського банку.</li>
-          <li>Або відкрийте реквізити IBAN і створіть платіж у застосунку свого банку.</li>
-        </ol></div>
-        <div class="payment-details">
-          <div class="payment-detail"><span>Платник</span><b>${esc(b.patientName || '')}</b><button class="copy-one" type="button" data-copy-value="${esc(b.patientName || '')}">Копіювати</button></div>
-          <div class="payment-detail"><span>Послуга</span><b>${esc(serviceWithCode)}</b><button class="copy-one" type="button" data-copy-value="${esc(serviceWithCode)}">Копіювати</button></div>
-          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
-          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
-        </div>
-        ${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}<div style="font-size:12px;color:#7c8a94;margin-top:4px">Відскануйте QR камерою або відкрийте Privat24 кнопкою нижче</div></div>` : ''}
-        ${isPayUrl(payLink) ? `<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}" data-name="${esc(b.patientName || '')}">Сплатити карткою будь-якого банку</button>` : ''}
-        <button class="btn secondary bank-choice" type="button" data-bank-toggle="${esc(b.code)}">Оплатити через Monobank / Ощад за IBAN</button>
-        <div class="bank-details" id="bank-${esc(b.code)}" hidden>
-          <div class="bank-title">Реквізити для платежу за IBAN</div>
-          <div class="payment-detail"><span>Отримувач</span><b>Військова частина А3120</b><button class="copy-one" type="button" data-copy-value="Військова частина А3120">Копіювати</button></div>
-          <div class="payment-detail"><span>IBAN</span><b>UA27 820172 0313 2510 0120 2006000</b><button class="copy-one" type="button" data-copy-value="UA278201720313251001202006000">Копіювати</button></div>
-          <div class="payment-detail"><span>ЄДРПОУ</span><b>08296098</b><button class="copy-one" type="button" data-copy-value="08296098">Копіювати</button></div>
-          <div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" type="button" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div>
-          <div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" type="button" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>
-        </div>
-      </div>` : ''}
-    <div class="actions">      ${b.hasProtocol ? `<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>` : ''}
-      ${canCancel ? `<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>` : ''}
-    </div>
-    <div class="protocol" id="prot-${esc(b.code)}"></div>
-  </div>`;
+  return `<div class="card app-card" id="card-${esc(b.code)}"><div class="app-top"><div><div class="app-study">${esc(b.service)}</div><div class="app-meta"><b>№ заявки: ${esc(b.code)}</b>${org}${when?' · '+when:''}</div></div><span class="badge ${meta.badge}">${esc(badgeLabel)}</span></div>
+  ${(b.status!=='cancelled'&&b.status!=='completed')?`<div class="bring-note">🪪 Візьміть із собою: ${b.category === 'military' ? 'направлення та ' : ''}документ, що посвідчує особу.</div>`:''}
+  ${awaitingPayment?`<div class="pay-row">💳 До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></div><button class="btn secondary" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button><div class="payment-panel" id="payment-${esc(b.code)}" hidden><div class="payment-detail"><span>Послуга</span><b>${esc(serviceWithCode)}</b><button class="copy-one" data-copy-value="${esc(serviceWithCode)}">Копіювати</button></div><div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div><div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div>${payLink ? `<div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(payLink)}</div>` : ''}${isPayUrl(payLink)?`<button class="btn" type="button" data-open-payment data-url="${esc(payLink)}">Сплатити карткою будь-якого банку</button>`:''}</div>`:''}
+  <div class="actions">${b.hasProtocol?`<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>`:''}${canCancel?`<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>`:''}</div><div class="protocol" id="prot-${esc(b.code)}"></div></div>`;
+}
+function studyWord(n){const t=n%10,h=n%100;return(t===1&&h!==11)?'дослідження':(t>=2&&t<=4&&(h<12||h>14))?'дослідження':'досліджень'}
+function renderBookings(items){let html='',i=0;while(i<items.length){const group=[items[i]];while(i+1<items.length&&items[i + 1].createdAt&&items[i + 1].createdAt === items[i].createdAt){group.push(items[i+1]);i+=1}i+=1;if(group.length>1){const pending=group.filter((b)=>b.paymentStatus==='pending'&&Number(b.paymentAmount)>0&&b.status!=='cancelled'&&b.status!=='completed');const total=pending.reduce((s,b)=>s+Number(b.paymentAmount||0),0);html+=`<div class="visit-head"><b>Візит · ${group.length} ${studyWord(group.length)}</b>${total>0?` · <span>разом до сплати: <strong>${esc(money(total))} грн</strong></span>`:''}</div><div class="visit-group">${group.map(cardHtml).join('')}</div>`}else html+=cardHtml(group[0])}return html}
+
+async function loadBookings(){
+  try{const pr=await fetch('/api/pay-link',{cache:'no-store'});const pd=await pr.json().catch(()=>({}));payLink=pd.payLink||''}catch(e){payLink=''}
+  const res=await fetch(MY_BOOKINGS,{method:'POST',headers:{'content-type':'application/json'}});const data=await res.json().catch(()=>({}));if(!res.ok){showError(data.error||'Не вдалося завантажити заявки');return false}
+  const list=document.getElementById('appList');const bookings=data.bookings||[];document.getElementById('emptyState').hidden=bookings.length>0;list.innerHTML = renderBookings(bookings);
+  list.querySelectorAll('[data-cancel]').forEach((b)=>b.addEventListener('click',()=>cancelBooking(b.dataset.cancel)));list.querySelectorAll('[data-protocol]').forEach((b)=>b.addEventListener('click',()=>toggleProtocol(b.dataset.protocol,b)));list.querySelectorAll('[data-pay-toggle]').forEach((b)=>b.addEventListener('click',()=>{const p=document.getElementById('payment-'+b.dataset.payToggle);p.hidden=!p.hidden}));list.querySelectorAll('[data-copy-value]').forEach((b)=>b.addEventListener('click',()=>navigator.clipboard?.writeText(b.dataset.copyValue||'')));list.querySelectorAll('[data-open-payment]').forEach((b)=>b.addEventListener('click',()=>window.open(b.dataset.url,'_blank','noopener')));return true
 }
 
-// Заявки одного сабміту (КТ+рентген тощо) мають однаковий created_at і йдуть
-// поспіль — групуємо їх в один «візит», щоб не виглядало як задвоєння.
-function studyWord(n) { const t = n % 10, h = n % 100; return (t === 1 && h !== 11) ? 'дослідження' : (t >= 2 && t <= 4 && (h < 12 || h > 14)) ? 'дослідження' : 'досліджень'; }
-function renderBookings(items) {
-  let html = '', i = 0;
-  while (i < items.length) {
-    const group = [items[i]];
-    while (i + 1 < items.length && items[i + 1].createdAt && items[i + 1].createdAt === items[i].createdAt) { group.push(items[i + 1]); i += 1; }
-    i += 1;
-    if (group.length > 1) {
-      const pending = group.filter((b) => b.paymentStatus === 'pending' && Number(b.paymentAmount) > 0 && b.status !== 'cancelled' && b.status !== 'completed');
-      const total = pending.reduce((s, b) => s + Number(b.paymentAmount || 0), 0);
-      const day = (group[0].createdAt || '').slice(0, 10);
-      html += `<div class="visit-head"><b>Візит · ${group.length} ${studyWord(group.length)}</b>${day ? ` · <small>${esc(day)}</small>` : ''}${total > 0 ? ` · <span>разом до сплати: <strong>${esc(money(total))} грн</strong></span>` : ''}</div>`;
-      html += `<div class="visit-group">${group.map(cardHtml).join('')}</div>`;
-    } else {
-      html += cardHtml(group[0]);
-    }
-  }
-  return html;
+async function requestOtp(){
+  clearError();const digits=document.getElementById('gatePhone').value.replace(/\D/g,'');const dob=document.getElementById('gateDob').value.trim();if(digits.length!==9){showError('Введіть 9 цифр номера');return}if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)){showError('Вкажіть дату народження');return}
+  const btn=document.getElementById('requestOtpBtn');btn.disabled=true;phoneDigits=digits;dobValue=dob;try{const res=await fetch(OTP_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone:'+380'+digits,dob})});const data=await res.json().catch(()=>({}));if(!res.ok){showError(data.error||'Не вдалося надіслати код');return}challengeId=data.challengeId||'';if(!challengeId){showError('Не вдалося створити перевірку');return}identityStep.hidden=true;otpStep.hidden=false;document.getElementById('otpMessage').textContent=data.message||'Введіть 6 цифр із SMS. Код діє 5 хвилин.';document.getElementById('otpCode').focus()}catch(e){showError('Помилка мережі — спробуйте ще раз.')}finally{btn.disabled=false}
 }
+async function verifyOtp(){
+  clearError();const code=document.getElementById('otpCode').value.replace(/\D/g,'');if(code.length!==6){showError('Введіть 6 цифр коду підтвердження');return}const btn=document.getElementById('verifyOtpBtn');btn.disabled=true;try{const res=await fetch(OTP_API,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({phone:'+380'+phoneDigits,challengeId,code})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){showError(data.error||'Не вдалося підтвердити код');return}document.getElementById('cabPhone').textContent='+380 '+phoneDigits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');const loaded=await loadBookings();if(loaded){gate.hidden=true;cabinet.hidden=false;document.getElementById('tgConnect').hidden=false;try{sessionStorage.setItem(PATIENT_PREFILL_KEY,JSON.stringify({phone:phoneDigits,dob:dobValue,autoEnter:false}))}catch(e){}}}finally{btn.disabled=false}
+}
+async function cancelBooking(code){if(!confirm('Скасувати цю заявку?'))return;const res=await fetch(STATUS_API,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({code,action:'cancel'})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){alert(data.error||'Не вдалося скасувати заявку');return}loadBookings()}
+async function toggleProtocol(code,btn){const box=document.getElementById('prot-'+code);if(box.classList.contains('open')){box.classList.remove('open');return}if(!box.dataset.loaded){btn.disabled=true;try{const res=await fetch(PROTOCOL_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({code})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.protocol){alert(data.error||'Протокол недоступний');return}const p=data.protocol;box.innerHTML=`<h4>Протокол променевого дослідження ${p.number?'№ '+esc(p.number):''}</h4><div class="p-field"><b>Пацієнт</b><div>${esc(p.patient)}</div></div><div class="p-field"><b>Дослідження</b><div>${esc(p.service)}${p.method?' · '+esc(p.method):''}</div></div>${p.findings?`<div class="p-field"><b>Опис</b><div>${esc(p.findings)}</div></div>`:''}<div class="p-field"><b>Висновок</b><div>${esc(p.conclusion||'—')}</div></div>${p.recommendations?`<div class="p-field"><b>Рекомендації</b><div>${esc(p.recommendations)}</div></div>`:''}<button class="btn secondary" type="button" data-print="${esc(code)}">🖨 Роздрукувати / зберегти PDF</button>`;box.dataset.loaded='1';box.querySelector('[data-print]').addEventListener('click',()=>{const card=document.getElementById('card-'+code);card.classList.add('printing');window.print();card.classList.remove('printing')})}finally{btn.disabled=false}}box.classList.add('open')}
+async function connectTelegram(){const btn=document.getElementById('tgConnectBtn'),msg=document.getElementById('tgConnectMsg');btn.disabled=true;try{const res=await fetch('/api/my-telegram-link',{method:'POST'});const data=await res.json().catch(()=>({}));if(!res.ok||!data.url){msg.textContent=data.error||'Не вдалося створити посилання';return}window.open(data.url,'_blank','noopener');msg.textContent='Відкрили Telegram — натисніть «Старт» у боті.'}finally{btn.disabled=false}}
 
-async function loadBookings() {
-  try {
-    const pr = await fetch('/api/pay-link', { cache: 'no-store' });
-    const pd = await pr.json().catch(() => ({}));
-    payLink = (pd && pd.payLink) || '';
-  } catch (e) { payLink = ''; }
-  const res = await fetch(MY_BOOKINGS, {
-    method: 'POST', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ phone: '+380' + phoneDigits, dob: dobValue }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) { showError(data.error || 'Не вдалося завантажити заявки'); return false; }
-  const list = document.getElementById('appList');
-  const bookings = data.bookings || [];
-  document.getElementById('emptyState').hidden = bookings.length > 0;
-  list.innerHTML = renderBookings(bookings);
-  list.querySelectorAll('[data-cancel]').forEach((b) => b.addEventListener('click', () => cancelBooking(b.dataset.cancel)));
-  list.querySelectorAll('[data-pay-toggle]').forEach((button) => button.addEventListener('click', () => togglePayment(button)));
-  list.querySelectorAll('[data-copy-value]').forEach((button) => button.addEventListener('click', () => copySingleValue(button)));
-  list.querySelectorAll('[data-open-payment]').forEach((button) => button.addEventListener('click', () => openPayment(button)));
-  list.querySelectorAll('[data-bank-toggle]').forEach((button) => button.addEventListener('click', () => toggleBankDetails(button)));
-  list.querySelectorAll('[data-protocol]').forEach((b) => b.addEventListener('click', () => toggleProtocol(b.dataset.protocol, b)));
-  return true;
-}
-
-function togglePayment(button) {
-  const panel = document.getElementById('payment-' + button.dataset.payToggle);
-  if (!panel) return;
-  const opening = panel.hidden;
-  panel.hidden = !opening;
-  button.textContent = opening ? 'Сховати оплату' : 'Сплатити';
-}
-async function copySingleValue(button) {
-  const value = button.dataset.copyValue || '';
-  try {
-    await navigator.clipboard.writeText(value);
-    const old = button.textContent;
-    button.textContent = 'Скопійовано ✓';
-    window.setTimeout(() => { button.textContent = old; }, 1600);
-  } catch (e) {
-    window.prompt('Скопіюйте значення', value);
-  }
-}
-
-function toggleBankDetails(button) {
-  const panel = document.getElementById('bank-' + button.dataset.bankToggle);
-  if (!panel) return;
-  const opening = panel.hidden;
-  panel.hidden = !opening;
-  button.textContent = opening ? 'Сховати реквізити IBAN' : 'Оплатити через Monobank / Ощад за IBAN';
-}
-function openPayment(button) {
-  const name = button.dataset.name || '';
-  if (name) navigator.clipboard?.writeText(name).catch(() => {});
-  window.open(button.dataset.url || payLink, '_blank', 'noopener');
-  button.textContent = 'Privat24 відкрито · ПІБ скопійовано';
-  window.setTimeout(() => { button.textContent = 'Сплатити карткою будь-якого банку'; }, 2200);
-}
-async function enter(digits, dob) {
-  phoneDigits = digits;
-  dobValue = dob;
-  document.getElementById('cabPhone').textContent = '+380 ' + digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/, '$1 $2 $3 $4');
-  const loaded = await loadBookings();
-  if (loaded) { gate.hidden = true; cabinet.hidden = false; document.getElementById('tgConnect').hidden = false; }
-}
-
-async function connectTelegram() {
-  const btn = document.getElementById('tgConnectBtn');
-  const msg = document.getElementById('tgConnectMsg');
-  btn.disabled = true; msg.textContent = '';
-  try {
-    const res = await fetch('/api/my-telegram-link', { method: 'POST' });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.url) { msg.textContent = data.error || 'Не вдалося створити посилання'; return; }
-    window.open(data.url, '_blank', 'noopener');
-    msg.textContent = 'Відкрили Telegram — натисніть «Старт» у боті, щоб підключити.';
-  } catch (e) {
-    msg.textContent = 'Помилка мережі — спробуйте ще раз.';
-  } finally {
-    btn.disabled = false;
-  }
-}
-
-async function cancelBooking(code) {
-  if (!confirm('Скасувати цю заявку?')) return;
-  const res = await fetch(STATUS_API, {
-    method: 'PATCH', headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ code, action: 'cancel' }),
-  });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok || !data.ok) { alert(data.error || 'Не вдалося скасувати заявку'); return; }
-  loadBookings();
-}
-
-async function toggleProtocol(code, btn) {
-  const box = document.getElementById('prot-' + code);
-  if (box.classList.contains('open')) { box.classList.remove('open'); return; }
-  if (!box.dataset.loaded) {
-    btn.disabled = true; btn.textContent = 'Завантажую…';
-    try {
-      const res = await fetch(PROTOCOL_API, {
-        method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ code }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.protocol) { alert(data.error || 'Протокол недоступний'); return; }
-      const p = data.protocol;
-      box.innerHTML =
-        `<h4>Протокол променевого дослідження ${p.number ? '№ ' + esc(p.number) : ''}</h4>
-         <div class="p-org">Чернігівський військовий госпіталь · Відділення променевої діагностики</div>
-         <div class="p-field"><b>Пацієнт</b><div>${esc(p.patient)}</div></div>
-         <div class="p-field"><b>Дослідження</b><div>${esc(p.service)}${p.method ? ' · ' + esc(p.method) : ''}</div></div>
-         ${p.findings ? `<div class="p-field"><b>Опис</b><div>${esc(p.findings)}</div></div>` : ''}
-         <div class="p-field"><b>Висновок</b><div>${esc(p.conclusion || '—')}</div></div>
-         ${p.recommendations ? `<div class="p-field"><b>Рекомендації</b><div>${esc(p.recommendations)}</div></div>` : ''}
-         <div class="p-caveat">Роздруківка з інформаційної системи. Юридичну силу має протокол, засвідчений закладом у встановленому порядку.</div>
-         <button class="btn secondary print-btn" type="button" data-print="${esc(code)}">🖨 Роздрукувати / зберегти PDF</button>`;
-      box.dataset.loaded = '1';
-      box.querySelector('[data-print]').addEventListener('click', () => printProtocol(code));
-    } finally {
-      btn.disabled = false; btn.textContent = 'Переглянути протокол';
-    }
-  }
-  box.classList.add('open');
-}
-
-function printProtocol(code) {
-  const card = document.getElementById('card-' + code);
-  card.classList.add('printing');
-  window.print();
-  card.classList.remove('printing');
-}
-
-document.getElementById('gateBtn').addEventListener('click', () => {
-  const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
-  const dob = document.getElementById('gateDob').value.trim();
-  errorBox.classList.remove('show');
-  if (digits.length !== 9) { showError('Введіть 9 цифр номера'); return; }
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob)) { showError('Вкажіть дату народження'); return; }
-  enter(digits, dob);
-});
-document.getElementById('gatePhone').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
-document.getElementById('gateDob').addEventListener('keydown', (e) => { if (e.key === 'Enter') document.getElementById('gateBtn').click(); });
-if (savedAutoEnter && new URLSearchParams(window.location.search).get('new') === '1') {
-  const digits = document.getElementById('gatePhone').value.replace(/\D/g, '');
-  const dob = document.getElementById('gateDob').value.trim();
-  if (digits.length === 9 && /^\d{4}-\d{2}-\d{2}$/.test(dob)) {
-    try {
-      const saved = JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY) || '{}');
-      saved.autoEnter = false;
-      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify(saved));
-    } catch (e) {}
-    window.history.replaceState({}, '', '/site/cabinet.html');
-    enter(digits, dob);
-  }
-}
-document.getElementById('tgConnectBtn').addEventListener('click', connectTelegram);
-document.getElementById('logoutBtn').addEventListener('click', async () => {
-  await fetch(MY_BOOKINGS, { method: 'DELETE' }).catch(() => null);
-  phoneDigits = '';
-  dobValue = '';
-  cabinet.hidden = true; gate.hidden = false;
-  document.getElementById('tgConnect').hidden = true;
-  document.getElementById('gatePhone').value = '';
-  document.getElementById('gateDob').value = '';
-  try { sessionStorage.removeItem(PATIENT_PREFILL_KEY); } catch (e) {}
-});
+document.getElementById('requestOtpBtn').addEventListener('click',requestOtp);document.getElementById('verifyOtpBtn').addEventListener('click',verifyOtp);document.getElementById('backOtpBtn').addEventListener('click',()=>{clearError();challengeId='';document.getElementById('otpCode').value='';otpStep.hidden=true;identityStep.hidden=false});document.getElementById('otpCode').addEventListener('keydown',(e)=>{if(e.key==='Enter')verifyOtp()});document.getElementById('tgConnectBtn').addEventListener('click',connectTelegram);
+document.getElementById('logoutBtn').addEventListener('click',async()=>{await fetch(MY_BOOKINGS,{method:'DELETE'}).catch(()=>null);phoneDigits='';dobValue='';challengeId='';cabinet.hidden=true;gate.hidden=false;otpStep.hidden=true;identityStep.hidden=false;document.getElementById('tgConnect').hidden=true;document.getElementById('otpCode').value='';clearError()});
 </script>
 </body>
 </html>
