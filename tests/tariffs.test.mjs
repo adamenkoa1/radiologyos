@@ -22,13 +22,17 @@ test("tariffs API: all staff read, only admin writes", async () => {
   assert.match(route, /DELETE FROM service_prices WHERE code = \?/); // reset to default
 });
 
-test("bookings charge the effective (override-aware) price", async () => {
+test("booking paths use server-derived effective prices", async () => {
   const lib = await read("lib/tariffs.ts");
   assert.match(lib, /export async function effectivePrice/);
+
   const site = await read("app/api/site-booking/route.ts");
   assert.match(site, /effectivePrice\(db, service!\.code\)/);
+
   const legacy = await read("app/api/bookings/route.ts");
-  assert.match(legacy, /effectivePrice\(db, service\.code\)/);
+  assert.match(legacy, /effectiveServiceByCode\(db, serviceCode, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(legacy, /service\.price/);
+  assert.doesNotMatch(legacy, /effectivePrice\(/);
 });
 
 test("public catalog and tariff map use the canonical effective service source", async () => {
