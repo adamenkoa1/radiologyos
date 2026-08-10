@@ -3,11 +3,21 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import NameSuggestInput from "../NameSuggestInput";
-import { groupedServices, serviceByCode } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type StaffOption = { email: string; displayName: string; role: string };
+type EffectiveService = {
+  code: string;
+  title: string;
+  group: string;
+  equipmentId: string;
+  durationMinutes: number;
+  price: number;
+  active: boolean;
+  military: boolean;
+  civilian: boolean;
+};
 
 const money = new Intl.NumberFormat("uk-UA");
 const REFERRALS: [string, string][] = [
@@ -22,6 +32,7 @@ export default function StaffBookPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [options, setOptions] = useState<StaffOption[]>([]);
+  const [services, setServices] = useState<EffectiveService[]>([]);
   const [serviceCode, setServiceCode] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -31,25 +42,43 @@ export default function StaffBookPage() {
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
-  // Передзаповнення з картки пацієнта (CRM → «Записати на дослідження»).
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [category, setCategory] = useState("civilian");
 
-  const serviceGroups = useMemo(() => groupedServices(), []);
+  const availableServices = useMemo(
+    () => services.filter((service) => service.active && (category === "military" ? service.military : service.civilian)),
+    [services, category],
+  );
+  const serviceGroups = useMemo(() => {
+    const groups: Record<string, EffectiveService[]> = {};
+    for (const service of availableServices) {
+      (groups[service.group] ||= []).push(service);
+    }
+    return groups;
+  }, [availableServices]);
   const radiologists = useMemo(() => options.filter(o => o.role === "radiologist"), [options]);
   const radiographers = useMemo(() => options.filter(o => o.role === "radiographer"), [options]);
 
   useEffect(() => {
     let active = true;
     const t = window.setTimeout(async () => {
-      const res = await fetch("/api/staff/bookings", { cache: "no-store" });
-      if (res.status === 403) { if (active) setForbidden(true); return; }
-      const data = await res.json().catch(() => ({})) as { staffOptions?: StaffOption[]; staff?: StaffInfo };
+      const [bookingRes, serviceRes] = await Promise.all([
+        fetch("/api/staff/bookings", { cache: "no-store" }),
+        fetch("/api/staff/services", { cache: "no-store" }),
+      ]);
+      if (bookingRes.status === 403 || serviceRes.status === 403) {
+        if (active) setForbidden(true);
+        return;
+      }
+      const bookingData = await bookingRes.json().catch(() => ({})) as { staffOptions?: StaffOption[]; staff?: StaffInfo };
+      const serviceData = await serviceRes.json().catch(() => ({})) as { effectiveServices?: EffectiveService[]; staff?: StaffInfo };
       if (!active) return;
-      setOptions(data.staffOptions || []);
-      if (data.staff) setStaff(data.staff);
+      setOptions(bookingData.staffOptions || []);
+      setServices(Array.isArray(serviceData.effectiveServices) ? serviceData.effectiveServices : []);
+      if (bookingData.staff) setStaff(bookingData.staff);
+      else if (serviceData.staff) setStaff(serviceData.staff);
     }, 0);
     return () => { active = false; window.clearTimeout(t); };
   }, []);
@@ -64,7 +93,6 @@ export default function StaffBookPage() {
       if (/^\d{2}:\d{2}$/.test(requestedSlot)) setRequestedTime(requestedSlot);
       const firstService = Object.values(serviceGroups).flat().find(service => service.equipmentId === equipment);
       if (firstService) setServiceCode(firstService.code);
-      // Дані пацієнта з CRM-картки.
       const pName = params.get("name"); if (pName) setName(pName.slice(0, 120));
       const pPhone = params.get("phone"); if (pPhone) setPhone(pPhone.slice(0, 20));
       const pDob = params.get("dob"); if (pDob && /^\d{4}-\d{2}-\d{2}$/.test(pDob)) setDob(pDob);
@@ -113,7 +141,7 @@ export default function StaffBookPage() {
     setName(""); setPhone(""); setDob(""); setCategory("civilian");
   }
 
-  const price = serviceByCode(serviceCode)?.price;
+  const price = availableServices.find((service) => service.code === serviceCode)?.price;
 
   const body = forbidden
     ? <p className="notice error" role="alert">Створювати записи може реєстратор або адміністратор.</p>
@@ -126,7 +154,7 @@ export default function StaffBookPage() {
           <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)} /></label>
           <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" value={dob} onChange={e=>setDob(e.target.value)} /></label>
           <label className="settingsField"><span>Категорія</span>
-            <select name="patientCategory" value={category} onChange={e=>setCategory(e.target.value)}>
+            <select name="patientCategory" value={category} onChange={e=>{ setCategory(e.target.value); setServiceCode(""); setTime(""); setTimes([]); }}>
               <option value="civilian">Цивільний пацієнт</option>
               <option value="military">Військовослужбовець</option>
             </select>

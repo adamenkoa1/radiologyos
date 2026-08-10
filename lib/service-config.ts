@@ -14,6 +14,11 @@ export type ConfiguredService = Service & Omit<ServiceConfigRecord, "code">;
 
 export const SERVICE_CONFIG_KEY = "service_catalog_config_v1";
 
+export function serviceConfigKey(organizationId: number): string {
+  const id = Number.isInteger(organizationId) && organizationId > 0 ? organizationId : 1;
+  return `${SERVICE_CONFIG_KEY}:org:${id}`;
+}
+
 export const SERVICE_CONFIG_DEFAULTS: ServiceConfigRecord[] = SERVICES.map((service) => ({
   code: service.code,
   equipmentId: service.equipmentId,
@@ -25,6 +30,30 @@ export const SERVICE_CONFIG_DEFAULTS: ServiceConfigRecord[] = SERVICES.map((serv
 }));
 
 const EQUIPMENT_IDS = new Set<EquipmentType>(["ct", "xray", "fluoro"]);
+const SERVICE_CODES = new Set(SERVICES.map((service) => service.code));
+
+export function validateServiceConfig(input: unknown): string {
+  if (!Array.isArray(input)) return "Конфігурація послуг має бути списком";
+  const seen = new Set<string>();
+  for (const raw of input) {
+    if (!raw || typeof raw !== "object") return "Некоректний запис послуги";
+    const row = raw as Partial<ServiceConfigRecord>;
+    const code = String(row.code || "");
+    if (!SERVICE_CODES.has(code)) return `Невідомий код послуги: ${code || "(порожній)"}`;
+    if (seen.has(code)) return `Код послуги дублюється: ${code}`;
+    seen.add(code);
+    if (row.equipmentId != null && !EQUIPMENT_IDS.has(row.equipmentId as EquipmentType)) {
+      return `Некоректний апарат для послуги ${code}`;
+    }
+    if (row.durationMinutes != null) {
+      const duration = Number(row.durationMinutes);
+      if (!Number.isInteger(duration) || duration < 5 || duration > 360 || duration % 5 !== 0) {
+        return `Некоректна тривалість для послуги ${code}`;
+      }
+    }
+  }
+  return "";
+}
 
 export function sanitizeServiceConfig(input: unknown): ServiceConfigRecord[] {
   const rows = Array.isArray(input) ? input : [];

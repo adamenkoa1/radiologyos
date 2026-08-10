@@ -1,10 +1,9 @@
 import { todayInKyiv } from "../../../lib/booking-rules";
-import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
+import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-services";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
-import { effectivePrice } from "../../../lib/tariffs";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
@@ -101,12 +100,15 @@ export async function POST(request: Request) {
     if (new Set(serviceCodes).size !== serviceCodes.length) {
       return Response.json({ error: "Одна й та сама послуга додана декілька разів" }, { status: 400 });
     }
-    const serviceConfig = parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY));
-    const services = serviceCodes.map((code) => configuredServiceByCode(code, serviceConfig));
+
+    const serviceMap = new Map(
+      (await effectiveServices(db, PUBLIC_ORGANIZATION_ID)).map((service) => [service.code, service]),
+    );
+    const services = serviceCodes.map((code) => serviceMap.get(code));
     if (services.some((service) => !service)) {
       return Response.json({ error: "У заявці є невідома послуга" }, { status: 400 });
     }
-    if (services.some((service) => !service!.active || (category === "military" ? !service!.military : !service!.civilian))) {
+    if (services.some((service) => !serviceAvailableTo(service!, category))) {
       return Response.json({ error: "Одна з обраних послуг зараз недоступна для цієї категорії пацієнтів" }, { status: 400 });
     }
 
@@ -134,14 +136,14 @@ export async function POST(request: Request) {
         `SELECT equipment_id AS equipmentId, desired_date AS date,
                 desired_time AS startTime, duration_minutes AS durationMinutes
          FROM bookings
-         WHERE desired_date BETWEEN ? AND ?
+         WHERE organization_id = ? AND desired_date BETWEEN ? AND ?
            AND status IN ('new','confirmed','rescheduled')`
-      ).bind(fromDate, throughDate).all<BusyBooking>(),
+      ).bind(PUBLIC_ORGANIZATION_ID, fromDate, throughDate).all<BusyBooking>(),
       db.prepare(
         `SELECT equipment_id AS equipmentId, blocked_date AS date,
                 start_time AS startTime, end_time AS endTime
-         FROM equipment_blocks WHERE blocked_date BETWEEN ? AND ?`
-      ).bind(fromDate, throughDate).all<EquipmentBlock>(),
+         FROM equipment_blocks WHERE organization_id = ? AND blocked_date BETWEEN ? AND ?`
+      ).bind(PUBLIC_ORGANIZATION_ID, fromDate, throughDate).all<EquipmentBlock>(),
     ]);
     const appointments = assignEarliestAppointments({
       services: services as NonNullable<(typeof services)[number]>[],
@@ -160,7 +162,6 @@ export async function POST(request: Request) {
 
     const codes: string[] = [];
     for (let i = 0; i < services.length; i += 1) codes.push(await nextBookingCode(db));
-    const prices = await Promise.all(services.map((service) => effectivePrice(db, service!.code)));
     const responseBody = { codes, code: codes[0], appointments, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
     const statements: D1PreparedStatement[] = [];
 
@@ -183,7 +184,7 @@ export async function POST(request: Request) {
           PUBLIC_ORGANIZATION_ID, codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
           appointment.date, appointment.time, referral, category, referralType, marketingSource,
-          paymentStatus, prices[index], nszuStatus, comment,
+          paymentStatus, verifiedService.price, nszuStatus, comment,
           schedule.equipment[verifiedService.equipmentId]?.radiologistEmail || "",
           schedule.equipment[verifiedService.equipmentId]?.radiographerEmail || "",
           dob, consentVersion, "public_site",
@@ -197,9 +198,14 @@ export async function POST(request: Request) {
           bookingCode: codes[index],
         }),
         db.prepare(
-          `INSERT INTO booking_events (booking_id, action, details, actor)
-           SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
-        ).bind(`${verifiedService.code} ${appointment.date} ${appointment.time} · слот попередньо зарезервовано`, codes[index]),
+          `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
+           SELECT ?, id, 'created', ?, 'patient' FROM bookings WHERE organization_id = ? AND code = ?`
+        ).bind(
+          PUBLIC_ORGANIZATION_ID,
+          `${verifiedService.code} ${appointment.date} ${appointment.time} · слот попередньо зарезервовано`,
+          PUBLIC_ORGANIZATION_ID,
+          codes[index],
+        ),
       );
     });
     statements.push(

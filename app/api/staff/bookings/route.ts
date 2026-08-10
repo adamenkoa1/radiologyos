@@ -1,10 +1,10 @@
-import { addMinutes, serviceByCode } from "../../../../lib/catalog";
+import { addMinutes } from "../../../../lib/catalog";
 import { isBookableDate } from "../../../../lib/booking-rules";
+import { effectiveServiceByCode, serviceAvailableTo } from "../../../../lib/effective-services";
 import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
 import { getSetting } from "../../../../lib/settings";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { normalizeDob } from "../../../../lib/dob";
-import { effectivePrice } from "../../../../lib/tariffs";
 import { sendPatientReminder, type ReminderBooking } from "../../../../lib/notify";
 import { canTransition, isStudyState, stateLabel } from "../../../../lib/study-state";
 import {
@@ -44,10 +44,10 @@ export async function POST(request: Request) {
   const dob = normalizeDob(body.dob);
   const email = clean(body.email, 254);
   const serviceCode = clean(body.serviceCode, 12);
-  const service = serviceByCode(serviceCode);
   const desiredDate = clean(body.date, 10);
   const desiredTime = clean(body.time, 5);
   const category = clean(body.patientCategory, 20) === "military" ? "military" : "civilian";
+  const service = await effectiveServiceByCode(db, serviceCode, ctx.organizationId);
   let referralType = clean(body.referralType, 30);
   if (!REFERRAL_TYPES.includes(referralType)) referralType = "none";
   const comment = clean(body.comment, 700);
@@ -56,6 +56,9 @@ export async function POST(request: Request) {
 
   if (!name || !phoneNormalized || !service) {
     return Response.json({ error: "Вкажіть імʼя, телефон і послугу" }, { status: 400 });
+  }
+  if (!serviceAvailableTo(service, category)) {
+    return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
   }
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
   radiologist ||= schedule.equipment[service.equipmentId]?.radiologistEmail || "";
@@ -67,18 +70,17 @@ export async function POST(request: Request) {
 
   const endTime = addMinutes(desiredTime, service.durationMinutes);
   const conflict = await db.prepare(
-    `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ?
+    `SELECT id FROM bookings WHERE organization_id = ? AND equipment_id = ? AND desired_date = ?
      AND status IN ('confirmed','rescheduled') AND desired_time < ?
      AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-  ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
+  ).bind(ctx.organizationId, service.equipmentId, desiredDate, endTime, desiredTime).first();
   if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
   const blocked = await db.prepare(
-    "SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
-  ).bind(service.equipmentId, desiredDate, endTime, desiredTime).first();
+    "SELECT id FROM equipment_blocks WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
+  ).bind(ctx.organizationId, service.equipmentId, desiredDate, endTime, desiredTime).first();
   if (blocked) return Response.json({ error: "Апарат недоступний у цей період" }, { status: 409 });
 
   const code = await nextBookingCode(db);
-  const price = await effectivePrice(db, service.code);
   const paymentStatus = category === "civilian" ? "pending" : "verification_required";
   const nszuStatus = referralType === "eh_referral" ? "pending" : "not_applicable";
   const referral = referralType === "none" ? "Немає направлення" : referralType;
@@ -94,15 +96,15 @@ export async function POST(request: Request) {
   ).bind(
     ctx.organizationId, code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
     service.durationMinutes, desiredDate, desiredTime, referral, category, referralType,
-    paymentStatus, price, nszuStatus, comment, dob, email,
+    paymentStatus, service.price, nszuStatus, comment, dob, email,
     radiologist, radiographer, "2026-07-29", "staff",
   ).run();
 
   const bookingId = result.meta.last_row_id;
   if (bookingId) {
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'created_by_staff', ?, ?)"
-    ).bind(bookingId, `Запис від імені пацієнта: ${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'created_by_staff', ?, ?)"
+    ).bind(ctx.organizationId, bookingId, `Запис від імені пацієнта: ${service.code} ${desiredDate} ${desiredTime}`, member.email).run();
   }
   return Response.json({ ok: true, code }, { status: 201 });
 }
@@ -171,7 +173,8 @@ export async function GET(request: Request) {
   ]);
   const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
     ...booking,
-    listedPrice: serviceByCode(String(booking.serviceCode))?.price || Number(booking.paymentAmount) || 0,
+    // Existing bookings keep the price snapshot captured when they were created.
+    listedPrice: Number(booking.paymentAmount) || 0,
   }));
   return Response.json({
     bookings,
@@ -229,8 +232,8 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Редагувати заявку може реєстратор або адміністратор" }, { status: 403 });
     }
     const cur = await db.prepare(
-      "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps, status AS st FROM bookings WHERE id = ?"
-    ).bind(body.id!).first<{ d: string; t: string; eq: string; ps: string; st: string }>();
+      "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps, status AS st, patient_category AS cat FROM bookings WHERE organization_id = ? AND id = ?"
+    ).bind(ctx.organizationId, body.id!).first<{ d: string; t: string; eq: string; ps: string; st: string; cat: string }>();
     // Закриті заявки не редагуються (як і в гілці підтвердження).
     if (cur && (cur.st === "cancelled" || cur.st === "completed")) {
       return Response.json({ error: "Скасовану або завершену заявку редагувати не можна" }, { status: 409 });
@@ -260,8 +263,16 @@ export async function PATCH(request: Request) {
     }
     if (typeof e.comment === "string") { sets.push("comment = ?"); binds.push(e.comment.trim().slice(0, 700)); }
     if (typeof e.serviceCode === "string") {
-      const svc = serviceByCode(e.serviceCode.trim().slice(0, 12));
+      const svc = await effectiveServiceByCode(db, e.serviceCode.trim().slice(0, 12), ctx.organizationId);
+      const targetCategory = e.patientCategory === "military"
+        ? "military"
+        : e.patientCategory === "civilian"
+          ? "civilian"
+          : cur?.cat === "military" ? "military" : "civilian";
       if (!svc) return Response.json({ error: "Невідома послуга" }, { status: 400 });
+      if (!serviceAvailableTo(svc, targetCategory)) {
+        return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
+      }
       // Нова послуга може змінити апарат І/АБО тривалість — повністю
       // перевіряємо поточний слот для неї: сітка/робочий день/блокування/
       // накладання (виключаючи саму заявку). Інакше просимо перенести.
@@ -272,26 +283,26 @@ export async function PATCH(request: Request) {
         const rejectReschedule = Response.json({ error: "Поточний час не підходить для нової послуги (апарат / тривалість / зайнятість) — спершу перенесіть заявку" }, { status: 409 });
         if (!isBookableDate(cur.d) || !isEquipmentDayOpen(cur.d, rSchedule, svc.equipmentId) || !validTimes.includes(cur.t)) return rejectReschedule;
         const clash = await db.prepare(
-          `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+          `SELECT id FROM bookings WHERE organization_id = ? AND equipment_id = ? AND desired_date = ? AND id != ?
            AND status IN ('confirmed','rescheduled') AND desired_time < ?
            AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-        ).bind(svc.equipmentId, cur.d, body.id!, endTime, cur.t).first();
+        ).bind(ctx.organizationId, svc.equipmentId, cur.d, body.id!, endTime, cur.t).first();
         if (clash) return rejectReschedule;
         const blocked = await db.prepare(
-          "SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
-        ).bind(svc.equipmentId, cur.d, endTime, cur.t).first();
+          "SELECT id FROM equipment_blocks WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ? AND start_time < ? AND end_time > ? LIMIT 1"
+        ).bind(ctx.organizationId, svc.equipmentId, cur.d, endTime, cur.t).first();
         if (blocked) return rejectReschedule;
       }
       sets.push("service = ?", "service_code = ?", "equipment_id = ?", "duration_minutes = ?");
       binds.push(svc.title, svc.code, svc.equipmentId, svc.durationMinutes);
-      if (!financeLocked) { sets.push("payment_amount = ?"); binds.push(await effectivePrice(db, svc.code)); }
+      if (!financeLocked) { sets.push("payment_amount = ?"); binds.push(svc.price); }
     }
     if (!sets.length) return Response.json({ error: "Немає змін для збереження" }, { status: 400 });
-    binds.push(body.id!);
-    await db.prepare(`UPDATE bookings SET ${sets.join(", ")} WHERE id = ?`).bind(...binds).run();
+    binds.push(ctx.organizationId, body.id!);
+    await db.prepare(`UPDATE bookings SET ${sets.join(", ")} WHERE organization_id = ? AND id = ?`).bind(...binds).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'edited', ?, ?)"
-    ).bind(body.id!, `Скориговано поля: ${Object.keys(e).join(", ")}`, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'edited', ?, ?)"
+    ).bind(ctx.organizationId, body.id!, `Скориговано поля: ${Object.keys(e).join(", ")}`, member.email).run();
     return Response.json({ ok: true });
   }
 
@@ -495,32 +506,31 @@ export async function PATCH(request: Request) {
     const booking = await db.prepare(
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
         name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
-       FROM bookings WHERE id = ?`
-    ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
-    const service = booking && serviceByCode(booking.serviceCode);
+       FROM bookings WHERE organization_id = ? AND id = ?`
+    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     const rSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!booking || !service || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, service.equipmentId)
-        || !candidateTimesFor(hoursFor(rSched, service.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
+    if (!booking || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, booking.equipmentId)
+        || !candidateTimesFor(hoursFor(rSched, booking.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
     }
     const endTime = addMinutes(body.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
-      `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+      `SELECT id FROM bookings WHERE organization_id = ? AND equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-    ).bind(booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
+    ).bind(ctx.organizationId, booking.equipmentId, body.desiredDate, body.id, endTime, body.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий на обраному апараті" }, { status: 409 });
     const blocked = await db.prepare(
-      `SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ?
+      `SELECT id FROM equipment_blocks WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?
        AND start_time < ? AND end_time > ? LIMIT 1`
-    ).bind(booking.equipmentId, body.desiredDate, endTime, body.desiredTime).first();
+    ).bind(ctx.organizationId, booking.equipmentId, body.desiredDate, endTime, body.desiredTime).first();
     if (blocked) return Response.json({ error: "Апарат недоступний у цей період" }, { status: 409 });
     await db.prepare(
-      "UPDATE bookings SET desired_date = ?, desired_time = ?, status = 'rescheduled' WHERE id = ?"
-    ).bind(body.desiredDate, body.desiredTime, body.id).run();
+      "UPDATE bookings SET desired_date = ?, desired_time = ?, status = 'rescheduled' WHERE organization_id = ? AND id = ?"
+    ).bind(body.desiredDate, body.desiredTime, ctx.organizationId, body.id).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'rescheduled', ?, ?)"
-    ).bind(body.id, `${body.desiredDate} ${body.desiredTime}`, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'rescheduled', ?, ?)"
+    ).bind(ctx.organizationId, body.id, `${body.desiredDate} ${body.desiredTime}`, member.email).run();
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
@@ -536,34 +546,33 @@ export async function PATCH(request: Request) {
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
         desired_date AS desiredDate, desired_time AS desiredTime, status,
         name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
-       FROM bookings WHERE id = ?`
-    ).bind(body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
+       FROM bookings WHERE organization_id = ? AND id = ?`
+    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     if (booking.status === "cancelled" || booking.status === "completed") {
       return Response.json({ error: "Заявку вже закрито — підтвердження недоступне" }, { status: 400 });
     }
-    const service = serviceByCode(booking.serviceCode);
     const cSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-    if (!service || !isBookableDate(booking.desiredDate) || !isEquipmentDayOpen(booking.desiredDate, cSched, service.equipmentId)
-        || !candidateTimesFor(hoursFor(cSched, service.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
+    if (!isBookableDate(booking.desiredDate) || !isEquipmentDayOpen(booking.desiredDate, cSched, booking.equipmentId)
+        || !candidateTimesFor(hoursFor(cSched, booking.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
       return Response.json({ error: "Бажаний час поза розкладом — перенесіть запис на вільний слот" }, { status: 400 });
     }
     const endTime = addMinutes(booking.desiredTime, booking.durationMinutes);
     const conflict = await db.prepare(
-      `SELECT id FROM bookings WHERE equipment_id = ? AND desired_date = ? AND id != ?
+      `SELECT id FROM bookings WHERE organization_id = ? AND equipment_id = ? AND desired_date = ? AND id != ?
        AND status IN ('confirmed','rescheduled') AND desired_time < ?
        AND strftime('%H:%M', desired_time, '+' || duration_minutes || ' minutes') > ? LIMIT 1`
-    ).bind(booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
+    ).bind(ctx.organizationId, booking.equipmentId, booking.desiredDate, body.id, endTime, booking.desiredTime).first();
     if (conflict) return Response.json({ error: "Цей час уже зайнятий — перенесіть запис на вільний слот" }, { status: 409 });
     const blocked = await db.prepare(
-      `SELECT id FROM equipment_blocks WHERE equipment_id = ? AND blocked_date = ?
+      `SELECT id FROM equipment_blocks WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?
        AND start_time < ? AND end_time > ? LIMIT 1`
-    ).bind(booking.equipmentId, booking.desiredDate, endTime, booking.desiredTime).first();
+    ).bind(ctx.organizationId, booking.equipmentId, booking.desiredDate, endTime, booking.desiredTime).first();
     if (blocked) return Response.json({ error: "Апарат недоступний у цей період — перенесіть запис" }, { status: 409 });
-    await db.prepare("UPDATE bookings SET status = 'confirmed' WHERE id = ?").bind(body.id).run();
+    await db.prepare("UPDATE bookings SET status = 'confirmed' WHERE organization_id = ? AND id = ?").bind(ctx.organizationId, body.id).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'status_changed', 'confirmed', ?)"
-    ).bind(body.id, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'status_changed', 'confirmed', ?)"
+    ).bind(ctx.organizationId, body.id, member.email).run();
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
@@ -579,8 +588,8 @@ export async function PATCH(request: Request) {
   if (!body.status || !isStudyState(body.status)) {
     return Response.json({ error: "Некоректний статус" }, { status: 400 });
   }
-  const current = await db.prepare("SELECT status FROM bookings WHERE id = ?")
-    .bind(body.id).first<{ status: string }>();
+  const current = await db.prepare("SELECT status FROM bookings WHERE organization_id = ? AND id = ?")
+    .bind(ctx.organizationId, body.id).first<{ status: string }>();
   if (!current) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!canTransition(current.status, body.status)) {
     return Response.json(
@@ -588,9 +597,9 @@ export async function PATCH(request: Request) {
       { status: 409 },
     );
   }
-  await db.prepare("UPDATE bookings SET status = ? WHERE id = ?").bind(body.status, body.id).run();
+  await db.prepare("UPDATE bookings SET status = ? WHERE organization_id = ? AND id = ?").bind(body.status, ctx.organizationId, body.id).run();
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'status_changed', ?, ?)"
-  ).bind(body.id, body.status, member.email).run();
+    "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'status_changed', ?, ?)"
+  ).bind(ctx.organizationId, body.id, body.status, member.email).run();
   return Response.json({ ok: true });
 }

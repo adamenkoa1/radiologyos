@@ -6,13 +6,15 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("site-booking endpoint saves v22 cart requests into D1 bookings", async () => {
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /configuredServiceByCode\(/);
+  assert.match(route, /effectiveServices\(db, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(route, /serviceAvailableTo\(/);
   assert.match(route, /INSERT INTO bookings/);
   assert.match(route, /INSERT INTO booking_events/);
   assert.match(route, /isRateLimited\(/);
   assert.match(route, /normalizeUkrainianPhone\(/);
   assert.match(route, /codes,\s*code:\s*codes\[0\]/);
   assert.match(route, /status:\s*201/);
+  assert.doesNotMatch(route, /configuredServiceByCode\(/);
 });
 
 test("the client bridge posts the cart and opens the patient cabinet for OTP verification", async () => {

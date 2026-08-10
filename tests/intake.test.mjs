@@ -14,17 +14,18 @@ test("bookings PATCH supports full booking correction (edit branch)", async () =
     assert.match(route, new RegExp(col));
   }
   assert.match(route, /'edited'/); // подія в журналі booking_events
-  // Зміна послуги переобчислює апарат і тривалість.
-  assert.match(route, /serviceByCode\(e\.serviceCode/);
+  // Зміна послуги бере tenant-effective визначення і переобчислює апарат/тривалість.
+  assert.match(route, /effectiveServiceByCode\(db, e\.serviceCode/);
+  assert.match(route, /ctx\.organizationId/);
   assert.match(route, /duration_minutes = \?/);
   // GET віддає дату народження для форми корекції.
   assert.match(route, /date_of_birth AS dateOfBirth/);
-  // Виправлено: зміна послуги оновлює суму; категорії — статус оплати;
+  // Зміна послуги оновлює суму з effective service; категорії — статус оплати;
   // фінанси не чіпаємо на оплачених; зміна апарата перевіряє слот.
   assert.match(route, /financeLocked/);
   assert.match(route, /"paid", "not_required"/);
   assert.match(route, /payment_amount = \?/);
-  assert.match(route, /effectivePrice\(db, svc\.code\)/);
+  assert.match(route, /binds\.push\(svc\.price\)/);
   // Виправлено (аудит): повна перевірка слоту при зміні послуги (сітка/день/
   // блокування/накладання), а не лише конфлікт апарата.
   assert.match(route, /candidateTimesFor\(hoursFor\(rSchedule/);

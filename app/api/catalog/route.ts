@@ -1,22 +1,46 @@
-// Public catalog with effective prices, grouped for the home-page tariff list.
-// Military price is always 0 (free); the civilian price is the effective tariff.
+// Public catalog with effective prices and visibility, grouped for the price page.
+// The effective service resolver is the only merge point for catalog defaults,
+// organization configuration and tariff overrides.
 
-import { SERVICES } from "../../../lib/catalog";
-import { priceOverrides } from "../../../lib/tariffs";
+import { effectiveServices } from "../../../lib/effective-services";
 import { dbBinding } from "../../../lib/db";
 
 export async function GET() {
   const db = dbBinding();
-  const overrides = db ? await priceOverrides(db) : {};
+  if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
+
+  const services = await effectiveServices(db);
   const order: string[] = [];
-  const byGroup = new Map<string, Array<{ code: string; title: string; description: string; price: number }>>();
-  for (const s of SERVICES) {
-    if (!byGroup.has(s.group)) { byGroup.set(s.group, []); order.push(s.group); }
-    byGroup.get(s.group)!.push({
-      code: s.code, title: s.title, description: s.description,
-      price: overrides[s.code] ?? s.price,
+  const byGroup = new Map<string, Array<{
+    code: string;
+    title: string;
+    description: string;
+    price: number;
+    active: boolean;
+    civilian: boolean;
+    military: boolean;
+    equipmentId: string;
+    durationMinutes: number;
+  }>>();
+
+  for (const service of services) {
+    if (!byGroup.has(service.group)) {
+      byGroup.set(service.group, []);
+      order.push(service.group);
+    }
+    byGroup.get(service.group)!.push({
+      code: service.code,
+      title: service.title,
+      description: service.description,
+      price: service.price,
+      active: service.active,
+      civilian: service.civilian,
+      military: service.military,
+      equipmentId: service.equipmentId,
+      durationMinutes: service.durationMinutes,
     });
   }
+
   const groups = order.map((group) => ({ group, items: byGroup.get(group)! }));
   return Response.json({ groups }, { headers: { "cache-control": "no-store" } });
 }
