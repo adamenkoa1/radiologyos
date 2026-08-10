@@ -4,7 +4,7 @@ import {
   newSessionToken,
   readCookie,
   verifyPassword,
-} from "./auth";
+} from "./auth.ts";
 
 export const PATIENT_SESSION_COOKIE = "rid_patient";
 export const PATIENT_SESSION_TTL_SECONDS = 30 * 60;
