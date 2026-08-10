@@ -3,8 +3,9 @@ import { drizzle } from "drizzle-orm/d1";
 import * as coreSchema from "./schema";
 import * as capacitySchema from "./capacity-schema";
 import * as patientAuthSchema from "./patient-auth-schema";
+import * as paymentSchema from "./payment-schema";
 
-const schema = { ...coreSchema, ...capacitySchema, ...patientAuthSchema };
+const schema = { ...coreSchema, ...capacitySchema, ...patientAuthSchema, ...paymentSchema };
 
 export function getDb() {
   if (!env.DB) {
