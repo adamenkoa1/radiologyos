@@ -15,6 +15,9 @@ import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
+// Public storefront currently belongs to the initial organization. Once public
+// host/slug tenant resolution lands, replace this constant with that server-side
+// resolver; never accept organization_id from the browser.
 const PUBLIC_ORGANIZATION_ID = 1;
 
 function clean(value: unknown, max = 200) {
