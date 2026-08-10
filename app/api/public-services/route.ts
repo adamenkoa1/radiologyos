@@ -1,22 +1,21 @@
-import { SERVICES } from "../../../lib/catalog";
 import { dbBinding } from "../../../lib/db";
-import { configuredService, parseServiceConfig, SERVICE_CONFIG_DEFAULTS, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
-import { getSetting } from "../../../lib/settings";
+import { effectiveServices } from "../../../lib/effective-services";
 
 export async function GET() {
   const db = dbBinding();
-  const config = db
-    ? parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY))
-    : SERVICE_CONFIG_DEFAULTS;
+  if (!db) {
+    return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
+  }
 
-  const services = SERVICES.map((service) => {
-    const row = configuredService(service, config);
-    return {
-      code: row.code,
-      availableToMilitary: row.active && row.military,
-      availableToCivilian: row.active && row.civilian,
-    };
-  });
+  const services = (await effectiveServices(db)).map((service) => ({
+    code: service.code,
+    title: service.title,
+    equipmentId: service.equipmentId,
+    durationMinutes: service.durationMinutes,
+    price: service.price,
+    availableToMilitary: service.active && service.military,
+    availableToCivilian: service.active && service.civilian,
+  }));
 
   return Response.json(
     { services },
