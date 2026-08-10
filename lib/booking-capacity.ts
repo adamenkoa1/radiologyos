@@ -77,9 +77,9 @@ export function releaseCapacityStatement(
 }
 
 /**
- * Statements for moving/changing an existing appointment. Callers MUST execute
- * the returned DELETE + INSERT statements together with the booking UPDATE in
- * one D1 batch, so a failed uniqueness check rolls the entire move back.
+ * Statements for callers that explicitly manage a capacity move. Database
+ * triggers are the final invariant for every bookings write path, but these
+ * helpers remain useful for batched workflows and tests.
  */
 export function replaceCapacityStatements(
   db: D1Database,
@@ -91,9 +91,9 @@ export function replaceCapacityStatements(
   ];
 }
 
-/** D1/SQLite uniqueness violation produced by booking_capacity_locks. */
+/** D1/SQLite capacity violation produced by the lock PK or conflict trigger. */
 export function isCapacityConflict(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error || "");
-  return message.includes("UNIQUE constraint failed")
-    && message.includes("booking_capacity_locks");
+  return message.includes("booking capacity conflict")
+    || (message.includes("UNIQUE constraint failed") && message.includes("booking_capacity_locks"));
 }
