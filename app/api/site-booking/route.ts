@@ -10,11 +10,15 @@ import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { assignEarliestAppointments, type BusyBooking, type EquipmentBlock } from "../../../lib/auto-booking";
 import { nextBookingCode } from "../../../lib/booking-code";
+import { isCapacityConflict, reserveCapacityStatements } from "../../../lib/booking-capacity";
 import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
 const MAX_SERVICES_PER_REQUEST = 5;
-
+// Public storefront currently belongs to the initial organization. Once public
+// host/slug tenant resolution lands, replace this constant with that server-side
+// resolver; never accept organization_id from the browser.
+const PUBLIC_ORGANIZATION_ID = 1;
 
 function clean(value: unknown, max = 200) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -69,9 +73,6 @@ export async function POST(request: Request) {
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
     const category = clean(body.category, 20) === "military" ? "military" : "civilian";
-    // Режим вітрини «лише платні»: безкоштовні військові заявки не приймаються
-    // на сервері (не лише ховаються в UI), інакше форму military.html можна
-    // було б надіслати напряму.
     if (category === "military") {
       const storefront = parseSiteContent(await getSetting(db, SITE_CONTENT_KEY));
       if (storefront.storefrontType === "paid_only") {
@@ -172,14 +173,14 @@ export async function POST(request: Request) {
       statements.push(
         db.prepare(
           `INSERT INTO bookings (
-            code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
+            organization_id, code, name, phone, phone_normalized, patient_email, service, service_code, equipment_id,
             duration_minutes, desired_date, desired_time, status, referral, patient_category,
             referral_type, marketing_source, payment_status, payment_amount, nszu_status, comment,
             assigned_radiologist_email, assigned_radiographer_email,
             date_of_birth, consent_at, consent_version, consent_source
-          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
+          ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'new',?,?,?,?,?,?,?,?,?,?,?,CURRENT_TIMESTAMP,?,?)`
         ).bind(
-          codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
+          PUBLIC_ORGANIZATION_ID, codes[index], name, phone, phoneNormalized, patientEmail, verifiedService.title,
           verifiedService.code, verifiedService.equipmentId, verifiedService.durationMinutes,
           appointment.date, appointment.time, referral, category, referralType, marketingSource,
           paymentStatus, prices[index], nszuStatus, comment,
@@ -187,6 +188,14 @@ export async function POST(request: Request) {
           schedule.equipment[verifiedService.equipmentId]?.radiographerEmail || "",
           dob, consentVersion, "public_site",
         ),
+        ...reserveCapacityStatements(db, {
+          organizationId: PUBLIC_ORGANIZATION_ID,
+          equipmentId: verifiedService.equipmentId,
+          date: appointment.date,
+          startTime: appointment.time,
+          durationMinutes: verifiedService.durationMinutes,
+          bookingCode: codes[index],
+        }),
         db.prepare(
           `INSERT INTO booking_events (booking_id, action, details, actor)
            SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
@@ -207,6 +216,12 @@ export async function POST(request: Request) {
       ).bind(requestKey).first<{ responseJson: string }>();
       if (raced) {
         return Response.json(JSON.parse(raced.responseJson), { headers: { "cache-control": "no-store" } });
+      }
+      if (isCapacityConflict(error)) {
+        return Response.json(
+          { error: "Обраний час щойно зайняли. Оновіть доступні слоти та повторіть запис." },
+          { status: 409, headers: { "cache-control": "no-store" } },
+        );
       }
       throw error;
     }

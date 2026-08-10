@@ -7,12 +7,12 @@ import { withD1, jsonRequest, callWorker, seedStaffSession } from "./helpers/d1.
 
 const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 
-async function seed(db, { id, code, name, phone, phoneNorm, org = 1 }) {
+async function seed(db, { id, code, name, phone, phoneNorm, org = 1, time = "10:00" }) {
   await db.prepare(
     `INSERT INTO bookings (id, code, name, phone, phone_normalized, service, service_code,
        desired_date, desired_time, status, date_of_birth, patient_category, organization_id)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
-  ).bind(id, code, name, phone, phoneNorm, "КТ", "CT-01", "2026-09-01", "10:00", "new", "1990-05-05", "civilian", org).run();
+  ).bind(id, code, name, phone, phoneNorm, "КТ", "CT-01", "2026-09-01", time, "new", "1990-05-05", "civilian", org).run();
 }
 
 const search = (db, cookie, q) =>
@@ -27,8 +27,8 @@ test("search is staff-only", async () => {
 
 test("search matches by name, phone and RD code", async () => {
   await withD1(async (db) => {
-    await seed(db, { id: 1, code: "RD-AAAA1111", name: "Іваненко Іван", phone: "+380971112233", phoneNorm: "380971112233" });
-    await seed(db, { id: 2, code: "RD-BBBB2222", name: "Петренко Петро", phone: "+380975556677", phoneNorm: "380975556677" });
+    await seed(db, { id: 1, code: "RD-AAAA1111", name: "Іваненко Іван", phone: "+380971112233", phoneNorm: "380971112233", time: "10:00" });
+    await seed(db, { id: 2, code: "RD-BBBB2222", name: "Петренко Петро", phone: "+380975556677", phoneNorm: "380975556677", time: "10:30" });
     const cookie = await seedStaffSession(db, { email: "reg@likarnya.test", role: "registrar" });
 
     const byName = await (await search(db, cookie, "іваненко")).json();
