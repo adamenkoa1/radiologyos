@@ -104,7 +104,7 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
       <div className="apptDrawerHead">
         <div>
           <h3>{ph ? <a className="patLink" href={`/staff/patients?phone=${ph}`}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</h3>
-          <small>{b.code} · {b.desiredDate} · {b.desiredTime || "—"}{doctorName ? ` · 👨‍⚕️ ${doctorName}` : ""}</small>
+          <small><span className="codeTag">{b.code}</span> · {b.desiredDate} · {b.desiredTime || "—"}{doctorName ? ` · 👨‍⚕️ ${doctorName}` : ""}</small>
         </div>
         <button type="button" className="apptDrawerClose" onClick={onClose} aria-label="Закрити">✕</button>
       </div>
