@@ -83,6 +83,8 @@ test("public booking writes locks in the same D1 batch and maps races to 409", a
   assert.match(route, /await db\.batch\(statements\)/);
   assert.match(route, /isCapacityConflict\(error\)/);
   assert.match(route, /status: 409/);
+  assert.match(route, /const PUBLIC_ORGANIZATION_ID = 1/);
+  assert.doesNotMatch(route, /organizationId\s*=\s*clean\(body\./);
 });
 
 test("shared helper owns the lock SQL and exposes reserve, release and replace primitives", async () => {
