@@ -43,3 +43,6 @@ jobs:
 
       - name: Test and build
         run: npm test
+
+      - name: Production release gate
+        run: npm run test:production-gate
