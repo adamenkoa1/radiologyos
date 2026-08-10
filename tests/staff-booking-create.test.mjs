@@ -17,7 +17,7 @@ test("staff can create a booking via POST, guarded and conflict-checked", async 
   assert.match(route, /booking_events .* 'created_by_staff'/s);
 });
 
-test("new-booking form gathers patient, service, slot and staff, and posts", async () => {
+test("new-booking form gathers patient, effective service, slot and staff, and posts", async () => {
   const page = await read("app/staff/book/page.tsx");
   assert.match(page, /title="Записати пацієнта"/);
   assert.match(page, /від імені пацієнта/);
@@ -26,7 +26,12 @@ test("new-booking form gathers patient, service, slot and staff, and posts", asy
   assert.match(page, /name="name"/);
   assert.match(page, /name="phone"/);
   assert.match(page, /assignedRadiologistEmail/);
-  assert.match(page, /groupedServices\(\)/);
+  // Послуги приходять із tenant-aware staff API, а не з локального статичного каталогу.
+  assert.match(page, /fetch\("\/api\/staff\/services"/);
+  assert.match(page, /effectiveServices/);
+  assert.match(page, /setServices\(/);
+  assert.match(page, /serviceGroups/);
+  assert.doesNotMatch(page, /groupedServices\(\)/);
 });
 
 test("new-booking is reachable from nav and the calendar", async () => {
