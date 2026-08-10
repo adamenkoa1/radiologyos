@@ -27,7 +27,9 @@ test("booking paths use server-derived effective prices", async () => {
   assert.match(lib, /export async function effectivePrice/);
 
   const site = await read("app/api/site-booking/route.ts");
-  assert.match(site, /effectivePrice\(db, service!\.code\)/);
+  assert.match(site, /effectiveServices\(db, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(site, /paymentStatus, verifiedService\.price/);
+  assert.doesNotMatch(site, /effectivePrice\(/);
 
   const legacy = await read("app/api/bookings/route.ts");
   assert.match(legacy, /effectiveServiceByCode\(db, serviceCode, PUBLIC_ORGANIZATION_ID\)/);
