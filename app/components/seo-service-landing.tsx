@@ -59,7 +59,6 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         <p style={{ fontSize: 20, lineHeight: 1.65, maxWidth: 850, marginTop: 22 }}>{page.intro}</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 }}>
           <a href="/site/price.html" style={{ background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Записатися на дослідження</a>
-          <a href="tel:+380000000000" style={{ border: "1px solid #0d6b68", color: "#0d6b68", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Уточнити в реєстратурі</a>
         </div>
       </section>
 
