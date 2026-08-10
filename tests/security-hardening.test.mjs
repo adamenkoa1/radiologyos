@@ -19,15 +19,20 @@ test("worker applies browser security headers and rejects cross-site API mutatio
   assert.match(worker, /new URL\(origin\)\.origin !== url\.origin/);
 });
 
-test("patient data requires a short-lived server-side session", async () => {
+test("patient data requires a short-lived OTP-backed tenant-scoped server session", async () => {
   const auth = await read("lib/patient-auth.ts");
+  const otp = await read("app/api/patient-otp/route.ts");
   const bookings = await read("app/api/my-bookings/route.ts");
   const protocol = await read("app/api/my-protocol/route.ts");
   assert.match(auth, /PATIENT_SESSION_TTL_SECONDS = 30 \* 60/);
+  assert.match(auth, /PATIENT_OTP_TTL_SECONDS = 5 \* 60/);
   assert.match(auth, /HttpOnly; Secure; SameSite=Strict/);
-  assert.match(bookings, /createPatientSession\(/);
-  assert.match(bookings, /phone_normalized = \?/);
+  assert.match(otp, /createPatientSession\(db, phoneNormalized, verified\.organizationId\)/);
+  assert.match(bookings, /requirePatientSession\(/);
+  assert.doesNotMatch(bookings, /createPatientSession\(/);
+  assert.match(bookings, /WHERE b\.organization_id = \? AND b\.phone_normalized = \?/);
   assert.match(protocol, /requirePatientSession\(/);
+  assert.match(protocol, /WHERE organization_id = \? AND code = \? AND phone_normalized = \?/);
   assert.doesNotMatch(protocol, /substr\(phone_normalized, -4\)/);
 });
 
@@ -66,8 +71,6 @@ test("protocols use optimistic concurrency and immutable revision history", asyn
 
 test("server-side integrations block SSRF and oversized responses", async () => {
   const outbound = await read("lib/outbound.ts");
-  // Доставлення нагадувань перенесено у месенджинг-провайдер; захист від SSRF
-  // лишається на кожному зовнішньому виклику (safeOutboundUrl + fetchLimited).
   const messaging = await read("lib/providers/messaging.ts");
   const telegram = await read("lib/telegram.ts");
   assert.match(outbound, /privateHostname/);
