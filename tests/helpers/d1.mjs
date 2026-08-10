@@ -137,6 +137,17 @@ export async function seedStaffSession(db, { email, role, displayName = "" }) {
   return `rid_session=${rawToken}`;
 }
 
+// Засідити активну сесію пацієнта за нормалізованим телефоном → cookie.
+export async function seedPatientSession(db, phoneNormalized) {
+  const rawToken = randomBytes(32).toString("hex");
+  const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
+  await db.prepare(
+    `INSERT INTO patient_sessions (token_hash, phone_normalized, expires_at)
+     VALUES (?, ?, datetime('now', '+30 minutes'))`
+  ).bind(tokenHash, phoneNormalized).run();
+  return `rid_patient=${rawToken}`;
+}
+
 export async function callWorker(request, db) {
   const worker = await loadWorker();
   const env = { DB: db, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
