@@ -85,3 +85,10 @@ test("public booking writes locks in the same D1 batch and maps races to 409", a
   assert.match(route, /isCapacityConflict\(error\)/);
   assert.match(route, /status: 409/);
 });
+
+test("shared helper exposes reserve, release and replace primitives for staff flows", async () => {
+  const helper = await readFile(new URL("../lib/booking-capacity.ts", import.meta.url), "utf8");
+  assert.match(helper, /export function reserveCapacityStatements/);
+  assert.match(helper, /export function releaseCapacityStatement/);
+  assert.match(helper, /export function replaceCapacityStatements/);
+});
