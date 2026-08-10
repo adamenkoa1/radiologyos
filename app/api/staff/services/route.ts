@@ -4,6 +4,7 @@ import { getSetting, setSetting } from "../../../../lib/settings";
 import {
   parseServiceConfig,
   sanitizeServiceConfig,
+  validateServiceConfig,
   SERVICE_CONFIG_KEY,
   serviceConfigKey,
 } from "../../../../lib/service-config";
@@ -30,6 +31,9 @@ export async function PUT(request: Request) {
   }
 
   const body = await request.json().catch(() => ({})) as { services?: unknown };
+  const validationError = validateServiceConfig(body.services);
+  if (validationError) return Response.json({ error: validationError }, { status: 400 });
+
   const services = sanitizeServiceConfig(body.services);
   await setSetting(db, serviceConfigKey(ctx.organizationId), JSON.stringify(services));
   await audit(db, {
