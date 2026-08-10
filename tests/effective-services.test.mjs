@@ -40,12 +40,14 @@ test("staff service configuration is organization-scoped with a legacy fallback"
   const route = await read("app/api/staff/services/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /serviceConfigKey\(ctx\.organizationId\)/);
+  assert.match(route, /effectiveServices\(db, ctx\.organizationId\)/);
+  assert.match(route, /effectiveServices: effective/);
   assert.match(route, /ctx\.member\.role !== "admin"/);
   assert.match(route, /organizationId: ctx\.organizationId/);
   assert.doesNotMatch(route, /organizationId: 1/);
 });
 
-test("public service visibility and availability use the effective resolver", async () => {
+test("public and staff availability use the effective resolver with server-derived tenant scope", async () => {
   const publicServices = await read("app/api/public-services/route.ts");
   const availability = await read("app/api/availability/route.ts");
 
@@ -54,9 +56,31 @@ test("public service visibility and availability use the effective resolver", as
   assert.match(publicServices, /price: service\.price/);
   assert.doesNotMatch(publicServices, /configuredService\(/);
 
-  assert.match(availability, /effectiveServiceByCode\(db, serviceCode, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(availability, /requireOrgContext\(request, db\)/);
+  assert.match(availability, /staffContext\?\.organizationId \?\? PUBLIC_ORGANIZATION_ID/);
+  assert.match(availability, /effectiveServiceByCode\(db, serviceCode, organizationId\)/);
   assert.match(availability, /WHERE organization_id = \? AND equipment_id = \?/);
   assert.match(availability, /service\.durationMinutes/);
   assert.match(availability, /price: service\.price/);
   assert.doesNotMatch(availability, /configuredServiceByCode/);
+});
+
+test("staff booking UI consumes effective services rather than the static catalog", async () => {
+  const page = await read("app/staff/book/page.tsx");
+  assert.match(page, /fetch\("\/api\/staff\/services"/);
+  assert.match(page, /effectiveServices\?: EffectiveService\[\]/);
+  assert.match(page, /service\.active && \(category === "military" \? service\.military : service\.civilian\)/);
+  assert.doesNotMatch(page, /groupedServices|serviceByCode/);
+});
+
+test("staff booking mutations resolve effective services and preserve booking price snapshots", async () => {
+  const route = await read("app/api/staff/bookings/route.ts");
+  assert.match(route, /effectiveServiceByCode\(db, serviceCode, ctx\.organizationId\)/);
+  assert.match(route, /serviceAvailableTo\(service, category\)/);
+  assert.match(route, /paymentStatus, service\.price/);
+  assert.match(route, /listedPrice: Number\(booking\.paymentAmount\) \|\| 0/);
+  assert.match(route, /effectiveServiceByCode\(db, e\.serviceCode\.trim\(\)\.slice\(0, 12\), ctx\.organizationId\)/);
+  assert.match(route, /binds\.push\(svc\.price\)/);
+  assert.doesNotMatch(route, /effectivePrice\(/);
+  assert.doesNotMatch(route, /serviceByCode\(/);
 });
