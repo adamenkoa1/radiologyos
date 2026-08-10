@@ -3,6 +3,7 @@ const RF_SERVICE_CODES = new Set(["301", "302", "303"]);
 export type MwlFeedItem = {
   scheduledProcedureStepId: string;
   accessionNumber: string;
+  patientId: string;
   patientName: string;
   patientBirthDate: string;
   modality: "CT" | "DX" | "RF";
@@ -44,6 +45,13 @@ export function generateBridgeToken(): string {
   let binary = "";
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+export function generateDicomPatientId(): string {
+  const bytes = new Uint8Array(10);
+  crypto.getRandomValues(bytes);
+  const suffix = Array.from(bytes).map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+  return `ROS-${suffix}`;
 }
 
 export function validIsoDate(value: string): boolean {
