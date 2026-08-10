@@ -67,12 +67,13 @@ test("the worker serves the established teal storefront at /", async () => {
   assert.match(html, /v22-landing/);
 });
 
-test("the worker serves the same public storefront at /site/", async () => {
-  const marker = "<main>site-path-landing</main>";
-  for (const path of ["/site", "/site/", "/site/index.html"]) {
-    const response = await renderWithAssets(path, { "/site/index.html": marker });
-    assert.equal(response.status, 200, `${path} should open the storefront`);
-    assert.match(await response.text(), /site-path-landing/);
+test("legacy homepage aliases permanently redirect to the canonical root", async () => {
+  for (const path of ["/site", "/site/", "/site/index.html", "/index.html"]) {
+    const response = await renderWithAssets(`${path}?utm_source=legacy`, { "/site/index.html": "unused" });
+    assert.equal(response.status, 308, `${path} should permanently redirect`);
+    const location = response.headers.get("location") ?? "";
+    assert.equal(new URL(location).pathname, "/");
+    assert.equal(new URL(location).searchParams.get("utm_source"), "legacy");
   }
 });
 
