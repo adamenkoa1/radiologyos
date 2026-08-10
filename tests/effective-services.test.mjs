@@ -7,10 +7,28 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("effective service resolver is the single merge point for config and tariffs", async () => {
   const lib = await read("lib/effective-services.ts");
   assert.match(lib, /configuredService\(/);
-  assert.match(lib, /priceOverrides\(/);
+  assert.match(lib, /priceOverrides\(db, organizationId\)/);
+  assert.match(lib, /serviceConfigKey\(organizationId\)/);
+  assert.match(lib, /tenantConfig \|\| legacyConfig/);
   assert.match(lib, /defaultPrice/);
   assert.match(lib, /customPrice/);
   assert.match(lib, /export async function effectiveServiceByCode/);
+});
+
+test("tariff reads are explicitly organization-scoped", async () => {
+  const tariffs = await read("lib/tariffs.ts");
+  assert.match(tariffs, /WHERE organization_id = \?/);
+  assert.match(tariffs, /WHERE organization_id = \? AND code = \?/);
+  assert.match(tariffs, /priceOverrides\(db, organizationId\)/);
+});
+
+test("staff service configuration is organization-scoped with a legacy fallback", async () => {
+  const route = await read("app/api/staff/services/route.ts");
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /serviceConfigKey\(ctx\.organizationId\)/);
+  assert.match(route, /ctx\.member\.role !== "admin"/);
+  assert.match(route, /organizationId: ctx\.organizationId/);
+  assert.doesNotMatch(route, /organizationId: 1/);
 });
 
 test("public service visibility and availability use the effective resolver", async () => {
