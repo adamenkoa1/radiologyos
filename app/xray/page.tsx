@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
+import { PublicLocalSeo } from "../components/public-local-seo";
 import { SeoServiceLanding } from "../components/seo-service-landing";
 import { XRAY_SEO_PAGE } from "../../lib/seo-service-pages";
+
+export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: XRAY_SEO_PAGE.metaTitle,
@@ -16,5 +19,10 @@ export const metadata: Metadata = {
 };
 
 export default function XraySeoPage() {
-  return <SeoServiceLanding page={XRAY_SEO_PAGE} />;
+  return (
+    <>
+      <SeoServiceLanding page={XRAY_SEO_PAGE} />
+      <PublicLocalSeo path={XRAY_SEO_PAGE.path} />
+    </>
+  );
 }
