@@ -5,6 +5,8 @@ import { getSetting } from "../../../lib/settings";
 import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { dbBinding } from "../../../lib/db";
 
+const PUBLIC_ORGANIZATION_ID = 1;
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const date = url.searchParams.get("date") || "";
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
 
-  const service = await effectiveServiceByCode(db, serviceCode);
+  const service = await effectiveServiceByCode(db, serviceCode, PUBLIC_ORGANIZATION_ID);
   if (!service || !service.active || (!service.civilian && !service.military)) {
     return Response.json({ times: [] });
   }
@@ -32,13 +34,13 @@ export async function GET(request: Request) {
   const [bookings, blocks] = await Promise.all([
     db.prepare(
       `SELECT desired_time AS startTime, duration_minutes AS durationMinutes
-       FROM bookings WHERE equipment_id = ? AND desired_date = ?
+       FROM bookings WHERE organization_id = ? AND equipment_id = ? AND desired_date = ?
        AND status IN ('new','confirmed','rescheduled')`
-    ).bind(service.equipmentId, date).all<{startTime:string;durationMinutes:number}>(),
+    ).bind(PUBLIC_ORGANIZATION_ID, service.equipmentId, date).all<{startTime:string;durationMinutes:number}>(),
     db.prepare(
       `SELECT start_time AS startTime, end_time AS endTime FROM equipment_blocks
-       WHERE equipment_id = ? AND blocked_date = ?`
-    ).bind(service.equipmentId, date).all<{startTime:string;endTime:string}>(),
+       WHERE organization_id = ? AND equipment_id = ? AND blocked_date = ?`
+    ).bind(PUBLIC_ORGANIZATION_ID, service.equipmentId, date).all<{startTime:string;endTime:string}>(),
   ]);
 
   const overlaps = (start:string, end:string, otherStart:string, otherEnd:string) =>
