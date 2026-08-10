@@ -76,6 +76,11 @@ export function releaseCapacityStatement(
   ).bind(organizationId, bookingCode);
 }
 
+/**
+ * Statements for moving/changing an existing appointment. Callers MUST execute
+ * the returned DELETE + INSERT statements together with the booking UPDATE in
+ * one D1 batch, so a failed uniqueness check rolls the entire move back.
+ */
 export function replaceCapacityStatements(
   db: D1Database,
   input: CapacityReservation,
