@@ -173,3 +173,38 @@ test("zero accession matches do not create an imaging link", async () => {
     assert.equal(row, null);
   });
 });
+
+test("manual override after auto-link resets PACS-derived metadata", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedAdmin(db);
+    const bookingId = await seedBooking(db, "AUTO-004");
+    await db.prepare(
+      `INSERT INTO imaging_studies
+        (organization_id, booking_id, accession_number, study_instance_uid, modality,
+         series_count, instances_count, study_status, source, updated_by)
+       VALUES (1, ?, 'AUTO-004', '1.2.840.113619.2.4', 'CT', 5, 100, 'available', 'qido_accession', 'seed')`,
+    ).bind(bookingId).run();
+
+    const response = await callWorker(jsonRequest("/api/staff/imaging", {
+      bookingId,
+      accessionNumber: "MANUAL-004",
+      studyInstanceUid: "1.2.840.10008.5.1",
+      modality: "DX",
+      studyStatus: "available",
+      studyDatetime: "2026-08-20T11:00:00",
+    }, { method: "PUT", headers: { cookie } }), db);
+    assert.equal(response.status, 200);
+
+    const row = await db.prepare(
+      `SELECT accession_number AS accessionNumber, study_instance_uid AS studyInstanceUid,
+        modality, series_count AS seriesCount, instances_count AS instancesCount, source
+       FROM imaging_studies WHERE booking_id = ? AND organization_id = 1`,
+    ).bind(bookingId).first();
+    assert.equal(row.accessionNumber, "MANUAL-004");
+    assert.equal(row.studyInstanceUid, "1.2.840.10008.5.1");
+    assert.equal(row.modality, "DX");
+    assert.equal(row.seriesCount, 0);
+    assert.equal(row.instancesCount, 0);
+    assert.equal(row.source, "manual");
+  });
+});
