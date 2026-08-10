@@ -9,6 +9,9 @@
 import { getSettings } from "./settings";
 import { createMessagingProvider } from "./providers/messaging";
 import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "./whatsapp";
+import { sendTelegramTo } from "./telegram";
+
+type Channel = "sms" | "email" | "whatsapp" | "telegram";
 
 export type ReminderKind = "confirmed" | "rescheduled";
 
@@ -47,7 +50,7 @@ async function record(
   db: D1Database,
   booking: ReminderBooking,
   kind: string,
-  channel: "sms" | "email" | "whatsapp",
+  channel: Channel,
   recipient: string,
   body: string,
   status: "sent" | "skipped" | "failed",
@@ -79,7 +82,7 @@ export async function sendPatientReminder(
   const body = reminderText(kind, booking);
 
   const cfg = await getSettings(db, [
-    "patient_reminders_enabled",
+    "patient_reminders_enabled", "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
   ]);
@@ -91,19 +94,27 @@ export async function sendPatientReminder(
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
-  // Повага до позначки «не турбувати» у картці пацієнта.
+  // Повага до позначки «не турбувати» у картці пацієнта + chat_id для Telegram.
+  let telegramChatId = "";
   if (booking.phoneNormalized) {
     const profile = await db.prepare(
-      "SELECT do_not_contact AS dnc FROM patient_profiles WHERE phone_normalized = ?"
-    ).bind(booking.phoneNormalized).first<{ dnc: number }>().catch(() => null);
+      "SELECT do_not_contact AS dnc, telegram_chat_id AS tg FROM patient_profiles WHERE phone_normalized = ?"
+    ).bind(booking.phoneNormalized).first<{ dnc: number; tg: string }>().catch(() => null);
     if (profile?.dnc) {
       await record(db, booking, kind, "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
       summary.skipped += 1;
       return summary;
     }
+    telegramChatId = profile?.tg || "";
   }
 
-  const channels: Array<{ channel: "sms" | "email" | "whatsapp"; recipient: string; url: string; send: () => Promise<void> }> = [];
+  const channels: Array<{ channel: Channel; recipient: string; url: string; send: () => Promise<void> }> = [];
+  if (telegramChatId) {
+    channels.push({
+      channel: "telegram", recipient: "Telegram", url: cfg.telegram_bot_token ? telegramChatId : "",
+      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
+    });
+  }
   const wa = await whatsappConfig(db);
   if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
     channels.push({
@@ -164,6 +175,7 @@ export async function sendPatientMessage(
   if (!body) return summary;
 
   const cfg = await getSettings(db, [
+    "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
   ]);
@@ -172,18 +184,26 @@ export async function sendPatientMessage(
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
+  let telegramChatId = "";
   if (booking.phoneNormalized) {
     const profile = await db.prepare(
-      "SELECT do_not_contact AS dnc FROM patient_profiles WHERE phone_normalized = ?"
-    ).bind(booking.phoneNormalized).first<{ dnc: number }>().catch(() => null);
+      "SELECT do_not_contact AS dnc, telegram_chat_id AS tg FROM patient_profiles WHERE phone_normalized = ?"
+    ).bind(booking.phoneNormalized).first<{ dnc: number; tg: string }>().catch(() => null);
     if (profile?.dnc) {
       await record(db, booking, "custom", "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
       summary.skipped += 1;
       return summary;
     }
+    telegramChatId = profile?.tg || "";
   }
 
-  const channels: Array<{ channel: "sms" | "email" | "whatsapp"; recipient: string; url: string; send: () => Promise<void> }> = [];
+  const channels: Array<{ channel: Channel; recipient: string; url: string; send: () => Promise<void> }> = [];
+  if (telegramChatId) {
+    channels.push({
+      channel: "telegram", recipient: "Telegram", url: cfg.telegram_bot_token ? telegramChatId : "",
+      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
+    });
+  }
   const wa = await whatsappConfig(db);
   if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
     channels.push({
