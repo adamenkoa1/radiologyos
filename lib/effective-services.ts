@@ -21,10 +21,13 @@ export type EffectiveService = ConfiguredService & {
  * through this module instead of independently mixing catalog, service config
  * and tariff tables. The static catalog remains the seed/default definition.
  */
-export async function effectiveServices(db: D1Database): Promise<EffectiveService[]> {
+export async function effectiveServices(
+  db: D1Database,
+  organizationId = 1,
+): Promise<EffectiveService[]> {
   const [storedConfig, overrides] = await Promise.all([
     getSetting(db, SERVICE_CONFIG_KEY),
-    priceOverrides(db),
+    priceOverrides(db, organizationId),
   ]);
   const config = parseServiceConfig(storedConfig);
 
@@ -43,8 +46,9 @@ export async function effectiveServices(db: D1Database): Promise<EffectiveServic
 export async function effectiveServiceByCode(
   db: D1Database,
   code: string,
+  organizationId = 1,
 ): Promise<EffectiveService | undefined> {
-  const services = await effectiveServices(db);
+  const services = await effectiveServices(db, organizationId);
   return services.find((service) => service.code === code);
 }
 
