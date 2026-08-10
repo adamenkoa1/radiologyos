@@ -121,9 +121,37 @@ export default function ImagingPage() {
     setCard((current) => current && ({ ...current, study:{ ...(current.study || {} as StudyRecord), ...result.study! } }));
     setWorklist((current) => current.map((item) => item.id === card.booking.id ? {
       ...item, studyStatus:payload.studyStatus as StudyStatus,
-      accessionNumber:payload.accessionNumber, studyInstanceUid:payload.studyInstanceUid,
+      accessionNumber:payload.accessionNumber, studyInstanceUid:payload.studyInstanceUid, seriesCount:0,
     } : item));
-    setActionSuccess("Дослідження прив’язано. Оновіть картку, щоб підтягнути серії з PACS.");
+    setActionSuccess("Ручну прив’язку збережено. Оновіть картку, щоб підтягнути серії з PACS.");
+  }
+
+  async function resolveByAccession() {
+    if (!card) return;
+    const bookingId = card.booking.id;
+    setActionError(""); setActionSuccess(""); setSaving(true);
+    const response = await fetch("/api/staff/imaging", {
+      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ bookingId }),
+    });
+    const result = await response.json() as {
+      ok?:boolean; status?:string; study?:StudyRecord; viewerUrl?:string; error?:string; matches?:number;
+    };
+    setSaving(false);
+    if (!response.ok || !result.ok || !result.study) {
+      if (result.status === "not_found") setActionError("У PACS ще немає дослідження з цим Accession Number.");
+      else if (result.status === "ambiguous") setActionError(`У PACS знайдено кілька досліджень з цим Accession (${result.matches || 2}). Потрібна ручна перевірка.`);
+      else setActionError(result.error || "Не вдалося знайти дослідження в PACS");
+      return;
+    }
+    setWorklist((current) => current.map((item) => item.id === bookingId ? {
+      ...item,
+      studyStatus:"available",
+      accessionNumber:result.study!.accessionNumber,
+      studyInstanceUid:result.study!.studyInstanceUid,
+      seriesCount:result.study!.seriesCount,
+    } : item));
+    await openBooking(bookingId);
+    setActionSuccess("Дослідження знайдено в PACS та прив’язано автоматично за Accession Number.");
   }
 
   async function saveSettings(form:HTMLFormElement) {
@@ -232,7 +260,11 @@ export default function ImagingPage() {
                   <label><span>Модальність</span><input name="modality" maxLength={16} defaultValue={card.study?.modality || (card.booking.equipmentId==="ct"?"CT":"DX")} placeholder="CT, DX, CR…"/></label>
                   <label className="pacsWide"><span>StudyInstanceUID</span><input name="studyInstanceUid" maxLength={64} defaultValue={card.study?.studyInstanceUid || ""} placeholder="1.2.840.113619.2…"/></label>
                   <label><span>Статус</span><select name="studyStatus" defaultValue={card.study?.studyStatus || "not_linked"}>{STUDY_STATUSES.map((status)=><option key={status} value={status}>{STUDY_STATUS_LABELS[status]}</option>)}</select></label>
-                  <div className="pacsFormActions"><button type="submit">Зберегти прив’язку</button><button type="button" className="ghost" onClick={()=>void openBooking(card.booking.id)}>Оновити з PACS</button></div>
+                  <div className="pacsFormActions">
+                    <button type="button" onClick={()=>void resolveByAccession()} disabled={!settings.enabled}>Знайти в PACS за Accession</button>
+                    <button type="submit">Зберегти прив’язку</button>
+                    <button type="button" className="ghost" onClick={()=>void openBooking(card.booking.id)}>Оновити з PACS</button>
+                  </div>
                 </div>
               </form>
             </fieldset>
@@ -242,7 +274,7 @@ export default function ImagingPage() {
               <h3>Серії дослідження {card.series.length ? `(${card.series.length})` : ""}</h3>
               {card.series.length === 0 ? <p className="empty">
                 {!settings.enabled ? "PACS не підключено — серії з’являться після налаштування DICOMweb."
-                  : !card.study?.studyInstanceUid ? "Вкажіть StudyInstanceUID, щоб підтягнути серії."
+                  : !card.study?.studyInstanceUid ? "Вкажіть StudyInstanceUID або знайдіть дослідження за Accession Number."
                   : !card.pacsReachable ? "PACS недоступний або дослідження ще не надійшло. Спробуйте оновити пізніше."
                   : "Серій за цим дослідженням не знайдено."}
               </p> : <table className="pacsSeriesTable">
