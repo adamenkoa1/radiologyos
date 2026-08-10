@@ -6,6 +6,15 @@ export type CapacitySlot = {
   bookingCode: string;
 };
 
+export type CapacityReservation = {
+  organizationId: number;
+  equipmentId: string;
+  date: string;
+  startTime: string;
+  durationMinutes: number;
+  bookingCode: string;
+};
+
 function parseMinute(value: string): number {
   const match = /^(\d{2}):(\d{2})$/.exec(value);
   if (!match) throw new Error(`Invalid appointment time: ${value}`);
@@ -39,14 +48,7 @@ export function occupiedMinutes(startTime: string, durationMinutes: number): str
   return Array.from({ length: durationMinutes }, (_, offset) => formatMinute(start + offset));
 }
 
-export function capacitySlots(input: {
-  organizationId: number;
-  equipmentId: string;
-  date: string;
-  startTime: string;
-  durationMinutes: number;
-  bookingCode: string;
-}): CapacitySlot[] {
+export function capacitySlots(input: CapacityReservation): CapacitySlot[] {
   return occupiedMinutes(input.startTime, input.durationMinutes).map((minute) => ({
     organizationId: input.organizationId,
     equipmentId: input.equipmentId,
@@ -54,6 +56,34 @@ export function capacitySlots(input: {
     minute,
     bookingCode: input.bookingCode,
   }));
+}
+
+export function reserveCapacityStatements(db: D1Database, input: CapacityReservation): D1PreparedStatement[] {
+  return capacitySlots(input).map((slot) => db.prepare(
+    `INSERT INTO booking_capacity_locks (
+      organization_id, equipment_id, booking_date, minute, booking_code
+    ) VALUES (?,?,?,?,?)`
+  ).bind(slot.organizationId, slot.equipmentId, slot.date, slot.minute, slot.bookingCode));
+}
+
+export function releaseCapacityStatement(
+  db: D1Database,
+  organizationId: number,
+  bookingCode: string,
+): D1PreparedStatement {
+  return db.prepare(
+    "DELETE FROM booking_capacity_locks WHERE organization_id = ? AND booking_code = ?"
+  ).bind(organizationId, bookingCode);
+}
+
+export function replaceCapacityStatements(
+  db: D1Database,
+  input: CapacityReservation,
+): D1PreparedStatement[] {
+  return [
+    releaseCapacityStatement(db, input.organizationId, input.bookingCode),
+    ...reserveCapacityStatements(db, input),
+  ];
 }
 
 /** D1/SQLite uniqueness violation produced by booking_capacity_locks. */
