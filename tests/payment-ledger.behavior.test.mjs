@@ -3,15 +3,15 @@ import test from "node:test";
 import { createPendingPayment, latestPaymentForBooking, recordManualPayment } from "../lib/payments.ts";
 import { withD1 } from "./helpers/d1.mjs";
 
-async function seedBooking(db, { organizationId = 1, code, amount = 1500, status = "pending" }) {
+async function seedBooking(db, { organizationId = 1, code, amount = 1500, status = "pending", desiredTime = "10:00" }) {
   const result = await db.prepare(
     `INSERT INTO bookings (
       organization_id, code, name, phone, phone_normalized, service, service_code,
       equipment_id, duration_minutes, desired_date, desired_time, patient_category,
       payment_status, payment_amount, paid_amount, status
     ) VALUES (?, ?, 'Пацієнт', '+380501112233', '380501112233', 'КТ ОГК', 'ct-chest',
-      'ct', 30, '2026-08-20', '10:00', 'civilian', ?, ?, 0, 'confirmed')`,
-  ).bind(organizationId, code, status, amount).run();
+      'ct', 30, '2026-08-20', ?, 'civilian', ?, ?, 0, 'confirmed')`,
+  ).bind(organizationId, code, desiredTime, status, amount).run();
   return Number(result.meta.last_row_id);
 }
 
@@ -33,8 +33,8 @@ test("pending payment amount is always derived from the booking snapshot", async
 
 test("provider reference is idempotent and cannot be rebound to another booking", async () => {
   await withD1(async (db) => {
-    const firstId = await seedBooking(db, { code: "PAY-B1", amount: 900 });
-    const secondId = await seedBooking(db, { code: "PAY-B2", amount: 900 });
+    const firstId = await seedBooking(db, { code: "PAY-B1", amount: 900, desiredTime: "10:00" });
+    const secondId = await seedBooking(db, { code: "PAY-B2", amount: 900, desiredTime: "10:30" });
     const one = await createPendingPayment(db, {
       organizationId: 1,
       bookingId: firstId,
