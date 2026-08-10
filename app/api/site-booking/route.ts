@@ -10,7 +10,7 @@ import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { assignEarliestAppointments, type BusyBooking, type EquipmentBlock } from "../../../lib/auto-booking";
 import { nextBookingCode } from "../../../lib/booking-code";
-import { capacitySlots, isCapacityConflict } from "../../../lib/booking-capacity";
+import { isCapacityConflict, reserveCapacityStatements } from "../../../lib/booking-capacity";
 import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
@@ -185,24 +185,14 @@ export async function POST(request: Request) {
           schedule.equipment[verifiedService.equipmentId]?.radiographerEmail || "",
           dob, consentVersion, "public_site",
         ),
-      );
-      for (const slot of capacitySlots({
-        organizationId: PUBLIC_ORGANIZATION_ID,
-        equipmentId: verifiedService.equipmentId,
-        date: appointment.date,
-        startTime: appointment.time,
-        durationMinutes: verifiedService.durationMinutes,
-        bookingCode: codes[index],
-      })) {
-        statements.push(
-          db.prepare(
-            `INSERT INTO booking_capacity_locks (
-              organization_id, equipment_id, booking_date, minute, booking_code
-            ) VALUES (?,?,?,?,?)`
-          ).bind(slot.organizationId, slot.equipmentId, slot.date, slot.minute, slot.bookingCode),
-        );
-      }
-      statements.push(
+        ...reserveCapacityStatements(db, {
+          organizationId: PUBLIC_ORGANIZATION_ID,
+          equipmentId: verifiedService.equipmentId,
+          date: appointment.date,
+          startTime: appointment.time,
+          durationMinutes: verifiedService.durationMinutes,
+          bookingCode: codes[index],
+        }),
         db.prepare(
           `INSERT INTO booking_events (booking_id, action, details, actor)
            SELECT id, 'created', ?, 'patient' FROM bookings WHERE code = ?`
