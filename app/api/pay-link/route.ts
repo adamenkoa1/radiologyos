@@ -8,7 +8,7 @@ import { createPendingPayment, latestPaymentForBooking } from "../../../lib/paym
 
 const DEFAULT_PRIVAT24_PAY_LINK = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params=%7B%22token%22%3A%22cadc7a4d-d56c-4005-9cfe-04a96077f8c1%22%7D';
 
-async function configuredPayLink(db: D1Database | null) {
+async function configuredPayLink(db: D1Database | null | undefined) {
   if (!db) return DEFAULT_PRIVAT24_PAY_LINK;
   return (await getSetting(db, "pay_link")) || DEFAULT_PRIVAT24_PAY_LINK;
 }
