@@ -26,20 +26,39 @@ export async function GET(request: Request) {
     return Response.json({ error: "Некоректний період" }, { status: 400 });
   }
 
-  const { results } = await db.prepare(
-    `SELECT event_name AS eventName,
-            COUNT(*) AS events,
-            COUNT(DISTINCT CASE WHEN journey_id != '' THEN journey_id END) AS journeys
-       FROM analytics_events
-      WHERE organization_id = ?
-        AND date(occurred_at) BETWEEN ? AND ?
-      GROUP BY event_name`,
-  ).bind(ctx.organizationId, from, to).all<{ eventName: string; events: number; journeys: number }>();
+  const [{ results }, clinical] = await Promise.all([
+    db.prepare(
+      `SELECT event_name AS eventName,
+              COUNT(*) AS events,
+              COUNT(DISTINCT CASE WHEN journey_id != '' THEN journey_id END) AS journeys
+         FROM analytics_events
+        WHERE organization_id = ?
+          AND date(occurred_at) BETWEEN ? AND ?
+        GROUP BY event_name`,
+    ).bind(ctx.organizationId, from, to).all<{ eventName: string; events: number; journeys: number }>(),
+    db.prepare(
+      `SELECT
+         COUNT(DISTINCT CASE
+           WHEN e.action = 'status_changed' AND e.details = 'arrived' THEN e.booking_id END) AS arrived,
+         COUNT(DISTINCT CASE
+           WHEN (e.action = 'status_changed' AND e.details = 'completed')
+             OR e.action = 'execution_recorded' THEN e.booking_id END) AS completed
+       FROM booking_events e
+       JOIN bookings b ON b.id = e.booking_id
+       WHERE b.organization_id = ?
+         AND date(e.created_at) BETWEEN ? AND ?`,
+    ).bind(ctx.organizationId, from, to).first<{ arrived: number; completed: number }>(),
+  ]);
 
   const counts = new Map(results.map(row => [row.eventName, {
     events: Number(row.events || 0),
     journeys: Number(row.journeys || 0),
   }]));
+  // Clinical milestones are derived from the existing operational audit trail,
+  // so analytics storage can never block a clinical state transition.
+  counts.set("patient_arrived", { events: Number(clinical?.arrived || 0), journeys: 0 });
+  counts.set("study_completed", { events: Number(clinical?.completed || 0), journeys: 0 });
+
   const funnel = ANALYTICS_EVENTS.map(eventName => ({
     eventName,
     events: counts.get(eventName)?.events || 0,
