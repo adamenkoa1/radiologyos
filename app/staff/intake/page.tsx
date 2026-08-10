@@ -233,7 +233,7 @@ export default function IntakePage() {
             <div className="intakeDetailHead">
               <div>
                 <h2>{selected.name || "—"}</h2>
-                <small>{selected.code} · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i>{ageFrom(selected.dateOfBirth)!==null ? ` · ${ageFrom(selected.dateOfBirth)} р.` : ""}</small>
+                <small><span className="codeTag">{selected.code}</span> · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i>{ageFrom(selected.dateOfBirth)!==null ? ` · ${ageFrom(selected.dateOfBirth)} р.` : ""}</small>
               </div>
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>

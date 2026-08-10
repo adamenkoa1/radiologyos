@@ -114,7 +114,7 @@ function ActionList({ title, items, hint, href, empty }:{
       {items.map((item)=><li key={item.id}>
         <a href={href(item)}>
           <b>{item.serviceTitle}</b>
-          <small>{item.code} · {item.name || "—"}{item.protocolNumber ? ` · № ${item.protocolNumber}` : item.desiredDate ? ` · ${item.desiredDate} ${item.desiredTime}` : ""}</small>
+          <small><span className="codeTag">{item.code}</span> · {item.name || "—"}{item.protocolNumber ? ` · № ${item.protocolNumber}` : item.desiredDate ? ` · ${item.desiredDate} ${item.desiredTime}` : ""}</small>
           <span aria-hidden="true">→</span>
         </a>
       </li>)}
