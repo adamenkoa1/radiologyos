@@ -14,6 +14,11 @@ export type ConfiguredService = Service & Omit<ServiceConfigRecord, "code">;
 
 export const SERVICE_CONFIG_KEY = "service_catalog_config_v1";
 
+export function serviceConfigKey(organizationId: number): string {
+  const id = Number.isInteger(organizationId) && organizationId > 0 ? organizationId : 1;
+  return `${SERVICE_CONFIG_KEY}:org:${id}`;
+}
+
 export const SERVICE_CONFIG_DEFAULTS: ServiceConfigRecord[] = SERVICES.map((service) => ({
   code: service.code,
   equipmentId: service.equipmentId,
