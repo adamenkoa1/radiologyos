@@ -9,6 +9,36 @@
        onPick: ({date, time}) => {}   // '' коли вибір скинуто
      }) */
 
+function radiologyAnalyticsJourney() {
+  const key = 'radiologyos_analytics_journey_v1';
+  try {
+    const existing = sessionStorage.getItem(key) || '';
+    if (/^[A-Za-z0-9_-]{8,64}$/.test(existing)) return existing;
+    const created = crypto.randomUUID
+      ? crypto.randomUUID().replaceAll('-', '')
+      : `${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
+    sessionStorage.setItem(key, created);
+    return created;
+  } catch (e) { return ''; }
+}
+
+function trackSlotSelected(serviceCode) {
+  const journeyId = radiologyAnalyticsJourney();
+  if (!journeyId) return;
+  fetch('/api/analytics', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      eventName: 'slot_selected',
+      journeyId,
+      serviceCode: String(serviceCode || '').slice(0, 16),
+      patientCategory: /military/i.test(location.pathname) ? 'military' : 'civilian',
+      pageKey: location.pathname.slice(0, 64),
+    }),
+    keepalive: true,
+  }).catch(() => {});
+}
+
 async function initSlotPicker({ container, serviceCode, onPick }) {
   const pad = (n) => String(n).padStart(2, '0');
   const dayNames = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
@@ -55,6 +85,7 @@ async function initSlotPicker({ container, serviceCode, onPick }) {
     }));
     container.querySelectorAll('.sp-time').forEach((b) => b.addEventListener('click', () => {
       selTime = b.dataset.time;
+      trackSlotSelected(serviceCode);
       render();
       if (onPick) onPick({ date: selDay.iso, time: selTime });
     }));
