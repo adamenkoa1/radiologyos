@@ -1,21 +1,33 @@
 import { addMinutes, EQUIPMENT } from "../../../lib/catalog";
 import { isBookableDate } from "../../../lib/booking-rules";
+import { effectiveServiceByCode } from "../../../lib/effective-services";
 import { getSetting } from "../../../lib/settings";
-import { configuredServiceByCode, parseServiceConfig, SERVICE_CONFIG_KEY } from "../../../lib/service-config";
 import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { dbBinding } from "../../../lib/db";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const date = url.searchParams.get("date") || "";
   const serviceCode = url.searchParams.get("serviceCode") || "";
   if (!isBookableDate(date)) return Response.json({ times: [] });
-  const db = (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
+
+  const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
-  const service = configuredServiceByCode(serviceCode, parseServiceConfig(await getSetting(db, SERVICE_CONFIG_KEY)));
-  if (!service || !service.active || (!service.civilian && !service.military)) return Response.json({ times: [] });
-  // Налаштовуваний графік: робочі дні й години прийому.
+
+  const service = await effectiveServiceByCode(db, serviceCode);
+  if (!service || !service.active || (!service.civilian && !service.military)) {
+    return Response.json({ times: [] });
+  }
+
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
-  if (!isEquipmentDayOpen(date, schedule, service.equipmentId)) return Response.json({ times: [], durationMinutes: service.durationMinutes, equipment: EQUIPMENT[service.equipmentId].name });
+  if (!isEquipmentDayOpen(date, schedule, service.equipmentId)) {
+    return Response.json({
+      times: [],
+      durationMinutes: service.durationMinutes,
+      equipment: EQUIPMENT[service.equipmentId].name,
+      price: service.price,
+    });
+  }
 
   const [bookings, blocks] = await Promise.all([
     db.prepare(
@@ -39,9 +51,11 @@ export async function GET(request: Request) {
       overlaps(start, end, row.startTime, row.endTime));
     return !bookingConflict && !blocked;
   });
+
   return Response.json({
     times,
     durationMinutes: service.durationMinutes,
     equipment: EQUIPMENT[service.equipmentId].name,
+    price: service.price,
   });
 }
