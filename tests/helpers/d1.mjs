@@ -12,7 +12,6 @@ import { createHash, randomBytes } from "node:crypto";
 
 const DRIZZLE_DIR = new URL("../../drizzle/", import.meta.url);
 
-// Нормалізація аргументів під node:sqlite: undefined → null, boolean → 0/1.
 function normArg(a) {
   if (a === undefined || a === null) return null;
   if (typeof a === "boolean") return a ? 1 : 0;
@@ -20,8 +19,6 @@ function normArg(a) {
   return a;
 }
 
-// Обгортає DatabaseSync у мінімальний, але вірний D1-сумісний інтерфейс:
-// prepare().bind().first()/all()/run() + batch().
 function wrapAsD1(db) {
   const makeStmt = (sql) => {
     const prepared = db.prepare(sql);
@@ -40,7 +37,6 @@ function wrapAsD1(db) {
         const r = prepared.run(...bound);
         return { success: true, meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid), duration: 0 } };
       },
-      // Деякі шляхи звертаються до .raw(); повертаємо масив значень першого рядка.
       async raw() {
         const rows = prepared.all(...bound);
         return rows.map((row) => Object.values(row));
@@ -60,15 +56,12 @@ function wrapAsD1(db) {
   };
 }
 
-// Застосовує всі drizzle-міграції по порядку до чистої БД.
 export async function applyMigrations(db) {
   const files = (await readdir(fileURLToPath(DRIZZLE_DIR)))
     .filter((f) => f.endsWith(".sql"))
     .sort();
   for (const file of files) {
     const sql = await readFile(new URL(file, DRIZZLE_DIR), "utf8");
-    // «--> statement-breakpoint» — коментар drizzle; SQLite exec виконає всі
-    // ;-термінальні інструкції файлу за раз.
     try {
       db.exec(sql);
     } catch (e) {
@@ -77,7 +70,6 @@ export async function applyMigrations(db) {
   }
 }
 
-// Створює свіжу БД зі схемою і повертає { db, close }.
 export async function freshDb() {
   const raw = new DatabaseSync(":memory:");
   raw.exec("PRAGMA foreign_keys = ON;");
@@ -86,7 +78,6 @@ export async function freshDb() {
   return { db, raw, close: () => raw.close() };
 }
 
-// Виконує fn(db) з підставленим глобальним біндингом і прибирає його по завершенні.
 export async function withD1(fn) {
   const { db, raw, close } = await freshDb();
   const key = "__RADIOLOGY_DB__";
@@ -101,7 +92,6 @@ export async function withD1(fn) {
   }
 }
 
-// Зручний конструктор Request з JSON-тілом і Cloudflare-заголовком IP.
 export function jsonRequest(url, body, { method = "POST", headers = {}, ip = "203.0.113.7" } = {}) {
   return new Request(`http://localhost${url}`, {
     method,
@@ -110,8 +100,6 @@ export function jsonRequest(url, body, { method = "POST", headers = {}, ip = "20
   });
 }
 
-// Драйвер зібраного воркера (dist). Маршрутизація й код — справжні; воркер сам
-// кладе env.DB у globalThis, тож логіка маршрутів працює проти нашої SQLite.
 let workerPromise = null;
 function loadWorker() {
   if (!workerPromise) {
@@ -121,8 +109,6 @@ function loadWorker() {
   return workerPromise;
 }
 
-// Засідити співробітника з роллю і повернути cookie активної сесії.
-// Хеш токена рахуємо так само, як lib/auth.hashToken (SHA-256 hex від UTF-8).
 export async function seedStaffSession(db, { email, role, displayName = "" }) {
   await db.prepare(
     `INSERT INTO staff_members (email, display_name, role, active) VALUES (?, ?, ?, 1)
@@ -137,14 +123,13 @@ export async function seedStaffSession(db, { email, role, displayName = "" }) {
   return `rid_session=${rawToken}`;
 }
 
-// Засідити активну сесію пацієнта за нормалізованим телефоном → cookie.
-export async function seedPatientSession(db, phoneNormalized) {
+export async function seedPatientSession(db, phoneNormalized, organizationId = 1) {
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
   await db.prepare(
-    `INSERT INTO patient_sessions (token_hash, phone_normalized, expires_at)
-     VALUES (?, ?, datetime('now', '+30 minutes'))`
-  ).bind(tokenHash, phoneNormalized).run();
+    `INSERT INTO patient_sessions (token_hash, phone_normalized, organization_id, expires_at)
+     VALUES (?, ?, ?, datetime('now', '+30 minutes'))`
+  ).bind(tokenHash, phoneNormalized, organizationId).run();
   return `rid_patient=${rawToken}`;
 }
 
