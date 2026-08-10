@@ -9,6 +9,7 @@ import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
 import { assignEarliestAppointments, type BusyBooking, type EquipmentBlock } from "../../../lib/auto-booking";
+import { nextBookingCode } from "../../../lib/booking-code";
 import { dbBinding } from "../../../lib/db";
 
 const CONSENT_VERSION = "2026-07-29";
@@ -156,7 +157,8 @@ export async function POST(request: Request) {
       );
     }
 
-    const codes = services.map(() => `RD-${crypto.randomUUID().replace(/-/g, "").slice(0, 16).toUpperCase()}`);
+    const codes: string[] = [];
+    for (let i = 0; i < services.length; i += 1) codes.push(await nextBookingCode(db));
     const prices = await Promise.all(services.map((service) => effectivePrice(db, service!.code)));
     const responseBody = { codes, code: codes[0], appointments, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
     const statements: D1PreparedStatement[] = [];

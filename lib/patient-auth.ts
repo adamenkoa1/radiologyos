@@ -5,7 +5,8 @@ export const PATIENT_SESSION_TTL_SECONDS = 30 * 60;
 
 export function normalizeBookingCode(value: unknown): string {
   const code = String(value || "").trim().toUpperCase().slice(0, 24);
-  return /^RD-[A-Z0-9]{8,16}$/.test(code) ? code : "";
+  // Новий формат RD-РРММДД-N (дата + добовий номер) та легасі RD-<hex16>.
+  return /^RD-(?:[A-Z0-9]{8,16}|\d{6}-\d{1,4})$/.test(code) ? code : "";
 }
 
 export async function createPatientSession(db: D1Database, phoneNormalized: string): Promise<string> {

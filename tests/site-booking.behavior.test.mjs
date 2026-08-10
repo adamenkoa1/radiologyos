@@ -31,7 +31,7 @@ test("a valid civilian request creates a booking, priced and pending payment", a
     const res = await book(db, validBody());
     assert.equal(res.status, 201);
     const data = await res.json();
-    assert.match(data.code, /^RD-[A-Z0-9]{16}$/);
+    assert.match(data.code, /^RD-\d{6}-\d{3,}$/); // RD-РРММДД-N
 
     const row = await db.prepare(
       "SELECT status, payment_status AS pay, payment_amount AS amount, patient_category AS cat FROM bookings WHERE code = ?"
