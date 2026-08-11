@@ -17,11 +17,16 @@ type ReminderRow = {
   service: string; desiredTime: string;
 };
 
-// Раннер: читає налаштування й записи на сьогодні, вирішує через dueReminders,
-// надсилає WhatsApp і фіксує в patient_notifications (з дедуплікацією за kind).
-// Ніколи не кидає виняток — cron не має «падати».
-export async function runDueReminders(db: D1Database, nowMs: number): Promise<{ sent: number; skipped: number; failed: number }> {
+// Раннер завжди отримує явний tenant. Поки messaging credentials зберігаються
+// глобально в app_settings, production scheduled-handler викликає його лише для
+// початкової організації; це не дає одному каналу повідомлень обробляти чужі записи.
+export async function runDueReminders(
+  db: D1Database,
+  nowMs: number,
+  organizationId: number,
+): Promise<{ sent: number; skipped: number; failed: number }> {
   const result = { sent: 0, skipped: 0, failed: 0 };
+  if (!Number.isInteger(organizationId) || organizationId <= 0) return result;
   try {
     const cfg = await getSettings(db, ["patient_reminders_enabled", REMINDER_LEAD_KEY]);
     if (!["1", "true", "on", "yes"].includes((cfg.patient_reminders_enabled || "").trim().toLowerCase())) {
@@ -35,8 +40,9 @@ export async function runDueReminders(db: D1Database, nowMs: number): Promise<{ 
 
     const rows = await db.prepare(
       `SELECT id, name, phone, phone_normalized AS phoneNormalized, service, desired_time AS desiredTime
-       FROM bookings WHERE desired_date = ? AND status IN ('confirmed','rescheduled')`
-    ).bind(date).all<ReminderRow>();
+       FROM bookings
+       WHERE organization_id = ? AND desired_date = ? AND status IN ('confirmed','rescheduled')`
+    ).bind(organizationId, date).all<ReminderRow>();
     const bookings = (rows.results || []);
     if (!bookings.length) return result;
 
@@ -49,13 +55,17 @@ export async function runDueReminders(db: D1Database, nowMs: number): Promise<{ 
       leadBookings.push({ id: b.id, minutesUntil: t - nowMin });
     }
 
-    // Уже надіслані нагадування (щоб не дублювати) + список «не турбувати».
+    // Уже надіслані нагадування та «не турбувати» читаються лише в tenant scope.
     const [sentRows, dncRows] = await Promise.all([
       db.prepare(
-        `SELECT booking_id AS bookingId, kind FROM patient_notifications
-         WHERE kind LIKE 'reminder_%h' AND booking_id IN (SELECT id FROM bookings WHERE desired_date = ?)`
-      ).bind(date).all<{ bookingId: number; kind: string }>(),
-      db.prepare("SELECT phone_normalized AS p FROM patient_profiles WHERE do_not_contact = 1").all<{ p: string }>(),
+        `SELECT n.booking_id AS bookingId, n.kind
+         FROM patient_notifications n
+         JOIN bookings b ON b.id = n.booking_id
+         WHERE b.organization_id = ? AND n.kind LIKE 'reminder_%h' AND b.desired_date = ?`
+      ).bind(organizationId, date).all<{ bookingId: number; kind: string }>(),
+      db.prepare(
+        "SELECT phone_normalized AS p FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1"
+      ).bind(organizationId).all<{ p: string }>(),
     ]);
     const alreadySent = new Set((sentRows.results || []).map((r) => `${r.bookingId}:${r.kind}`));
     const dnc = new Set((dncRows.results || []).map((r) => r.p));
