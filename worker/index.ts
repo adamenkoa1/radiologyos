@@ -47,6 +47,7 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 const LEGACY_HOME_PATHS = new Set(["/index.html", "/site", "/site/", "/site/index.html"]);
 const PUBLIC_CANONICAL_PATHS = new Set(["/", "/site/price.html", "/site/military.html"]);
+const INITIAL_ORGANIZATION_ID = 1;
 
 function secure(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
@@ -165,11 +166,12 @@ const worker = {
     return secure(await handler.fetch(request, env, ctx), request);
   },
 
-  // Cron-тригер (див. [triggers].crons у wrangler.cloudflare.toml): планові
-  // нагадування пацієнтам за N годин до візиту через WhatsApp.
+  // Messaging credentials still live in global app_settings. Until they become
+  // per-organization, cron is deliberately limited to the initial tenant so a
+  // second organization can never receive reminders through the wrong channel.
   async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
-    ctx.waitUntil(runDueReminders(env.DB, Date.now()));
+    ctx.waitUntil(runDueReminders(env.DB, Date.now(), INITIAL_ORGANIZATION_ID));
   },
 };
 
