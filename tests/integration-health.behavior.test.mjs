@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
+const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.test" };
+
 function request(cookie) {
   return new Request("http://localhost/api/staff/integrations/health", {
     headers:{ cookie },
@@ -24,14 +26,12 @@ test("integration health reports readiness without exposing PACS or MWL secrets"
     ).run();
 
     const previousFetch = globalThis.fetch;
-    const previousAllowlist = globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-    globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = "pacs.example.test";
     globalThis.fetch = async (url) => {
       assert.match(String(url), /^https:\/\/pacs\.example\.test\/dicomweb\/studies\?limit=1$/);
       return new Response("[]", { status:200, headers:{ "content-type":"application/dicom+json" } });
     };
     try {
-      const response = await callWorker(request(cookie), db);
+      const response = await callWorker(request(cookie), db, PACS_ENV);
       assert.equal(response.status, 200);
       const body = await response.json();
       assert.equal(body.overall, "operational");
@@ -45,8 +45,6 @@ test("integration health reports readiness without exposing PACS or MWL secrets"
       ]) assert.equal(serialized.includes(forbidden), false);
     } finally {
       globalThis.fetch = previousFetch;
-      if (previousAllowlist === undefined) delete globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-      else globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = previousAllowlist;
     }
   });
 });
@@ -62,11 +60,9 @@ test("integration health degrades PACS safely when the remote endpoint is unreac
     ).run();
 
     const previousFetch = globalThis.fetch;
-    const previousAllowlist = globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-    globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = "pacs.example.test";
     globalThis.fetch = async () => { throw new Error("offline"); };
     try {
-      const response = await callWorker(request(cookie), db);
+      const response = await callWorker(request(cookie), db, PACS_ENV);
       assert.equal(response.status, 200);
       const body = await response.json();
       assert.equal(body.pacs.state, "unreachable");
@@ -74,8 +70,6 @@ test("integration health degrades PACS safely when the remote endpoint is unreac
       assert.equal(body.overall, "attention_required");
     } finally {
       globalThis.fetch = previousFetch;
-      if (previousAllowlist === undefined) delete globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-      else globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = previousAllowlist;
     }
   });
 });
