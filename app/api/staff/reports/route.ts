@@ -11,7 +11,6 @@ import {
   reportPayload,
 } from "../../../../lib/reporting-server";
 
-
 export async function GET(request:Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
@@ -81,8 +80,12 @@ export async function GET(request:Request) {
 
   const [{ results:staffOptions },{ results:exportHistory }] = await Promise.all([
     db.prepare(
-      "SELECT email, display_name AS displayName, role FROM staff_members WHERE active = 1 ORDER BY role, display_name"
-    ).all(),
+      `SELECT s.email, s.display_name AS displayName, m.role AS role
+       FROM memberships m
+       JOIN staff_members s ON s.email = m.member_email
+       WHERE m.organization_id = ? AND m.active = 1 AND s.active = 1
+       ORDER BY m.role, s.display_name`
+    ).bind(ctx.organizationId).all(),
     db.prepare(
       `SELECT e.id, e.requested_by AS requestedBy,
         COALESCE(NULLIF(s.display_name,''), e.requested_by) AS requestedByName,
@@ -91,11 +94,13 @@ export async function GET(request:Request) {
         e.created_at AS createdAt
        FROM report_exports e
        LEFT JOIN staff_members s ON s.email = e.requested_by
+       WHERE e.organization_id = ?
        ORDER BY e.created_at DESC LIMIT 20`
-    ).all(),
+    ).bind(ctx.organizationId).all(),
   ]);
   const report = reportPayload(filters,source);
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "report_viewed",
     resource: "report",
