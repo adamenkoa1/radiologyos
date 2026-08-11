@@ -26,7 +26,7 @@ echo "[1/4] Building the artifact (dist/server + dist/client)…"
 npm run build
 
 echo "[2/4] Recording the current D1 recovery bookmark…"
-npx wrangler d1 time-travel info radiologyos --remote --config "${CONFIG}"
+npx wrangler d1 time-travel info radiologyos --config "${CONFIG}"
 
 echo "[3/4] Applying D1 migrations to the remote database…"
 npx wrangler d1 migrations apply radiologyos --remote --config "${CONFIG}"
