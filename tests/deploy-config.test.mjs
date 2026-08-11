@@ -41,6 +41,20 @@ test("deployment paths preserve runtime Worker vars", async () => {
   );
 });
 
+test("production Worker keeps custom routes outside the triggers table", async () => {
+  const config = await read("wrangler.cloudflare.toml");
+  const triggerMatch = /^\[triggers\]$/m.exec(config);
+  const routesMatch = /^routes\s*=\s*\[$/m.exec(config);
+  assert.ok(routesMatch?.index != null, "custom-domain routes must be configured");
+  assert.ok(triggerMatch?.index != null, "cron trigger table must be configured");
+  assert.ok(routesMatch.index < triggerMatch.index, "routes must remain top-level, before [triggers]");
+
+  const assetsMatch = /^\[assets\]$/m.exec(config.slice(triggerMatch.index));
+  const triggerEnd = assetsMatch ? triggerMatch.index + assetsMatch.index : config.length;
+  const triggerBlock = config.slice(triggerMatch.index, triggerEnd);
+  assert.doesNotMatch(triggerBlock, /^routes\s*=/m, "routes must not be nested inside [triggers]");
+});
+
 test("production Worker schedules patient reminder evaluation every 15 minutes", async () => {
   const config = await read("wrangler.cloudflare.toml");
   assert.match(config, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
