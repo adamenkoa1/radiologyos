@@ -47,6 +47,10 @@ function indexNames(db, table) {
   return db.prepare(`PRAGMA index_list(${table})`).all().map((row) => row.name);
 }
 
+function plainRow(row) {
+  return row == null ? row : Object.fromEntries(Object.entries(row));
+}
+
 test("production baseline through 0029 upgrades through 0032 without losing existing data", async () => {
   const inventory = await migrationInventory();
   const baseline = inventory.filter((item) => item.number <= 29);
@@ -100,27 +104,27 @@ test("production baseline through 0029 upgrades through 0032 without losing exis
       ).run(bookingId);
     }
 
-    const legacyPacs = db.prepare(
+    const legacyPacs = plainRow(db.prepare(
       `SELECT dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
         ae_title AS aeTitle, enabled, notes, updated_by AS updatedBy
        FROM pacs_settings WHERE id = 1`,
-    ).get();
-    const legacyBooking = db.prepare(
+    ).get());
+    const legacyBooking = plainRow(db.prepare(
       "SELECT code, name, phone, service, status, comment FROM bookings WHERE id = ?",
-    ).get(bookingId);
-    const legacyImaging = db.prepare(
+    ).get(bookingId));
+    const legacyImaging = plainRow(db.prepare(
       `SELECT accession_number AS accessionNumber, study_instance_uid AS studyInstanceUid,
         modality, study_status AS studyStatus, source, updated_by AS updatedBy
        FROM imaging_studies WHERE booking_id = ?`,
-    ).get(bookingId);
+    ).get(bookingId));
 
     await applyFiles(db, release);
 
-    const upgradedPacs = db.prepare(
+    const upgradedPacs = plainRow(db.prepare(
       `SELECT organization_id AS organizationId, dicomweb_base_url AS dicomwebBaseUrl,
         viewer_base_url AS viewerBaseUrl, ae_title AS aeTitle, enabled, notes,
         updated_by AS updatedBy FROM pacs_settings WHERE id = 1`,
-    ).get();
+    ).get());
     assert.equal(upgradedPacs.organizationId, 1);
     assert.deepEqual(
       Object.fromEntries(Object.entries(upgradedPacs).filter(([key]) => key !== "organizationId")),
@@ -128,15 +132,15 @@ test("production baseline through 0029 upgrades through 0032 without losing exis
     );
 
     assert.deepEqual(
-      db.prepare("SELECT code, name, phone, service, status, comment FROM bookings WHERE id = ?").get(bookingId),
+      plainRow(db.prepare("SELECT code, name, phone, service, status, comment FROM bookings WHERE id = ?").get(bookingId)),
       legacyBooking,
     );
     assert.deepEqual(
-      db.prepare(
+      plainRow(db.prepare(
         `SELECT accession_number AS accessionNumber, study_instance_uid AS studyInstanceUid,
           modality, study_status AS studyStatus, source, updated_by AS updatedBy
          FROM imaging_studies WHERE booking_id = ?`,
-      ).get(bookingId),
+      ).get(bookingId)),
       legacyImaging,
     );
 
