@@ -24,6 +24,23 @@ test("local deploy uses valid remote D1 command contracts", async () => {
   );
 });
 
+test("deployment paths preserve runtime Worker vars", async () => {
+  const [script, workflow] = await Promise.all([
+    read("scripts/deploy-cloudflare.sh"),
+    read(".github/workflows/deploy.yml"),
+  ]);
+  assert.match(
+    script,
+    /wrangler deploy --keep-vars --config \"\$\{CONFIG\}\"/,
+    "Local deploy must preserve remote Worker vars such as OUTBOUND_ALLOWED_HOSTS",
+  );
+  assert.match(
+    workflow,
+    /wrangler deploy --keep-vars --config wrangler\.cloudflare\.toml/,
+    "Production workflow must preserve remote Worker vars such as OUTBOUND_ALLOWED_HOSTS",
+  );
+});
+
 test("GitHub production workflow uses the same Time Travel command contract", async () => {
   const workflow = await read(".github/workflows/deploy.yml");
   assert.match(workflow, /wrangler d1 time-travel info radiologyos --config wrangler\.cloudflare\.toml/);
