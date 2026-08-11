@@ -284,6 +284,7 @@ export const imagingStudies = sqliteTable("imaging_studies", {
 
 export const pacsSettings = sqliteTable("pacs_settings", {
   id: integer("id").primaryKey(),
+  organizationId: integer("organization_id").notNull().default(1),
   dicomwebBaseUrl: text("dicomweb_base_url").notNull().default(""),
   viewerBaseUrl: text("viewer_base_url").notNull().default(""),
   aeTitle: text("ae_title").notNull().default(""),
@@ -291,7 +292,7 @@ export const pacsSettings = sqliteTable("pacs_settings", {
   notes: text("notes").notNull().default(""),
   updatedBy: text("updated_by").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, table => [uniqueIndex("pacs_settings_organization_idx").on(table.organizationId)]);
 
 export const reportExports = sqliteTable("report_exports", {
   organizationId: integer("organization_id").notNull().default(1),
