@@ -40,7 +40,11 @@ const systemModules: NavModule[] = [
     { label:"Картки пацієнтів", href:"/staff/patients" },
     { label:"Чат із пацієнтами", href:"/staff/chat" },
   ]},
-  { label:"Знімки DICOM", href:"/staff/imaging", sections:["imaging"], icon:"🩻", items:[] },
+  { label:"Знімки DICOM", href:"/staff/imaging", sections:["imaging"], icon:"🩻", items:[
+    { label:"Список досліджень", href:"/staff/imaging" },
+    { label:"Стан PACS / MWL", href:"/staff/integrations/health" },
+    { label:"Modality Worklist", href:"/staff/integrations/mwl" },
+  ]},
   { label:"Кабінети й обладнання", href:"/staff/schedule", sections:["schedule","equipment","services"], icon:"🛠️", items:[
     { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
     { label:"Обладнання", href:"/staff/equipment" },
