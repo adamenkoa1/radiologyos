@@ -5,6 +5,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
 const DRIZZLE_DIR = new URL("../drizzle/", import.meta.url);
+const SCHEMA_URL = new URL("../db/schema.ts", import.meta.url);
 
 function migrationNumber(file) {
   const match = /^(\d{4})_[A-Za-z0-9_.-]+\.sql$/.exec(file);
@@ -54,6 +55,22 @@ function indexColumns(db, index) {
 function plainRow(row) {
   return row == null ? row : Object.fromEntries(Object.entries(row));
 }
+
+test("Drizzle PACS schema matches tenant migration contract", async () => {
+  const schema = await readFile(SCHEMA_URL, "utf8");
+  const pacsBlock = schema.match(/export const pacsSettings = sqliteTable\("pacs_settings", \{[\s\S]*?\n\}\s*,\s*table => \[[\s\S]*?\]\);/);
+  assert.ok(pacsBlock, "pacsSettings must declare a table-level tenant index");
+  assert.match(
+    pacsBlock[0],
+    /organizationId:\s*integer\("organization_id"\)\.notNull\(\)\.default\(1\)/,
+    "pacsSettings.organizationId must match migration 0031 nullability/default",
+  );
+  assert.match(
+    pacsBlock[0],
+    /uniqueIndex\("pacs_settings_organization_idx"\)\.on\(table\.organizationId\)/,
+    "pacsSettings must keep the one-row-per-organization uniqueness contract",
+  );
+});
 
 test("production baseline through 0029 upgrades through 0033 without losing existing data", async () => {
   const inventory = await migrationInventory();
