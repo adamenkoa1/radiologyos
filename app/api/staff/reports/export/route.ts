@@ -42,6 +42,7 @@ export async function GET(request:Request) {
     containsPersonalData
   ).run();
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "report_exported",
     resource: "report",
