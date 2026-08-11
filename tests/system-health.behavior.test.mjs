@@ -44,30 +44,37 @@ test("system health is admin-only and returns no PHI or integration secrets", as
   });
 });
 
-test("system health probes only the signed-in tenant and never returns row data", async () => {
+test("system health reads imaging readiness only from the signed-in tenant", async () => {
   await withD1(async (db) => {
     const cookie = await seedStaffSession(db, { email:"tenant-admin@health.test", role:"admin" });
 
     await db.prepare(
-      `INSERT INTO bookings
-        (organization_id, code, name, phone, phone_normalized, service_code, desired_date, desired_time, status)
-       VALUES (2, 'OTHER-TENANT-SECRET', 'Other Tenant Patient', '+380000000000', '+380000000000', 'ct_brain', '2026-08-11', '10:00', 'new')`,
+      `UPDATE pacs_settings SET dicomweb_base_url = '', enabled = 0 WHERE organization_id = 1`,
     ).run();
     await db.prepare(
-      `INSERT INTO payment_transactions
-        (organization_id, booking_id, amount, currency, provider, provider_reference, status)
-       VALUES (2, 999999, 100, 'UAH', 'test-provider', 'OTHER-TENANT-PAYMENT-SECRET', 'pending')`,
+      `INSERT INTO pacs_settings
+        (organization_id, dicomweb_base_url, enabled, updated_by, updated_at)
+       VALUES (2, 'https://other-tenant-pacs.example.test/dicomweb', 1, 'other-admin', CURRENT_TIMESTAMP)`,
+    ).run();
+    await db.prepare(
+      `INSERT INTO mwl_bridge_tokens
+        (organization_id, token_hash, active, created_by, created_at, last_used_at)
+       VALUES (2, 'other-tenant-secret-hash', 1, 'other-admin', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
     ).run();
 
     const response = await callWorker(request(cookie), db);
     assert.equal(response.status, 200);
-    const serialized = JSON.stringify(await response.json());
+    const body = await response.json();
+    assert.equal(body.imaging.pacsConfigured, false);
+    assert.equal(body.imaging.pacsEnabled, false);
+    assert.equal(body.imaging.mwlConfigured, false);
+    assert.equal(body.imaging.mwlActive, false);
+
+    const serialized = JSON.stringify(body);
     for (const forbidden of [
-      "OTHER-TENANT-SECRET",
-      "Other Tenant Patient",
-      "+380000000000",
-      "OTHER-TENANT-PAYMENT-SECRET",
-      "test-provider",
+      "other-tenant-pacs.example.test",
+      "other-tenant-secret-hash",
+      "other-admin",
     ]) assert.equal(serialized.includes(forbidden), false);
   });
 });
