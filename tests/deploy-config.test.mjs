@@ -29,3 +29,12 @@ test("GitHub production workflow uses the same Time Travel command contract", as
   assert.match(workflow, /wrangler d1 time-travel info radiologyos --config wrangler\.cloudflare\.toml/);
   assert.doesNotMatch(workflow, /wrangler d1 time-travel info[^\n]*--remote/);
 });
+
+test("GitHub production smoke test verifies a Worker + D1 read", async () => {
+  const workflow = await read(".github/workflows/deploy.yml");
+  assert.match(
+    workflow,
+    /https:\/\/radiologyos\.tech\/api\/public-services > \/tmp\/radiologyos-public-services\.json/,
+  );
+  assert.match(workflow, /Array\.isArray\(payload\?\.services\)/);
+});
