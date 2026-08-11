@@ -109,7 +109,8 @@ test("pending queue supports batch confirmation", async () => {
 
 test("dashboard reports undelivered notifications (persistent, tenant-scoped)", async () => {
   const route = await read("app/api/staff/dashboard/route.ts");
-  assert.match(route, /patient_notifications n JOIN bookings b/);
+  assert.match(route, /patient_notifications n\s+JOIN bookings b/);
+  assert.match(route, /b\.organization_id = n\.organization_id/);
   assert.match(route, /n\.status = 'failed'/);
   assert.match(route, /n\.organization_id = \?/); // tenant-scoped
   assert.match(route, /undelivered: withTitle\(undeliveredList\)/);
