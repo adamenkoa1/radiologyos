@@ -36,9 +36,8 @@ export function safeOutboundUrl(value: string): URL | null {
     if (url.username || url.password || url.protocol !== "https:") return null;
     const host = url.hostname.toLowerCase();
     const allowlist = allowedHosts();
-    const explicitlyAllowed = allowlist.has(host);
-    if (allowlist.size > 0 && !explicitlyAllowed) return null;
-    if (privateHostname(host) && !explicitlyAllowed) return null;
+    if (allowlist.size === 0 || !allowlist.has(host)) return null;
+    if (privateHostname(host) && !allowlist.has(host)) return null;
     return url;
   } catch {
     return null;
