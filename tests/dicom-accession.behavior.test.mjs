@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
+const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com" };
+
 async function seedAdmin(db) {
   const email = "imaging-admin@example.com";
   const cookie = await seedStaffSession(db, { email, role: "admin" });
@@ -86,7 +88,7 @@ test("a single exact accession match auto-links the PACS study", async () => {
     }, async () => {
       const response = await callWorker(jsonRequest("/api/staff/imaging", { bookingId }, {
         method: "POST", headers: { cookie },
-      }), db);
+      }), db, PACS_ENV);
       assert.equal(response.status, 200);
       const body = await response.json();
       assert.equal(body.status, "linked");
@@ -135,7 +137,7 @@ test("multiple exact accession matches are rejected without mutating the existin
     ]), async () => {
       const response = await callWorker(jsonRequest("/api/staff/imaging", { bookingId }, {
         method: "POST", headers: { cookie },
-      }), db);
+      }), db, PACS_ENV);
       assert.equal(response.status, 409);
       const body = await response.json();
       assert.equal(body.status, "ambiguous");
@@ -161,7 +163,7 @@ test("zero accession matches do not create an imaging link", async () => {
     await withMockFetch(async () => Response.json([]), async () => {
       const response = await callWorker(jsonRequest("/api/staff/imaging", { bookingId }, {
         method: "POST", headers: { cookie },
-      }), db);
+      }), db, PACS_ENV);
       assert.equal(response.status, 404);
       const body = await response.json();
       assert.equal(body.status, "not_found");

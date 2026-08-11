@@ -133,9 +133,13 @@ export async function seedPatientSession(db, phoneNormalized, organizationId = 1
   return `rid_patient=${rawToken}`;
 }
 
-export async function callWorker(request, db) {
+export async function callWorker(request, db, envOverrides = {}) {
   const worker = await loadWorker();
-  const env = { DB: db, ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) } };
+  const env = {
+    DB: db,
+    ASSETS: { fetch: async () => new Response("Not found", { status: 404 }) },
+    ...envOverrides,
+  };
   const ctx = { waitUntil() {}, passThroughOnException() {} };
   return worker.fetch(request, env, ctx);
 }

@@ -41,7 +41,9 @@ test("PACS settings are isolated by organization", async () => {
       aeTitle: "RADONE",
       enabled: true,
       notes: "org one",
-    }, { method: "PUT", headers: { cookie: cookie1 } }), db);
+    }, { method: "PUT", headers: { cookie: cookie1 } }), db, {
+      OUTBOUND_ALLOWED_HOSTS: "pacs-one.example.com",
+    });
     assert.equal(put1.status, 200);
 
     const put2 = await callWorker(jsonRequest("/api/staff/imaging/settings", {
@@ -50,7 +52,9 @@ test("PACS settings are isolated by organization", async () => {
       aeTitle: "RADTWO",
       enabled: true,
       notes: "org two",
-    }, { method: "PUT", headers: { cookie: cookie2 } }), db);
+    }, { method: "PUT", headers: { cookie: cookie2 } }), db, {
+      OUTBOUND_ALLOWED_HOSTS: "pacs-two.example.com",
+    });
     assert.equal(put2.status, 200);
 
     const get1 = await callWorker(jsonRequest("/api/staff/imaging/settings", undefined, {
