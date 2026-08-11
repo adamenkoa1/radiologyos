@@ -52,22 +52,24 @@ test("kyivNow converts a UTC instant to Kyiv date and minutes", () => {
   assert.equal(minutes, 15 * 60);
 });
 
-test("worker retains reminder support while production cron is disabled", async () => {
+test("worker schedules tenant-limited reminder support every 15 minutes", async () => {
   const worker = await read("worker/index.ts");
   assert.match(worker, /async scheduled\(/);
-  assert.match(worker, /runDueReminders\(env\.DB, Date\.now\(\)\)/);
+  assert.match(worker, /runDueReminders\(env\.DB, Date\.now\(\), INITIAL_ORGANIZATION_ID\)/);
+  assert.match(worker, /const INITIAL_ORGANIZATION_ID = 1/);
   assert.match(worker, /ctx\.waitUntil/);
   const wrangler = await read("wrangler.cloudflare.toml");
   assert.match(wrangler, /workers_dev = false/);
-  assert.doesNotMatch(wrangler, /\[triggers\]/);
-  assert.doesNotMatch(wrangler, /crons = \[/);
+  assert.match(wrangler, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
 });
 
-test("runner sends WhatsApp, dedupes by kind and respects do-not-contact", async () => {
+test("runner scopes bookings, dedupe and do-not-contact by organization", async () => {
   const src = await read("lib/reminders.ts");
+  assert.match(src, /WHERE organization_id = \? AND desired_date = \?/);
+  assert.match(src, /b\.organization_id = \?/);
+  assert.match(src, /patient_profiles WHERE organization_id = \? AND do_not_contact = 1/);
   assert.match(src, /sendWhatsApp\(db, b\.phoneNormalized, body\)/);
-  assert.match(src, /kind LIKE 'reminder_%h'/); // дедуплікація
-  assert.match(src, /do_not_contact = 1/); // «не турбувати»
+  assert.match(src, /kind LIKE 'reminder_%h'/);
   assert.match(src, /status IN \('confirmed','rescheduled'\)/);
 });
 
