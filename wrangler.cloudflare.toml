@@ -12,18 +12,17 @@ compatibility_date = "2025-04-01"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 
-# Patient reminders are evaluated every 15 minutes. The handler itself remains
-# a no-op unless reminders and WhatsApp are enabled in department settings.
-[triggers]
-crons = ["*/15 * * * *"]
-
-# Custom domains. The radiologyos.tech zone is already on Cloudflare (its
-# nameservers point to Cloudflare), so `wrangler deploy` provisions these
-# domains and their TLS certificates automatically — no manual DNS needed.
+# Custom domains. Keep routes at the TOML top level: placing this key after a
+# table header such as [triggers] would make it part of that table.
 routes = [
   { pattern = "radiologyos.tech", custom_domain = true },
   { pattern = "www.radiologyos.tech", custom_domain = true },
 ]
+
+# Patient reminders are evaluated every 15 minutes. The handler itself remains
+# a no-op unless reminders and WhatsApp are enabled in department settings.
+[triggers]
+crons = ["*/15 * * * *"]
 
 # Static client bundle (JS/CSS, self-hosted fonts, favicon). The Worker must run
 # before asset matching so canonical redirects, security headers and access
