@@ -19,6 +19,7 @@ const COMMANDS: { label: string; hint: string; href: string }[] = [
   { label: "Пацієнти", hint: "картки / CRM", href: "/staff/patients" },
   { label: "Протоколи", hint: "опис досліджень", href: "/staff/protocols" },
   { label: "Звіти", hint: "аналітика", href: "/staff/reports" },
+  { label: "Стан системи", hint: "health / production", href: "/staff/system/health" },
   { label: "Налаштування", hint: "адміністрування", href: "/staff/settings" },
 ];
 
