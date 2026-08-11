@@ -41,6 +41,11 @@ test("deployment paths preserve runtime Worker vars", async () => {
   );
 });
 
+test("production Worker schedules patient reminder evaluation every 15 minutes", async () => {
+  const config = await read("wrangler.cloudflare.toml");
+  assert.match(config, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
+});
+
 test("GitHub production workflow uses the same Time Travel command contract", async () => {
   const workflow = await read(".github/workflows/deploy.yml");
   assert.match(workflow, /wrangler d1 time-travel info radiologyos --config wrangler\.cloudflare\.toml/);
