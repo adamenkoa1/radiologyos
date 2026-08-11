@@ -61,6 +61,10 @@ test("scheduled reminder SQL isolates bookings, dedupe and do-not-contact by org
 });
 
 test("production scheduled handler is explicitly limited to the initial organization", () => {
-  assert.match(workerSource, /runDueReminders\([^,]+,[^,]+,\s*1\s*\)/);
-  assert.match(workerSource, /scheduled\s*\(/);
+  assert.match(workerSource, /const INITIAL_ORGANIZATION_ID = 1/);
+  assert.match(
+    workerSource,
+    /runDueReminders\(env\.DB,\s*Date\.now\(\),\s*INITIAL_ORGANIZATION_ID\)/,
+  );
+  assert.match(workerSource, /async scheduled\s*\(/);
 });
