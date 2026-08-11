@@ -32,6 +32,8 @@ echo "[3/4] Applying D1 migrations to the remote database…"
 npx wrangler d1 migrations apply radiologyos --remote --config "${CONFIG}"
 
 echo "[4/4] Deploying the Worker and static assets…"
-npx wrangler deploy --config "${CONFIG}"
+# Runtime configuration such as OUTBOUND_ALLOWED_HOSTS may be managed in the
+# Cloudflare Worker environment rather than committed to source control.
+npx wrangler deploy --keep-vars --config "${CONFIG}"
 
 echo "✓ Deployed to the custom domains configured in ${CONFIG}."
