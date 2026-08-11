@@ -5,9 +5,7 @@ import { requireOrgContext } from "../../../../lib/tenant";
 import { stateLabel } from "../../../../lib/study-state";
 import { dbBinding } from "../../../../lib/db";
 
-// Клінічна черга пульта — активні стани дослідження за єдиною state machine.
 const CLINICAL_QUEUE_STATES = ["queued", "in_progress", "images_ready", "reporting", "protocol_ready"] as const;
-
 
 const num = (row: Record<string, unknown> | null, key = "c") => Number(row?.[key] || 0);
 
@@ -20,14 +18,15 @@ export async function GET(request: Request) {
     return Response.json({ error: "Зведена аналітика доступна лише адміністратору" }, { status: 403 });
   }
 
-  // Контекст організації — для tenant-scoped клінічної черги (organization_id
-  // лише із серверної сесії). За відсутності членства обмежуємося початковим tenant.
   const ctx = await requireOrgContext(request, db);
   const orgId = ctx?.organizationId ?? 1;
 
   const today = todayInKyiv();
-  // Початок 7-денного вікна завантаженості (сьогодні та 6 попередніх днів).
-  const weekStart = (() => { const d = new Date(`${today}T12:00:00Z`); d.setUTCDate(d.getUTCDate() - 6); return d.toISOString().slice(0, 10); })();
+  const weekStart = (() => {
+    const d = new Date(`${today}T12:00:00Z`);
+    d.setUTCDate(d.getUTCDate() - 6);
+    return d.toISOString().slice(0, 10);
+  })();
   const one = (sql: string, ...bind: unknown[]) => db.prepare(sql).bind(...bind).first<Record<string, unknown>>();
   const many = (sql: string, ...bind: unknown[]) => db.prepare(sql).bind(...bind).all();
 
@@ -42,49 +41,58 @@ export async function GET(request: Request) {
     clinicalQueueRows,
     equipmentWeekRows,
   ] = await Promise.all([
-    one("SELECT COUNT(*) AS c FROM bookings WHERE desired_date = ? AND status != 'cancelled'", today),
-    one("SELECT SUM(status='new') AS newc, SUM(status='confirmed') AS confirmedc FROM bookings WHERE desired_date = ? AND status != 'cancelled'", today),
-    one("SELECT COUNT(*) AS c FROM bookings WHERE substr(performed_at,1,10) = ?", today),
-    one("SELECT COUNT(*) AS c FROM bookings WHERE performed_at != '' AND protocol_status NOT IN ('ready','issued') AND status != 'cancelled'"),
-    one("SELECT COUNT(*) AS c FROM bookings WHERE protocol_status = 'ready'"),
-    one("SELECT COUNT(*) AS c FROM bookings WHERE substr(protocol_issued_at,1,10) = ?", today),
-    one("SELECT COUNT(*) AS c FROM bookings b LEFT JOIN imaging_studies i ON i.booking_id = b.id WHERE b.performed_at != '' AND b.status != 'cancelled' AND i.booking_id IS NULL"),
-    one("SELECT COUNT(*) AS c FROM imaging_studies WHERE study_status = 'available'"),
-    one("SELECT enabled FROM pacs_settings WHERE id = 1"),
-    one("SELECT COUNT(*) AS c, COALESCE(SUM(payment_amount),0) AS s FROM bookings WHERE patient_category = 'civilian' AND status != 'cancelled' AND payment_status NOT IN ('paid','not_required')"),
-    one("SELECT COUNT(*) AS c FROM bookings WHERE nszu_status = 'pending' AND status != 'cancelled'"),
-    one("SELECT COUNT(DISTINCT phone_normalized) AS c FROM bookings WHERE phone_normalized != ''"),
-    one("SELECT COUNT(*) AS c FROM (SELECT phone_normalized FROM bookings WHERE phone_normalized != '' GROUP BY phone_normalized HAVING COUNT(*) > 1)"),
-    one("SELECT COUNT(*) AS c FROM patient_profiles WHERE do_not_contact = 1"),
-    many("SELECT equipment_id AS id, COUNT(*) AS c FROM bookings WHERE desired_date = ? AND status != 'cancelled' GROUP BY equipment_id", today),
-    many("SELECT id, code, name, service_code AS serviceCode, performed_at AS performedAt FROM bookings WHERE performed_at != '' AND protocol_status NOT IN ('ready','issued') AND status != 'cancelled' ORDER BY performed_at DESC LIMIT 6"),
-    many("SELECT id, code, name, service_code AS serviceCode, protocol_number AS protocolNumber FROM bookings WHERE protocol_status = 'ready' ORDER BY protocol_updated_at DESC LIMIT 6"),
-    many("SELECT b.id, b.code, b.name, b.service_code AS serviceCode, b.performed_at AS performedAt FROM bookings b LEFT JOIN imaging_studies i ON i.booking_id = b.id WHERE b.performed_at != '' AND b.status != 'cancelled' AND i.booking_id IS NULL ORDER BY b.performed_at DESC LIMIT 6"),
-    many("SELECT id, code, name, service_code AS serviceCode, desired_date AS desiredDate, desired_time AS desiredTime FROM bookings WHERE status = 'new' ORDER BY desired_date, desired_time LIMIT 6"),
-    // Недоставлені сповіщення: остання невдала спроба на заявку (tenant-scoped),
-    // щоб реєстратор бачив стійкий список «передзвонити», а не лише сесійний.
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND desired_date = ? AND status != 'cancelled'", orgId, today),
+    one("SELECT SUM(status='new') AS newc, SUM(status='confirmed') AS confirmedc FROM bookings WHERE organization_id = ? AND desired_date = ? AND status != 'cancelled'", orgId, today),
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND substr(performed_at,1,10) = ?", orgId, today),
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND performed_at != '' AND protocol_status NOT IN ('ready','issued') AND status != 'cancelled'", orgId),
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND protocol_status = 'ready'", orgId),
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND substr(protocol_issued_at,1,10) = ?", orgId, today),
+    one(
+      `SELECT COUNT(*) AS c FROM bookings b
+       LEFT JOIN imaging_studies i ON i.booking_id = b.id AND i.organization_id = b.organization_id
+       WHERE b.organization_id = ? AND b.performed_at != '' AND b.status != 'cancelled' AND i.booking_id IS NULL`,
+      orgId,
+    ),
+    one("SELECT COUNT(*) AS c FROM imaging_studies WHERE organization_id = ? AND study_status = 'available'", orgId),
+    one("SELECT enabled FROM pacs_settings WHERE organization_id = ?", orgId),
+    one("SELECT COUNT(*) AS c, COALESCE(SUM(payment_amount),0) AS s FROM bookings WHERE organization_id = ? AND patient_category = 'civilian' AND status != 'cancelled' AND payment_status NOT IN ('paid','not_required')", orgId),
+    one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND nszu_status = 'pending' AND status != 'cancelled'", orgId),
+    one("SELECT COUNT(DISTINCT phone_normalized) AS c FROM bookings WHERE organization_id = ? AND phone_normalized != ''", orgId),
+    one("SELECT COUNT(*) AS c FROM (SELECT phone_normalized FROM bookings WHERE organization_id = ? AND phone_normalized != '' GROUP BY phone_normalized HAVING COUNT(*) > 1)", orgId),
+    one("SELECT COUNT(*) AS c FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1", orgId),
+    many("SELECT equipment_id AS id, COUNT(*) AS c FROM bookings WHERE organization_id = ? AND desired_date = ? AND status != 'cancelled' GROUP BY equipment_id", orgId, today),
+    many("SELECT id, code, name, service_code AS serviceCode, performed_at AS performedAt FROM bookings WHERE organization_id = ? AND performed_at != '' AND protocol_status NOT IN ('ready','issued') AND status != 'cancelled' ORDER BY performed_at DESC LIMIT 6", orgId),
+    many("SELECT id, code, name, service_code AS serviceCode, protocol_number AS protocolNumber FROM bookings WHERE organization_id = ? AND protocol_status = 'ready' ORDER BY protocol_updated_at DESC LIMIT 6", orgId),
+    many(
+      `SELECT b.id, b.code, b.name, b.service_code AS serviceCode, b.performed_at AS performedAt
+       FROM bookings b
+       LEFT JOIN imaging_studies i ON i.booking_id = b.id AND i.organization_id = b.organization_id
+       WHERE b.organization_id = ? AND b.performed_at != '' AND b.status != 'cancelled' AND i.booking_id IS NULL
+       ORDER BY b.performed_at DESC LIMIT 6`,
+      orgId,
+    ),
+    many("SELECT id, code, name, service_code AS serviceCode, desired_date AS desiredDate, desired_time AS desiredTime FROM bookings WHERE organization_id = ? AND status = 'new' ORDER BY desired_date, desired_time LIMIT 6", orgId),
     many(
       `SELECT b.id, b.code, b.name, b.phone, b.service_code AS serviceCode,
               b.desired_date AS desiredDate, b.desired_time AS desiredTime,
               MAX(n.created_at) AS failedAt
-       FROM patient_notifications n JOIN bookings b ON b.id = n.booking_id
-       WHERE n.organization_id = ? AND n.status = 'failed' AND b.status != 'cancelled'
+       FROM patient_notifications n
+       JOIN bookings b ON b.id = n.booking_id AND b.organization_id = n.organization_id
+       WHERE n.organization_id = ? AND b.organization_id = ? AND n.status = 'failed' AND b.status != 'cancelled'
        GROUP BY b.id ORDER BY failedAt DESC LIMIT 8`,
-      orgId,
+      orgId, orgId,
     ),
-    // Клінічна черга — лічильники активних станів дослідження (tenant-scoped).
     many(
       `SELECT status AS s, COUNT(*) AS c FROM bookings
        WHERE organization_id = ? AND status IN ('queued','in_progress','images_ready','reporting','protocol_ready')
        GROUP BY status`,
       orgId,
     ),
-    // Завантаженість апаратів за 7 днів: кількість досліджень на день і апарат.
     many(
       `SELECT desired_date AS d, equipment_id AS id, COUNT(*) AS c FROM bookings
-       WHERE desired_date BETWEEN ? AND ? AND status != 'cancelled'
+       WHERE organization_id = ? AND desired_date BETWEEN ? AND ? AND status != 'cancelled'
        GROUP BY desired_date, equipment_id`,
-      weekStart, today,
+      orgId, weekStart, today,
     ),
   ]);
 
