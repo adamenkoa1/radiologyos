@@ -12,9 +12,10 @@ test("integration health reports readiness without exposing PACS or MWL secrets"
   await withD1(async (db) => {
     const cookie = await seedStaffSession(db, { email:"admin@health.test", role:"admin" });
     await db.prepare(
-      `INSERT INTO pacs_settings
-        (organization_id, dicomweb_base_url, viewer_base_url, ae_title, enabled, notes, updated_by)
-       VALUES (1, ?, ?, 'RADIOLOGY', 1, 'secret operational note', 'admin@health.test')`
+      `UPDATE pacs_settings SET
+        dicomweb_base_url = ?, viewer_base_url = ?, ae_title = 'RADIOLOGY', enabled = 1,
+        notes = 'secret operational note', updated_by = 'admin@health.test', updated_at = CURRENT_TIMESTAMP
+       WHERE organization_id = 1`
     ).bind("https://pacs.example.test/dicomweb", "https://viewer.example.test/ohif").run();
     await db.prepare(
       `INSERT INTO mwl_bridge_tokens
@@ -54,8 +55,10 @@ test("integration health degrades PACS safely when the remote endpoint is unreac
   await withD1(async (db) => {
     const cookie = await seedStaffSession(db, { email:"admin2@health.test", role:"admin" });
     await db.prepare(
-      `INSERT INTO pacs_settings (organization_id, dicomweb_base_url, enabled, updated_by)
-       VALUES (1, 'https://pacs.example.test/dicomweb', 1, 'admin2@health.test')`
+      `UPDATE pacs_settings SET
+        dicomweb_base_url = 'https://pacs.example.test/dicomweb', enabled = 1,
+        updated_by = 'admin2@health.test', updated_at = CURRENT_TIMESTAMP
+       WHERE organization_id = 1`
     ).run();
 
     const previousFetch = globalThis.fetch;
