@@ -66,6 +66,15 @@ test("GitHub production workflow uses the same Time Travel command contract", as
   assert.doesNotMatch(workflow, /wrangler d1 time-travel info[^\n]*--remote/);
 });
 
+test("GitHub production workflow migrates D1 before checking for an administrator", async () => {
+  const workflow = await read(".github/workflows/deploy.yml");
+  const migrations = workflow.indexOf("- name: Apply D1 migrations");
+  const adminCheck = workflow.indexOf("- name: Verify a secure active administrator exists");
+  assert.notEqual(migrations, -1, "production workflow must apply D1 migrations");
+  assert.notEqual(adminCheck, -1, "production workflow must verify a secure administrator");
+  assert.ok(migrations < adminCheck, "D1 migrations must run before the admin check on a fresh database");
+});
+
 test("GitHub production smoke test verifies a Worker + D1 read", async () => {
   const workflow = await read(".github/workflows/deploy.yml");
   assert.match(
