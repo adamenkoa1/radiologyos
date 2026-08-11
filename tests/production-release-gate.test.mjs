@@ -34,12 +34,15 @@ test("package exposes a deterministic production release gate manifest", async (
   }
 });
 
-test("CI and production deploy both run the release gate", async () => {
+test("CI and production deploy use hardened install and run the release gate", async () => {
   const ci = await read(".github/workflows/ci.yml");
   const deploy = await read(".github/workflows/deploy.yml");
 
-  assert.match(ci, /name: Production release gate\s+run: npm run test:production-gate/);
-  assert.match(deploy, /name: Production release gate\s+run: npm run test:production-gate/);
+  for (const [name, workflow] of [["CI", ci], ["deploy", deploy]]) {
+    assert.match(workflow, /name: Install dependencies deterministically\s+run: npm run install:ci/, `${name} must use the hardened installer`);
+    assert.doesNotMatch(workflow, /run: npm ci(?:\s|$)/, `${name} must not bypass install:ci with raw npm ci`);
+    assert.match(workflow, /name: Production release gate\s+run: npm run test:production-gate/);
+  }
 
   const gatePosition = deploy.indexOf("name: Production release gate");
   const migrationsPosition = deploy.indexOf("name: Apply D1 migrations");
