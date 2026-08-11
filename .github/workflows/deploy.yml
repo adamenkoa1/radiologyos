@@ -92,3 +92,12 @@ jobs:
           curl --fail --silent --show-error --retry 5 --retry-all-errors https://radiologyos.tech/ > /dev/null
           test "$(curl --silent --output /dev/null --write-out '%{http_code}' https://radiologyos.tech/site/)" = "308"
           curl --fail --silent --show-error https://radiologyos.tech/robots.txt > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            https://radiologyos.tech/api/public-services > /tmp/radiologyos-public-services.json
+          node -e '
+            const payload = JSON.parse(require("node:fs").readFileSync("/tmp/radiologyos-public-services.json", "utf8"));
+            if (!Array.isArray(payload?.services)) {
+              console.error("Production smoke test failed: /api/public-services did not return a services array.");
+              process.exit(1);
+            }
+          '
