@@ -105,12 +105,11 @@ test("production deployment refuses to migrate without a secure active administr
   assert.match(workflow, /count < 1/);
 });
 
-test("Cloudflare deployment uses custom domains and worker-first asset routing", async () => {
+test("Cloudflare deployment uses custom domains, worker-first assets and safe reminder cron", async () => {
   const config = await read("wrangler.cloudflare.toml");
   assert.match(config, /\nworkers_dev = false\n/);
   assert.match(config, /pattern = "radiologyos\.tech", custom_domain = true/);
   assert.match(config, /pattern = "www\.radiologyos\.tech", custom_domain = true/);
   assert.match(config, /\nrun_worker_first = true\n/);
-  assert.doesNotMatch(config, /\n\[triggers\]\n/);
-  assert.doesNotMatch(config, /\ncrons\s*=/);
+  assert.match(config, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
 });
