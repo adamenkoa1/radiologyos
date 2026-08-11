@@ -47,15 +47,19 @@ function indexNames(db, table) {
   return db.prepare(`PRAGMA index_list(${table})`).all().map((row) => row.name);
 }
 
+function indexColumns(db, index) {
+  return db.prepare(`PRAGMA index_info(${index})`).all().map((row) => row.name);
+}
+
 function plainRow(row) {
   return row == null ? row : Object.fromEntries(Object.entries(row));
 }
 
-test("production baseline through 0029 upgrades through 0032 without losing existing data", async () => {
+test("production baseline through 0029 upgrades through 0033 without losing existing data", async () => {
   const inventory = await migrationInventory();
   const baseline = inventory.filter((item) => item.number <= 29);
-  const release = inventory.filter((item) => item.number >= 30 && item.number <= 32);
-  assert.deepEqual(release.map((item) => item.number), [30, 31, 32]);
+  const release = inventory.filter((item) => item.number >= 30 && item.number <= 33);
+  assert.deepEqual(release.map((item) => item.number), [30, 31, 32, 33]);
 
   const db = new DatabaseSync(":memory:");
   try {
@@ -103,6 +107,13 @@ test("production baseline through 0029 upgrades through 0032 without losing exis
            'available', 'manual', 'legacy-radiographer@example.test')`,
       ).run(bookingId);
     }
+
+    db.prepare(
+      `INSERT INTO security_audit_log
+        (actor_email, action, resource, target_id, details_json)
+       VALUES ('legacy-admin@example.test', 'legacy_event', 'system', 'legacy-1', '{"preserve":true}')`,
+    ).run();
+    assert.equal(tableColumns(db, "security_audit_log").includes("organization_id"), false);
 
     const legacyPacs = plainRow(db.prepare(
       `SELECT dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
@@ -161,6 +172,31 @@ test("production baseline through 0029 upgrades through 0032 without losing exis
     ]);
     assert.ok(indexNames(db, "mwl_bridge_tokens").includes("mwl_bridge_tokens_hash_idx"));
     assert.ok(indexNames(db, "mwl_patient_ids").includes("mwl_patient_ids_org_patient_idx"));
+
+    assert.ok(tableColumns(db, "security_audit_log").includes("organization_id"));
+    const legacyAudit = plainRow(db.prepare(
+      `SELECT organization_id AS organizationId, actor_email AS actorEmail, action, target_id AS targetId
+       FROM security_audit_log WHERE action = 'legacy_event'`,
+    ).get());
+    assert.deepEqual(legacyAudit, {
+      organizationId: 1,
+      actorEmail: "legacy-admin@example.test",
+      action: "legacy_event",
+      targetId: "legacy-1",
+    });
+    assert.ok(indexNames(db, "security_audit_log").includes("security_audit_created_idx"));
+    assert.deepEqual(indexColumns(db, "security_audit_created_idx"), ["organization_id", "created_at", "actor_email"]);
+
+    db.prepare(
+      `INSERT INTO security_audit_log
+        (organization_id, actor_email, action, resource, target_id, details_json)
+       VALUES (2, 'org2-admin@example.test', 'org2_event', 'report', 'org2-1', '{}')`,
+    ).run();
+    const org2Audit = plainRow(db.prepare(
+      `SELECT organization_id AS organizationId, actor_email AS actorEmail
+       FROM security_audit_log WHERE action = 'org2_event'`,
+    ).get());
+    assert.deepEqual(org2Audit, { organizationId: 2, actorEmail: "org2-admin@example.test" });
   } finally {
     db.close();
   }
