@@ -72,6 +72,23 @@ unset RADIOLOGYOS_BOOTSTRAP_PASSWORD
 отриманий `password_hash`. Після входу на `/staff/login` створюйте інших
 працівників лише через сторінку `/staff`.
 
+## 6. Дозволені зовнішні хости
+
+PACS та зовнішній ICS-календар працюють через fail-closed політику вихідних
+з’єднань. Якщо `OUTBOUND_ALLOWED_HOSTS` відсутній або порожній, RadiologyOS не
+виконуватиме запити до змінних зовнішніх URL. Перед увімкненням такої інтеграції
+явно задайте точні hostname через кому, без схеми та шляхів, наприклад:
+
+```bash
+printf '%s' 'pacs.example.org,calendar.example.org' | \
+  npx wrangler secret put OUTBOUND_ALLOWED_HOSTS --config wrangler.cloudflare.toml
+```
+
+Додавайте лише реально потрібні hostname. Піддомени не дозволяються автоматично:
+`pacs.example.org` не відкриває доступ до `other.pacs.example.org`. Telegram і
+поточний Green API використовують власні фіксовані transport-hosts і не залежать
+від цього списку.
+
 ## Повторні деплої
 
 Рекомендований шлях — ручний workflow **Deploy to Cloudflare** у GitHub Actions:
@@ -90,5 +107,5 @@ apply` застосує лише нові міграції.
   загальнодоступний CI-артефакт.
 - **Секрети.** Telegram, SMS та e-mail токени зберігайте як Cloudflare secrets
   або в іншому погодженому сховищі, а не у Git.
-- **Вихідні з’єднання.** Задайте `OUTBOUND_ALLOWED_HOSTS` як список точних
-  дозволених доменів через кому для PACS, календаря та шлюзів повідомлень.
+- **Вихідні з’єднання.** Для змінних інтеграцій діє лише явний список
+  `OUTBOUND_ALLOWED_HOSTS`; порожній список блокує всі такі запити.
