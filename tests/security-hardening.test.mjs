@@ -113,5 +113,6 @@ test("Cloudflare deployment uses an apex custom domain, worker-first assets and 
   assert.match(config, /pattern = "radiologyos\.tech", custom_domain = true/);
   assert.doesNotMatch(config, /pattern = "www\.radiologyos\.tech", custom_domain = true/);
   assert.match(config, /\nrun_worker_first = true\n/);
+  assert.match(config, /\nhtml_handling = "none"\n/);
   assert.match(config, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
 });
