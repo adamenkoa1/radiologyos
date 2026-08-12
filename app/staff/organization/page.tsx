@@ -53,6 +53,12 @@ export default function OrganizationPage() {
       </div>
 
       <section className="orgProfileCard">
+        <h3>Мій робочий профіль</h3>
+        <p className="orgProfileHint">Контактні дані, посада, звання та зміна PIN-коду без роботи напряму з базою даних.</p>
+        <a className="button compact" href="/staff/profile">Відкрити мій профіль</a>
+      </section>
+
+      <section className="orgProfileCard">
         <h3>Заклад</h3>
         <dl className="structMeta">
           <div><dt>Назва</dt><dd>{data.organization.name}</dd></div>
