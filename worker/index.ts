@@ -47,6 +47,14 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 const LEGACY_HOME_PATHS = new Set(["/index.html", "/site", "/site/", "/site/index.html"]);
 const PUBLIC_CANONICAL_PATHS = new Set(["/", "/site/price.html", "/site/military.html"]);
+const STATIC_ASSET_PREFIXES = ["/assets/", "/fonts/", "/site/assets/"];
+const STATIC_ASSET_PATHS = new Set([
+  "/favicon.svg",
+  "/file.svg",
+  "/globe.svg",
+  "/hospital-emblem.jpg",
+  "/window.svg",
+]);
 const INITIAL_ORGANIZATION_ID = 1;
 
 function secure(response: Response, request?: Request): Response {
@@ -71,6 +79,10 @@ function secure(response: Response, request?: Request): Response {
     }
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function isStaticAssetPath(pathname: string): boolean {
+  return STATIC_ASSET_PATHS.has(pathname) || STATIC_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
 // Чи вітрина в режимі «лише платні»: читаємо site_content з D1. Помилка/
@@ -116,6 +128,14 @@ const worker = {
 
     if (unsafeCrossSiteRequest(request)) {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
+    }
+
+    // With run_worker_first=true every request reaches this Worker before the
+    // static-asset service. Delegate generated Vite/vinext bundles and public
+    // files explicitly; otherwise the app router can return HTML/404 for CSS
+    // and JS requests, leaving the staff UI unstyled and unhydrated.
+    if ((request.method === "GET" || request.method === "HEAD") && isStaticAssetPath(url.pathname)) {
+      return secure(await env.ASSETS.fetch(request), request);
     }
 
     // There is exactly one indexable public home. Old URLs shared with patients
