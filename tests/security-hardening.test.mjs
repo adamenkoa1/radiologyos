@@ -19,6 +19,13 @@ test("worker applies browser security headers and rejects cross-site API mutatio
   assert.match(worker, /new URL\(origin\)\.origin !== url\.origin/);
 });
 
+test("worker delegates generated and public static assets to the Cloudflare ASSETS binding", async () => {
+  const worker = await read("worker/index.ts");
+  assert.match(worker, /STATIC_ASSET_PREFIXES = \["\/assets\/", "\/fonts\/", "\/site\/assets\/"\]/);
+  assert.match(worker, /isStaticAssetPath\(url\.pathname\)/);
+  assert.match(worker, /env\.ASSETS\.fetch\(request\)/);
+});
+
 test("patient data requires a short-lived OTP-backed tenant-scoped server session", async () => {
   const auth = await read("lib/patient-auth.ts");
   const otp = await read("app/api/patient-otp/route.ts");
