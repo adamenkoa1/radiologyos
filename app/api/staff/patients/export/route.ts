@@ -43,6 +43,7 @@ export async function GET(request: Request) {
   const csv = "﻿" + [header, ...lines].join("\r\n") + "\r\n";
 
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "patient_contacts_exported",
     resource: "patient_registry",
