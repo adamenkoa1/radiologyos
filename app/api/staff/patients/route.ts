@@ -55,6 +55,7 @@ export async function GET(request: Request) {
     if (profileRow) profiles.set(phone, profileRow);
     const [summary] = buildPatientSummaries(rows, profiles);
     await logSecurityEvent(db, {
+      organizationId: orgId,
       actorEmail: member.email,
       action: "patient_record_viewed",
       resource: "patient",
@@ -78,6 +79,7 @@ export async function GET(request: Request) {
   for (const row of profileRows.results as unknown as PatientProfile[]) profiles.set(row.phoneNormalized, row);
   const patients = buildPatientSummaries(bookings.results as unknown as PatientBookingRow[], profiles);
   await logSecurityEvent(db, {
+    organizationId: orgId,
     actorEmail: member.email,
     action: "patient_registry_viewed",
     resource: "patient_registry",
@@ -107,7 +109,8 @@ export async function PUT(request: Request) {
        display_name = excluded.display_name, birth_year = excluded.birth_year,
        birth_date = excluded.birth_date, email = excluded.email, address = excluded.address,
        tags = excluded.tags, notes = excluded.notes, do_not_contact = excluded.do_not_contact,
-       updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+       updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP
+     WHERE patient_profiles.organization_id = excluded.organization_id`
   ).bind(
     ctx.organizationId, profile.phoneNormalized, profile.displayName, profile.birthYear,
     profile.birthDate, profile.email, profile.address,
