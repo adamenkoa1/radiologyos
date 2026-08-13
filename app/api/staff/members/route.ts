@@ -37,7 +37,6 @@ export async function POST(request: Request) {
   }
   const body = await request.json() as { phone?:string; lastName?:string; firstName?:string; patronymic?:string; contactEmail?:string; militaryRank?:string; positionTitle?:string; role?:StaffRole; active?:boolean; password?:string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
-  // email лишається глобальним внутрішнім id identity, похідним від телефону.
   const email = phone ? `${phone}@phone.local` : "";
   const clean = (value:unknown, max=120) => String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
   const lastName = clean(body.lastName, 60);
@@ -58,7 +57,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Не можна забрати власний адміністративний доступ" }, { status: 409 });
   }
 
-  const [identity, membership] = await Promise.all([
+  const [identity, existing] = await Promise.all([
     db.prepare("SELECT email FROM staff_members WHERE email = ? LIMIT 1").bind(email).first(),
     db.prepare(
       "SELECT role, active FROM memberships WHERE organization_id = ? AND member_email = ? LIMIT 1"
@@ -97,9 +96,7 @@ export async function POST(request: Request) {
         .bind(await hashPassword(password), email),
     );
   }
-  // Будь-яка зміна tenant-ролі/активності або PIN має негайно прибрати старі
-  // сесії, щоб попередні привілеї не жили до завершення TTL.
-  const accessChanged = !membership || membership.role !== role || Number(membership.active) !== active;
+  const accessChanged = !existing || existing.role !== role || Number(existing.active) !== active;
   if (password || accessChanged) {
     statements.push(db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email));
   }
@@ -108,7 +105,7 @@ export async function POST(request: Request) {
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: ctx.member.email,
-    action: membership ? "member_role" : "member_add",
+    action: existing ? "member_role" : "member_add",
     resource: "staff",
     targetId: phone,
     details: { role, active: Boolean(active), passwordChanged: Boolean(password) },
