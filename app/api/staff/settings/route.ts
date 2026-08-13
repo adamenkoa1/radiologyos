@@ -1,8 +1,9 @@
-// Department settings managed by an administrator: Telegram notifications for
-// new bookings and the PrivatBank payment link for civilian patients.
+// Department settings managed by an administrator. Staff-facing configuration
+// is tenant-scoped; organization 1 is mirrored to the legacy public store by
+// setOrgSettingCompat during the incremental migration.
 
-import { requireStaff } from "../../../../lib/staff-auth";
-import { getSettings, setSetting } from "../../../../lib/settings";
+import { requireOrgContext } from "../../../../lib/tenant";
+import { getOrgSettings, setOrgSettingCompat } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
 import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
 import { dbBinding } from "../../../../lib/db";
@@ -40,23 +41,23 @@ function settingsView(values: Record<string, string>) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
 
-  const values = await getSettings(db, SETTING_KEYS);
+  const values = await getOrgSettings(db, ctx.organizationId, SETTING_KEYS);
   return Response.json({
     settings: settingsView(values),
-    staff: member,
+    staff: { ...ctx.member, role: ctx.role },
   }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Змінювати налаштування може лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") return Response.json({ error: "Змінювати налаштування може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as {
     telegramBotToken?: string; telegramChatId?: string; payLink?: string;
@@ -70,11 +71,8 @@ export async function PUT(request: Request) {
   const smsGatewayUrl = clean(body.smsGatewayUrl, 600);
   const emailGatewayUrl = clean(body.emailGatewayUrl, 600);
   const emailGatewayFrom = clean(body.emailGatewayFrom, 254);
-  // Секрети шлюзів: порожнє зберігає поточне, "-" очищує (як токен Telegram).
   const smsAuth = clean(body.smsGatewayAuth, 400);
   const emailAuth = clean(body.emailGatewayAuth, 400);
-  // Empty token keeps the stored one (so the admin isn't forced to re-enter the
-  // secret on every save); a value of "-" explicitly clears it.
   const token = clean(body.telegramBotToken, 120);
 
   let paymentUrl: URL | null = null;
@@ -101,22 +99,29 @@ export async function PUT(request: Request) {
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
-  if (token === "-") await setSetting(db, "telegram_bot_token", "");
-  else if (token) await setSetting(db, "telegram_bot_token", token);
-  await setSetting(db, "telegram_chat_id", chatId);
-  await setSetting(db, "pay_link", payLink);
-  await setSetting(db, "external_ics_url", externalIcsUrl);
-  await setSetting(db, "patient_reminders_enabled", body.remindersEnabled ? "1" : "");
-  await setSetting(db, REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
-  await setSetting(db, "sms_gateway_url", smsGatewayUrl);
-  await setSetting(db, "email_gateway_url", emailGatewayUrl);
-  await setSetting(db, "email_gateway_from", emailGatewayFrom);
-  if (smsAuth === "-") await setSetting(db, "sms_gateway_auth", "");
-  else if (smsAuth) await setSetting(db, "sms_gateway_auth", smsAuth);
-  if (emailAuth === "-") await setSetting(db, "email_gateway_auth", "");
-  else if (emailAuth) await setSetting(db, "email_gateway_auth", emailAuth);
 
-  await audit(db, { organizationId: 1, actorEmail: member.email, action: "settings_update", resource: "settings" });
-  const values = await getSettings(db, SETTING_KEYS);
+  const set = (key: string, value: string) => setOrgSettingCompat(db, ctx.organizationId, key, value);
+  if (token === "-") await set("telegram_bot_token", "");
+  else if (token) await set("telegram_bot_token", token);
+  await set("telegram_chat_id", chatId);
+  await set("pay_link", payLink);
+  await set("external_ics_url", externalIcsUrl);
+  await set("patient_reminders_enabled", body.remindersEnabled ? "1" : "");
+  await set(REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
+  await set("sms_gateway_url", smsGatewayUrl);
+  await set("email_gateway_url", emailGatewayUrl);
+  await set("email_gateway_from", emailGatewayFrom);
+  if (smsAuth === "-") await set("sms_gateway_auth", "");
+  else if (smsAuth) await set("sms_gateway_auth", smsAuth);
+  if (emailAuth === "-") await set("email_gateway_auth", "");
+  else if (emailAuth) await set("email_gateway_auth", emailAuth);
+
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: ctx.member.email,
+    action: "settings_update",
+    resource: "settings",
+  });
+  const values = await getOrgSettings(db, ctx.organizationId, SETTING_KEYS);
   return Response.json({ ok: true, settings: settingsView(values) });
 }
