@@ -34,8 +34,9 @@ export async function POST(request: Request) {
 
   const summary = await sendPatientMessage(db, booking, message);
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'notified', ?, ?)"
-  ).bind(bookingId, `Повідомлення пацієнту: ${message}`.slice(0, 480), ctx.member.email).run();
+    `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
+     VALUES (?, ?, 'notified', ?, ?)`
+  ).bind(ctx.organizationId, bookingId, `Повідомлення пацієнту: ${message}`.slice(0, 480), ctx.member.email).run();
 
   return Response.json({ ok: true, summary }, { headers: { "cache-control": "no-store" } });
 }
