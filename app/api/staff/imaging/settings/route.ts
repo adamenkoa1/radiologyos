@@ -1,6 +1,7 @@
 import { sanitizePacsSettings } from "../../../../../lib/dicom";
 import { safeOutboundUrl } from "../../../../../lib/outbound";
 import { requireOrgContext } from "../../../../../lib/tenant";
+import { audit } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
 
 const SETTINGS_COLUMNS = `dicomweb_base_url AS dicomwebBaseUrl, viewer_base_url AS viewerBaseUrl,
@@ -58,6 +59,14 @@ export async function PUT(request: Request) {
     settings.notes,
     ctx.member.email,
   ).run();
+
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: ctx.member.email,
+    action: "pacs_update",
+    resource: "pacs_settings",
+    details: { enabled: !!settings.enabled },
+  });
 
   return Response.json({ ok: true, settings: { ...settings, updatedBy: ctx.member.email } });
 }
