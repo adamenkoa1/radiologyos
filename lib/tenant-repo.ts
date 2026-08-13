@@ -94,14 +94,15 @@ export interface OrgClinician {
 
 // Виконавці організації, яких можна призначати на дослідження: активні
 // лікарі-рентгенологи та рентгенолаборанти — учасники цього tenant.
+// Роль береться з memberships, бо саме tenant membership є authoritative.
 export async function listOrgClinicians(db: D1Database, ctx: OrgContext): Promise<OrgClinician[]> {
   const result = await db.prepare(
-    `SELECT sm.email AS email, sm.display_name AS displayName, sm.role AS role
+    `SELECT sm.email AS email, sm.display_name AS displayName, m.role AS role
      FROM memberships m
      JOIN staff_members sm ON sm.email = m.member_email AND sm.active = 1
      WHERE m.organization_id = ? AND m.active = 1
-       AND sm.role IN ('radiologist','radiographer')
-     ORDER BY sm.role, sm.display_name, sm.email`
+       AND m.role IN ('radiologist','radiographer')
+     ORDER BY m.role, sm.display_name, sm.email`
   ).bind(ctx.organizationId).all<OrgClinician>();
   return result.results ?? [];
 }
