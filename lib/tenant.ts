@@ -2,14 +2,10 @@
 //
 // `organizationId` НІКОЛИ не приймається з тіла запиту чи параметрів клієнта —
 // він виводиться виключно з перевіреної серверної сесії персоналу через
-// членство (`memberships`). Це фундамент tenant-isolation: кожна вибірка й
-// мутація бізнес-даних має обмежуватися організацією з цього контексту.
+// активне членство (`memberships`). Це фундамент tenant-isolation.
 
 import { requireStaff, type StaffRole } from "./staff-auth";
 
-// Канонічний перелік ролей платформи (розширюється еволюційно). Поточні
-// облікові записи персоналу використовують підмножину; deny-by-default —
-// невідома роль не отримує жодних прав.
 export const ORG_ROLES = [
   "platform_owner",
   "organization_admin",
@@ -22,6 +18,8 @@ export const ORG_ROLES = [
 ] as const;
 
 export type OrgRole = (typeof ORG_ROLES)[number] | StaffRole;
+
+const ACTIVE_STAFF_ROLES = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
 
 export interface OrgMember {
   email: string;
@@ -37,47 +35,40 @@ export interface OrgContext {
   member: OrgMember;
 }
 
-// Розв'язує організацію активного співробітника. Повертає null, якщо сесія
-// анонімна/протермінована або співробітник не є учасником жодної активної
-// організації. Пріоритет — початковий tenant (найменший organization_id).
+// Розв'язує організацію активного співробітника. Membership є єдиним джерелом
+// tenant-доступу та tenant-ролі. Відсутність membership завжди означає deny:
+// автоматичне приєднання до першої організації було небезпечним, бо дозволяло
+// глобальному staff-акаунту самостійно отримати доступ до tenant.
 export async function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext | null> {
-  const member = await requireStaff(request, db);
-  if (!member) return null;
+  const identity = await requireStaff(request, db);
+  if (!identity) return null;
 
-  let row = await db.prepare(
+  const row = await db.prepare(
     `SELECT o.id AS organizationId, o.slug AS slug, o.name AS organizationName, m.role AS role
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id AND o.active = 1
      WHERE m.member_email = ? AND m.active = 1
      ORDER BY o.id ASC
      LIMIT 1`
-  ).bind(member.email).first<{
+  ).bind(identity.email).first<{
     organizationId: number;
     slug: string;
     organizationName: string;
     role: string;
   }>();
+  if (!row) return null;
 
-  // Онбординг без ручних кроків: якщо у співробітника ще немає членства,
-  // автоматично привʼязуємо його до початкової організації (найменший id).
-  // Спрощує додавання персоналу — не треба вручну вписувати memberships.
-  if (!row) {
-    const org = await db.prepare(
-      "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
-    ).first<{ organizationId: number; slug: string; organizationName: string }>();
-    if (!org) return null;
-    await db.prepare(
-      `INSERT INTO memberships (organization_id, member_email, role, active) VALUES (?, ?, ?, 1)
-       ON CONFLICT(organization_id, member_email) DO UPDATE SET active = 1`
-    ).bind(org.organizationId, member.email, member.role).run();
-    row = { ...org, role: member.role };
-  }
+  // Розширені platform/org ролі ще не підключені до чинної StaffRole RBAC.
+  // До їх явної реалізації — deny-by-default, а не fallback до глобальної ролі
+  // `staff_members.role`, яка не може бути джерелом tenant-привілеїв.
+  if (!ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
+  const role = row.role as StaffRole;
 
   return {
     organizationId: row.organizationId,
     slug: row.slug,
     organizationName: row.organizationName,
-    role: (row.role as OrgRole) || member.role,
-    member,
+    role,
+    member: { email: identity.email, displayName: identity.displayName, role },
   };
 }
