@@ -1,5 +1,5 @@
 import { serviceByCode } from "../../../../lib/catalog";
-import { logSecurityEvent } from "../../../../lib/audit";
+import { audit } from "../../../../lib/audit";
 import { canAccessBooking, canManageProtocols } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
@@ -19,7 +19,7 @@ const QUEUE_SQL = `SELECT b.id, b.code, b.name, b.service, b.service_code AS ser
     b.assigned_radiologist_email AS assignedRadiologistEmail,
     COALESCE(p.status, '') AS documentStatus, COALESCE(p.version, 0) AS documentVersion
   FROM bookings b
-  LEFT JOIN protocols p ON p.booking_id = b.id
+  LEFT JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
   WHERE b.status != 'cancelled' AND (b.performed_at != '' OR b.protocol_status != 'not_started')
   ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
   LIMIT 300`;
@@ -55,20 +55,20 @@ export async function GET(request: Request) {
         protocol_number AS protocolNumber, protocol_status AS protocolStatus,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         assigned_radiologist_email AS assignedRadiologistEmail
-       FROM bookings WHERE id = ? LIMIT 1`
-    ).bind(bookingId).first<Record<string, unknown>>();
+       FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
+    ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     const [row, revisions] = await Promise.all([
       db.prepare(
       `SELECT template_key AS templateKey, method, sections_json AS sectionsJson,
         findings, conclusion, recommendations, number, status, version,
         author_email AS authorEmail, updated_by AS updatedBy, updated_at AS updatedAt
-       FROM protocols WHERE booking_id = ? LIMIT 1`
-      ).bind(bookingId).first<Record<string, unknown>>(),
+       FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1`
+      ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>(),
       db.prepare(
         `SELECT version, number, status, saved_by AS savedBy, created_at AS createdAt
-         FROM protocol_revisions WHERE booking_id = ? ORDER BY version DESC LIMIT 20`
-      ).bind(bookingId).all(),
+         FROM protocol_revisions WHERE booking_id = ? AND organization_id = ? ORDER BY version DESC LIMIT 20`
+      ).bind(bookingId, ctx.organizationId).all(),
     ]);
     const protocol = row
       ? {
@@ -86,7 +86,8 @@ export async function GET(request: Request) {
           updatedAt: String(row.updatedAt || ""),
         }
       : null;
-    await logSecurityEvent(db, {
+    await audit(db, {
+      organizationId: ctx.organizationId,
       actorEmail: member.email,
       action: "protocol_viewed",
       resource: "protocol",
@@ -137,8 +138,8 @@ export async function PUT(request: Request) {
     return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
   }
   const booking = await db.prepare(
-    "SELECT id, equipment_id AS equipmentId FROM bookings WHERE id = ? LIMIT 1"
-  ).bind(bookingId).first<{ id: number; equipmentId: string }>();
+    "SELECT id, equipment_id AS equipmentId FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1"
+  ).bind(bookingId, ctx.organizationId).first<{ id: number; equipmentId: string }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   const template = protocolTemplateByKey(document.templateKey);
   if (document.templateKey !== "generic" && template.equipmentId !== booking.equipmentId) {
@@ -146,8 +147,8 @@ export async function PUT(request: Request) {
   }
 
   const existing = await db.prepare(
-    "SELECT version, author_email AS authorEmail, status FROM protocols WHERE booking_id = ? LIMIT 1"
-  ).bind(bookingId).first<{ version: number; authorEmail: string; status: string }>();
+    "SELECT version, author_email AS authorEmail, status FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1"
+  ).bind(bookingId, ctx.organizationId).first<{ version: number; authorEmail: string; status: string }>();
   const baseVersion = Number(body.baseVersion ?? existing?.version ?? 0);
   if (existing && baseVersion !== Number(existing.version)) {
     return Response.json({ error: "Протокол уже змінено в іншому вікні. Оновіть сторінку." }, { status: 409 });
@@ -164,8 +165,8 @@ export async function PUT(request: Request) {
   }
   if (document.number) {
     const duplicate = await db.prepare(
-      "SELECT booking_id AS bookingId FROM protocols WHERE number = ? AND booking_id != ? LIMIT 1"
-    ).bind(document.number, bookingId).first();
+      "SELECT booking_id AS bookingId FROM protocols WHERE organization_id = ? AND number = ? AND booking_id != ? LIMIT 1"
+    ).bind(ctx.organizationId, document.number, bookingId).first();
     if (duplicate) return Response.json({ error: "Такий номер протоколу вже використано" }, { status: 409 });
   }
   const version = existing ? Number(existing.version) + 1 : 1;
@@ -177,27 +178,28 @@ export async function PUT(request: Request) {
     await db.batch([
       db.prepare(
         `INSERT INTO protocols
-       (booking_id, template_key, method, sections_json, findings, conclusion, recommendations,
+       (organization_id, booking_id, template_key, method, sections_json, findings, conclusion, recommendations,
         number, status, version, author_email, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
      ON CONFLICT(booking_id) DO UPDATE SET
+       organization_id = excluded.organization_id,
        template_key = excluded.template_key, method = excluded.method,
        sections_json = excluded.sections_json, findings = excluded.findings,
        conclusion = excluded.conclusion, recommendations = excluded.recommendations,
        number = excluded.number, status = excluded.status, version = excluded.version,
        updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
       ).bind(
-        bookingId, document.templateKey, document.method, sectionsJson, document.findings,
+        ctx.organizationId, bookingId, document.templateKey, document.method, sectionsJson, document.findings,
         document.conclusion, document.recommendations, document.number, document.status,
         version, authorEmail, member.email,
       ),
       db.prepare(
         `INSERT INTO protocol_revisions
-           (booking_id, version, template_key, method, sections_json, findings, conclusion,
+           (organization_id, booking_id, version, template_key, method, sections_json, findings, conclusion,
             recommendations, number, status, saved_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
-        bookingId, version, document.templateKey, document.method, sectionsJson,
+        ctx.organizationId, bookingId, version, document.templateKey, document.method, sectionsJson,
         document.findings, document.conclusion, document.recommendations,
         document.number, document.status, member.email,
       ),
@@ -210,11 +212,12 @@ export async function PUT(request: Request) {
        protocol_issued_at = CASE
          WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
          ELSE protocol_issued_at END
-         WHERE id = ?`
-      ).bind(document.number, legacyStatus, legacyStatus, legacyStatus, bookingId),
+         WHERE id = ? AND organization_id = ?`
+      ).bind(document.number, legacyStatus, legacyStatus, legacyStatus, bookingId, ctx.organizationId),
       db.prepare(
-        "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'protocol_document_saved', ?, ?)"
+        "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_document_saved', ?, ?)"
       ).bind(
+        ctx.organizationId,
         bookingId,
         `${document.status} · v${version}${document.number ? ` · ${document.number}` : ""}`,
         member.email,
@@ -224,9 +227,18 @@ export async function PUT(request: Request) {
     return Response.json({ error: "Конфлікт версій протоколу. Оновіть сторінку." }, { status: 409 });
   }
 
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: member.email,
+    action: document.status === "issued" ? "protocol_issued" : "protocol_saved",
+    resource: "protocol",
+    targetId: bookingId,
+    details: { version, status: document.status },
+  });
+
   const dates = await db.prepare(
-    "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ?"
-  ).bind(bookingId).first<{ protocolReadyAt: string; protocolIssuedAt: string }>();
+    "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ? AND organization_id = ?"
+  ).bind(bookingId, ctx.organizationId).first<{ protocolReadyAt: string; protocolIssuedAt: string }>();
 
   return Response.json({
     ok: true,
