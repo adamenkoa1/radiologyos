@@ -59,8 +59,8 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
   if (!row) return null;
 
   // Розширені platform/org ролі ще не підключені до чинної StaffRole RBAC.
-  // До їх явної реалізації — deny-by-default, а не fallback до глобальної ролі
-  // `staff_members.role`, яка не може бути джерелом tenant-привілеїв.
+  // До їх явної реалізації — deny-by-default; глобальна роль staff identity
+  // не може бути джерелом tenant-привілеїв.
   if (!ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
   const role = row.role as StaffRole;
 
