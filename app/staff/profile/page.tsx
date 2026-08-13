@@ -23,7 +23,27 @@ export default function StaffProfilePage() {
     setError("");
   }
 
-  useEffect(()=>{ void load(); },[]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/staff/profile", { cache:"no-store" })
+      .then(async (response) => ({
+        response,
+        data: await response.json().catch(()=>({})) as { profile?:Profile; error?:string },
+      }))
+      .then(({ response, data }) => {
+        if (cancelled) return;
+        if (!response.ok) {
+          setError(data.error || "Не вдалося завантажити профіль");
+          return;
+        }
+        setProfile(data.profile || null);
+        setError("");
+      })
+      .catch(() => {
+        if (!cancelled) setError("Не вдалося завантажити профіль");
+      });
+    return () => { cancelled = true; };
+  },[]);
 
   async function saveProfile(event:FormEvent<HTMLFormElement>) {
     event.preventDefault();
