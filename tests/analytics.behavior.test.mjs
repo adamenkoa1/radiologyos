@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { recordAnalyticsEvent } from "../lib/analytics.ts";
-import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
+import { callWorker, jsonRequest, withD1 } from "./helpers/d1.mjs";
+import { seedTenantStaffSession } from "./helpers/tenant-staff.mjs";
 
 test("public analytics accepts only anonymous allowlisted funnel fields", async () => {
   await withD1(async (db) => {
@@ -103,7 +104,7 @@ test("staff funnel report is tenant-scoped and derives clinical milestones from 
               (1, ?, 'status_changed', 'completed', 'test', '2026-08-20 10:30:00')`,
     ).bind(bookingId, bookingId).run();
 
-    const cookie = await seedStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });
+    const cookie = await seedTenantStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });
     const response = await callWorker(new Request(
       "https://radiologyos.test/api/staff/analytics?from=2026-08-01&to=2026-08-31",
       { headers: { cookie } },
