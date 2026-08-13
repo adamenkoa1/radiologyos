@@ -75,17 +75,17 @@ export async function runDueReminders(
       if (!b || !b.phoneNormalized) continue;
       const kind = `reminder_${due.hours}h`;
       if (dnc.has(b.phoneNormalized)) {
-        await record(db, b, kind, "skipped", "Пацієнт у списку «не турбувати»");
+        await record(db, organizationId, b, kind, "skipped", "Пацієнт у списку «не турбувати»");
         result.skipped += 1;
         continue;
       }
       const body = leadReminderText(b.service, b.desiredTime, due.hours);
       try {
         const r = await sendWhatsApp(db, b.phoneNormalized, body);
-        if (r.ok) { await record(db, b, kind, "sent", ""); result.sent += 1; }
-        else { await record(db, b, kind, "failed", r.error || "WhatsApp помилка"); result.failed += 1; }
+        if (r.ok) { await record(db, organizationId, b, kind, "sent", ""); result.sent += 1; }
+        else { await record(db, organizationId, b, kind, "failed", r.error || "WhatsApp помилка"); result.failed += 1; }
       } catch (error) {
-        await record(db, b, kind, "failed", error instanceof Error ? error.message : "Помилка");
+        await record(db, organizationId, b, kind, "failed", error instanceof Error ? error.message : "Помилка");
         result.failed += 1;
       }
     }
@@ -95,10 +95,18 @@ export async function runDueReminders(
   return result;
 }
 
-async function record(db: D1Database, b: ReminderRow, kind: string, status: string, error: string): Promise<void> {
+async function record(
+  db: D1Database,
+  organizationId: number,
+  b: ReminderRow,
+  kind: string,
+  status: string,
+  error: string,
+): Promise<void> {
   const body = leadReminderText(b.service, b.desiredTime, 0);
   await db.prepare(
-    `INSERT INTO patient_notifications (booking_id, kind, channel, recipient, body, status, error, sent_at)
-     VALUES (?, ?, 'whatsapp', ?, ?, ?, ?, ?)`
-  ).bind(b.id, kind, b.phone, body, status, error.slice(0, 240), status).run();
+    `INSERT INTO patient_notifications
+      (organization_id, booking_id, kind, channel, recipient, body, status, error, sent_at)
+     VALUES (?, ?, ?, 'whatsapp', ?, ?, ?, ?, ?)`
+  ).bind(organizationId, b.id, kind, b.phone, body, status, error.slice(0, 240), status).run();
 }
