@@ -39,7 +39,7 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
   const identity = await requireStaff(request, db);
   if (!identity) return null;
 
-  let row = await db.prepare(
+  const row = await db.prepare(
     `SELECT o.id AS organizationId, o.slug AS slug, o.name AS organizationName, m.role AS role
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id AND o.active = 1
@@ -53,21 +53,9 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     role: string;
   }>();
 
-  // Legacy onboarding compatibility. This remains temporarily until the test
-  // and bootstrap paths can require explicit membership end-to-end.
-  if (!row) {
-    const org = await db.prepare(
-      "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
-    ).first<{ organizationId: number; slug: string; organizationName: string }>();
-    if (!org) return null;
-    await db.prepare(
-      `INSERT INTO memberships (organization_id, member_email, role, active) VALUES (?, ?, ?, 1)
-       ON CONFLICT(organization_id, member_email) DO UPDATE SET active = 1`
-    ).bind(org.organizationId, identity.email, identity.role).run();
-    row = { ...org, role: identity.role };
-  }
-
-  if (!ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
+  // Tenant access is deny-by-default: an authenticated global identity does not
+  // gain access to any organization unless an explicit active membership exists.
+  if (!row || !ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
   const role = row.role as StaffRole;
   return {
     organizationId: row.organizationId,
