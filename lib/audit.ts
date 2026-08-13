@@ -35,11 +35,16 @@ export const AUDIT_LABELS: Record<string, string> = {
   member_add: "Додано співробітника",
   member_role: "Змінено роль співробітника",
   member_password: "Скинуто PIN співробітника",
-  // Події, що вже писалися в інших маршрутах (доступ до персональних даних).
   patient_record_viewed: "Переглянуто картку пацієнта",
   patient_registry_viewed: "Переглянуто реєстр пацієнтів",
+  patient_contacts_exported: "Експортовано контакти пацієнтів",
   patients_imported: "Імпортовано пацієнтів",
   protocol_viewed: "Переглянуто протокол",
+  protocol_saved: "Збережено протокол",
+  protocol_issued: "Видано протокол",
+  patient_protocol_viewed: "Пацієнт переглянув протокол",
+  profile_update: "Змінено профіль співробітника",
+  profile_security_update: "Змінено параметри безпеки профілю",
   report_viewed: "Переглянуто звіт",
   report_exported: "Експортовано звіт",
 };
