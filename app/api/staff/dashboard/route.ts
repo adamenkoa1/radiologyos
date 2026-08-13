@@ -12,14 +12,15 @@ const num = (row: Record<string, unknown> | null, key = "c") => Number(row?.[key
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") {
+  const identity = await requireStaff(request, db);
+  if (!identity) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") {
     return Response.json({ error: "Зведена аналітика доступна лише адміністратору" }, { status: 403 });
   }
-
-  const ctx = await requireOrgContext(request, db);
-  const orgId = ctx?.organizationId ?? 1;
+  const member = { ...ctx.member, role: ctx.role };
+  const orgId = ctx.organizationId;
 
   const today = todayInKyiv();
   const weekStart = (() => {
