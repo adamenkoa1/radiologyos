@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { callWorker, seedStaffSession, withD1 } from "./helpers/d1.mjs";
+import { callWorker, withD1 } from "./helpers/d1.mjs";
+import { seedTenantStaffSession } from "./helpers/tenant-staff.mjs";
 
 const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.test" };
 
@@ -12,7 +13,7 @@ function request(cookie) {
 
 test("integration health reports readiness without exposing PACS or MWL secrets", async () => {
   await withD1(async (db) => {
-    const cookie = await seedStaffSession(db, { email:"admin@health.test", role:"admin" });
+    const cookie = await seedTenantStaffSession(db, { email:"admin@health.test", role:"admin", organizationId:1 });
     await db.prepare(
       `UPDATE pacs_settings SET
         dicomweb_base_url = ?, viewer_base_url = ?, ae_title = 'RADIOLOGY', enabled = 1,
@@ -51,7 +52,7 @@ test("integration health reports readiness without exposing PACS or MWL secrets"
 
 test("integration health degrades PACS safely when the remote endpoint is unreachable", async () => {
   await withD1(async (db) => {
-    const cookie = await seedStaffSession(db, { email:"admin2@health.test", role:"admin" });
+    const cookie = await seedTenantStaffSession(db, { email:"admin2@health.test", role:"admin", organizationId:1 });
     await db.prepare(
       `UPDATE pacs_settings SET
         dicomweb_base_url = 'https://pacs.example.test/dicomweb', enabled = 1,
