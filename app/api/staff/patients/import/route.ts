@@ -2,7 +2,8 @@
 // сервер валідує кожен через sanitizeProfile і робить upsert у
 // patient_profiles. Лише реєстратор/адмін.
 
-import { canManageBookings, requireStaff } from "../../../../../lib/staff-auth";
+import { canManageBookings } from "../../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../../lib/tenant";
 import { sanitizeProfile } from "../../../../../lib/patients";
 import { logSecurityEvent } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
@@ -12,8 +13,9 @@ const MAX_ROWS = 5000;
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canManageBookings(member.role)) {
     return Response.json({ error: "Імпортувати пацієнтів може реєстратор або адміністратор" }, { status: 403 });
   }
@@ -33,8 +35,8 @@ export async function POST(request: Request) {
     imported += 1;
     statements.push(db.prepare(
       `INSERT INTO patient_profiles
-         (phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+         (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
        ON CONFLICT(phone_normalized) DO UPDATE SET
          display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE patient_profiles.display_name END,
          birth_year = CASE WHEN excluded.birth_year != 0 THEN excluded.birth_year ELSE patient_profiles.birth_year END,
@@ -42,9 +44,10 @@ export async function POST(request: Request) {
          email = CASE WHEN excluded.email != '' THEN excluded.email ELSE patient_profiles.email END,
          address = CASE WHEN excluded.address != '' THEN excluded.address ELSE patient_profiles.address END,
          notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE patient_profiles.notes END,
-         updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+         updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP
+       WHERE patient_profiles.organization_id = excluded.organization_id`
     ).bind(
-      p.phoneNormalized, p.displayName, p.birthYear, p.birthDate, p.email, p.address,
+      ctx.organizationId, p.phoneNormalized, p.displayName, p.birthYear, p.birthDate, p.email, p.address,
       p.tags, p.notes, p.doNotContact, member.email,
     ));
   });
@@ -55,6 +58,7 @@ export async function POST(request: Request) {
   }
 
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "patients_imported",
     resource: "patient_registry",
