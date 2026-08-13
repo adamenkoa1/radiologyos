@@ -3,7 +3,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { withD1, jsonRequest, callWorker, seedStaffSession } from "./helpers/d1.mjs";
+import { withD1, jsonRequest, callWorker } from "./helpers/d1.mjs";
+import { seedTenantStaffSession } from "./helpers/tenant-staff.mjs";
 
 const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 
@@ -29,7 +30,7 @@ test("search matches by name, phone and RD code", async () => {
   await withD1(async (db) => {
     await seed(db, { id: 1, code: "RD-AAAA1111", name: "Іваненко Іван", phone: "+380971112233", phoneNorm: "380971112233", time: "10:00" });
     await seed(db, { id: 2, code: "RD-BBBB2222", name: "Петренко Петро", phone: "+380975556677", phoneNorm: "380975556677", time: "10:30" });
-    const cookie = await seedStaffSession(db, { email: "reg@likarnya.test", role: "registrar" });
+    const cookie = await seedTenantStaffSession(db, { email: "reg@likarnya.test", role: "registrar", organizationId: 1 });
 
     const byName = await (await search(db, cookie, "іваненко")).json();
     assert.equal(byName.results.length, 1);
@@ -41,7 +42,6 @@ test("search matches by name, phone and RD code", async () => {
 
     const byPhone = await (await search(db, cookie, "0971112233")).json();
     assert.ok(byPhone.results.some((r) => r.code === "RD-AAAA1111"));
-    // Людський підпис статусу присутній.
     assert.ok(byPhone.results[0].statusLabel);
   });
 });
@@ -49,7 +49,7 @@ test("search matches by name, phone and RD code", async () => {
 test("a query shorter than 2 chars returns nothing (no full-table dump)", async () => {
   await withD1(async (db) => {
     await seed(db, { id: 3, code: "RD-CCCC3333", name: "Сидоренко", phone: "+380971110000", phoneNorm: "380971110000" });
-    const cookie = await seedStaffSession(db, { email: "reg@likarnya.test", role: "registrar" });
+    const cookie = await seedTenantStaffSession(db, { email: "reg@likarnya.test", role: "registrar", organizationId: 1 });
     const res = await search(db, cookie, "і");
     const data = await res.json();
     assert.equal(data.results.length, 0);
@@ -61,7 +61,7 @@ test("search never leaks bookings from another organization", async () => {
     await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2,'other','Інша',1)").run();
     await seed(db, { id: 4, code: "RD-OWN00001", name: "Шевченко", phone: "+380971110001", phoneNorm: "380971110001", org: 1 });
     await seed(db, { id: 5, code: "RD-OTHER0001", name: "Шевченко", phone: "+380971110002", phoneNorm: "380971110002", org: 2 });
-    const cookie = await seedStaffSession(db, { email: "admin@likarnya.test", role: "admin" }); // авто-онбординг у org 1
+    const cookie = await seedTenantStaffSession(db, { email: "admin@likarnya.test", role: "admin", organizationId: 1 });
     const data = await (await search(db, cookie, "шевченко")).json();
     assert.equal(data.results.length, 1);
     assert.equal(data.results[0].code, "RD-OWN00001");
@@ -75,5 +75,5 @@ test("the palette is mounted in the workspace shell and opens on Ctrl/⌘+K", as
   const cp = await read("app/staff/command-palette.tsx");
   assert.match(cp, /e\.metaKey \|\| e\.ctrlKey/);
   assert.match(cp, /\/api\/staff\/search/);
-  assert.match(cp, /\/staff\?open=\$\{b\.id\}/); // заявка → повна картка
+  assert.match(cp, /\/staff\?open=\$\{b\.id\}/);
 });
