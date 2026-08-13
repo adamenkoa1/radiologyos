@@ -27,12 +27,10 @@ export async function POST(request: Request) {
 
   const statements: D1PreparedStatement[] = [];
   const errors: { row: number; error: string }[] = [];
-  let imported = 0;
   records.forEach((raw, index) => {
     const parsed = sanitizeProfile(raw);
     if (!parsed.ok) { errors.push({ row: index + 1, error: parsed.error }); return; }
     const p = parsed.profile;
-    imported += 1;
     statements.push(db.prepare(
       `INSERT INTO patient_profiles
          (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
@@ -52,18 +50,23 @@ export async function POST(request: Request) {
     ));
   });
 
+  let imported = 0;
   // D1 batch по частинах, щоб не впертися в ліміт кількості операцій.
   for (let i = 0; i < statements.length; i += 50) {
-    await db.batch(statements.slice(i, i + 50));
+    const results = await db.batch(statements.slice(i, i + 50));
+    imported += results.reduce((sum, result) => sum + (Number(result.meta?.changes || 0) > 0 ? 1 : 0), 0);
   }
+  // Валідний рядок, що конфліктує з профілем іншого tenant, навмисно не
+  // змінює той профіль і рахується як skipped до composite-key migration.
+  const skipped = errors.length + (statements.length - imported);
 
   await logSecurityEvent(db, {
     organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "patients_imported",
     resource: "patient_registry",
-    details: { imported, skipped: errors.length },
+    details: { imported, skipped },
   });
 
-  return Response.json({ ok: true, imported, skipped: errors.length, errors: errors.slice(0, 50) });
+  return Response.json({ ok: true, imported, skipped, errors: errors.slice(0, 50) });
 }
