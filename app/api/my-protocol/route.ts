@@ -1,3 +1,4 @@
+import { audit } from "../../../lib/audit";
 import { normalizeBookingCode, requirePatientSession } from "../../../lib/patient-auth";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { dbBinding } from "../../../lib/db";
@@ -34,6 +35,15 @@ export async function POST(request: Request) {
     number: string; method: string; findings: string; conclusion: string; recommendations: string;
   }>();
   if (!proto) return Response.json({ error: "Протокол ще не готовий" }, { status: 409 });
+
+  await audit(db, {
+    organizationId: session.organizationId,
+    actorEmail: "patient_session",
+    action: "patient_protocol_viewed",
+    resource: "protocol",
+    targetId: booking.id,
+    details: { channel: "patient_cabinet" },
+  });
 
   return Response.json({
     protocol: {
