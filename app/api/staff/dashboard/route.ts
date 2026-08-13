@@ -1,5 +1,6 @@
 import { serviceByCode } from "../../../../lib/catalog";
 import { todayInKyiv } from "../../../../lib/booking-rules";
+import { requireStaff } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { stateLabel } from "../../../../lib/study-state";
 import { dbBinding } from "../../../../lib/db";
@@ -11,6 +12,8 @@ const num = (row: Record<string, unknown> | null, key = "c") => Number(row?.[key
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
+  const identity = await requireStaff(request, db);
+  if (!identity) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (ctx.role !== "admin") {
