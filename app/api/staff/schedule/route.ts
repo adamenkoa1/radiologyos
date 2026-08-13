@@ -33,14 +33,17 @@ export async function PUT(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.role !== "admin") return Response.json({ error: "Змінювати графік може лише адміністратор" }, { status: 403 });
+  const member = { ...ctx.member, role: ctx.role };
+  if (member.role !== "admin") return Response.json({ error: "Змінювати графік може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as { schedule?: unknown };
   const schedule = sanitizeSchedule(body.schedule);
-  await setOrgSettingCompat(db, ctx.organizationId, SCHEDULE_KEY, JSON.stringify(schedule));
+  const setSetting = (database: D1Database, key: string, value: string) =>
+    setOrgSettingCompat(database, ctx.organizationId, key, value);
+  await setSetting(db, SCHEDULE_KEY, JSON.stringify(schedule));
   await audit(db, {
     organizationId: ctx.organizationId,
-    actorEmail: ctx.member.email,
+    actorEmail: member.email,
     action: "schedule_update",
     resource: "settings",
   });
