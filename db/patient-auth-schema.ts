@@ -2,22 +2,30 @@ import { sql } from "drizzle-orm";
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Drizzle representation of possession-based patient authentication added by
-// migration 0028. The legacy core schema keeps the original patientSessions
-// export for compatibility; this scoped model is the authoritative v2 shape.
+// migration 0028 and identity-scoped by migration 0046. The legacy core schema
+// keeps the original patientSessions export for compatibility; this scoped
+// model is the authoritative patient-auth shape.
 export const patientSessionsScoped = sqliteTable("patient_sessions", {
   tokenHash: text("token_hash").primaryKey(),
   phoneNormalized: text("phone_normalized").notNull(),
   organizationId: integer("organization_id").notNull().default(1),
+  identityKind: text("identity_kind").notNull().default(""),
+  identityValue: text("identity_value").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   expiresAt: text("expires_at").notNull(),
 }, table => [
   index("patient_sessions_org_phone_idx").on(table.organizationId, table.phoneNormalized, table.expiresAt),
+  index("patient_sessions_identity_scope_idx").on(
+    table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue, table.expiresAt,
+  ),
 ]);
 
 export const patientOtpChallenges = sqliteTable("patient_otp_challenges", {
   id: text("id").primaryKey(),
   organizationId: integer("organization_id").notNull().default(1),
   phoneNormalized: text("phone_normalized").notNull(),
+  identityKind: text("identity_kind").notNull().default(""),
+  identityValue: text("identity_value").notNull().default(""),
   purpose: text("purpose").notNull().default("cabinet_login"),
   codeHash: text("code_hash").notNull(),
   attempts: integer("attempts").notNull().default(0),
@@ -27,4 +35,7 @@ export const patientOtpChallenges = sqliteTable("patient_otp_challenges", {
 }, table => [
   index("patient_otp_phone_idx").on(table.organizationId, table.phoneNormalized, table.createdAt),
   index("patient_otp_expiry_idx").on(table.expiresAt, table.consumedAt),
+  index("patient_otp_identity_scope_idx").on(
+    table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue, table.createdAt,
+  ),
 ]);
