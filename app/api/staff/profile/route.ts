@@ -1,4 +1,4 @@
-import { requireStaff } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { hashPassword, verifyPassword } from "../../../../lib/auth";
 import { passwordProblem } from "../../../../lib/staff-accounts";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
@@ -12,8 +12,9 @@ function clean(value: unknown, max = 120) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const staff = await requireStaff(request, db);
-  if (!staff) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
+  const staff = ctx.member;
 
   const profile = await db.prepare(
     `SELECT email, phone, display_name AS displayName, last_name AS lastName,
@@ -30,8 +31,9 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const staff = await requireStaff(request, db);
-  if (!staff) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
+  const staff = ctx.member;
 
   const body = await request.json().catch(() => ({})) as {
     phone?: string;
@@ -109,7 +111,7 @@ export async function PATCH(request: Request) {
   }
 
   await audit(db, {
-    organizationId: 1,
+    organizationId: ctx.organizationId,
     actorEmail: staff.email,
     action: wantsPinChange ? "profile_security_update" : "profile_update",
     resource: "staff",
