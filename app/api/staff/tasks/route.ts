@@ -16,6 +16,10 @@ type TaskRow = {
   completedAt:string;
   createdAt:string;
   updatedAt:string;
+  source:"manual"|"automation";
+  automationKey:string;
+  sourceEntityType:string;
+  sourceEntityId:string;
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -58,7 +62,9 @@ export async function GET(request:Request) {
             due_date AS dueDate, booking_id AS bookingId,
             assigned_email AS assignedEmail, created_by AS createdBy,
             completed_by AS completedBy, completed_at AS completedAt,
-            created_at AS createdAt, updated_at AS updatedAt
+            created_at AS createdAt, updated_at AS updatedAt,
+            source, automation_key AS automationKey,
+            source_entity_type AS sourceEntityType, source_entity_id AS sourceEntityId
      FROM staff_tasks
      WHERE ${where.join(" AND ")}
      ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END,
@@ -100,8 +106,8 @@ export async function POST(request:Request) {
 
   const result = await db.prepare(
     `INSERT INTO staff_tasks
-      (organization_id,title,details,status,priority,due_date,booking_id,assigned_email,created_by)
-     VALUES (?,?,?,'open',?,?,?,?,?)`
+      (organization_id,title,details,status,priority,due_date,booking_id,assigned_email,created_by,source)
+     VALUES (?,?,?,'open',?,?,?,?,?,'manual')`
   ).bind(ctx.organizationId,title,details,priority,dueDate,bookingId,assignedEmail,ctx.member.email).run();
   const id = Number(result.meta.last_row_id || 0);
   await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"task_created", resource:"task", targetId:id, details:{ priority, assigned:!!assignedEmail, linkedBooking:!!bookingId } });
@@ -119,12 +125,15 @@ export async function PATCH(request:Request) {
   if (!Number.isInteger(id) || id < 1) return Response.json({ error:"Некоректне завдання" }, { status:400 });
 
   const existing = await db.prepare(
-    `SELECT id, status, assigned_email AS assignedEmail, created_by AS createdBy
+    `SELECT id, status, assigned_email AS assignedEmail, created_by AS createdBy, source
      FROM staff_tasks WHERE organization_id = ? AND id = ? LIMIT 1`
-  ).bind(ctx.organizationId,id).first<{id:number;status:string;assignedEmail:string;createdBy:string}>();
+  ).bind(ctx.organizationId,id).first<{id:number;status:string;assignedEmail:string;createdBy:string;source:string}>();
   if (!existing) return Response.json({ error:"Завдання не знайдено" }, { status:404 });
-  const canEdit = ctx.role === "admin" || existing.assignedEmail === ctx.member.email || existing.createdBy === ctx.member.email;
+  const canEdit = ctx.member.role === "admin" || existing.assignedEmail === ctx.member.email || existing.createdBy === ctx.member.email;
   if (!canEdit) return Response.json({ error:"Немає прав змінювати це завдання" }, { status:403 });
+  if (existing.source === "automation" && existing.status === "done" && body.status === "open") {
+    return Response.json({ error:"Автоматичне завдання буде створено знову, якщо проблема все ще актуальна" }, { status:409 });
+  }
 
   const status = body.status === "done" ? "done" : body.status === "open" ? "open" : existing.status;
   const assignedEmail = body.assignedEmail === undefined ? existing.assignedEmail : String(body.assignedEmail || "").trim().toLowerCase().slice(0,254);
@@ -144,6 +153,6 @@ export async function PATCH(request:Request) {
      WHERE organization_id = ? AND id = ?`
   ).bind(status,assignedEmail,priority,dueDate,status,ctx.member.email,status,ctx.organizationId,id).run();
 
-  await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:status === "done" && existing.status !== "done" ? "task_completed" : "task_updated", resource:"task", targetId:id, details:{ status } });
+  await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:status === "done" && existing.status !== "done" ? "task_completed" : "task_updated", resource:"task", targetId:id, details:{ status, automatic:existing.source === "automation" } });
   return Response.json({ ok:true });
 }
