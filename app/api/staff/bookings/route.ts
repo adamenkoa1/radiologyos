@@ -25,6 +25,23 @@ function clean(value: unknown, max: number) {
 
 const REFERRAL_TYPES = ["military_referral", "eh_referral", "paper_referral", "none", "other"];
 
+async function hasActiveTenantRole(
+  db: D1Database,
+  organizationId: number,
+  email: string,
+  role: "radiologist" | "radiographer",
+) {
+  if (!email) return true;
+  const row = await db.prepare(
+    `SELECT m.member_email AS email
+     FROM memberships m
+     JOIN staff_members s ON s.email = m.member_email AND s.active = 1
+     WHERE m.organization_id = ? AND m.member_email = ? AND m.role = ? AND m.active = 1
+     LIMIT 1`
+  ).bind(organizationId, email, role).first();
+  return !!row;
+}
+
 // Ручне створення запису персоналом від імені пацієнта. Реєстратор/медсестра або адмін.
 // Запис одразу підтверджений (status='confirmed'), тож займає слот на апараті.
 export async function POST(request: Request) {
@@ -63,6 +80,12 @@ export async function POST(request: Request) {
   const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
   radiologist ||= schedule.equipment[service.equipmentId]?.radiologistEmail || "";
   radiographer ||= schedule.equipment[service.equipmentId]?.radiographerEmail || "";
+  if (!(await hasActiveTenantRole(db, ctx.organizationId, radiologist, "radiologist"))) {
+    return Response.json({ error: "Оберіть активного лікаря-рентгенолога цієї організації" }, { status: 400 });
+  }
+  if (!(await hasActiveTenantRole(db, ctx.organizationId, radiographer, "radiographer"))) {
+    return Response.json({ error: "Оберіть активного рентгенолаборанта цієї організації" }, { status: 400 });
+  }
   const validTimes = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes);
   if (!isBookableDate(desiredDate) || !validTimes.includes(desiredTime) || !isEquipmentDayOpen(desiredDate, schedule, service.equipmentId)) {
     return Response.json({ error: "Оберіть доступні дату та час" }, { status: 400 });
@@ -151,25 +174,28 @@ export async function GET(request: Request) {
     db.prepare(
       `SELECT id, booking_id AS bookingId, action, details, actor, created_at AS createdAt
        FROM booking_events
-       WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
+       WHERE organization_id = ? AND booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
        ORDER BY created_at DESC LIMIT 1000`
-    ).bind(...scope.values).all(),
+    ).bind(ctx.organizationId, ...scope.values).all(),
     db.prepare(
       `SELECT booking_id AS bookingId, note, updated_by AS updatedBy, updated_at AS updatedAt
        FROM booking_staff_notes
        WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})`
     ).bind(...scope.values).all(),
     db.prepare(
-      `SELECT email, display_name AS displayName, role
-       FROM staff_members WHERE active = 1 ORDER BY role, display_name, email`
-    ).all(),
+      `SELECT s.email, s.display_name AS displayName, m.role AS role
+       FROM memberships m
+       JOIN staff_members s ON s.email = m.member_email
+       WHERE m.organization_id = ? AND m.active = 1 AND s.active = 1
+       ORDER BY m.role, s.display_name, s.email`
+    ).bind(ctx.organizationId).all(),
     db.prepare(
       `SELECT id, booking_id AS bookingId, kind, channel, recipient, status, error,
         created_at AS createdAt, sent_at AS sentAt
        FROM patient_notifications
-       WHERE booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
+       WHERE organization_id = ? AND booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
        ORDER BY created_at DESC LIMIT 1000`
-    ).bind(...scope.values).all(),
+    ).bind(ctx.organizationId, ...scope.values).all(),
   ]);
   const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
     ...booking,
@@ -234,11 +260,9 @@ export async function PATCH(request: Request) {
     const cur = await db.prepare(
       "SELECT desired_date AS d, desired_time AS t, equipment_id AS eq, payment_status AS ps, status AS st, patient_category AS cat FROM bookings WHERE organization_id = ? AND id = ?"
     ).bind(ctx.organizationId, body.id!).first<{ d: string; t: string; eq: string; ps: string; st: string; cat: string }>();
-    // Закриті заявки не редагуються (як і в гілці підтвердження).
     if (cur && (cur.st === "cancelled" || cur.st === "completed")) {
       return Response.json({ error: "Скасовану або завершену заявку редагувати не можна" }, { status: 409 });
     }
-    // Фінанси не перезаписуємо, якщо оплату вже внесено/не потрібна.
     const financeLocked = !!cur && ["paid", "not_required"].includes(cur.ps);
     const e = body.edit;
     const sets: string[] = [];
@@ -273,9 +297,6 @@ export async function PATCH(request: Request) {
       if (!serviceAvailableTo(svc, targetCategory)) {
         return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
       }
-      // Нова послуга може змінити апарат І/АБО тривалість — повністю
-      // перевіряємо поточний слот для неї: сітка/робочий день/блокування/
-      // накладання (виключаючи саму заявку). Інакше просимо перенести.
       if (cur) {
         const rSchedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
         const validTimes = candidateTimesFor(hoursFor(rSchedule, svc.equipmentId), svc.durationMinutes);
@@ -315,8 +336,8 @@ export async function PATCH(request: Request) {
        ON CONFLICT(booking_id) DO UPDATE SET note=excluded.note, updated_by=excluded.updated_by, updated_at=CURRENT_TIMESTAMP`
     ).bind(body.id, note, member.email).run();
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_note', 'updated', ?)"
-    ).bind(body.id, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'staff_note', 'updated', ?)"
+    ).bind(ctx.organizationId, body.id, member.email).run();
     return Response.json({ ok: true });
   }
 
@@ -329,26 +350,21 @@ export async function PATCH(request: Request) {
     }
     const radiologistEmail = String(body.assignedRadiologistEmail || "").trim().toLowerCase().slice(0, 254);
     const radiographerEmail = String(body.assignedRadiographerEmail || "").trim().toLowerCase().slice(0, 254);
-    if (radiologistEmail) {
-      const radiologist = await db.prepare(
-        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiologist' AND active = 1"
-      ).bind(radiologistEmail).first();
-      if (!radiologist) return Response.json({ error: "Оберіть активного лікаря-рентгенолога" }, { status: 400 });
+    if (!(await hasActiveTenantRole(db, ctx.organizationId, radiologistEmail, "radiologist"))) {
+      return Response.json({ error: "Оберіть активного лікаря-рентгенолога цієї організації" }, { status: 400 });
     }
-    if (radiographerEmail) {
-      const radiographer = await db.prepare(
-        "SELECT email FROM staff_members WHERE email = ? AND role = 'radiographer' AND active = 1"
-      ).bind(radiographerEmail).first();
-      if (!radiographer) return Response.json({ error: "Оберіть активного рентгенолаборанта" }, { status: 400 });
+    if (!(await hasActiveTenantRole(db, ctx.organizationId, radiographerEmail, "radiographer"))) {
+      return Response.json({ error: "Оберіть активного рентгенолаборанта цієї організації" }, { status: 400 });
     }
     const updated = await db.prepare(
-      `UPDATE bookings SET assigned_radiologist_email = ?,
-       assigned_radiographer_email = ? WHERE id = ?`
-    ).bind(radiologistEmail, radiographerEmail, body.id).run();
+      `UPDATE bookings SET assigned_radiologist_email = ?, assigned_radiographer_email = ?
+       WHERE organization_id = ? AND id = ?`
+    ).bind(radiologistEmail, radiographerEmail, ctx.organizationId, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'staff_assigned', ?, ?)"
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'staff_assigned', ?, ?)"
     ).bind(
+      ctx.organizationId,
       body.id,
       `radiologist=${radiologistEmail || "none"}; radiographer=${radiographerEmail || "none"}`,
       member.email
@@ -374,12 +390,13 @@ export async function PATCH(request: Request) {
     const updated = await db.prepare(
       `UPDATE bookings SET performed_at = ?, anatomical_regions_count = ?,
        external_reference = ?, status = CASE WHEN ? != '' THEN 'completed' ELSE status END
-       WHERE id = ?`
-    ).bind(performedAt, anatomicalRegionsCount, externalReference, performedAt, body.id).run();
+       WHERE organization_id = ? AND id = ?`
+    ).bind(performedAt, anatomicalRegionsCount, externalReference, performedAt, ctx.organizationId, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'execution_recorded', ?, ?)"
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'execution_recorded', ?, ?)"
     ).bind(
+      ctx.organizationId,
       body.id,
       `${performedAt || "not performed"} · regions=${anatomicalRegionsCount}${externalReference ? ` · document=${externalReference}` : ""}`,
       member.email
@@ -407,8 +424,8 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Для готового або виданого протоколу вкажіть його номер" }, { status: 400 });
     }
     const current = await db.prepare(
-      "SELECT protocol_status AS protocolStatus FROM bookings WHERE id = ? LIMIT 1"
-    ).bind(body.id).first<{ protocolStatus: string }>();
+      "SELECT protocol_status AS protocolStatus FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1"
+    ).bind(ctx.organizationId, body.id).first<{ protocolStatus: string }>();
     const protocolTransitions: Record<string, string[]> = {
       not_started: ["in_progress"],
       in_progress: ["ready"],
@@ -431,15 +448,15 @@ export async function PATCH(request: Request) {
        protocol_issued_at = CASE
          WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
          ELSE protocol_issued_at END
-       WHERE id = ?`
-    ).bind(protocolNumber, protocolStatus, protocolStatus, protocolStatus, body.id).run();
+       WHERE organization_id = ? AND id = ?`
+    ).bind(protocolNumber, protocolStatus, protocolStatus, protocolStatus, ctx.organizationId, body.id).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'protocol_updated', ?, ?)"
-    ).bind(body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_updated', ?, ?)"
+    ).bind(ctx.organizationId, body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
     const protocolDates = await db.prepare(
-      "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ?"
-    ).bind(body.id).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
+      "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE organization_id = ? AND id = ?"
+    ).bind(ctx.organizationId, body.id).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
     return Response.json({ ok: true, protocolNumber, protocolStatus, ...protocolDates });
   }
 
@@ -488,15 +505,15 @@ export async function PATCH(request: Request) {
        military_verified_by = CASE
          WHEN patient_category = 'military' AND ? = 'not_required' THEN ?
          ELSE military_verified_by END
-       WHERE id = ?`
+       WHERE organization_id = ? AND id = ?`
     ).bind(
       paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference,
-      paymentStatus, paymentStatus, member.email, body.id,
+      paymentStatus, paymentStatus, member.email, ctx.organizationId, body.id,
     ).run();
     if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     await db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'finance_updated', ?, ?)"
-    ).bind(body.id, `${paymentStatus} · paid=${paidAmount} грн · ${nszuStatus}`, member.email).run();
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'finance_updated', ?, ?)"
+    ).bind(ctx.organizationId, body.id, `${paymentStatus} · paid=${paidAmount} грн · ${nszuStatus}`, member.email).run();
     return Response.json({ ok: true, paymentStatus, paymentAmount, paidAmount, paymentMethod, nszuStatus, nszuReference });
   }
 
@@ -583,8 +600,6 @@ export async function PATCH(request: Request) {
     return Response.json({ ok: true, status: "confirmed", reminder });
   }
 
-  // Зміна статусу проходить через єдину state machine дослідження
-  // (deny-by-default): цільовий стан має бути відомим і досяжним із поточного.
   if (!body.status || !isStudyState(body.status)) {
     return Response.json({ error: "Некоректний статус" }, { status: 400 });
   }
