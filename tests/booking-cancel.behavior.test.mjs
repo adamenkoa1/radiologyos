@@ -1,17 +1,24 @@
 // Поведінковий тест самостійного скасування заявки пацієнтом:
-// власність (за телефоном сесії), дозволені стани, журнал події.
+// власність (tenant + phone + identity scope), дозволені стани, журнал події.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { withD1, jsonRequest, callWorker, seedPatientSession } from "./helpers/d1.mjs";
 
-async function seed(db, { code, phoneNormalized, status = "new", orgId = 1 }) {
+async function seed(db, {
+  code,
+  phoneNormalized,
+  status = "new",
+  orgId = 1,
+  dob = "1990-05-05",
+  time = "10:00",
+}) {
   await db.prepare(
     `INSERT INTO bookings (code, name, phone, phone_normalized, service, service_code,
        desired_date, desired_time, status, date_of_birth, patient_category, organization_id)
      VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(code, "Пацієнт", "+" + phoneNormalized, phoneNormalized, "КТ", "CT-01",
-    "2026-09-01", "10:00", status, "1990-05-05", "civilian", orgId).run();
+    "2026-09-01", time, status, dob, "civilian", orgId).run();
 }
 
 const cancel = (db, cookie, code) =>
@@ -46,14 +53,15 @@ test("patient cancellation event is attributed to the session organization", asy
   });
 });
 
-test("a patient cannot cancel someone else's booking (ownership by phone)", async () => {
+test("a patient cannot cancel someone else's booking", async () => {
   await withD1(async (db) => {
-    await seed(db, { code: "RD-OTHER00001", phoneNormalized: "380975556677" }); // чужа заявка
-    const cookie = await seedPatientSession(db, "380971112233");                 // сесія іншого номера
+    await seed(db, { code: "RD-OWN0000002", phoneNormalized: "380971112233", dob:"1990-05-05", time:"10:00" });
+    await seed(db, { code: "RD-OTHER00001", phoneNormalized: "380975556677", dob:"1985-04-04", time:"10:30" });
+    const cookie = await seedPatientSession(db, "380971112233");
     const res = await cancel(db, cookie, "RD-OTHER00001");
-    assert.equal(res.status, 404); // не знаходиться під чужою сесією
+    assert.equal(res.status, 404);
     const row = await db.prepare("SELECT status FROM bookings WHERE code = ?").bind("RD-OTHER00001").first("status");
-    assert.equal(row, "new"); // лишилась незмінною
+    assert.equal(row, "new");
   });
 });
 

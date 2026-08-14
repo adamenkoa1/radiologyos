@@ -137,13 +137,27 @@ export async function seedStaffSession(db, {
   return `rid_session=${rawToken}`;
 }
 
-export async function seedPatientSession(db, phoneNormalized, organizationId = 1) {
+export async function seedPatientSession(db, phoneNormalized, organizationId = 1, identity = null) {
+  let scope = identity;
+  if (!scope) {
+    const booking = await db.prepare(
+      `SELECT date_of_birth AS dob, code
+       FROM bookings
+       WHERE organization_id = ? AND phone_normalized = ?
+       ORDER BY created_at DESC, id DESC LIMIT 1`
+    ).bind(organizationId, phoneNormalized).first();
+    if (!booking) throw new Error("seedPatientSession requires a matching booking or explicit identity scope");
+    scope = booking.dob
+      ? { kind: "dob", value: String(booking.dob) }
+      : { kind: "booking", value: String(booking.code) };
+  }
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
   await db.prepare(
-    `INSERT INTO patient_sessions (token_hash, phone_normalized, organization_id, expires_at)
-     VALUES (?, ?, ?, datetime('now', '+30 minutes'))`
-  ).bind(tokenHash, phoneNormalized, organizationId).run();
+    `INSERT INTO patient_sessions
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, expires_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now', '+30 minutes'))`
+  ).bind(tokenHash, phoneNormalized, organizationId, scope.kind, scope.value).run();
   return `rid_patient=${rawToken}`;
 }
 

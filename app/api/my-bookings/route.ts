@@ -19,6 +19,9 @@ export async function POST(request: Request) {
     return Response.json({ error: "Сесію не підтверджено. Отримайте одноразовий код ще раз." }, { status: 401 });
   }
 
+  const identityClause = session.identityKind === "dob"
+    ? "b.date_of_birth = ?"
+    : "b.code = ?";
   const rows = await db.prepare(
     `SELECT b.code, b.name AS patientName, b.service, b.service_code AS serviceCode,
        b.desired_date AS desiredDate, b.desired_time AS desiredTime,
@@ -40,10 +43,10 @@ export async function POST(request: Request) {
          WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
          ORDER BY pt.id DESC LIMIT 1), '') AS paymentReference
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
-     WHERE b.organization_id = ? AND b.phone_normalized = ?
+     WHERE b.organization_id = ? AND b.phone_normalized = ? AND ${identityClause}
      ORDER BY b.created_at DESC, b.id DESC
      LIMIT 50`
-  ).bind(session.organizationId, session.phoneNormalized).all();
+  ).bind(session.organizationId, session.phoneNormalized, session.identityValue).all();
 
   const bookings = (rows.results || []).map((row) => ({
     ...row,
