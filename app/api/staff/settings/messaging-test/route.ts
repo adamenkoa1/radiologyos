@@ -2,7 +2,7 @@
 // перевірити налаштування в один клік (аналог telegram-test). Помилку шлюзу
 // повертає дослівно, щоб було видно причину (401, таймаут, заборонена адреса).
 
-import { requireStaff } from "../../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../../lib/tenant";
 import { getSettings } from "../../../../../lib/settings";
 import { createMessagingProvider } from "../../../../../lib/providers/messaging";
 import { normalizeUkrainianPhone } from "../../../../../lib/phone";
@@ -13,9 +13,9 @@ const TEST_TEXT = "RadiologyOS: тестове повідомлення. Кан�
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Доступно лише адміністратору" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") return Response.json({ error: "Доступно лише адміністратору" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as { channel?: string; to?: string };
   const channel = body.channel === "email" ? "email" : body.channel === "sms" ? "sms" : "";
