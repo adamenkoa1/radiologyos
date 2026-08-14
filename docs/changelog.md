@@ -16,6 +16,8 @@
 - Patient OTP/session тепер несуть доведену identity scope (`dob` або точний `booking`), тому спільний сімейний номер телефону не розширює доступ до чужих заявок, протоколів, скасування чи оплати; D1 фізично перевіряє scope за реальною заявкою.
 - Telegram deep-link і chat binding також стали identity-scoped. Небезпечні legacy phone-wide patient sessions, link tokens і Telegram chat bindings інвалідовуються під час міграції замість автоматичного перенесення між членами сім'ї.
 - Додано behavioral regression coverage для двох пацієнтів з одним телефоном та різними датами народження.
+- Історія `protocol_revisions` стала фізично append-only у D1: існуючу клінічну версію не можна UPDATE/DELETE; виправлення створює нову версію.
+- Додано окремий read-only endpoint конкретної ревізії з tenant/RBAC/assignment перевіркою та security audit без клінічного тексту, плюс behavioral coverage незмінності та міжтенантної ізоляції.
 
 ### Planned
 - Розділення `staff.html` на окремі модулі.
