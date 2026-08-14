@@ -1,12 +1,15 @@
 // Публічний вебхук green-api для вхідних WhatsApp-повідомлень. Захищений
-// секретним ?token=. Зберігає повідомлення в patient_communications, дедуплікує
-// за idMessage і за потреби відповідає бот-меню.
+// секретним ?token=. Глобальна green-api конфігурація належить org 1, тому
+// весь webhook data-path явно прив'язаний до основної організації: lookup
+// записів, inbound/outbound communications і bot replies.
 
 import { getSetting } from "../../../../lib/settings";
 import { isRateLimited } from "../../../../lib/rate-limit";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../../lib/site-content";
 import { interpretBotCommand, menuText, parseIncomingWebhook, sendWhatsApp } from "../../../../lib/whatsapp";
 import { dbBinding } from "../../../../lib/db";
+
+const PRIMARY_ORGANIZATION_ID = 1;
 
 function todayKyiv(): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Kyiv", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
@@ -41,9 +44,9 @@ async function botReply(db: D1Database, phone: string, text: string, origin: str
   if (action === "appointments") {
     const rows = await db.prepare(
       `SELECT service, desired_date AS d, desired_time AS t, status FROM bookings
-       WHERE phone_normalized = ? AND desired_date >= ? AND status NOT IN ('cancelled','completed')
+       WHERE organization_id = ? AND phone_normalized = ? AND desired_date >= ? AND status NOT IN ('cancelled','completed')
        ORDER BY desired_date, desired_time LIMIT 5`
-    ).bind(phone, todayKyiv()).all();
+    ).bind(PRIMARY_ORGANIZATION_ID, phone, todayKyiv()).all();
     const list = (rows.results || []) as Array<{ service: string; d: string; t: string }>;
     if (!list.length) return "У вас немає найближчих записів. Надішліть 2, щоб записатися.";
     return ["Ваші найближчі записи:", ...list.map((r) => `• ${r.d}${r.t ? ` ${r.t}` : ""} — ${r.service}`)].join("\n");
@@ -69,11 +72,17 @@ export async function POST(request: Request) {
   const msg = parseIncomingWebhook(body);
   if (!msg) return Response.json({ ok: true }); // не текстове/не вхідне — ігноруємо
 
-  // Дедуплікація повторних вебхуків за idMessage.
+  // Дедуплікація повторних вебхуків за idMessage всередині org 1.
   const inserted = await db.prepare(
-    `INSERT OR IGNORE INTO patient_communications (phone_normalized, channel, direction, summary, actor, external_id)
-     VALUES (?, 'whatsapp', 'inbound', ?, 'patient', ?)`
-  ).bind(msg.phoneNormalized, msg.text || "(без тексту)", msg.idMessage || `${msg.phoneNormalized}-${msg.text.slice(0, 40)}`).run();
+    `INSERT OR IGNORE INTO patient_communications
+      (organization_id, phone_normalized, channel, direction, summary, actor, external_id)
+     VALUES (?, ?, 'whatsapp', 'inbound', ?, 'patient', ?)`
+  ).bind(
+    PRIMARY_ORGANIZATION_ID,
+    msg.phoneNormalized,
+    msg.text || "(без тексту)",
+    msg.idMessage || `${msg.phoneNormalized}-${msg.text.slice(0, 40)}`,
+  ).run();
   if (!inserted.meta.changes) return Response.json({ ok: true }); // вже опрацьовано
 
   const reply = await botReply(db, msg.phoneNormalized, msg.text, url.origin);
@@ -81,9 +90,10 @@ export async function POST(request: Request) {
     const sent = await sendWhatsApp(db, msg.phoneNormalized, reply);
     if (sent.ok) {
       await db.prepare(
-        `INSERT INTO patient_communications (phone_normalized, channel, direction, summary, actor, external_id)
-         VALUES (?, 'whatsapp', 'outbound', ?, 'bot', ?)`
-      ).bind(msg.phoneNormalized, reply, sent.idMessage || "").run();
+        `INSERT INTO patient_communications
+          (organization_id, phone_normalized, channel, direction, summary, actor, external_id)
+         VALUES (?, ?, 'whatsapp', 'outbound', ?, 'bot', ?)`
+      ).bind(PRIMARY_ORGANIZATION_ID, msg.phoneNormalized, reply, sent.idMessage || "").run();
     }
   }
   return Response.json({ ok: true });
