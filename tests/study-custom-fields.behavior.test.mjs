@@ -23,7 +23,8 @@ test("custom field schema enforces tenant-safe definitions and values",async()=>
 
     const own=await db.prepare("SELECT value_text AS value FROM custom_field_values WHERE organization_id=? AND entity_id=?")
       .bind(1,101).all();
-    assert.deepEqual(own.results,[{value:"one"}]);
+    assert.equal(own.results.length,1);
+    assert.equal(own.results[0].value,"one");
 
     await assert.rejects(
       db.prepare(`INSERT INTO custom_field_values
