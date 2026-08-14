@@ -86,11 +86,11 @@ test("DICOM integrity migration and Drizzle schema contain tenant and UID guards
   assert.match(migration, /imaging_studies_booking_tenant_update/);
   assert.match(migration, /imaging_studies_uid_unique_insert/);
   assert.match(migration, /imaging_studies_uid_unique_update/);
-  assert.match(migration, /imaging_studies_org_uid_idx/);
+  assert.match(migration, /CREATE UNIQUE INDEX IF NOT EXISTS imaging_studies_org_uid_idx/);
   assert.match(migration, /pacs_settings_org_insert/);
 
   const schema = await read("db/schema.ts");
   assert.match(schema, /imaging_studies_org_idx/);
-  assert.match(schema, /imaging_studies_org_uid_idx/);
+  assert.match(schema, /uniqueIndex\("imaging_studies_org_uid_idx"\)/);
   assert.match(schema, /study_instance_uid != ''/);
 });
