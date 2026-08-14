@@ -22,7 +22,7 @@ test("do-not-contact is respected: message is skipped, nothing sent", async () =
   await withD1(async (db) => {
     await seedBooking(db, { id: 1, phoneNormalized: "380971112233" });
     await db.prepare(
-      "INSERT INTO patient_profiles (phone_normalized, do_not_contact, updated_by) VALUES (?, 1, 'test')"
+      "INSERT INTO patient_profiles (organization_id, phone_normalized, do_not_contact, updated_by) VALUES (1, ?, 1, 'test')"
     ).bind("380971112233").run();
     const cookie = await seedStaffSession(db, { email: "reg@likarnya.test", role: "registrar" });
     const res = await notify(db, cookie, 1);
@@ -30,7 +30,6 @@ test("do-not-contact is respected: message is skipped, nothing sent", async () =
     const { summary } = await res.json();
     assert.equal(summary.sent, 0);
     assert.ok(summary.skipped >= 1, "має бути пропущено через «не турбувати»");
-    // У журналі — саме skipped, без жодного sent.
     const sent = await db.prepare("SELECT COUNT(*) AS n FROM patient_notifications WHERE status = 'sent'").first("n");
     assert.equal(sent, 0);
     const skipped = await db.prepare("SELECT COUNT(*) AS n FROM patient_notifications WHERE status = 'skipped'").first("n");
@@ -45,23 +44,21 @@ test("with no gateways configured nothing is sent (channel gated on config)", as
     const res = await notify(db, cookie, 2);
     assert.equal(res.status, 200);
     const { summary } = await res.json();
-    assert.equal(summary.sent, 0);       // SMS-шлюз не налаштований → нічого не відправлено
-    assert.equal(summary.failed, 0);     // і не «провал» — саме «пропущено»
+    assert.equal(summary.sent, 0);
+    assert.equal(summary.failed, 0);
     assert.ok(summary.skipped >= 1);
   });
 });
 
 test("a message to a booking in another organization is not found (tenant isolation)", async () => {
   await withD1(async (db) => {
-    // Друга організація + її заявка.
     await db.prepare(
       "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'other', 'Інша', 1)"
     ).run();
     await seedBooking(db, { id: 3, phoneNormalized: "380973334455", orgId: 2 });
-    // Адмін автоматично прив'язується до організації з найменшим id (=1).
     const cookie = await seedStaffSession(db, { email: "admin2@likarnya.test", role: "admin" });
     const res = await notify(db, cookie, 3);
-    assert.equal(res.status, 404); // заявка чужої організації недосяжна
+    assert.equal(res.status, 404);
   });
 });
 
@@ -70,6 +67,33 @@ test("a clinical role may still send an ad-hoc message (canWriteNotes)", async (
     await seedBooking(db, { id: 4, phoneNormalized: "380974445566" });
     const cookie = await seedStaffSession(db, { email: "rad@likarnya.test", role: "radiologist" });
     const res = await notify(db, cookie, 4);
-    assert.equal(res.status, 200); // лікар-рентгенолог має право повідомляти
+    assert.equal(res.status, 200);
+  });
+});
+
+test("same phone in another tenant does not inherit DNC and outbox stays in booking tenant", async () => {
+  await withD1(async (db) => {
+    const phone = "380975556677";
+    await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'notify-two', 'Notify Two', 1)").run();
+    await db.prepare(
+      `INSERT INTO patient_profiles (organization_id, phone_normalized, display_name, do_not_contact, updated_by)
+       VALUES (1, ?, 'Org1 Patient', 1, 'test'), (2, ?, 'Org2 Patient', 0, 'test')`
+    ).bind(phone, phone).run();
+    await seedBooking(db, { id: 5, phoneNormalized: phone, orgId: 2 });
+    const cookie = await seedStaffSession(db, { email: "reg-org2@likarnya.test", role: "registrar", organizationId: 2 });
+
+    const res = await notify(db, cookie, 5);
+    assert.equal(res.status, 200);
+    const { summary } = await res.json();
+    assert.equal(summary.sent, 0);
+    assert.ok(summary.skipped >= 1);
+
+    const rows = await db.prepare(
+      `SELECT organization_id AS organizationId, error
+       FROM patient_notifications WHERE booking_id = 5 ORDER BY id`
+    ).all();
+    assert.ok(rows.results.length >= 1);
+    assert.ok(rows.results.every((row) => row.organizationId === 2));
+    assert.ok(rows.results.every((row) => !String(row.error).includes("не турбувати")));
   });
 });
