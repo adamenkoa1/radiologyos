@@ -20,6 +20,12 @@ test("scheduled reminder SQL isolates bookings, dedupe and do-not-contact by org
   assert.match(remindersSource, /WHERE organization_id = \? AND desired_date = \? AND status IN \('confirmed','rescheduled'\)/);
   assert.match(remindersSource, /JOIN bookings b ON b\.id = n\.booking_id[\s\S]*WHERE b\.organization_id = \?/);
   assert.match(remindersSource, /patient_profiles WHERE organization_id = \? AND do_not_contact = 1/);
+  assert.match(remindersSource, /record\(db, organizationId, b, kind/);
+  assert.match(
+    remindersSource,
+    /INSERT INTO patient_notifications[\s\S]*\(organization_id, booking_id, kind, channel, recipient, body, status, error, sent_at\)/,
+  );
+  assert.match(remindersSource, /\.bind\(organizationId, b\.id, kind/);
 
   await withD1(async (db) => {
     await db.prepare(
