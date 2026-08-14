@@ -2,10 +2,10 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
-async function setMembershipRole(db, email, role) {
+async function setMembershipRole(db, email, role, organizationId = 1) {
   await db.prepare(
-    "UPDATE memberships SET role = ?, active = 1 WHERE organization_id = 1 AND member_email = ?"
-  ).bind(role, email).run();
+    "UPDATE memberships SET role = ?, active = 1 WHERE organization_id = ? AND member_email = ?"
+  ).bind(role, organizationId, email).run();
 }
 
 const protectedRequests = () => [
@@ -42,7 +42,7 @@ test("stale global admin cannot use integration control plane after membership d
   });
 });
 
-test("membership admin remains authoritative even when global staff role is non-admin", async () => {
+test("membership admin remains authoritative for the primary organization even when global staff role is non-admin", async () => {
   await withD1(async (db) => {
     const email = "membership-admin@example.com";
     const cookie = await seedStaffSession(db, { email, role:"radiologist" });
@@ -57,7 +57,30 @@ test("membership admin remains authoritative even when global staff role is non-
   });
 });
 
-test("integration control-plane routes derive authorization from tenant membership", async () => {
+test("secondary tenant admin cannot administer legacy-global integration settings", async () => {
+  await withD1(async (db) => {
+    await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'control-two', 'Control Two', 1)").run();
+    const email = "org2-admin@example.com";
+    const cookie = await seedStaffSession(db, { email, role:"admin", organizationId:2 });
+
+    for (const request of protectedRequests()) {
+      request.headers.set("cookie", cookie);
+      const response = await callWorker(request, db);
+      assert.equal(response.status, 403, `${request.method} ${new URL(request.url).pathname} must fail closed outside org 1`);
+    }
+
+    const reminders = await db.prepare(
+      "SELECT value FROM app_settings WHERE key = 'patient_reminders_enabled'"
+    ).first();
+    assert.ok(!reminders || reminders.value !== "1");
+    const whatsapp = await db.prepare(
+      "SELECT value FROM app_settings WHERE key = 'whatsapp_id_instance'"
+    ).first();
+    assert.ok(!whatsapp || whatsapp.value !== "123");
+  });
+});
+
+test("integration control-plane routes derive authorization from tenant membership and fail closed outside the primary tenant", async () => {
   const { readFile } = await import("node:fs/promises");
   const paths = [
     "../app/api/staff/settings/route.ts",
@@ -71,6 +94,8 @@ test("integration control-plane routes derive authorization from tenant membersh
     const source = await readFile(new URL(path, import.meta.url), "utf8");
     assert.match(source, /requireOrgContext\(request, db\)/, path);
     assert.doesNotMatch(source, /requireStaff\(request, db\)/, path);
+    assert.match(source, /PRIMARY_ORGANIZATION_ID = 1/, path);
+    assert.match(source, /ctx\.organizationId !== PRIMARY_ORGANIZATION_ID/, path);
   }
 
   const settings = await readFile(new URL("../app/api/staff/settings/route.ts", import.meta.url), "utf8");
