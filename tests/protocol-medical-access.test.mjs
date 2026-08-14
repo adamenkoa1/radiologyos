@@ -50,9 +50,11 @@ test("D1 physically rejects cross-tenant protocol documents and revisions", asyn
       db.prepare("UPDATE protocols SET organization_id=2 WHERE booking_id=?").bind(bookingOne).run(),
       /tenant mismatch/i,
     );
+    // Revisions are now stronger than tenant-scoped: once appended, every UPDATE
+    // is rejected before a cross-tenant mutation can even be evaluated.
     await assert.rejects(
       db.prepare("UPDATE protocol_revisions SET organization_id=2 WHERE booking_id=?").bind(bookingOne).run(),
-      /tenant mismatch/i,
+      /append-only/i,
     );
   });
 });
