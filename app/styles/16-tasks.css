@@ -1,0 +1,69 @@
+/* Staff tasks: compact operational follow-up workspace. */
+.workspaceShell .workspaceModuleLink[href="/staff/tasks"] {
+  --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M9 11l3 3L22 4'/%3E%3Cpath d='M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11'/%3E%3C/svg%3E");
+}
+
+.workspaceShell .taskWorkspace { display:grid; gap:12px; }
+.workspaceShell .taskToolbar {
+  display:flex; align-items:center; gap:9px; flex-wrap:wrap;
+  padding:10px 12px; border:1px solid var(--ws-line); border-radius:var(--ws-radius-md);
+  background:var(--ws-surface); box-shadow:var(--ws-shadow-sm);
+}
+.workspaceShell .taskSegments { display:inline-flex; gap:3px; padding:3px; border:1px solid var(--ws-line); border-radius:10px; background:var(--ws-surface-subtle); }
+.workspaceShell .taskSegments button,.workspaceShell .taskNew,.workspaceShell .taskSave,.workspaceShell .taskActions button {
+  min-height:32px; border-radius:var(--ws-radius-sm); font-weight:700;
+}
+.workspaceShell .taskSegments button { border:0; background:transparent; color:var(--ws-muted); padding:0 11px; }
+.workspaceShell .taskSegments button.on { background:var(--ws-accent-soft); color:var(--ws-accent); }
+.workspaceShell .taskMine { display:inline-flex; align-items:center; gap:6px; color:var(--ws-muted); font-size:12px; font-weight:700; }
+.workspaceShell .taskNew { margin-left:auto; }
+
+.workspaceShell .taskCreate {
+  display:grid; gap:10px; padding:14px; border:1px solid rgba(37,99,235,.22); border-radius:var(--ws-radius-md);
+  background:color-mix(in srgb,var(--ws-accent-soft) 45%,var(--ws-surface));
+}
+.workspaceShell .taskCreate label { display:grid; gap:4px; }
+.workspaceShell .taskCreate label>span { color:var(--ws-muted); font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.workspaceShell .taskCreate :where(input,select,textarea) { width:100%; border:1px solid var(--ws-line); background:var(--ws-surface); color:var(--ws-ink); }
+.workspaceShell .taskCreateRow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
+.workspaceShell .taskSave { justify-self:start; }
+
+.workspaceShell .taskSummary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
+.workspaceShell .taskSummary span { display:flex; align-items:center; gap:9px; min-height:46px; padding:8px 11px; border:1px solid var(--ws-line); border-radius:9px; background:var(--ws-surface); color:var(--ws-muted); font-size:11px; font-weight:700; }
+.workspaceShell .taskSummary b { font-size:20px; color:var(--ws-ink); font-variant-numeric:tabular-nums; }
+.workspaceShell .taskSummary .warn b { color:#b45309; }
+
+.workspaceShell .taskList { display:grid; gap:7px; }
+.workspaceShell .taskCard {
+  position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:center;
+  padding:12px 13px 12px 16px; border:1px solid var(--ws-line); border-radius:10px; background:var(--ws-surface); box-shadow:var(--ws-shadow-sm); overflow:hidden;
+}
+.workspaceShell .taskCard::before { content:""; position:absolute; inset:0 auto 0 0; width:4px; background:#94a3b8; }
+.workspaceShell .taskCard.priority-high::before { background:#dc2626; }
+.workspaceShell .taskCard.priority-normal::before { background:#2563eb; }
+.workspaceShell .taskCard.priority-low::before { background:#64748b; }
+.workspaceShell .taskCard.overdue { border-color:rgba(217,119,6,.34); }
+.workspaceShell .taskCardTop { display:flex; align-items:center; gap:5px; }
+.workspaceShell .taskPriority,.workspaceShell .taskOverdue { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:9px; font-weight:800; }
+.workspaceShell .taskPriority { background:rgba(148,163,184,.12); color:var(--ws-muted); }
+.workspaceShell .taskPriority.high { background:rgba(220,38,38,.1); color:#b91c1c; }
+.workspaceShell .taskPriority.normal { background:rgba(37,99,235,.1); color:#2563eb; }
+.workspaceShell .taskOverdue { background:rgba(217,119,6,.11); color:#b45309; }
+.workspaceShell .taskCard h2 { margin:5px 0 0; color:var(--ws-ink); font-size:14px; letter-spacing:-.01em; }
+.workspaceShell .taskCard p { margin:5px 0 0; color:var(--ws-muted); font-size:11px; line-height:1.45; white-space:pre-wrap; }
+.workspaceShell .taskMeta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--ws-muted); font-size:10px; }
+.workspaceShell .taskMeta a { color:var(--ws-accent); font-weight:700; }
+.workspaceShell .taskActions button { white-space:nowrap; }
+.workspaceShell .taskEmpty { padding:36px 14px; border:1px dashed var(--ws-line); border-radius:var(--ws-radius-md); color:var(--ws-muted); text-align:center; }
+
+.workspaceShell.themeDark .taskCard { box-shadow:none; }
+.workspaceShell.themeDark .taskPriority.high { color:#fca5a5; }
+.workspaceShell.themeDark .taskPriority.normal { color:#93c5fd; }
+.workspaceShell.themeDark .taskOverdue { color:#fbbf24; }
+
+@media(max-width:760px){
+  .workspaceShell .taskCreateRow,.workspaceShell .taskSummary{grid-template-columns:1fr;}
+  .workspaceShell .taskCard{grid-template-columns:1fr;}
+  .workspaceShell .taskActions button{width:100%;}
+  .workspaceShell .taskNew{margin-left:0;}
+}
