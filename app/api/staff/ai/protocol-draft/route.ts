@@ -42,8 +42,8 @@ export async function POST(request: Request) {
   const draft = generateProtocolDraft(parsed.document, { priorStudies });
 
   await db.prepare(
-    "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'ai_draft_generated', ?, ?)"
-  ).bind(bookingId, `${draft.engine} · відхилень: ${draft.deviations.length}`, member.email).run();
+    "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'ai_draft_generated', ?, ?)"
+  ).bind(ctx.organizationId, bookingId, `${draft.engine} · відхилень: ${draft.deviations.length}`, member.email).run();
 
   return Response.json({ ok: true, draft }, { headers: { "cache-control": "no-store" } });
 }
