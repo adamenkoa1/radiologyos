@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 // Drizzle representation of possession-based patient authentication added by
 // migration 0028 and identity-scoped by migration 0046. The legacy core schema
@@ -63,5 +63,6 @@ export const patientTelegramIdentities = sqliteTable("patient_telegram_identitie
   telegramChatId: text("telegram_chat_id").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
-  index("patient_telegram_chat_idx").on(table.telegramChatId),
+  primaryKey({ columns:[table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue] }),
+  index("patient_telegram_chat_idx").on(table.telegramChatId).where(sql`telegram_chat_id != ''`),
 ]);
