@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import StudyContextDrawer from "./study-context-drawer";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -52,6 +53,7 @@ export default function StudiesPage() {
   const [selectedViewId,setSelectedViewId] = useState(0);
   const [viewName,setViewName] = useState("");
   const [viewBusy,setViewBusy] = useState(false);
+  const [contextStudy,setContextStudy] = useState<Study|null>(null);
 
   async function load() {
     const response = await fetch("/api/staff/studies", { cache:"no-store" });
@@ -239,7 +241,7 @@ export default function StudiesPage() {
         <table className="studiesTable">
           <thead><tr>
             <th>Код</th><th>Пацієнт</th><th>Дослідження</th><th>Дата / час</th>
-            <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th>{data.features?.dicomPacs ? <th>Знімки</th> : null}<th>Дія</th>
+            <th>Апарат</th><th>Стан</th><th>Лікар</th><th>Лаборант</th>{data.features?.dicomPacs ? <th>Знімки</th> : null}<th>Історія</th><th>Дія</th>
           </tr></thead>
           <tbody>
             {visible.map((s)=><tr key={s.id}>
@@ -268,6 +270,7 @@ export default function StudiesPage() {
               {data.features?.dicomPacs ? <td>{s.studyStatus && s.studyStatus !== "not_linked"
                 ? <span className="studiesLinked" title={s.accessionNumber || ""}>прив’язано</span>
                 : <span className="studiesUnlinked">—</span>}</td> : null}
+              <td><button type="button" className="studiesClear" onClick={()=>setContextStudy(s)}>Історія</button></td>
               <td>
                 {data.canManage && s.nextStates.length > 0 ?
                   <select
@@ -287,6 +290,7 @@ export default function StudiesPage() {
       </div>}
 
       {data.studies.length >= 500 && <p className="studiesTrunc">Показано найновіші 500 досліджень. Старіші поки не відображаються — уточніть пошук або стан.</p>}
+      {contextStudy ? <StudyContextDrawer study={contextStudy} onClose={()=>setContextStudy(null)}/> : null}
     </>}
   </StaffWorkspaceShell>;
 }
