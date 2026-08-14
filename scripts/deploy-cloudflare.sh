@@ -22,16 +22,29 @@ if [[ "${RADIOLOGYOS_DEPLOY_CONFIRM:-}" != "DEPLOY" ]]; then
   exit 1
 fi
 
-echo "[1/4] Building the artifact (dist/server + dist/client)…"
+echo "[1/5] Building the artifact (dist/server + dist/client)…"
 npm run build
 
-echo "[2/4] Recording the current D1 recovery bookmark…"
+echo "[2/5] Recording the current D1 recovery bookmark…"
 npx wrangler d1 time-travel info radiologyos --config "${CONFIG}"
 
-echo "[3/4] Applying D1 migrations to the remote database…"
+echo "[3/5] Applying D1 migrations to the remote database…"
 npx wrangler d1 migrations apply radiologyos --remote --config "${CONFIG}"
 
-echo "[4/4] Deploying the Worker and static assets…"
+echo "[4/5] Verifying a secure active administrator credential…"
+npx wrangler d1 execute radiologyos --remote --config "${CONFIG}" --json \
+  --command "WITH admins AS (SELECT password_hash, substr(password_hash,16,instr(substr(password_hash,16),'$')-1) AS iterations FROM staff_members WHERE role = 'admin' AND active = 1) SELECT COUNT(*) AS secure_admins FROM admins WHERE substr(password_hash,1,15) = 'pbkdf2$sha256$' AND length(password_hash) - length(replace(password_hash,'$','')) = 4 AND iterations <> '' AND iterations NOT GLOB '*[^0-9]*' AND CAST(iterations AS INTEGER) >= 1000 AND length(password_hash) >= 80 AND password_hash NOT IN ('pbkdf2$sha256$100000$DIdGQmQdc8l2yyObk0lw0A==$btlwHhk42m8+m7NJlqXpZXQZYZ5d8gsRfxFMTqw59gc=');" \
+  > /tmp/radiologyos-secure-admin.json
+node -e '
+  const payload = JSON.parse(require("node:fs").readFileSync("/tmp/radiologyos-secure-admin.json", "utf8"));
+  const count = Number(payload?.[0]?.results?.[0]?.secure_admins ?? 0);
+  if (count < 1) {
+    console.error("Production deploy blocked: create an active administrator with a valid unique PBKDF2 password first.");
+    process.exit(1);
+  }
+'
+
+echo "[5/5] Deploying the Worker and static assets…"
 # Runtime configuration such as OUTBOUND_ALLOWED_HOSTS may be managed in the
 # Cloudflare Worker environment rather than committed to source control.
 npx wrangler deploy --keep-vars --config "${CONFIG}"
