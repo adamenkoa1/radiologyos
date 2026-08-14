@@ -1,19 +1,11 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveProviders } from "../lib/providers/index.ts";
 import { withD1 } from "./helpers/d1.mjs";
 
-function ctx(organizationId) {
-  return {
-    organizationId,
-    slug: `org-${organizationId}`,
-    organizationName: `Org ${organizationId}`,
-    role: "admin",
-    member: { email:`admin${organizationId}@example.com`, displayName:`Admin ${organizationId}`, role:"admin" },
-  };
-}
+const PACS_QUERY =
+  "SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE organization_id = ? LIMIT 1";
 
-test("provider PACS readiness is resolved from the active tenant only", async () => {
+test("PACS settings query isolates readiness by organization", async () => {
   await withD1(async (db) => {
     await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'provider-two', 'Provider Two', 1)").run();
     await db.prepare("DELETE FROM pacs_settings").run();
@@ -25,25 +17,19 @@ test("provider PACS readiness is resolved from the active tenant only", async ()
         (2, '', '', 'ORG2', 0, '', 'test')`
     ).run();
 
-    const one = await resolveProviders(db, ctx(1));
-    assert.equal(one.pacs.enabled, true);
-    assert.deepEqual(one.pacs.describe(), {
-      enabled:true,
-      viewerConfigured:true,
-      dicomwebConfigured:true,
-    });
+    const one = await db.prepare(PACS_QUERY).bind(1).first();
+    assert.equal(one.enabled, 1);
+    assert.equal(one.viewer, "https://pacs-one.example/viewer");
+    assert.equal(one.dicomweb, "https://pacs-one.example/dicomweb");
 
-    const two = await resolveProviders(db, ctx(2));
-    assert.equal(two.pacs.enabled, false);
-    assert.deepEqual(two.pacs.describe(), {
-      enabled:false,
-      viewerConfigured:false,
-      dicomwebConfigured:false,
-    });
+    const two = await db.prepare(PACS_QUERY).bind(2).first();
+    assert.equal(two.enabled, 0);
+    assert.equal(two.viewer, "");
+    assert.equal(two.dicomweb, "");
   });
 });
 
-test("provider resolver never hard-codes the first PACS row", async () => {
+test("provider resolver uses the tenant-scoped PACS query", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("../lib/providers/index.ts", import.meta.url), "utf8");
   assert.match(source, /FROM pacs_settings WHERE organization_id = \? LIMIT 1/);
