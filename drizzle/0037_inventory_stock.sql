@@ -55,16 +55,3 @@ CREATE INDEX IF NOT EXISTS `inventory_movements_org_item_idx`
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `inventory_movements_org_lot_idx`
   ON `inventory_movements` (`organization_id`, `lot_id`, `id` DESC);
---> statement-breakpoint
-
--- Atomic guard: a write-off can never make a lot balance negative.
-CREATE TRIGGER IF NOT EXISTS `inventory_no_negative_stock`
-BEFORE INSERT ON `inventory_movements`
-WHEN NEW.`quantity_delta` < 0
-BEGIN
-  SELECT CASE WHEN (
-    COALESCE((SELECT SUM(`quantity_delta`) FROM `inventory_movements`
-      WHERE `organization_id` = NEW.`organization_id` AND `lot_id` = NEW.`lot_id`), 0)
-      + NEW.`quantity_delta`
-  ) < -0.000001 THEN RAISE(ABORT, 'insufficient_stock') END;
-END;
