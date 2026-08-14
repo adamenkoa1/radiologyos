@@ -7,6 +7,7 @@ import {
   normalizeBookingCode,
   normalizeOtp,
   patientSessionCookie,
+  type PatientIdentityScope,
   verifyPatientOtpChallenge,
 } from "../../../lib/patient-auth";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
@@ -18,15 +19,20 @@ import { dbBinding } from "../../../lib/db";
 const PURPOSE = "cabinet_login";
 const PHONE_REQUEST_LIMIT = 5;
 
+type ProvenPatientIdentity = {
+  organizationId: number;
+  identity: PatientIdentityScope;
+};
+
 function maskedPhone(phoneNormalized: string): string {
   return phoneNormalized ? `***${phoneNormalized.slice(-4)}` : "";
 }
 
-async function proofOrganization(
+async function provePatientIdentity(
   db: D1Database,
   phoneNormalized: string,
   body: { dob?: unknown; bookingCode?: unknown },
-): Promise<number | null> {
+): Promise<ProvenPatientIdentity | null> {
   const dob = normalizeDob(body.dob);
   if (dob) {
     const row = await db.prepare(
@@ -35,7 +41,7 @@ async function proofOrganization(
        WHERE phone_normalized = ? AND date_of_birth = ?
        ORDER BY created_at DESC, id DESC LIMIT 1`,
     ).bind(phoneNormalized, dob).first<{ organizationId: number }>();
-    return row?.organizationId || null;
+    return row ? { organizationId: row.organizationId, identity: { kind:"dob", value:dob } } : null;
   }
 
   const bookingCode = normalizeBookingCode(body.bookingCode);
@@ -44,14 +50,15 @@ async function proofOrganization(
       `SELECT organization_id AS organizationId
        FROM bookings WHERE phone_normalized = ? AND code = ? LIMIT 1`,
     ).bind(phoneNormalized, bookingCode).first<{ organizationId: number }>();
-    return row?.organizationId || null;
+    return row ? { organizationId: row.organizationId, identity: { kind:"booking", value:bookingCode } } : null;
   }
   return null;
 }
 
 // Step 1: prove a known booking identity (phone+DOB or phone+booking code), then
 // deliver a possession challenge. Unknown identities receive the same neutral
-// response shape and never get a session/challenge row.
+// response shape and never get a session/challenge row. The proof scope is
+// persisted with the challenge and later copied into the patient session.
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
@@ -84,8 +91,8 @@ export async function POST(request: Request) {
     );
   }
 
-  const organizationId = await proofOrganization(db, phoneNormalized, body);
-  if (!organizationId) {
+  const proof = await provePatientIdentity(db, phoneNormalized, body);
+  if (!proof) {
     // Burn similar local crypto work and return an opaque fake challenge id.
     // No database row exists, so verification can never succeed.
     await hashPassword("000000");
@@ -104,12 +111,18 @@ export async function POST(request: Request) {
     `SELECT COUNT(*) AS n FROM patient_otp_challenges
      WHERE organization_id = ? AND phone_normalized = ? AND purpose = ?
        AND created_at > datetime('now', '-15 minutes')`,
-  ).bind(organizationId, phoneNormalized, PURPOSE).first<{ n: number }>();
+  ).bind(proof.organizationId, phoneNormalized, PURPOSE).first<{ n: number }>();
   if ((recent?.n || 0) >= PHONE_REQUEST_LIMIT) {
     return Response.json({ error: "Забагато запитів коду. Спробуйте пізніше." }, { status: 429 });
   }
 
-  const challenge = await createPatientOtpChallenge(db, phoneNormalized, organizationId, PURPOSE);
+  const challenge = await createPatientOtpChallenge(
+    db,
+    phoneNormalized,
+    proof.organizationId,
+    proof.identity,
+    PURPOSE,
+  );
   const text = `RadiologyOS: код підтвердження ${challenge.code}. Код діє 5 хвилин. Нікому його не повідомляйте.`;
   try {
     await messaging.sendSms(`+${phoneNormalized}`, text);
@@ -119,12 +132,12 @@ export async function POST(request: Request) {
       "UPDATE patient_otp_challenges SET consumed_at = CURRENT_TIMESTAMP WHERE id = ?",
     ).bind(challenge.challengeId).run().catch(() => undefined);
     await audit(db, {
-      organizationId,
+      organizationId: proof.organizationId,
       actorEmail: "patient",
       action: "patient_otp_delivery_failed",
       resource: "patient_auth",
       targetId: challenge.challengeId.slice(0, 12),
-      details: { phone: maskedPhone(phoneNormalized) },
+      details: { phone: maskedPhone(phoneNormalized), identityKind:proof.identity.kind },
     });
     console.error("patient_otp_delivery_failed", error instanceof Error ? error.message : "unknown");
     return Response.json(
@@ -134,12 +147,12 @@ export async function POST(request: Request) {
   }
 
   await audit(db, {
-    organizationId,
+    organizationId: proof.organizationId,
     actorEmail: "patient",
     action: "patient_otp_requested",
     resource: "patient_auth",
     targetId: challenge.challengeId.slice(0, 12),
-    details: { phone: maskedPhone(phoneNormalized), channel: "sms" },
+    details: { phone: maskedPhone(phoneNormalized), channel: "sms", identityKind:proof.identity.kind },
   });
   return Response.json(
     {
@@ -153,7 +166,7 @@ export async function POST(request: Request) {
 }
 
 // Step 2: consume the one-time possession challenge and only then create the
-// tenant-scoped patient session used by cabinet/result endpoints.
+// tenant + identity-scoped patient session used by cabinet/result endpoints.
 export async function PATCH(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
@@ -196,14 +209,19 @@ export async function PATCH(request: Request) {
     return Response.json({ error: "Невірний або прострочений код підтвердження" }, { status: 401 });
   }
 
-  const rawToken = await createPatientSession(db, phoneNormalized, verified.organizationId);
+  const rawToken = await createPatientSession(
+    db,
+    phoneNormalized,
+    verified.organizationId,
+    verified.identity,
+  );
   await audit(db, {
     organizationId: verified.organizationId,
     actorEmail: "patient",
     action: "patient_otp_verified",
     resource: "patient_auth",
     targetId: challengeId.slice(0, 12),
-    details: { phone: maskedPhone(phoneNormalized) },
+    details: { phone: maskedPhone(phoneNormalized), identityKind:verified.identity.kind },
   });
   return Response.json(
     { ok: true },
