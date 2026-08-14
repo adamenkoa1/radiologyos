@@ -1,6 +1,7 @@
 // Надсилає тестове SMS / e-mail через збережений шлюз, щоб адміністратор міг
 // перевірити налаштування в один клік (аналог telegram-test). Помилку шлюзу
 // повертає дослівно, щоб було видно причину (401, таймаут, заборонена адреса).
+// Messaging gateway settings are legacy-global, so only org 1 may use them.
 
 import { requireOrgContext } from "../../../../../lib/tenant";
 import { getSettings } from "../../../../../lib/settings";
@@ -8,6 +9,7 @@ import { createMessagingProvider } from "../../../../../lib/providers/messaging"
 import { normalizeUkrainianPhone } from "../../../../../lib/phone";
 import { dbBinding } from "../../../../../lib/db";
 
+const PRIMARY_ORGANIZATION_ID = 1;
 const TEST_TEXT = "RadiologyOS: тестове повідомлення. Канал сповіщень налаштовано правильно.";
 
 export async function POST(request: Request) {
@@ -15,7 +17,9 @@ export async function POST(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.role !== "admin") return Response.json({ error: "Доступно лише адміністратору" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+    return Response.json({ error: "Доступно лише адміністратору основної організації" }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({})) as { channel?: string; to?: string };
   const channel = body.channel === "email" ? "email" : body.channel === "sms" ? "sms" : "";
