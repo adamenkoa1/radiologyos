@@ -141,6 +141,7 @@ Role {
 ```ts
 Protocol {
   id
+  organizationId
   studyRequestId
   doctorId
   templateId?
@@ -151,6 +152,8 @@ Protocol {
   version
 }
 ```
+
+Протокол та кожна його ревізія належать тому самому tenant, що й дослідження/заявка. Цей інваріант має перевірятися не лише API-фільтрами, а й на рівні D1. Історичні ревізії також зберігають `organizationId`, щоб читання історії не залежало від неявного tenant-контексту.
 
 ## Payment
 
