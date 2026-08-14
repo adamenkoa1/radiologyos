@@ -53,9 +53,17 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     role: string;
   }>();
 
-  // Legacy onboarding compatibility. This remains temporarily until the test
-  // and bootstrap paths can require explicit membership end-to-end.
+  // Legacy bootstrap compatibility is allowed only for a genuinely empty
+  // single-organization installation. Once any membership exists (or more than
+  // one active organization exists), tenant access is explicit and deny-by-default.
   if (!row) {
+    const bootstrap = await db.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM memberships) AS membershipCount,
+         (SELECT COUNT(*) FROM organizations WHERE active = 1) AS activeOrgCount`
+    ).first<{ membershipCount: number; activeOrgCount: number }>();
+    if (!bootstrap || Number(bootstrap.membershipCount) !== 0 || Number(bootstrap.activeOrgCount) !== 1) return null;
+
     const org = await db.prepare(
       "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
     ).first<{ organizationId: number; slug: string; organizationName: string }>();
