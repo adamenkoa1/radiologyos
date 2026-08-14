@@ -80,7 +80,7 @@ test("PACS settings cannot reference a nonexistent organization", async () => {
   });
 });
 
-test("DICOM integrity migration contains tenant and UID guards", async () => {
+test("DICOM integrity migration and Drizzle schema contain tenant and UID guards", async () => {
   const migration = await read("drizzle/0045_dicom_study_integrity.sql");
   assert.match(migration, /imaging_studies_booking_tenant_insert/);
   assert.match(migration, /imaging_studies_booking_tenant_update/);
@@ -88,4 +88,9 @@ test("DICOM integrity migration contains tenant and UID guards", async () => {
   assert.match(migration, /imaging_studies_uid_unique_update/);
   assert.match(migration, /imaging_studies_org_uid_idx/);
   assert.match(migration, /pacs_settings_org_insert/);
+
+  const schema = await read("db/schema.ts");
+  assert.match(schema, /imaging_studies_org_idx/);
+  assert.match(schema, /imaging_studies_org_uid_idx/);
+  assert.match(schema, /study_instance_uid != ''/);
 });
