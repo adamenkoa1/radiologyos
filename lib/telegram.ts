@@ -1,7 +1,7 @@
-// Best-effort Telegram notifications for the registrar. Disabled (a no-op)
-// until an admin saves a bot token and chat id in /staff/settings.
+// Best-effort Telegram notifications. Credentials are tenant-scoped; callers
+// without an explicit organization remain on legacy/public organization 1.
 
-import { getSettings, setSetting } from "./settings";
+import { getTenantSettings, setTenantSetting } from "./tenant-settings";
 
 function escapeHtml(value: string): string {
   return value.replace(/[&<>]/g, (m) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" }[m] as string));
@@ -26,11 +26,13 @@ export function bookingMessage(notice: BookingNotice): string {
   return lines.join("\n");
 }
 
-// Sends a message to the department chat and reports the outcome. Returns a
-// human-readable Ukrainian error on failure (used by the "send test" button).
-export async function sendTelegramResult(db: D1Database, text: string): Promise<{ ok: boolean; error?: string }> {
+export async function sendTelegramResult(
+  db: D1Database,
+  text: string,
+  organizationId = 1,
+): Promise<{ ok: boolean; error?: string }> {
   const { telegram_bot_token: token, telegram_chat_id: chatId } =
-    await getSettings(db, ["telegram_bot_token", "telegram_chat_id"]);
+    await getTenantSettings(db, ["telegram_bot_token", "telegram_chat_id"], organizationId);
   if (!token || !chatId) return { ok: false, error: "Спочатку збережіть токен бота та ID чату" };
   try {
     const controller = new AbortController();
@@ -50,15 +52,17 @@ export async function sendTelegramResult(db: D1Database, text: string): Promise<
   }
 }
 
-// Best-effort variant for the booking path — never throws, ignores the reason.
-export async function sendTelegram(db: D1Database, text: string): Promise<boolean> {
-  return (await sendTelegramResult(db, text)).ok;
+export async function sendTelegram(db: D1Database, text: string, organizationId = 1): Promise<boolean> {
+  return (await sendTelegramResult(db, text, organizationId)).ok;
 }
 
-// Надсилає повідомлення конкретному chat_id (пацієнту, який під'єднав бота).
-// Використовує той самий токен відділення. Повертає причину помилки укр.
-export async function sendTelegramTo(db: D1Database, chatId: string, text: string): Promise<{ ok: boolean; error?: string }> {
-  const { telegram_bot_token: token } = await getSettings(db, ["telegram_bot_token"]);
+export async function sendTelegramTo(
+  db: D1Database,
+  chatId: string,
+  text: string,
+  organizationId = 1,
+): Promise<{ ok: boolean; error?: string }> {
+  const { telegram_bot_token: token } = await getTenantSettings(db, ["telegram_bot_token"], organizationId);
   if (!token) return { ok: false, error: "Бот Telegram не налаштований" };
   if (!chatId) return { ok: false, error: "Немає chat_id пацієнта" };
   try {
@@ -79,27 +83,29 @@ export async function sendTelegramTo(db: D1Database, chatId: string, text: strin
   }
 }
 
-// Ім'я бота (@username) для побудови deep-link t.me/<username>?start=…
-// Кешується в налаштуваннях, щоб не смикати getMe на кожен запит.
-export async function telegramBotUsername(db: D1Database): Promise<string> {
+export async function telegramBotUsername(db: D1Database, organizationId = 1): Promise<string> {
   const { telegram_bot_token: token, telegram_bot_username: cached } =
-    await getSettings(db, ["telegram_bot_token", "telegram_bot_username"]);
+    await getTenantSettings(db, ["telegram_bot_token", "telegram_bot_username"], organizationId);
   if (!token) return "";
   if (cached) return cached;
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
     const data = await response.json().catch(() => ({})) as { ok?: boolean; result?: { username?: string } };
     const username = data.ok && data.result?.username ? data.result.username : "";
-    if (username) await setSetting(db, "telegram_bot_username", username);
+    if (username) await setTenantSetting(db, "telegram_bot_username", username, organizationId);
     return username;
   } catch {
     return "";
   }
 }
 
-// Реєструє webhook бота на наш публічний ендпоінт із секретом-заголовком.
-export async function setTelegramWebhook(db: D1Database, url: string, secret: string): Promise<{ ok: boolean; error?: string }> {
-  const { telegram_bot_token: token } = await getSettings(db, ["telegram_bot_token"]);
+export async function setTelegramWebhook(
+  db: D1Database,
+  url: string,
+  secret: string,
+  organizationId = 1,
+): Promise<{ ok: boolean; error?: string }> {
+  const { telegram_bot_token: token } = await getTenantSettings(db, ["telegram_bot_token"], organizationId);
   if (!token) return { ok: false, error: "Спочатку збережіть токен бота" };
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
