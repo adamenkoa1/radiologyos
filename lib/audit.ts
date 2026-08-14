@@ -29,6 +29,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   settings_update: "Змінено налаштування",
   org_profile_update: "Змінено профіль організації",
   pacs_update: "Змінено налаштування PACS",
+  imaging_study_viewed: "Переглянуто медичні зображення",
   booking_confirm: "Підтверджено запис",
   booking_cancel: "Скасовано запис",
   booking_reschedule: "Перенесено запис",
