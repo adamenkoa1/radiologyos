@@ -11,6 +11,8 @@
 - Міграція прибирає хибний `ready/issued` у заявок без клінічного документа, залишаючи системний audit-event замість створення вигаданого протоколу; додано behavioral coverage життєвого циклу.
 - DICOM/PACS-зв'язки отримали фізичний tenant-захист у D1: imaging study не може посилатися на заявку іншої організації, а один непорожній `StudyInstanceUID` не може бути прив'язаний до двох заявок одного tenant.
 - Drizzle schema синхронізовано з tenant/UID-індексами `imaging_studies`; додано D1 behavioral tests і перевірку належності PACS settings існуючій організації.
+- Автоматична DICOM-прив'язка за Accession тепер додатково вимагає валідний StudyInstanceUID, збіг модальності та дати дослідження; невідповідність fail-closed і не змінює imaging link.
+- QIDO series parser відкидає некоректні `SeriesInstanceUID`; відмови auto-link аудіюються без UID/ПІБ/телефону та покриті behavioral tests.
 
 ### Planned
 - Розділення `staff.html` на окремі модулі.

@@ -47,6 +47,10 @@ export type DicomStudyMatch = {
   instancesCount:number;
 };
 
+export type DicomAutoLinkCheck =
+  | { ok:true }
+  | { ok:false; reason:"missing_metadata" | "modality_mismatch" | "date_mismatch" };
+
 export const STUDY_STATUSES:StudyStatus[] = ["not_linked", "scheduled", "available", "archived"];
 
 export const STUDY_STATUS_LABELS:Record<StudyStatus,string> = {
@@ -158,7 +162,32 @@ export function parseQidoStudies(payload:unknown):DicomStudyMatch[] {
   }).filter((study) => isValidDicomUid(study.studyInstanceUid));
 }
 
+// Accession Number is necessary but not sufficient for unattended linking.
+// Require the standard QIDO study date and modality to agree with the booking.
+// DX accepts CR because some radiography systems report computed radiography
+// even when the local worklist uses the DX modality family.
+export function checkDicomAutoLinkMatch(
+  study:DicomStudyMatch,
+  expectedModality:string,
+  expectedDate:string,
+):DicomAutoLinkCheck {
+  const modality = study.modality.trim().toUpperCase();
+  const studyDate = /^\d{4}-\d{2}-\d{2}/.exec(study.studyDatetime)?.[0] || "";
+  const normalizedExpectedModality = expectedModality.trim().toUpperCase();
+  if (!modality || !studyDate || !normalizedExpectedModality || !/^\d{4}-\d{2}-\d{2}$/.test(expectedDate)) {
+    return { ok:false, reason:"missing_metadata" };
+  }
+  const modalityMatches = normalizedExpectedModality === "DX"
+    ? modality === "DX" || modality === "CR"
+    : modality === normalizedExpectedModality;
+  if (!modalityMatches) return { ok:false, reason:"modality_mismatch" };
+  if (studyDate !== expectedDate) return { ok:false, reason:"date_mismatch" };
+  return { ok:true };
+}
+
 // Parse a QIDO-RS "application/dicom+json" series response into plain objects.
+// Invalid SeriesInstanceUID rows are ignored so malformed PACS data never
+// reaches the client-side study/series model.
 export function parseQidoSeries(payload:unknown):DicomSeries[] {
   if (!Array.isArray(payload)) return [];
   return payload.map((entry) => {
@@ -170,7 +199,7 @@ export function parseQidoSeries(payload:unknown):DicomSeries[] {
       description:dicomValue(row, "0008103E"),
       instances:Number(dicomValue(row, "00201209")) || 0,
     };
-  }).filter((series) => series.seriesInstanceUid);
+  }).filter((series) => isValidDicomUid(series.seriesInstanceUid));
 }
 
 export type ImagingValidation =
