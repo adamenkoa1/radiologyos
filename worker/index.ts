@@ -3,7 +3,7 @@ import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } fr
 import handler from "vinext/server/app-router-entry";
 import { getSetting } from "../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
-import { runDueReminders } from "../lib/reminders";
+import { runDueRemindersForActiveOrganizations } from "../lib/reminders";
 
 interface Env {
   ASSETS: Fetcher;
@@ -55,7 +55,6 @@ const STATIC_ASSET_PATHS = new Set([
   "/hospital-emblem.jpg",
   "/window.svg",
 ]);
-const INITIAL_ORGANIZATION_ID = 1;
 
 function secure(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
@@ -63,16 +62,12 @@ function secure(response: Response, request?: Request): Response {
   if (request) {
     const url = new URL(request.url);
     const pathname = url.pathname;
-    // Canonical headers cover the static pages that do not all have HTML
-    // metadata. The patient cabinet is intentionally excluded from indexing.
     if (PUBLIC_CANONICAL_PATHS.has(pathname)) {
       headers.set("link", `<${new URL(pathname, url.origin).toString()}>; rel="canonical"`);
     }
     if (pathname === "/site/cabinet.html" || pathname === "/cabinet") {
       headers.set("x-robots-tag", "noindex, nofollow");
     }
-    // /api/site-content — публічний контент вітрини, кешується самим маршрутом
-    // (short max-age); решта /api та /staff лишаються no-store.
     const publicCacheable = pathname === "/api/site-content";
     if (!publicCacheable && (pathname.startsWith("/api/") || pathname.startsWith("/staff"))) {
       headers.set("cache-control", "no-store");
@@ -85,9 +80,6 @@ function isStaticAssetPath(pathname: string): boolean {
   return STATIC_ASSET_PATHS.has(pathname) || STATIC_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
 }
 
-// Чи вітрина в режимі «лише платні»: читаємо site_content з D1. Помилка/
-// відсутність налаштування = типовий режим (paid_and_free), тож військова
-// сторінка лишається доступною за замовчуванням.
 async function storefrontPaidOnly(db: D1Database): Promise<boolean> {
   try {
     return parseSiteContent(await getSetting(db, SITE_CONTENT_KEY)).storefrontType === "paid_only";
@@ -110,16 +102,8 @@ function unsafeCrossSiteRequest(request: Request): boolean {
   }
 }
 
-// Image security config. SVG sources with .svg extension auto-skip the
-// optimization endpoint on the client side (served directly, no proxy).
-// To route SVGs through the optimizer (with security headers), set
-// dangerouslyAllowSVG: true in next.config.js and uncomment below:
-// const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
-
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Make the site-owned D1 binding available to server route modules without
-    // importing the runtime-only `cloudflare:workers` module into the artifact.
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
     (globalThis as typeof globalThis & {
       __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
@@ -130,40 +114,27 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // With run_worker_first=true every request reaches this Worker before the
-    // static-asset service. Delegate generated Vite/vinext bundles and public
-    // files explicitly; otherwise the app router can return HTML/404 for CSS
-    // and JS requests, leaving the staff UI unstyled and unhydrated.
     if ((request.method === "GET" || request.method === "HEAD") && isStaticAssetPath(url.pathname)) {
       return secure(await env.ASSETS.fetch(request), request);
     }
 
-    // There is exactly one indexable public home. Old URLs shared with patients
-    // keep working but permanently consolidate to the domain root, preserving
-    // query parameters such as campaign attribution.
     if ((request.method === "GET" || request.method === "HEAD") && LEGACY_HOME_PATHS.has(url.pathname)) {
       const canonicalHome = new URL("/", url);
       canonicalHome.search = url.search;
       return secure(Response.redirect(canonicalHome.toString(), 308), request);
     }
 
-    // The tested teal storefront remains the source document for the canonical
-    // domain root; only its legacy URL aliases redirect above.
     if (url.pathname === "/") {
       const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
       return secure(await env.ASSETS.fetch(storefrontRequest), request);
     }
 
-    // Режим вітрини «лише платні»: сторінка військових недоступна — і прямий
-    // вхід на military.html, і /booking?category=military ведуть на прайс.
     const wantsMilitary = url.pathname === "/site/military.html"
       || (url.pathname === "/booking" && url.searchParams.get("category") === "military");
     if (wantsMilitary && await storefrontPaidOnly(env.DB)) {
       return secure(Response.redirect(new URL("/site/price.html", request.url).toString(), 302), request);
     }
 
-    // Legacy Next public routes → v22 static pages, so nobody lands on the old
-    // card-grid booking screen. Civilian price list / military free list / cabinet.
     if (url.pathname === "/booking") {
       const target = url.searchParams.get("category") === "military" ? "/site/military.html" : "/site/price.html";
       return secure(Response.redirect(new URL(target, request.url).toString(), 302), request);
@@ -186,12 +157,9 @@ const worker = {
     return secure(await handler.fetch(request, env, ctx), request);
   },
 
-  // Messaging credentials still live in global app_settings. Until they become
-  // per-organization, cron is deliberately limited to the initial tenant so a
-  // second organization can never receive reminders through the wrong channel.
   async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
-    ctx.waitUntil(runDueReminders(env.DB, Date.now(), INITIAL_ORGANIZATION_ID));
+    ctx.waitUntil(runDueRemindersForActiveOrganizations(env.DB, Date.now()));
   },
 };
 
