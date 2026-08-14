@@ -287,7 +287,13 @@ export const imagingStudies = sqliteTable("imaging_studies", {
   source: text("source").notNull().default("manual"),
   updatedBy: text("updated_by").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [index("imaging_studies_status_idx").on(table.studyStatus, table.updatedAt)]);
+}, table => [
+  index("imaging_studies_status_idx").on(table.studyStatus, table.updatedAt),
+  index("imaging_studies_org_idx").on(table.organizationId, table.studyStatus),
+  uniqueIndex("imaging_studies_org_uid_idx")
+    .on(table.organizationId, table.studyInstanceUid)
+    .where(sql`study_instance_uid != ''`),
+]);
 
 export const pacsSettings = sqliteTable("pacs_settings", {
   id: integer("id").primaryKey(),
