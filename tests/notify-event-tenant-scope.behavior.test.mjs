@@ -8,11 +8,7 @@ test("manual notification event is attributed to the staff tenant", async () => 
       "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'notify-org', 'Notify Org', 1)"
     ).run();
     const email = "notify-org2@example.com";
-    const cookie = await seedStaffSession(db, { email, role: "admin" });
-    await db.prepare(
-      `INSERT INTO memberships (organization_id, member_email, role, active)
-       VALUES (2, ?, 'admin', 1)`
-    ).bind(email).run();
+    const cookie = await seedStaffSession(db, { email, role: "admin", organizationId: 2 });
     const booking = await db.prepare(
       `INSERT INTO bookings
         (organization_id, code, name, phone, phone_normalized, service, service_code,
