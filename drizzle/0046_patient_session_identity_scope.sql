@@ -48,66 +48,149 @@ WHERE telegram_chat_id != '';
 CREATE INDEX IF NOT EXISTS telegram_link_tokens_identity_scope_idx
 ON telegram_link_tokens (organization_id, phone_normalized, identity_kind, identity_value, expires_at);
 
+-- Security tokens are valid only for an identity that really exists among the
+-- tenant's bookings for that exact phone. This makes the authorization scope a
+-- database invariant rather than trusting every future caller to construct it.
 CREATE TRIGGER IF NOT EXISTS patient_otp_identity_scope_insert
 BEFORE INSERT ON patient_otp_challenges
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient OTP identity scope required');
+  SELECT RAISE(ABORT, 'patient OTP identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS patient_otp_identity_scope_update
-BEFORE UPDATE OF identity_kind, identity_value ON patient_otp_challenges
+BEFORE UPDATE OF organization_id, phone_normalized, identity_kind, identity_value ON patient_otp_challenges
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient OTP identity scope required');
+  SELECT RAISE(ABORT, 'patient OTP identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS patient_session_identity_scope_insert
 BEFORE INSERT ON patient_sessions
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient session identity scope required');
+  SELECT RAISE(ABORT, 'patient session identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS patient_session_identity_scope_update
-BEFORE UPDATE OF identity_kind, identity_value ON patient_sessions
+BEFORE UPDATE OF organization_id, phone_normalized, identity_kind, identity_value ON patient_sessions
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient session identity scope required');
+  SELECT RAISE(ABORT, 'patient session identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS telegram_link_identity_scope_insert
 BEFORE INSERT ON telegram_link_tokens
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'Telegram identity scope required');
+  SELECT RAISE(ABORT, 'Telegram identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS telegram_link_identity_scope_update
-BEFORE UPDATE OF identity_kind, identity_value ON telegram_link_tokens
+BEFORE UPDATE OF organization_id, phone_normalized, identity_kind, identity_value ON telegram_link_tokens
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'Telegram identity scope required');
+  SELECT RAISE(ABORT, 'Telegram identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS patient_telegram_identity_insert
 BEFORE INSERT ON patient_telegram_identities
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient Telegram identity scope required');
+  SELECT RAISE(ABORT, 'patient Telegram identity scope invalid');
 END;
 
 CREATE TRIGGER IF NOT EXISTS patient_telegram_identity_update
-BEFORE UPDATE OF identity_kind, identity_value ON patient_telegram_identities
+BEFORE UPDATE OF organization_id, phone_normalized, identity_kind, identity_value ON patient_telegram_identities
 FOR EACH ROW
-WHEN NEW.identity_kind NOT IN ('dob','booking') OR NEW.identity_value = ''
+WHEN NEW.identity_kind NOT IN ('dob','booking')
+  OR NEW.identity_value = ''
+  OR NOT EXISTS (
+    SELECT 1 FROM bookings b
+    WHERE b.organization_id = NEW.organization_id
+      AND b.phone_normalized = NEW.phone_normalized
+      AND (
+        (NEW.identity_kind = 'dob' AND b.date_of_birth = NEW.identity_value)
+        OR (NEW.identity_kind = 'booking' AND b.code = NEW.identity_value)
+      )
+  )
 BEGIN
-  SELECT RAISE(ABORT, 'patient Telegram identity scope required');
+  SELECT RAISE(ABORT, 'patient Telegram identity scope invalid');
 END;
