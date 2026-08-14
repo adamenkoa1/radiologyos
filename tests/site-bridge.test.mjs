@@ -78,7 +78,9 @@ test("new bookings notify the registrar via Telegram (best-effort)", async () =>
 
 test("department settings are admin-only and validated", async () => {
   const route = await read("app/api/staff/settings/route.ts");
-  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.role !== "admin"/);
+  assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /telegram_bot_token/);
   assert.match(route, /pay_link/);
   assert.match(route, /paymentUrl\.protocol !== "https:"/);
@@ -93,7 +95,9 @@ test("department settings are admin-only and validated", async () => {
 
 test("a test-message endpoint verifies the Telegram connection (admin-only)", async () => {
   const route = await read("app/api/staff/settings/telegram-test/route.ts");
-  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.role !== "admin"/);
+  assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /sendTelegramResult\(/);
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /export async function sendTelegramResult/);
