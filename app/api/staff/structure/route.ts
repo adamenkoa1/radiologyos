@@ -5,14 +5,22 @@ import {
   sanitizeDepartmentStructure,
 } from "../../../../lib/department-structure";
 import { SITE_CONTENT_KEY, parseSiteContent, sanitizeSiteContent } from "../../../../lib/site-content";
-import { requireStaff } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { getSetting, setSetting } from "../../../../lib/settings";
+
+// Department structure and site content are still legacy-global settings tied
+// to the public organization. Until storage is tenantized, deny staff from any
+// secondary tenant rather than showing/editing org 1's editor data.
+const PRIMARY_ORGANIZATION_ID = 1;
 
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx || ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json({ error: "Розділ доступний лише персоналу основної організації" }, { status: 403 });
+  }
+  const member = ctx.member;
 
   const [structureStored, siteStored] = await Promise.all([
     getSetting(db, DEPARTMENT_STRUCTURE_KEY),
@@ -29,8 +37,11 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx || ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json({ error: "Розділ доступний лише персоналу основної організації" }, { status: 403 });
+  }
+  const member = ctx.member;
   if (member.role !== "admin") return Response.json({ error: "Редагувати структуру може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as { structure?: unknown; siteContent?: unknown };
