@@ -22,6 +22,10 @@ function sanitizeConfig(surface:string,value:unknown):SavedConfig|null{
   if(!STUDY_STATES.has(filter)||!EQUIPMENT.has(equipment))return null;
   return {filter,equipment};
 }
+function parseConfig(surface:string,value:string):SavedConfig{
+  try{return sanitizeConfig(surface,JSON.parse(value||"{}"))||{filter:"all",equipment:"all"}}
+  catch{return {filter:"all",equipment:"all"}}
+}
 
 export async function GET(request:Request){
   const db=dbBinding(); if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
@@ -33,8 +37,7 @@ export async function GET(request:Request){
     WHERE organization_id=? AND member_email=? AND surface=?
     ORDER BY name COLLATE NOCASE,id`).bind(ctx.organizationId,ctx.member.email,surface).all<{id:number;name:string;configJson:string;updatedAt:string}>();
   const views=(rows.results||[]).map(row=>({
-    id:row.id,name:row.name,updatedAt:row.updatedAt,
-    config:sanitizeConfig(surface,JSON.parse(row.configJson||"{}"))||{filter:"all",equipment:"all"},
+    id:row.id,name:row.name,updatedAt:row.updatedAt,config:parseConfig(surface,row.configJson),
   }));
   return Response.json({views},{headers:{"cache-control":"no-store"}});
 }
