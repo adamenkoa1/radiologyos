@@ -1,5 +1,6 @@
 // Видає пацієнту (за активною сесією кабінету) deep-link для під'єднання
-// Telegram-бота: t.me/<bot>?start=<token>. Токен прив'язаний до tenant + телефону.
+// Telegram-бота: t.me/<bot>?start=<token>. Токен прив'язаний до tenant,
+// телефону та доведеної ідентичності пацієнта.
 
 import { requirePatientSession } from "../../../lib/patient-auth";
 import { createTelegramLinkToken } from "../../../lib/telegram-link";
@@ -20,7 +21,12 @@ export async function POST(request: Request) {
   if (!username) {
     return Response.json({ error: "Telegram-канал ще не налаштований відділенням", botConfigured: false }, { status: 503 });
   }
-  const token = await createTelegramLinkToken(db, session.phoneNormalized, session.organizationId);
+  const token = await createTelegramLinkToken(
+    db,
+    session.phoneNormalized,
+    session.organizationId,
+    { kind:session.identityKind, value:session.identityValue },
+  );
   const url = `https://t.me/${username}?start=${token}`;
   return Response.json({ url }, { headers: { "cache-control": "no-store" } });
 }
