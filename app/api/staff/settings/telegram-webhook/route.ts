@@ -1,5 +1,6 @@
 // Вмикає Telegram-канал для пацієнтів: реєструє webhook бота на наш публічний
-// ендпоінт із секретним заголовком. Лише для адміністратора активного tenant.
+// ендпоінт із секретним заголовком. Telegram config is legacy-global, so only
+// the primary/public organization may administer it until storage is tenantized.
 
 import { requireOrgContext } from "../../../../../lib/tenant";
 import { getSettings, setSetting } from "../../../../../lib/settings";
@@ -7,12 +8,16 @@ import { setTelegramWebhook, telegramBotUsername } from "../../../../../lib/tele
 import { newSessionToken } from "../../../../../lib/auth";
 import { dbBinding } from "../../../../../lib/db";
 
+const PRIMARY_ORGANIZATION_ID = 1;
+
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.role !== "admin") return Response.json({ error: "Доступно лише адміністратору" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+    return Response.json({ error: "Доступно лише адміністратору основної організації" }, { status: 403 });
+  }
 
   const { telegram_bot_token: token, telegram_webhook_secret: existing } =
     await getSettings(db, ["telegram_bot_token", "telegram_webhook_secret"]);
