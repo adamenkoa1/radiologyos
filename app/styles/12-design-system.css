@@ -1,0 +1,185 @@
+/* RadiologyOS workspace visual system.
+   Loaded last so it can modernize the staff workspace without rewriting legacy page CSS. */
+
+.workspaceShell {
+  --ws-accent: #2563eb;
+  --ws-accent-soft: #eff6ff;
+  --ws-positive: #15803d;
+  --ws-warning: #b45309;
+  --ws-danger: #b91c1c;
+  --ws-ink: #172033;
+  --ws-muted: #667085;
+  --ws-line: #e4e7ec;
+  --ws-surface: #ffffff;
+  --ws-surface-subtle: #f8fafc;
+  --ws-radius-sm: 8px;
+  --ws-radius-md: 12px;
+  --ws-shadow-sm: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.08);
+  --ws-shadow-md: 0 8px 24px rgba(16,24,40,.08);
+}
+
+.workspaceShell.themeDark {
+  --ws-accent-soft: rgba(59,130,246,.16);
+  --ws-ink: #f8fafc;
+  --ws-muted: #aab4c5;
+  --ws-line: #283346;
+  --ws-surface: #141c2b;
+  --ws-surface-subtle: #101827;
+  --ws-shadow-sm: 0 1px 2px rgba(0,0,0,.28);
+  --ws-shadow-md: 0 8px 24px rgba(0,0,0,.32);
+}
+
+/* Sidebar: dense clinical navigation, not decorative app cards. */
+.workspaceShell .workspaceSidebar {
+  border-right: 1px solid rgba(148,163,184,.18);
+  box-shadow: 10px 0 28px rgba(15,23,42,.04);
+}
+
+.workspaceShell .workspaceBrand {
+  min-height: 68px;
+}
+
+.workspaceShell .workspaceBrandMark {
+  border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.18);
+}
+
+.workspaceShell .workspaceNavigation > p {
+  margin: 18px 12px 7px;
+  font-size: 10px;
+  line-height: 1.2;
+  font-weight: 800;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  opacity: .56;
+}
+
+.workspaceShell .workspaceModuleLink {
+  min-height: 38px;
+  border-radius: 9px;
+  gap: 10px;
+  transition: background-color .14s ease, color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+
+.workspaceShell .workspaceModuleLink:hover {
+  transform: translateX(1px);
+}
+
+.workspaceShell .workspaceModuleLink.active {
+  box-shadow: inset 3px 0 0 var(--ws-accent);
+}
+
+.workspaceShell .workspaceSubLink {
+  min-height: 30px;
+  border-radius: 7px;
+}
+
+/* Replace colorful emoji visually with a consistent monochrome line-icon system. */
+.workspaceShell .workspaceModuleLink > span[aria-hidden="true"] {
+  width: 18px;
+  height: 18px;
+  flex: 0 0 18px;
+  font-size: 0;
+  color: transparent;
+  background-color: currentColor;
+  opacity: .9;
+  -webkit-mask: var(--ws-nav-icon) center / 18px 18px no-repeat;
+  mask: var(--ws-nav-icon) center / 18px 18px no-repeat;
+}
+
+.workspaceShell .workspaceModuleLink[href="/staff/dashboard"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 10.5 12 3l9 7.5'/%3E%3Cpath d='M5 9.5V21h14V9.5'/%3E%3Cpath d='M9 21v-7h6v7'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/intake"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 4h16v16H4z'/%3E%3Cpath d='M8 12h8'/%3E%3Cpath d='m13 9 3 3-3 3'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/appointments"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/protocols"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z'/%3E%3Cpath d='M14 2v6h6M8 13h8M8 17h6'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/studies"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8 12 2.7 2.7L16.5 9'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/patients"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='9' cy='7' r='4'/%3E%3Cpath d='M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/imaging"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='3' width='18' height='18' rx='2'/%3E%3Ccircle cx='12' cy='12' r='5'/%3E%3Cpath d='M12 7v10M7 12h10'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/schedule"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M14.7 6.3a4 4 0 0 0-5 5L3 18v3h3l6.7-6.7a4 4 0 0 0 5-5l-2.4 2.4-3-3z'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/reports"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 19V9M10 19V5M16 19v-7M22 19H2'/%3E%3C/svg%3E"); }
+.workspaceShell .workspaceModuleLink[href="/staff/settings"] { --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='3'/%3E%3Cpath d='M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21H9.6v-.1A1.7 1.7 0 0 0 8 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 3.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H2V9.6h.1A1.7 1.7 0 0 0 3.6 8a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 8 3.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V2h4v.1A1.7 1.7 0 0 0 15 3.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 8c.17.38.39.72.7 1 .3.28.68.45 1.1.5h.1v4h-.1a1.7 1.7 0 0 0-1.8 1.5z'/%3E%3C/svg%3E"); }
+
+/* Cleaner header hierarchy and denser workspace controls. */
+.workspaceShell .workspaceTopbar {
+  min-height: 58px;
+  border-bottom: 1px solid var(--ws-line);
+  box-shadow: 0 1px 0 rgba(16,24,40,.02);
+}
+
+.workspaceShell .workspacePageHead {
+  padding-top: 22px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--ws-line);
+}
+
+.workspaceShell .workspacePageHead h1 {
+  color: var(--ws-ink);
+  letter-spacing: -.025em;
+}
+
+.workspaceShell .workspacePageHead > div > p:not(.workspaceBreadcrumb) {
+  color: var(--ws-muted);
+  max-width: 78ch;
+}
+
+.workspaceShell .workspaceBreadcrumb {
+  color: var(--ws-muted);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.workspaceShell .workspacePageActions a,
+.workspaceShell .workspacePageActions button {
+  min-height: 34px;
+  border-radius: var(--ws-radius-sm);
+  font-weight: 700;
+  box-shadow: none;
+}
+
+.workspaceShell .workspacePageActions .primary {
+  box-shadow: 0 1px 2px rgba(37,99,235,.18);
+}
+
+/* Shared visual primitives for legacy pages. */
+.workspaceShell table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+.workspaceShell table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .035em;
+  text-transform: uppercase;
+}
+
+.workspaceShell table tbody tr {
+  transition: background-color .12s ease;
+}
+
+.workspaceShell table tbody tr:hover {
+  background: rgba(37,99,235,.035);
+}
+
+.workspaceShell :where(input, select, textarea) {
+  border-radius: var(--ws-radius-sm);
+}
+
+.workspaceShell :where(button, a)[class*="Btn"],
+.workspaceShell :where(button, a)[class*="Button"] {
+  border-radius: var(--ws-radius-sm);
+}
+
+.workspaceShell .workspaceSidebarFoot {
+  border-top: 1px solid rgba(148,163,184,.16);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspaceShell .workspaceModuleLink,
+  .workspaceShell table tbody tr { transition: none; }
+  .workspaceShell .workspaceModuleLink:hover { transform: none; }
+}
