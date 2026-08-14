@@ -22,6 +22,7 @@ type Data = {
   profile:{ type:string; label:string };
   features:{ dicomPacs:boolean };
 };
+type SavedView = { id:number; name:string; config:{ filter:string; equipment:string } };
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
@@ -29,7 +30,6 @@ const roleLabels: Record<StaffRole,string> = {
 };
 const equipmentNames: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 
-// Клінічні групи станів — для кольору бейджа й логічного порядку черги.
 const STATE_GROUP: Record<string,"intake"|"active"|"reporting"|"done"|"stopped"> = {
   new:"intake", requested:"intake", needs_verification:"intake", scheduled:"intake",
   confirmed:"intake", rescheduled:"intake",
@@ -48,6 +48,10 @@ export default function StudiesPage() {
   const [query,setQuery] = useState("");
   const [notice,setNotice] = useState("");
   const [busy,setBusy] = useState(0);
+  const [savedViews,setSavedViews] = useState<SavedView[]>([]);
+  const [selectedViewId,setSelectedViewId] = useState(0);
+  const [viewName,setViewName] = useState("");
+  const [viewBusy,setViewBusy] = useState(false);
 
   async function load() {
     const response = await fetch("/api/staff/studies", { cache:"no-store" });
@@ -58,8 +62,15 @@ export default function StudiesPage() {
     setError("");
   }
 
+  async function loadSavedViews() {
+    const response = await fetch("/api/staff/saved-views?surface=studies", { cache:"no-store" });
+    if (!response.ok) return;
+    const payload = await response.json() as { views?:SavedView[] };
+    setSavedViews(payload.views || []);
+  }
+
   useEffect(() => {
-    const timer = window.setTimeout(() => { void load(); }, 0);
+    const timer = window.setTimeout(() => { void load(); void loadSavedViews(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
@@ -84,8 +95,6 @@ export default function StudiesPage() {
     }
   }
 
-  // Призначення виконавця: reg/admin шлють оновлення на той самий PATCH
-  // /api/staff/bookings, що валідує роль виконавця й фіксує подію.
   async function assign(study:Study, field:"radiologist"|"radiographer", email:string) {
     setBusy(study.id); setNotice("");
     try {
@@ -107,6 +116,54 @@ export default function StudiesPage() {
     } finally {
       setBusy(0);
     }
+  }
+
+  async function saveView() {
+    const name=viewName.trim();
+    if (!name) { setNotice("Вкажіть назву варіанта"); return; }
+    setViewBusy(true); setNotice("");
+    try {
+      const response=await fetch("/api/staff/saved-views",{
+        method:"POST",headers:{"content-type":"application/json"},
+        body:JSON.stringify({surface:"studies",name,config:{filter,equipment}}),
+      });
+      const payload=await response.json().catch(()=>({})) as {error?:string;id?:number};
+      if(!response.ok){setNotice(payload.error||"Не вдалося зберегти варіант");return;}
+      setViewName("");
+      await loadSavedViews();
+      if(payload.id)setSelectedViewId(payload.id);
+      setNotice("Варіант списку збережено");
+    } catch {
+      setNotice("Помилка мережі — не вдалося зберегти варіант");
+    } finally { setViewBusy(false); }
+  }
+
+  function applyView(id:number) {
+    setSelectedViewId(id);
+    const view=savedViews.find(v=>v.id===id);
+    if(!view)return;
+    setFilter(view.config.filter||"all");
+    setEquipment(view.config.equipment||"all");
+    setQuery("");
+    setNotice("");
+  }
+
+  async function deleteView() {
+    if(!selectedViewId)return;
+    setViewBusy(true); setNotice("");
+    try {
+      const response=await fetch("/api/staff/saved-views",{
+        method:"DELETE",headers:{"content-type":"application/json"},
+        body:JSON.stringify({surface:"studies",id:selectedViewId}),
+      });
+      const payload=await response.json().catch(()=>({})) as {error?:string};
+      if(!response.ok){setNotice(payload.error||"Не вдалося видалити варіант");return;}
+      setSelectedViewId(0);
+      await loadSavedViews();
+      setNotice("Варіант списку видалено");
+    } catch {
+      setNotice("Помилка мережі — не вдалося видалити варіант");
+    } finally { setViewBusy(false); }
   }
 
   const visible = useMemo(() => {
@@ -143,25 +200,36 @@ export default function StudiesPage() {
         <small>{data.profile?.label ? `${data.profile.label} · ` : ""}{data.studies.length} досліджень · роль: {roleLabels[data.role]}{data.canManage ? "" : " · лише перегляд"}</small>
       </div>
 
-      {notice && <p className="staffError" role="alert" onClick={()=>setNotice("")}>{notice}</p>}
+      {notice && <p className="staffError" role="status" onClick={()=>setNotice("")}>{notice}</p>}
+
+      <div className="studiesToolbar" aria-label="Варіанти списку">
+        <select value={selectedViewId||""} onChange={(e)=>applyView(Number(e.target.value))} aria-label="Мої варіанти списку">
+          <option value="">Мої варіанти…</option>
+          {savedViews.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}
+        </select>
+        <input value={viewName} maxLength={48} onChange={(e)=>setViewName(e.target.value)} placeholder="Назва нового варіанта" aria-label="Назва нового варіанта"/>
+        <button type="button" className="studiesClear" disabled={viewBusy} onClick={()=>void saveView()}>Зберегти варіант</button>
+        {selectedViewId ? <button type="button" className="studiesClear" disabled={viewBusy} onClick={()=>void deleteView()}>Видалити</button> : null}
+        <small>Зберігаються стан і апарат; текст пошуку не зберігається.</small>
+      </div>
 
       <div className="studiesToolbar">
-        <input type="search" className="studiesSearch" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Пошук: код, пацієнт, дослідження" aria-label="Пошук досліджень"/>
-        <select value={equipment} onChange={(e)=>setEquipment(e.target.value)} aria-label="Апарат">
+        <input type="search" className="studiesSearch" value={query} onChange={(e)=>{setQuery(e.target.value);setSelectedViewId(0);}} placeholder="Пошук: код, пацієнт, дослідження" aria-label="Пошук досліджень"/>
+        <select value={equipment} onChange={(e)=>{setEquipment(e.target.value);setSelectedViewId(0);}} aria-label="Апарат">
           <option value="all">Усі апарати</option>
           <option value="ct">КТ</option><option value="xray">Рентген</option><option value="fluoro">Флюорограф</option>
         </select>
-        {(query || equipment!=="all" || filter!=="all") && <button type="button" className="studiesClear" onClick={()=>{setQuery("");setEquipment("all");setFilter("all");}}>Скинути</button>}
+        {(query || equipment!=="all" || filter!=="all") && <button type="button" className="studiesClear" onClick={()=>{setQuery("");setEquipment("all");setFilter("all");setSelectedViewId(0);}}>Скинути</button>}
         <span className="studiesResultCount">Показано: {visible.length}</span>
       </div>
 
       <div className="studiesTabs" role="tablist" aria-label="Фільтр за станом">
         <button type="button" role="tab" aria-selected={filter==="all"}
-          className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>
+          className={filter==="all"?"active":""} onClick={()=>{setFilter("all");setSelectedViewId(0);}}>
           Усі <b>{data.studies.length}</b>
         </button>
         {activeStates.map((s)=><button key={s.v} type="button" role="tab" aria-selected={filter===s.v}
-          className={filter===s.v?"active":""} onClick={()=>setFilter(s.v)}>
+          className={filter===s.v?"active":""} onClick={()=>{setFilter(s.v);setSelectedViewId(0);}}>
           {s.l} <b>{s.count}</b>
         </button>)}
       </div>
