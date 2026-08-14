@@ -66,10 +66,16 @@ export interface OrgStudyRow {
   assignedRadiographerEmail: string;
 }
 
-// Реєстр досліджень організації: заявки, збагачені прив'язкою до DICOM-студії
-// та призначеними виконавцями. Строго tenant-scoped — фільтр organization_id
-// зі серверного контексту.
+// Реєстр досліджень: tenant scope застосовується завжди, а клінічні ролі
+// додатково бачать лише записи, призначені саме їм. Admin/registrar можуть
+// бачити всю чергу своєї організації для диспетчеризації та призначення.
 export async function listOrgStudies(db: D1Database, ctx: OrgContext, limit = 500): Promise<OrgStudyRow[]> {
+  const assignment = ctx.role === "radiologist"
+    ? { sql: " AND b.assigned_radiologist_email = ?", binds: [ctx.member.email] }
+    : ctx.role === "radiographer"
+      ? { sql: " AND b.assigned_radiographer_email = ?", binds: [ctx.member.email] }
+      : { sql: "", binds: [] as string[] };
+
   const result = await db.prepare(
     `SELECT b.id AS id, b.code AS code, b.name AS name, b.service AS service,
        b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
@@ -79,10 +85,10 @@ export async function listOrgStudies(db: D1Database, ctx: OrgContext, limit = 50
        s.study_status AS studyStatus, s.accession_number AS accessionNumber
      FROM bookings b
      LEFT JOIN imaging_studies s ON s.booking_id = b.id AND s.organization_id = b.organization_id
-     WHERE b.organization_id = ?
+     WHERE b.organization_id = ?${assignment.sql}
      ORDER BY b.desired_date DESC, b.desired_time DESC
      LIMIT ?`
-  ).bind(ctx.organizationId, limit).all<OrgStudyRow>();
+  ).bind(ctx.organizationId, ...assignment.binds, limit).all<OrgStudyRow>();
   return result.results ?? [];
 }
 
@@ -92,9 +98,7 @@ export interface OrgClinician {
   role: string;
 }
 
-// Виконавці організації, яких можна призначати на дослідження: активні
-// лікарі-рентгенологи та рентгенолаборанти — учасники цього tenant.
-// Роль береться з memberships, бо саме tenant membership є authoritative.
+// Виконавці для призначення — лише активні учасники цього tenant.
 export async function listOrgClinicians(db: D1Database, ctx: OrgContext): Promise<OrgClinician[]> {
   const result = await db.prepare(
     `SELECT sm.email AS email, sm.display_name AS displayName, m.role AS role

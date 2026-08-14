@@ -1,11 +1,12 @@
 import { sendPatientMessage, type ReminderBooking } from "../../../../lib/notify";
-import { canWriteNotes, type StaffRole } from "../../../../lib/staff-auth";
+import { canAccessBooking, canWriteNotes, type StaffRole } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
 
 // Разове повідомлення пацієнту, ініційоване персоналом (результат готовий,
-// затримка, жива черга тощо) — окремо від автопідтвердження. Доступне всім
-// активним працівникам (canWriteNotes), зокрема лікарю-рентгенологу.
+// затримка, жива черга тощо) — окремо від автопідтвердження. Admin/registrar
+// можуть працювати з усією tenant-чергою; клінічні ролі — лише з призначеними
+// їм заявками через ту саму security primitive, що й протоколи/PACS.
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
@@ -23,6 +24,9 @@ export async function POST(request: Request) {
   }
   if (message.length < 3) {
     return Response.json({ error: "Введіть текст повідомлення" }, { status: 400 });
+  }
+  if (!(await canAccessBooking(db, ctx.member, bookingId, ctx.organizationId))) {
+    return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
   }
 
   const booking = await db.prepare(
