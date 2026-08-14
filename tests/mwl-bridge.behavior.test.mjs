@@ -8,7 +8,7 @@ async function addOrganization(db, id, slug, name) {
 }
 
 async function adminCookie(db, organizationId, email) {
-  const cookie = await seedStaffSession(db, { email, role: "admin" });
+  const cookie = await seedStaffSession(db, { email, role: "admin", withMembership: false });
   await db.prepare(
     `INSERT INTO memberships (organization_id, member_email, role, active)
      VALUES (?, ?, 'admin', 1)`,
