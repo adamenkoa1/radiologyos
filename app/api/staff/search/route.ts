@@ -123,7 +123,7 @@ export async function GET(request: Request) {
 
   const maintenance = await db.prepare(
     `SELECT id, equipment_id AS equipmentId, event_type AS eventType, status, title, vendor, due_date AS dueDate
-       FROM equipment_maintenance_events
+       FROM equipment_maintenance
       WHERE organization_id = ? AND (title LIKE ? OR details LIKE ? OR vendor LIKE ?)
       ORDER BY updated_at DESC LIMIT 6`
   ).bind(ctx.organizationId,`%${q}%`,`%${q}%`,`%${q}%`).all<{
