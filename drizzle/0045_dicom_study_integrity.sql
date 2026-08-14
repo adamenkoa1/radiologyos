@@ -14,7 +14,10 @@ WHERE EXISTS (
     AND b.organization_id != imaging_studies.organization_id
 );
 
-CREATE INDEX IF NOT EXISTS imaging_studies_org_uid_idx
+-- Fail closed if historical duplicates already exist. Choosing one of two
+-- clinical links automatically would risk attaching images to the wrong study;
+-- a failed migration forces explicit review before a production rollout.
+CREATE UNIQUE INDEX IF NOT EXISTS imaging_studies_org_uid_idx
 ON imaging_studies (organization_id, study_instance_uid)
 WHERE study_instance_uid != '';
 
