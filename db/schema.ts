@@ -290,7 +290,7 @@ export const imagingStudies = sqliteTable("imaging_studies", {
 }, table => [
   index("imaging_studies_status_idx").on(table.studyStatus, table.updatedAt),
   index("imaging_studies_org_idx").on(table.organizationId, table.studyStatus),
-  index("imaging_studies_org_uid_idx")
+  uniqueIndex("imaging_studies_org_uid_idx")
     .on(table.organizationId, table.studyInstanceUid)
     .where(sql`study_instance_uid != ''`),
 ]);
