@@ -44,8 +44,17 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Patient OTP primitive tests
-        run: node --experimental-strip-types --test tests/patient-otp.behavior.test.mjs
+      - name: OTP challenge lifecycle tests
+        run: node --experimental-strip-types --test --test-name-pattern="OTP is six digits|wrong OTP|expired OTP|creating a newer OTP" tests/patient-otp.behavior.test.mjs
+
+      - name: Patient session scope primitive test
+        run: node --experimental-strip-types --test --test-name-pattern="patient sessions carry" tests/patient-otp.behavior.test.mjs
+
+      - name: D1 invalid patient scope primitive test
+        run: node --experimental-strip-types --test --test-name-pattern="D1 rejects patient auth scopes" tests/patient-otp.behavior.test.mjs
+
+      - name: OTP normalizer primitive test
+        run: node --experimental-strip-types --test --test-name-pattern="OTP normalizer" tests/patient-otp.behavior.test.mjs
 
       - name: Patient identity migration test
         run: node --experimental-strip-types --test tests/patient-identity-migration.behavior.test.mjs
