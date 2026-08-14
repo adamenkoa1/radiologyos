@@ -1,5 +1,3 @@
-import { audit } from "./audit";
-
 type Candidate = {
   organizationId:number;
   key:string;
@@ -16,6 +14,25 @@ function kyivDate(now:number) {
   return new Intl.DateTimeFormat("en-CA",{
     timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit",
   }).format(new Date(now));
+}
+
+async function auditAutomation(
+  db:D1Database,
+  organizationId:number,
+  action:"task_auto_created"|"task_auto_resolved",
+  targetId:number,
+  source:string,
+  sourceId:string,
+) {
+  try {
+    const details=JSON.stringify({source,sourceId}).slice(0,4000);
+    await db.prepare(`INSERT INTO security_audit_log
+      (organization_id,actor_email,action,resource,target_id,details_json)
+      VALUES (?,'system:automation',?,'task',?,?)`)
+      .bind(organizationId,action,String(targetId),details).run();
+  } catch {
+    // Audit must never block the operational task run.
+  }
 }
 
 async function activeAssignee(db:D1Database,organizationId:number,email:string) {
@@ -93,7 +110,7 @@ export async function runOperationalTasks(db:D1Database,now=Date.now()):Promise<
       if(Number(result.meta.changes||0)>0) {
         created++;
         const id=Number(result.meta.last_row_id||0);
-        await audit(db,{organizationId:task.organizationId,actorEmail:"system:automation",action:"task_auto_created",resource:"task",targetId:id,details:{source:task.sourceEntityType,sourceId:task.sourceEntityId}});
+        await auditAutomation(db,task.organizationId,"task_auto_created",id,task.sourceEntityType,task.sourceEntityId);
       }
     }
 
@@ -107,7 +124,7 @@ export async function runOperationalTasks(db:D1Database,now=Date.now()):Promise<
         .bind(org.id,task.id).run();
       if(Number(result.meta.changes||0)>0) {
         resolved++;
-        await audit(db,{organizationId:org.id,actorEmail:"system:automation",action:"task_auto_resolved",resource:"task",targetId:task.id,details:{source:task.sourceType,sourceId:task.sourceId}});
+        await auditAutomation(db,org.id,"task_auto_resolved",task.id,task.sourceType,task.sourceId);
       }
     }
   }
