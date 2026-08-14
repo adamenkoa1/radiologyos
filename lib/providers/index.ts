@@ -1,8 +1,8 @@
 // Резолвер провайдерів — добирає реалізації інтеграцій у tenant-контексті.
 //
-// Messaging configuration is still legacy-global in app_settings. The external
-// calendar URL is also legacy-global and belongs to the primary/public tenant,
-// so secondary tenants must not receive it until calendar storage is tenantized.
+// Messaging configuration and the external calendar URL are still legacy-global
+// in app_settings and belong to the primary/public tenant. Secondary tenants
+// must not receive those credentials/capabilities until storage is tenantized.
 // PACS та payment вже мають per-org джерела.
 
 import { getSettings } from "../settings";
@@ -14,6 +14,10 @@ import { createPaymentProvider, type PaymentConfig } from "./payment";
 import type { PacsProvider, ResolvedProviders } from "./types";
 
 const PRIMARY_ORGANIZATION_ID = 1;
+const MESSAGING_SETTING_KEYS = [
+  "sms_gateway_url", "sms_gateway_auth",
+  "email_gateway_url", "email_gateway_auth", "email_gateway_from",
+];
 
 // Дістає конфіг оплат із settings_json профілю організації (безпечно).
 function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
@@ -28,15 +32,16 @@ function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
 }
 
 export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise<ResolvedProviders> {
-  const calendarUrl = ctx.organizationId === PRIMARY_ORGANIZATION_ID
+  const primaryTenant = ctx.organizationId === PRIMARY_ORGANIZATION_ID;
+  const messagingSettings = primaryTenant
+    ? getSettings(db, MESSAGING_SETTING_KEYS)
+    : Promise.resolve({} as Record<string, string>);
+  const calendarUrl = primaryTenant
     ? getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => "")
     : Promise.resolve("");
 
   const [cfg, profile, pacsRow, icsUrl] = await Promise.all([
-    getSettings(db, [
-      "sms_gateway_url", "sms_gateway_auth",
-      "email_gateway_url", "email_gateway_auth", "email_gateway_from",
-    ]),
+    messagingSettings,
     getOrgProfile(db, ctx),
     db.prepare(
       "SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE organization_id = ? LIMIT 1"
