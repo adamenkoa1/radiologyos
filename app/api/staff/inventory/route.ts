@@ -158,15 +158,24 @@ export async function POST(request:Request) {
     const lot = await lotForOrg(db,ctx.organizationId,lotId);
     if (!lot) return Response.json({ error:"Партію не знайдено" }, { status:404 });
     if (!(await bookingForOrg(db,ctx.organizationId,bookingId))) return Response.json({ error:"Дослідження не належить до цієї організації" }, { status:400 });
-    try {
-      await db.prepare(
-        `INSERT INTO inventory_movements (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,booking_id,actor_email)
-         VALUES (?,?,?,'writeoff',-?,?,?,?)`
-      ).bind(ctx.organizationId,lot.itemId,lotId,quantity,reason,bookingId,ctx.member.email).run();
-    } catch (e) {
-      if (String(e).includes("insufficient_stock")) return Response.json({ error:"Недостатній залишок у цій партії" }, { status:409 });
-      throw e;
+
+    const result = await db.prepare(
+      `INSERT INTO inventory_movements
+        (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,booking_id,actor_email)
+       SELECT ?,?,?,'writeoff',-?,?,?,?
+       WHERE COALESCE((
+         SELECT SUM(quantity_delta)
+         FROM inventory_movements
+         WHERE organization_id = ? AND lot_id = ?
+       ),0) + 0.000001 >= ?`
+    ).bind(
+      ctx.organizationId,lot.itemId,lotId,quantity,reason,bookingId,ctx.member.email,
+      ctx.organizationId,lotId,quantity,
+    ).run();
+    if (Number(result.meta.changes || 0) < 1) {
+      return Response.json({ error:"Недостатній залишок у цій партії" }, { status:409 });
     }
+
     await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_written_off", resource:"inventory", targetId:lot.itemId, details:{ lotId, quantity, linkedBooking:!!bookingId } });
     return Response.json({ ok:true });
   }
