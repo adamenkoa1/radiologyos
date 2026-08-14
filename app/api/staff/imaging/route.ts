@@ -12,6 +12,7 @@ import {
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
+import { audit } from "../../../../lib/audit";
 
 type PacsRow = {
   dicomwebBaseUrl:string; viewerBaseUrl:string; aeTitle:string; enabled:number;
@@ -89,6 +90,14 @@ export async function GET(request: Request) {
          WHERE booking_id = ? AND organization_id = ?`
       ).bind(series.length, instances, bookingId, ctx.organizationId).run();
     }
+    await audit(db, {
+      organizationId: ctx.organizationId,
+      actorEmail: member.email,
+      action: "imaging_study_viewed",
+      resource: "imaging",
+      targetId: bookingId,
+      details: { linked: !!study, seriesCount: series.length },
+    });
     return Response.json({
       booking,
       study:study || null,
