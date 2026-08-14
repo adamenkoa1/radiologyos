@@ -39,3 +39,29 @@ export const patientOtpChallenges = sqliteTable("patient_otp_challenges", {
     table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue, table.createdAt,
   ),
 ]);
+
+export const telegramLinkTokensScoped = sqliteTable("telegram_link_tokens", {
+  tokenHash: text("token_hash").primaryKey(),
+  organizationId: integer("organization_id").notNull().default(1),
+  phoneNormalized: text("phone_normalized").notNull(),
+  identityKind: text("identity_kind").notNull().default(""),
+  identityValue: text("identity_value").notNull().default(""),
+  createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+  expiresAt: text("expires_at").notNull(),
+}, table => [
+  index("telegram_link_tokens_org_phone_idx").on(table.organizationId, table.phoneNormalized),
+  index("telegram_link_tokens_identity_scope_idx").on(
+    table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue, table.expiresAt,
+  ),
+]);
+
+export const patientTelegramIdentities = sqliteTable("patient_telegram_identities", {
+  organizationId: integer("organization_id").notNull(),
+  phoneNormalized: text("phone_normalized").notNull(),
+  identityKind: text("identity_kind").notNull(),
+  identityValue: text("identity_value").notNull(),
+  telegramChatId: text("telegram_chat_id").notNull().default(""),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+}, table => [
+  index("patient_telegram_chat_idx").on(table.telegramChatId),
+]);
