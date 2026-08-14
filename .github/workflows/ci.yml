@@ -44,8 +44,11 @@ jobs:
       - name: Build application
         run: npm run build
 
-      - name: Patient auth and migration tests
-        run: node --experimental-strip-types --test tests/patient-otp.behavior.test.mjs tests/patient-identity-migration.behavior.test.mjs
+      - name: Patient OTP primitive tests
+        run: node --experimental-strip-types --test tests/patient-otp.behavior.test.mjs
+
+      - name: Patient identity migration test
+        run: node --experimental-strip-types --test tests/patient-identity-migration.behavior.test.mjs
 
       - name: Shared-phone endpoint tests
         run: node --experimental-strip-types --test tests/patient-identity-scope.behavior.test.mjs tests/my-bookings.behavior.test.mjs tests/booking-cancel.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/booking-code.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs
