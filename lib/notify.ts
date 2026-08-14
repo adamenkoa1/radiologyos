@@ -5,6 +5,9 @@
 // Кожна спроба фіксується в журналі `patient_notifications` (outbox) і, за
 // успіху, в історії комунікацій пацієнта. Ніколи не кидає виняток —
 // підтвердження / перенесення не має падати через недоступний шлюз.
+//
+// Messaging credentials are still legacy-global and belong to org 1. Until
+// they are tenantized, secondary-tenant bookings must never use those gateways.
 
 import { getSettings } from "./settings";
 import { createMessagingProvider } from "./providers/messaging";
@@ -33,14 +36,7 @@ export interface ReminderSummary {
 }
 
 const DEPARTMENT = "Відділення променевої діагностики, Чернігівський військовий госпіталь";
-
-export function reminderText(kind: ReminderKind, booking: ReminderBooking): string {
-  const when = `${booking.desiredDate}${booking.desiredTime ? ` о ${booking.desiredTime}` : ""}`;
-  const lead = kind === "confirmed"
-    ? `Ваш запис на «${booking.service}» підтверджено`
-    : `Ваш запис на «${booking.service}» перенесено`;
-  return `${lead}: ${when}. ${DEPARTMENT}. Якщо час не підходить — зателефонуйте у реєстратуру.`;
-}
+const PRIMARY_ORGANIZATION_ID = 1;
 
 function truthy(value: string): boolean {
   return ["1", "true", "on", "yes"].includes(value.trim().toLowerCase());
@@ -52,6 +48,15 @@ async function bookingOrganizationId(db: D1Database, bookingId: number): Promise
   ).bind(bookingId).first<{ organizationId: number }>().catch(() => null);
   const id = Number(row?.organizationId || 0);
   return Number.isInteger(id) && id > 0 ? id : 0;
+}
+
+async function globalMessagingSettings(
+  db: D1Database,
+  organizationId: number,
+  keys: string[],
+): Promise<Record<string, string>> {
+  if (organizationId !== PRIMARY_ORGANIZATION_ID) return {};
+  return getSettings(db, keys);
 }
 
 async function record(
@@ -124,7 +129,7 @@ export async function sendPatientReminder(
   if (!organizationId) return summary;
   const body = reminderText(kind, booking);
 
-  const cfg = await getSettings(db, [
+  const cfg = await globalMessagingSettings(db, organizationId, [
     "patient_reminders_enabled", "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
@@ -154,12 +159,14 @@ export async function sendPatientReminder(
       send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
     });
   }
-  const wa = await whatsappConfig(db);
-  if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
-    channels.push({
-      channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
-      send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
-    });
+  if (organizationId === PRIMARY_ORGANIZATION_ID) {
+    const wa = await whatsappConfig(db);
+    if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
+      channels.push({
+        channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
+        send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
+      });
+    }
   }
   if (booking.phone) {
     channels.push({
@@ -215,7 +222,7 @@ export async function sendPatientMessage(
   const body = (text || "").trim();
   if (!body) return summary;
 
-  const cfg = await getSettings(db, [
+  const cfg = await globalMessagingSettings(db, organizationId, [
     "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
@@ -243,12 +250,14 @@ export async function sendPatientMessage(
       send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
     });
   }
-  const wa = await whatsappConfig(db);
-  if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
-    channels.push({
-      channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
-      send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
-    });
+  if (organizationId === PRIMARY_ORGANIZATION_ID) {
+    const wa = await whatsappConfig(db);
+    if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
+      channels.push({
+        channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
+        send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
+      });
+    }
   }
   if (booking.phone) {
     channels.push({ channel: "sms", recipient: booking.phone, url: cfg.sms_gateway_url || "", send: () => messaging.sendSms(booking.phone, body) });
