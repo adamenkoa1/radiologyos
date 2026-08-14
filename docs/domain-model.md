@@ -157,6 +157,27 @@ Protocol {
 
 Клінічний документ `protocols` є джерелом істини для стану протоколу. Поля `bookings.protocol_status`, `bookings.protocol_number`, `protocol_ready_at` та `protocol_issued_at` — сумісна read-model для черг, звітів і кабінету пацієнта; D1 автоматично проєктує їх із документа та відхиляє прямі записи, що не відповідають поточному протоколу. Заявка без рядка `protocols` не може рекламувати готовий або виданий результат.
 
+## ImagingStudy / DICOM
+
+```ts
+ImagingStudy {
+  organizationId
+  bookingId
+  accessionNumber
+  studyInstanceUid
+  modality
+  seriesCount
+  instancesCount
+  studyStatus
+  studyDatetime
+  source
+  updatedBy
+  updatedAt
+}
+```
+
+Зв'язок із PACS належить тому самому tenant, що й заявка: `(bookingId, organizationId)` перевіряється на рівні D1. Непорожній `StudyInstanceUID` може бути прив'язаний лише до однієї заявки в межах однієї організації; різні організації не пов'язуються цим обмеженням між собою. Налаштування PACS також tenant-scoped і не можуть посилатися на неіснуючу організацію.
+
 ## Payment
 
 ```ts
