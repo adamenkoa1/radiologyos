@@ -49,6 +49,9 @@ test("system health reads imaging readiness only from the signed-in tenant", asy
     const cookie = await seedStaffSession(db, { email:"tenant-admin@health.test", role:"admin" });
 
     await db.prepare(
+      "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'health-other-tenant', 'Health Other Tenant', 1)",
+    ).run();
+    await db.prepare(
       `UPDATE pacs_settings SET dicomweb_base_url = '', enabled = 0 WHERE organization_id = 1`,
     ).run();
     await db.prepare(
