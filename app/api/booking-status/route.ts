@@ -56,8 +56,8 @@ export async function PATCH(request: Request) {
   await db.batch([
     db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ? AND organization_id = ?").bind(booking.id, session.organizationId),
     db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'cancelled', 'patient_self_service', 'patient')"
-    ).bind(booking.id),
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'cancelled', 'patient_self_service', 'patient')"
+    ).bind(session.organizationId, booking.id),
   ]);
   return Response.json({ ok: true, status: "cancelled" }, { headers: { "cache-control": "no-store" } });
 }
