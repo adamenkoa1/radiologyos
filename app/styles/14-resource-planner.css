@@ -1,0 +1,383 @@
+/* Resource planner: equipment-first calendar for CT / X-ray / fluorography. */
+.workspaceShell .apptCal {
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface);
+  box-shadow: var(--ws-shadow-sm);
+  overflow: hidden;
+}
+
+.workspaceShell .apptCalBar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+}
+
+.workspaceShell .apptNav {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.workspaceShell .apptNav button,
+.workspaceShell .apptViewToggle button,
+.workspaceShell .apptStatusTab,
+.workspaceShell .apptNewBtn {
+  min-height: 32px;
+  border-radius: var(--ws-radius-sm);
+  font-weight: 700;
+}
+
+.workspaceShell .apptNav button {
+  min-width: 32px;
+}
+
+.workspaceShell .apptRange {
+  min-width: 104px;
+  margin-left: 6px;
+  color: var(--ws-ink);
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .apptCalBar :where(input, select) {
+  min-height: 32px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-surface);
+  color: var(--ws-ink);
+}
+
+.workspaceShell .apptViewToggle {
+  display: inline-flex;
+  padding: 3px;
+  border: 1px solid var(--ws-line);
+  border-radius: 10px;
+  background: var(--ws-surface);
+}
+
+.workspaceShell .apptViewToggle button {
+  min-height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--ws-muted);
+}
+
+.workspaceShell .apptViewToggle button.active {
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+}
+
+.workspaceShell .apptNewBtn {
+  margin-left: auto;
+  box-shadow: none;
+}
+
+.workspaceShell .apptStatusRow {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ws-line);
+  background: var(--ws-surface);
+}
+
+.workspaceShell .apptStatusTab {
+  flex: 0 0 auto;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--ws-muted);
+}
+
+.workspaceShell .apptStatusTab.active {
+  border-color: rgba(37,99,235,.24);
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+}
+
+.workspaceShell .apptStatusCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 19px;
+  height: 19px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.14);
+  font-size: 10px;
+}
+
+.workspaceShell .slotBoardHint {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--ws-line);
+  background: color-mix(in srgb, var(--ws-accent-soft) 55%, transparent);
+  color: var(--ws-muted);
+  font-size: 12px;
+}
+
+/* Day = true resource board. Each modality is a resource column. */
+.workspaceShell .roomSlotBoard {
+  padding: 12px;
+  background: var(--ws-surface-subtle);
+}
+
+.workspaceShell .slotLegend {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-bottom: 9px;
+  color: var(--ws-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workspaceShell .slotLegend i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.workspaceShell .roomSlotColumns {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  align-items: start;
+}
+
+.workspaceShell .roomSlotColumn {
+  min-width: 0;
+  border: 1px solid var(--ws-line);
+  border-radius: 10px;
+  background: var(--ws-surface);
+  overflow: hidden;
+}
+
+.workspaceShell .roomSlotColumn > header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 11px;
+  border-bottom: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+}
+
+.workspaceShell .roomSlotColumn > header b {
+  color: var(--ws-ink);
+  font-size: 13px;
+}
+
+.workspaceShell .roomSlotColumn > header span {
+  color: var(--ws-muted);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspaceShell .roomSlots {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 5px;
+  padding: 8px;
+  max-height: 650px;
+  overflow-y: auto;
+}
+
+.workspaceShell .roomSlot {
+  min-height: 54px;
+  padding: 7px 8px;
+  border-radius: 8px;
+  text-align: left;
+  box-shadow: none;
+}
+
+.workspaceShell .roomSlot strong {
+  display: block;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .roomSlot span,
+.workspaceShell .roomSlot small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceShell .roomSlot.free {
+  border: 1px solid rgba(22,163,74,.2);
+  background: rgba(22,163,74,.055);
+  color: #15803d;
+}
+
+.workspaceShell .roomSlot.free:hover {
+  border-color: rgba(22,163,74,.48);
+  background: rgba(22,163,74,.1);
+}
+
+.workspaceShell .roomSlot.occupied {
+  border: 1px solid rgba(37,99,235,.2);
+  background: rgba(37,99,235,.06);
+  color: var(--ws-ink);
+}
+
+.workspaceShell .roomSlot.blocked {
+  border: 1px dashed rgba(148,163,184,.5);
+  background: rgba(148,163,184,.08);
+  color: var(--ws-muted);
+}
+
+.workspaceShell .roomClosed {
+  margin: 12px;
+  padding: 18px 12px;
+  border: 1px dashed var(--ws-line);
+  border-radius: 8px;
+  color: var(--ws-muted);
+  text-align: center;
+}
+
+/* Week grid: neutral clinical grid with event color reserved for state. */
+.workspaceShell .apptWeek {
+  background: var(--ws-surface);
+}
+
+.workspaceShell .apptWeekHead {
+  border-bottom: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+}
+
+.workspaceShell .apptWeekHeadCell {
+  border-left-color: var(--ws-line);
+  color: var(--ws-muted);
+}
+
+.workspaceShell .apptWeekHeadCell b {
+  color: var(--ws-ink);
+}
+
+.workspaceShell .apptWeekHeadCell.sel {
+  background: var(--ws-accent-soft);
+}
+
+.workspaceShell .apptWeekHeadCell.today b {
+  color: var(--ws-accent);
+}
+
+.workspaceShell .apptHours,
+.workspaceShell .apptWeekCol {
+  border-color: var(--ws-line);
+}
+
+.workspaceShell .apptHour,
+.workspaceShell .apptSlotLine {
+  border-color: color-mix(in srgb, var(--ws-line) 78%, transparent);
+}
+
+.workspaceShell .apptEvent {
+  border-radius: 7px;
+  box-shadow: none;
+  transition: box-shadow .12s ease, transform .12s ease;
+}
+
+.workspaceShell .apptEvent:hover {
+  z-index: 5;
+  box-shadow: 0 5px 14px rgba(16,24,40,.14);
+  transform: translateY(-1px);
+}
+
+.workspaceShell .apptEvent b {
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .apptNowLine {
+  z-index: 6;
+}
+
+/* List view = compact operational registry. */
+.workspaceShell .apptListWrap {
+  background: var(--ws-surface);
+}
+
+.workspaceShell .apptCardRow {
+  min-height: 62px;
+  border-radius: 0;
+  border-bottom: 1px solid var(--ws-line);
+  background: transparent;
+  transition: background-color .12s ease;
+}
+
+.workspaceShell .apptCardRow:hover {
+  background: rgba(37,99,235,.04);
+}
+
+.workspaceShell .apptCardTime {
+  font-variant-numeric: tabular-nums;
+  color: var(--ws-ink);
+}
+
+.workspaceShell .apptCardName {
+  color: var(--ws-ink);
+}
+
+.workspaceShell .apptCardMeta,
+.workspaceShell .apptOpenRecord {
+  color: var(--ws-muted);
+}
+
+.workspaceShell .apptTag,
+.workspaceShell .apptBadge {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.workspaceShell .apptEmpty {
+  min-height: 220px;
+  color: var(--ws-muted);
+}
+
+.workspaceShell .apptEmpty > span {
+  filter: grayscale(1);
+  opacity: .45;
+}
+
+.workspaceShell.themeDark .roomSlot.free {
+  color: #86efac;
+}
+
+.workspaceShell.themeDark .apptEvent:hover {
+  box-shadow: 0 5px 14px rgba(0,0,0,.32);
+}
+
+@media (max-width: 1080px) {
+  .workspaceShell .roomSlotColumns {
+    grid-template-columns: 1fr;
+  }
+  .workspaceShell .roomSlots {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    max-height: none;
+  }
+}
+
+@media (max-width: 720px) {
+  .workspaceShell .apptCalBar {
+    align-items: stretch;
+  }
+  .workspaceShell .apptNewBtn {
+    margin-left: 0;
+  }
+  .workspaceShell .roomSlots {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspaceShell .apptEvent,
+  .workspaceShell .apptCardRow { transition: none; }
+  .workspaceShell .apptEvent:hover { transform: none; }
+}
