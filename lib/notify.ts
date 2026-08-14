@@ -38,6 +38,14 @@ export interface ReminderSummary {
 const DEPARTMENT = "Відділення променевої діагностики, Чернігівський військовий госпіталь";
 const PRIMARY_ORGANIZATION_ID = 1;
 
+export function reminderText(kind: ReminderKind, booking: ReminderBooking): string {
+  const when = `${booking.desiredDate}${booking.desiredTime ? ` о ${booking.desiredTime}` : ""}`;
+  const lead = kind === "confirmed"
+    ? `Ваш запис на «${booking.service}» підтверджено`
+    : `Ваш запис на «${booking.service}» перенесено`;
+  return `${lead}: ${when}. ${DEPARTMENT}. Якщо час не підходить — зателефонуйте у реєстратуру.`;
+}
+
 function truthy(value: string): boolean {
   return ["1", "true", "on", "yes"].includes(value.trim().toLowerCase());
 }
