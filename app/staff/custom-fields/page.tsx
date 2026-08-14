@@ -32,7 +32,7 @@ export default function CustomFieldsPage(){
     if(!response.ok){setError(payload.error||"Не вдалося завантажити поля");setLoading(false);return;}
     const rows=payload.definitions||[];
     setDefinitions(rows);
-    setDrafts(Object.fromEntries(rows.map(row=>[row.id,{label:row.label,optionsText:row.options.join("\n"),required:Boolean(row.required),active:Boolean(row.active),sortOrder:row.sortOrder}]));
+    setDrafts(Object.fromEntries(rows.map(row=>[row.id,{label:row.label,optionsText:row.options.join("\n"),required:Boolean(row.required),active:Boolean(row.active),sortOrder:row.sortOrder}])));
     setError("");setLoading(false);
   },[]);
 
