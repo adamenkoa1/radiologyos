@@ -11,7 +11,8 @@ CREATE TABLE IF NOT EXISTS custom_field_definitions (
   created_by TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (organization_id) REFERENCES organizations(id)
+  FOREIGN KEY (organization_id) REFERENCES organizations(id),
+  UNIQUE (organization_id, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_custom_field_definitions_org_entity
@@ -28,7 +29,7 @@ CREATE TABLE IF NOT EXISTS custom_field_values (
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (organization_id) REFERENCES organizations(id),
-  FOREIGN KEY (definition_id) REFERENCES custom_field_definitions(id),
+  FOREIGN KEY (organization_id, definition_id) REFERENCES custom_field_definitions(organization_id, id),
   UNIQUE (organization_id, definition_id, entity_type, entity_id)
 );
 
