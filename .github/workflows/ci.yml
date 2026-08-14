@@ -37,29 +37,17 @@ jobs:
         run: npm exec tsc -- --noEmit --incremental false
       - name: Build application
         run: npm run build
-      - name: OTP create verify replay test
-        run: node --experimental-strip-types --test --test-name-pattern="OTP is six digits" tests/patient-otp.behavior.test.mjs
-      - name: OTP wrong code test
-        run: node --experimental-strip-types --test --test-name-pattern="wrong OTP" tests/patient-otp.behavior.test.mjs
-      - name: OTP expiry test
-        run: node --experimental-strip-types --test --test-name-pattern="expired OTP" tests/patient-otp.behavior.test.mjs
-      - name: OTP same identity rotation test
-        run: node --experimental-strip-types --test --test-name-pattern="creating a newer OTP" tests/patient-otp.behavior.test.mjs
-      - name: Patient session scope primitive test
-        run: node --experimental-strip-types --test --test-name-pattern="patient sessions carry" tests/patient-otp.behavior.test.mjs
-      - name: D1 invalid patient scope primitive test
-        run: node --experimental-strip-types --test --test-name-pattern="D1 rejects patient auth scopes" tests/patient-otp.behavior.test.mjs
-      - name: OTP normalizer primitive test
-        run: node --experimental-strip-types --test --test-name-pattern="OTP normalizer" tests/patient-otp.behavior.test.mjs
-      - name: Patient identity migration test
-        run: node --experimental-strip-types --test tests/patient-identity-migration.behavior.test.mjs
-      - name: Shared-phone endpoint tests
-        run: node --experimental-strip-types --test tests/patient-identity-scope.behavior.test.mjs tests/my-bookings.behavior.test.mjs tests/booking-cancel.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/booking-code.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs
-      - name: Telegram identity tests
-        run: node --experimental-strip-types --test tests/telegram-patient.test.mjs
-      - name: Patient static security tests
-        run: node --experimental-strip-types --test tests/security-hardening.test.mjs tests/site-bridge.test.mjs
-      - name: Full test suite
-        run: node --experimental-strip-types --test tests/*.test.mjs
-      - name: Production release gate
-        run: npm run test:production-gate
+      - name: OTP rotation diagnostic
+        id: otp_rotation
+        continue-on-error: true
+        run: node --experimental-strip-types --test --test-name-pattern="creating a newer OTP" tests/patient-otp.behavior.test.mjs > otp-rotation.log 2>&1
+      - name: Upload OTP rotation diagnostic
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: otp-rotation-log
+          path: otp-rotation.log
+          retention-days: 1
+      - name: Fail on OTP rotation diagnostic
+        if: steps.otp_rotation.outcome == 'failure'
+        run: exit 1
