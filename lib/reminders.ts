@@ -86,6 +86,16 @@ export async function runDueReminders(
   return result;
 }
 
+export async function runDueRemindersForActiveOrganizations(
+  db: D1Database,
+  nowMs: number,
+): Promise<void> {
+  const organizations = await db.prepare(
+    "SELECT id FROM organizations WHERE active = 1 ORDER BY id"
+  ).all<{ id: number }>().catch(() => ({ results: [] as { id: number }[] }));
+  await Promise.all((organizations.results || []).map((row) => runDueReminders(db, nowMs, Number(row.id))));
+}
+
 async function record(
   db: D1Database,
   organizationId: number,
