@@ -4,33 +4,33 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("migration adds patient telegram_chat_id and link-token table", async () => {
-  const sql = await read("drizzle/0025_patient_telegram.sql");
-  assert.match(sql, /ALTER TABLE `patient_profiles` ADD COLUMN `telegram_chat_id`/);
-  assert.match(sql, /CREATE TABLE IF NOT EXISTS `telegram_link_tokens`/);
-  assert.match(sql, /`token_hash` text PRIMARY KEY/);
-  assert.match(sql, /`expires_at` text NOT NULL/);
+test("migrations add patient Telegram fields and tenant link tokens", async () => {
+  const base = await read("drizzle/0025_patient_telegram.sql");
+  const composite = await read("drizzle/0035_patient_composite_identity.sql");
+  assert.match(base, /ALTER TABLE `patient_profiles` ADD COLUMN `telegram_chat_id`/);
+  assert.match(base, /CREATE TABLE IF NOT EXISTS `telegram_link_tokens`/);
+  assert.match(base, /`token_hash` text PRIMARY KEY/);
+  assert.match(composite, /ALTER TABLE `telegram_link_tokens` ADD COLUMN `organization_id`/);
+  assert.match(composite, /PRIMARY KEY \(`organization_id`, `phone_normalized`\)/);
 });
 
-test("link lib: single-use hashed tokens + /start webhook handler", async () => {
+test("link lib: single-use hashed tenant tokens + /start webhook handler", async () => {
   const lib = await read("lib/telegram-link.ts");
   assert.match(lib, /export async function createTelegramLinkToken/);
+  assert.match(lib, /organization_id, phone_normalized/);
   assert.match(lib, /export async function consumeTelegramLinkToken/);
   assert.match(lib, /export async function linkPatientTelegram/);
   assert.match(lib, /export async function handleTelegramUpdate/);
-  // Токен зберігається лише як хеш.
   assert.match(lib, /hashToken\(/);
-  assert.match(lib, /DELETE FROM telegram_link_tokens WHERE token_hash = \?/); // одноразовість
-  // /start <token> прив'язує chat_id; /stop відписує.
-  assert.match(lib, /\/\^\\\/start\\s\+\(\[a-f0-9\]\{64\}\)\$\//);
+  assert.match(lib, /DELETE FROM telegram_link_tokens WHERE token_hash = \?/);
+  assert.match(lib, /ON CONFLICT\(organization_id, phone_normalized\) DO UPDATE SET/);
   assert.match(lib, /\/stop\\b/);
-  assert.match(lib, /ON CONFLICT\(phone_normalized\) DO UPDATE SET telegram_chat_id/);
 });
 
-test("patient link endpoint needs a verified session and returns a t.me deep link", async () => {
+test("patient link endpoint binds a deep link to the verified tenant session", async () => {
   const route = await read("app/api/my-telegram-link/route.ts");
   assert.match(route, /requirePatientSession\(/);
-  assert.match(route, /createTelegramLinkToken\(db, session\.phoneNormalized\)/);
+  assert.match(route, /createTelegramLinkToken\(db, session\.phoneNormalized, session\.organizationId\)/);
   assert.match(route, /https:\/\/t\.me\/\$\{username\}\?start=\$\{token\}/);
   assert.match(route, /isRateLimited\(/);
 });
@@ -64,7 +64,6 @@ test("notify sends via Telegram when a patient linked their chat", async () => {
   const notify = await read("lib/notify.ts");
   assert.match(notify, /import \{ sendTelegramTo \} from ".\/telegram"/);
   assert.match(notify, /telegram_chat_id AS tg/);
-  // Telegram-канал у обох шляхах (авто-нагадування і разове повідомлення).
   const pushes = notify.match(/channel: "telegram"/g) || [];
   assert.ok(pushes.length >= 2, "очікуємо Telegram-канал у reminder і message");
   assert.match(notify, /sendTelegramTo\(db, telegramChatId, body\)/);

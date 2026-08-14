@@ -35,15 +35,16 @@ export async function POST(request: Request) {
       `INSERT INTO patient_profiles
          (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(phone_normalized) DO UPDATE SET
+       ON CONFLICT(organization_id, phone_normalized) DO UPDATE SET
          display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE patient_profiles.display_name END,
          birth_year = CASE WHEN excluded.birth_year != 0 THEN excluded.birth_year ELSE patient_profiles.birth_year END,
          birth_date = CASE WHEN excluded.birth_date != '' THEN excluded.birth_date ELSE patient_profiles.birth_date END,
          email = CASE WHEN excluded.email != '' THEN excluded.email ELSE patient_profiles.email END,
          address = CASE WHEN excluded.address != '' THEN excluded.address ELSE patient_profiles.address END,
          notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE patient_profiles.notes END,
-         updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP
-       WHERE patient_profiles.organization_id = excluded.organization_id`
+         tags = excluded.tags,
+         do_not_contact = excluded.do_not_contact,
+         updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
     ).bind(
       ctx.organizationId, p.phoneNormalized, p.displayName, p.birthYear, p.birthDate, p.email, p.address,
       p.tags, p.notes, p.doNotContact, member.email,
@@ -51,13 +52,10 @@ export async function POST(request: Request) {
   });
 
   let imported = 0;
-  // D1 batch по частинах, щоб не впертися в ліміт кількості операцій.
   for (let i = 0; i < statements.length; i += 50) {
     const results = await db.batch(statements.slice(i, i + 50));
     imported += results.reduce((sum, result) => sum + (Number(result.meta?.changes || 0) > 0 ? 1 : 0), 0);
   }
-  // Валідний рядок, що конфліктує з профілем іншого tenant, навмисно не
-  // змінює той профіль і рахується як skipped до composite-key migration.
   const skipped = errors.length + (statements.length - imported);
 
   await logSecurityEvent(db, {
@@ -67,6 +65,5 @@ export async function POST(request: Request) {
     resource: "patient_registry",
     details: { imported, skipped },
   });
-
   return Response.json({ ok: true, imported, skipped, errors: errors.slice(0, 50) });
 }
