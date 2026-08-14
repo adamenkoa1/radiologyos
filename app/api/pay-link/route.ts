@@ -33,13 +33,14 @@ export async function POST(request: Request) {
   const code = typeof body.code === "string" ? body.code.trim().toUpperCase().slice(0, 24) : "";
   if (!code) return Response.json({ error: "Не вказано заявку" }, { status: 400 });
 
+  const identityClause = session.identityKind === "dob" ? "date_of_birth = ?" : "code = ?";
   const booking = await db.prepare(
     `SELECT id, code, service, service_code AS serviceCode, desired_date AS desiredDate,
       desired_time AS desiredTime, payment_status AS paymentStatus, payment_amount AS paymentAmount,
       patient_category AS category, status
      FROM bookings
-     WHERE organization_id = ? AND phone_normalized = ? AND code = ? LIMIT 1`,
-  ).bind(session.organizationId, session.phoneNormalized, code).first<{
+     WHERE organization_id = ? AND phone_normalized = ? AND code = ? AND ${identityClause} LIMIT 1`,
+  ).bind(session.organizationId, session.phoneNormalized, code, session.identityValue).first<{
     id: number;
     code: string;
     service: string;
