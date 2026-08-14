@@ -72,7 +72,8 @@ test("production deploy paths reject placeholder or malformed administrator hash
     read(".github/workflows/deploy.yml"),
   ]);
   for (const source of [script, workflow]) {
-    assert.match(source, /substr\(password_hash,1,15\) = 'pbkdf2\$sha256\$'/);
+    assert.match(source, /substr\(password_hash,15,instr\(substr\(password_hash,15\),'\$'\)-1\) AS iterations/);
+    assert.match(source, /substr\(password_hash,1,14\) = 'pbkdf2\$sha256\$'/);
     assert.match(source, /length\(password_hash\) - length\(replace\(password_hash,'\$',''\)\) = 4/);
     assert.match(source, /iterations NOT GLOB '\*\[\^0-9\]\*'/);
     assert.match(source, /CAST\(iterations AS INTEGER\) >= 1000/);
