@@ -19,6 +19,10 @@ export type ScheduleConfig = {
 };
 
 export const SCHEDULE_KEY = "equipment_schedule";
+export function scheduleKey(organizationId: number): string {
+  const id = Number.isInteger(organizationId) && organizationId > 0 ? organizationId : 1;
+  return `${SCHEDULE_KEY}:org:${id}`;
+}
 export const EQUIP_KEYS = ["ct", "xray", "fluoro"] as const;
 export const EQUIP_LABELS: Record<string, string> = {
   ct: "Комп’ютерний томограф", xray: "Цифровий рентген", fluoro: "Флюорограф",
