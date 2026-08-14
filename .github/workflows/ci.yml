@@ -41,8 +41,14 @@ jobs:
       - name: Type check
         run: npm exec tsc -- --noEmit --incremental false
 
-      - name: Test and build
-        run: npm test
+      - name: Build application
+        run: npm run build
+
+      - name: Patient identity security tests
+        run: node --experimental-strip-types --test tests/patient-otp.behavior.test.mjs tests/patient-identity-scope.behavior.test.mjs tests/patient-identity-migration.behavior.test.mjs tests/my-bookings.behavior.test.mjs tests/booking-cancel.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/booking-code.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs tests/telegram-patient.test.mjs tests/security-hardening.test.mjs tests/site-bridge.test.mjs
+
+      - name: Full test suite
+        run: node --experimental-strip-types --test tests/*.test.mjs
 
       - name: Production release gate
         run: npm run test:production-gate
