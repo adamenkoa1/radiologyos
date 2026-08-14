@@ -34,7 +34,7 @@ export async function GET(request:Request){
       .bind(ctx.organizationId,id).all(),
   ]);
 
-  return Response.json({booking,note:note||null,comments:comments.results,events:events.results,canComment:canWriteNotes(ctx.role)},
+  return Response.json({booking,note:note||null,comments:comments.results,events:events.results,canComment:canWriteNotes(ctx.member.role)},
     {headers:{"cache-control":"no-store"}});
 }
 
@@ -44,7 +44,7 @@ export async function POST(request:Request){
   const id=Number(body.id),text=clean(body.text,2000);
   if(!Number.isInteger(id)||id<1||!text)return Response.json({error:"Вкажіть коментар"},{status:400});
   const ctx=await accessible(request,db,id); if(!ctx)return Response.json({error:"Дослідження не знайдено або не призначено вам"},{status:404});
-  if(!canWriteNotes(ctx.role))return Response.json({error:"Недостатньо прав"},{status:403});
+  if(!canWriteNotes(ctx.member.role))return Response.json({error:"Недостатньо прав"},{status:403});
 
   const result=await db.prepare(`INSERT INTO booking_comments (organization_id,booking_id,author_email,body)
     VALUES (?,?,?,?)`).bind(ctx.organizationId,id,ctx.member.email,text).run();
