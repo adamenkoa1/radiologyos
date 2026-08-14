@@ -13,13 +13,19 @@ const PHONE = "380971112233";
 const DOB = "1990-05-05";
 const IDENTITY = { kind:"dob", value:DOB };
 
-async function seedIdentityBooking(db, { organizationId = 1, code = "RD-OTP00001", phone = PHONE, dob = DOB } = {}) {
+async function seedIdentityBooking(db, {
+  organizationId = 1,
+  code = "RD-OTP00001",
+  phone = PHONE,
+  dob = DOB,
+  time = "10:00",
+} = {}) {
   await db.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, date_of_birth,
        service, service_code, desired_date, desired_time)
-     VALUES (?, ?, 'OTP Patient', ?, ?, ?, 'КТ', '403', '2026-09-01', '10:00')`
-  ).bind(organizationId, code, `+${phone}`, phone, dob).run();
+     VALUES (?, ?, 'OTP Patient', ?, ?, ?, 'КТ', '403', '2026-09-01', ?)`
+  ).bind(organizationId, code, `+${phone}`, phone, dob, time).run();
 }
 
 test("OTP is six digits, stored only as a PBKDF2 hash, identity-scoped and verifies once", async () => {
@@ -99,7 +105,7 @@ test("expired OTP is rejected", async () => {
 test("creating a newer OTP invalidates only the older challenge for the same identity", async () => {
   await withD1(async (db) => {
     await seedIdentityBooking(db);
-    await seedIdentityBooking(db, { code:"RD-OTP00002", dob:"1980-01-01" });
+    await seedIdentityBooking(db, { code:"RD-OTP00002", dob:"1980-01-01", time:"10:30" });
     const otherIdentity = { kind:"dob", value:"1980-01-01" };
     const first = await createPatientOtpChallenge(db, PHONE, 1, IDENTITY);
     const family = await createPatientOtpChallenge(db, PHONE, 1, otherIdentity);
