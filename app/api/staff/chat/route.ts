@@ -46,15 +46,18 @@ export async function GET(request: Request) {
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(phone, orgId).all();
 
+    // Use ordinary positional placeholders here. Node's SQLite test runtime and
+    // D1 both accept them reliably; repeated numbered ?1/?2 parameters in this
+    // scalar-subquery shape trigger SQLITE_RANGE in node:sqlite.
     const patient = await db.prepare(
       `SELECT COALESCE(
-         (SELECT display_name FROM patient_profiles WHERE phone_normalized = ?1 AND organization_id = ?2),
-         (SELECT name FROM bookings WHERE phone_normalized = ?1 AND organization_id = ?2 ORDER BY id DESC LIMIT 1), '') AS name,
+         (SELECT display_name FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ?),
+         (SELECT name FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY id DESC LIMIT 1), '') AS name,
        CASE WHEN EXISTS (
          SELECT 1 FROM patient_telegram_identities ti
-         WHERE ti.phone_normalized = ?1 AND ti.organization_id = ?2 AND ti.telegram_chat_id != ''
+         WHERE ti.phone_normalized = ? AND ti.organization_id = ? AND ti.telegram_chat_id != ''
        ) THEN 1 ELSE 0 END AS telegramLinked`
-    ).bind(phone, orgId).first<{ name: string; telegramLinked: number }>();
+    ).bind(phone, orgId, phone, orgId, phone, orgId).first<{ name: string; telegramLinked: number }>();
 
     const issues = await db.prepare(
       `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
