@@ -23,6 +23,8 @@ test("AI draft API guards generation and audits it", async () => {
   assert.match(route, /canManageProtocols\(member\.role\)/);
   assert.match(route, /sanitizeDocument\(/);
   assert.match(route, /generateProtocolDraft\(/);
+  assert.match(route, /INSERT INTO booking_events \(organization_id, booking_id, action, details, actor\)/);
+  assert.match(route, /\.bind\(ctx\.organizationId, bookingId,/);
   assert.match(route, /ai_draft_generated/);
   assert.doesNotMatch(route, /CREATE\s+TABLE/i);
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
