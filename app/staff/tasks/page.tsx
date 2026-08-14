@@ -6,16 +6,26 @@ import StaffWorkspaceShell from "../workspace-shell";
 type Task = {
   id:number;title:string;details:string;status:"open"|"done";priority:"low"|"normal"|"high";
   dueDate:string;bookingId:number|null;assignedEmail:string;createdBy:string;completedBy:string;
-  completedAt:string;createdAt:string;updatedAt:string;
+  completedAt:string;createdAt:string;updatedAt:string;source:"manual"|"automation";
+  automationKey:string;sourceEntityType:string;sourceEntityId:string;
 };
 type Member = { email:string;displayName:string;role:string };
 type Staff = { email:string;displayName:string;role:string };
-
 type Payload = { tasks:Task[];members:Member[];staff:Staff };
 const priorityLabel:Record<Task["priority"],string> = { high:"Високий",normal:"Звичайний",low:"Низький" };
 
 function todayKyiv() {
   return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
+}
+function sourceHref(task:Task) {
+  if(task.sourceEntityType==="inventory_item") return "/staff/inventory";
+  if(task.sourceEntityType==="equipment_maintenance") return "/staff/maintenance";
+  return "";
+}
+function sourceLabel(task:Task) {
+  if(task.sourceEntityType==="inventory_item") return "Відкрити склад";
+  if(task.sourceEntityType==="equipment_maintenance") return "Відкрити ТО";
+  return "";
 }
 
 export default function TasksPage() {
@@ -63,7 +73,7 @@ export default function TasksPage() {
     } finally {setBusy(null);}
   }
 
-  return <StaffWorkspaceShell active="tasks" title="Завдання" description="Особисті й командні задачі відділення: відповідальний, термін, пріоритет і контроль виконання." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
+  return <StaffWorkspaceShell active="tasks" title="Завдання" description="Особисті, командні й автоматичні задачі відділення: відповідальний, термін, пріоритет і контроль виконання." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
     {error && <p className="notice error" role="alert">{error}</p>}
     {!loaded ? <p className="dashLoading">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
       <div className="taskToolbar">
@@ -95,17 +105,22 @@ export default function TasksPage() {
       <div className="taskList">
         {tasks.length===0 ? <p className="taskEmpty">Завдань у цьому списку немає.</p> : tasks.map(t=><article className={`taskCard priority-${t.priority}${overdue(t)?" overdue":""}`} key={t.id}>
           <div className="taskCardMain">
-            <div className="taskCardTop"><span className={`taskPriority ${t.priority}`}>{priorityLabel[t.priority]}</span>{overdue(t)&&<span className="taskOverdue">Прострочено</span>}</div>
+            <div className="taskCardTop">
+              <span className={`taskPriority ${t.priority}`}>{priorityLabel[t.priority]}</span>
+              {t.source==="automation"&&<span className="taskAuto">Автоматично</span>}
+              {overdue(t)&&<span className="taskOverdue">Прострочено</span>}
+            </div>
             <h2>{t.title}</h2>
             {t.details&&<p>{t.details}</p>}
             <div className="taskMeta">
               {t.assignedEmail?<span>Виконавець: <b>{nameByEmail[t.assignedEmail]||t.assignedEmail}</b></span>:<span>Без виконавця</span>}
               {t.dueDate&&<span>До: <b>{t.dueDate}</b></span>}
               {t.bookingId&&<a href={`/staff/protocols?open=${t.bookingId}`}>Дослідження #{t.bookingId}</a>}
+              {sourceHref(t)&&<a href={sourceHref(t)}>{sourceLabel(t)}</a>}
             </div>
           </div>
           <div className="taskActions">
-            {t.status==="open"?<button disabled={busy===t.id} onClick={()=>void patchTask(t.id,{status:"done"})}>{busy===t.id?"…":"✓ Виконано"}</button>:<button disabled={busy===t.id} onClick={()=>void patchTask(t.id,{status:"open"})}>Повернути в роботу</button>}
+            {t.status==="open"?<button disabled={busy===t.id} onClick={()=>void patchTask(t.id,{status:"done"})}>{busy===t.id?"…":"✓ Виконано"}</button>:t.source==="automation"?<span className="taskAutoDone">Керується системою</span>:<button disabled={busy===t.id} onClick={()=>void patchTask(t.id,{status:"open"})}>Повернути в роботу</button>}
           </div>
         </article>)}
       </div>

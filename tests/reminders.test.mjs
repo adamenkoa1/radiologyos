@@ -52,10 +52,13 @@ test("kyivNow converts a UTC instant to Kyiv date and minutes", () => {
   assert.equal(minutes, 15 * 60);
 });
 
-test("worker schedules tenant-limited reminder support every 15 minutes", async () => {
+test("worker schedules tenant-limited reminders and internal operational tasks every 15 minutes", async () => {
   const worker = await read("worker/index.ts");
   assert.match(worker, /async scheduled\(/);
-  assert.match(worker, /runDueReminders\(env\.DB, Date\.now\(\), INITIAL_ORGANIZATION_ID\)/);
+  assert.match(worker, /const now=Date\.now\(\)/);
+  assert.match(worker, /runDueReminders\(env\.DB,\s*now,\s*INITIAL_ORGANIZATION_ID\)/);
+  assert.match(worker, /runOperationalTasks\(env\.DB,\s*now\)/);
+  assert.match(worker, /Promise\.allSettled\(\[/);
   assert.match(worker, /const INITIAL_ORGANIZATION_ID = 1/);
   assert.match(worker, /ctx\.waitUntil/);
   const wrangler = await read("wrangler.cloudflare.toml");

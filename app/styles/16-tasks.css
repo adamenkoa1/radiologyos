@@ -43,12 +43,14 @@
 .workspaceShell .taskCard.priority-normal::before { background:#2563eb; }
 .workspaceShell .taskCard.priority-low::before { background:#64748b; }
 .workspaceShell .taskCard.overdue { border-color:rgba(217,119,6,.34); }
-.workspaceShell .taskCardTop { display:flex; align-items:center; gap:5px; }
-.workspaceShell .taskPriority,.workspaceShell .taskOverdue { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:9px; font-weight:800; }
+.workspaceShell .taskCardTop { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
+.workspaceShell .taskPriority,.workspaceShell .taskOverdue,.workspaceShell .taskAuto { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:9px; font-weight:800; }
 .workspaceShell .taskPriority { background:rgba(148,163,184,.12); color:var(--ws-muted); }
 .workspaceShell .taskPriority.high { background:rgba(220,38,38,.1); color:#b91c1c; }
 .workspaceShell .taskPriority.normal { background:rgba(37,99,235,.1); color:#2563eb; }
 .workspaceShell .taskOverdue { background:rgba(217,119,6,.11); color:#b45309; }
+.workspaceShell .taskAuto { background:rgba(8,145,178,.11); color:#0e7490; }
+.workspaceShell .taskAutoDone { color:var(--ws-muted); font-size:10px; font-weight:700; white-space:nowrap; }
 .workspaceShell .taskCard h2 { margin:5px 0 0; color:var(--ws-ink); font-size:14px; letter-spacing:-.01em; }
 .workspaceShell .taskCard p { margin:5px 0 0; color:var(--ws-muted); font-size:11px; line-height:1.45; white-space:pre-wrap; }
 .workspaceShell .taskMeta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--ws-muted); font-size:10px; }
@@ -60,6 +62,7 @@
 .workspaceShell.themeDark .taskPriority.high { color:#fca5a5; }
 .workspaceShell.themeDark .taskPriority.normal { color:#93c5fd; }
 .workspaceShell.themeDark .taskOverdue { color:#fbbf24; }
+.workspaceShell.themeDark .taskAuto { color:#67e8f9; background:rgba(8,145,178,.2); }
 
 @media(max-width:760px){
   .workspaceShell .taskCreateRow,.workspaceShell .taskSummary{grid-template-columns:1fr;}
