@@ -66,11 +66,14 @@ test("scheduled reminder SQL isolates bookings, dedupe and do-not-contact by org
   });
 });
 
-test("production scheduled handler is explicitly limited to the initial organization", () => {
+test("production scheduled handler keeps patient reminders on org1 and operational jobs isolated", () => {
   assert.match(workerSource, /const INITIAL_ORGANIZATION_ID = 1/);
+  assert.match(workerSource, /const now=Date\.now\(\)/);
   assert.match(
     workerSource,
-    /runDueReminders\(env\.DB,\s*Date\.now\(\),\s*INITIAL_ORGANIZATION_ID\)/,
+    /runDueReminders\(env\.DB,\s*now,\s*INITIAL_ORGANIZATION_ID\)/,
   );
+  assert.match(workerSource, /runOperationalTasks\(env\.DB,\s*now\)/);
+  assert.match(workerSource, /Promise\.allSettled\(\[/);
   assert.match(workerSource, /async scheduled\s*\(/);
 });
