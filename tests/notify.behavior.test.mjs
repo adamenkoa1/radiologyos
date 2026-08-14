@@ -1,18 +1,27 @@
 // Поведінковий тест вибору каналів сповіщення через /api/staff/notify:
-// повага до «не турбувати», tenant-ізоляція, поведінка без налаштованих шлюзів.
-// Свідомо перевіряємо лише детерміновані гілки (без реальних мережевих викликів).
+// повага до «не турбувати», tenant-ізоляція, assignment scope і поведінка без
+// налаштованих шлюзів. Без реальних мережевих викликів.
 
 import assert from "node:assert/strict";
 import test from "node:test";
 import { withD1, jsonRequest, callWorker, seedStaffSession } from "./helpers/d1.mjs";
 
-async function seedBooking(db, { id = 1, phoneNormalized = "380971112233", orgId = 1, email = "" } = {}) {
+async function seedBooking(db, {
+  id = 1,
+  phoneNormalized = "380971112233",
+  orgId = 1,
+  email = "",
+  radiologist = "",
+  radiographer = "",
+} = {}) {
   await db.prepare(
     `INSERT INTO bookings (id, code, name, phone, phone_normalized, patient_email, service, service_code,
-       desired_date, desired_time, status, date_of_birth, patient_category, organization_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+       desired_date, desired_time, status, date_of_birth, patient_category, organization_id,
+       assigned_radiologist_email, assigned_radiographer_email)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(id, `RD-NOTIFY${String(id).padStart(4, "0")}`, "Пацієнт", "+" + phoneNormalized, phoneNormalized,
-    email, "КТ", "CT-01", "2026-09-01", "10:00", "confirmed", "1990-05-05", "civilian", orgId).run();
+    email, "КТ", "CT-01", "2026-09-01", `${String(9 + id).padStart(2, "0")}:00`, "confirmed", "1990-05-05", "civilian", orgId,
+    radiologist, radiographer).run();
 }
 
 const notify = (db, cookie, bookingId, message = "Ваш результат готовий") =>
@@ -62,12 +71,20 @@ test("a message to a booking in another organization is not found (tenant isolat
   });
 });
 
-test("a clinical role may still send an ad-hoc message (canWriteNotes)", async () => {
+test("a clinical role may notify only a booking assigned to that clinician", async () => {
   await withD1(async (db) => {
-    await seedBooking(db, { id: 4, phoneNormalized: "380974445566" });
-    const cookie = await seedStaffSession(db, { email: "rad@likarnya.test", role: "radiologist" });
-    const res = await notify(db, cookie, 4);
-    assert.equal(res.status, 200);
+    const doctor = "rad@likarnya.test";
+    await seedBooking(db, { id: 4, phoneNormalized: "380974445566", radiologist: doctor });
+    await seedBooking(db, { id: 6, phoneNormalized: "380976667788", radiologist: "other-rad@likarnya.test" });
+    const cookie = await seedStaffSession(db, { email: doctor, role: "radiologist" });
+
+    const own = await notify(db, cookie, 4);
+    assert.equal(own.status, 200);
+
+    const foreignAssignment = await notify(db, cookie, 6);
+    assert.equal(foreignAssignment.status, 404);
+    const outbox = await db.prepare("SELECT COUNT(*) AS n FROM patient_notifications WHERE booking_id = 6").first("n");
+    assert.equal(outbox, 0);
   });
 });
 
