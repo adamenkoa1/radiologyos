@@ -1,11 +1,6 @@
-// Резолвер провайдерів — добирає реалізації інтеграцій у tenant-контексті.
-//
-// Наразі конфігурація інтеграцій зберігається глобально (app_settings /
-// pacs_settings), але резолвер — це єдиний шов, куди згодом зайде per-org
-// конфігурація. Профіль організації (feature flags) вже впливає на доступність
-// (напр. PACS вимкнено прапорцем dicom_pacs → provider.enabled = false).
+// Резолвер інтеграцій у tenant-контексті.
 
-import { getSettings } from "../settings";
+import { getTenantSettings } from "../tenant-settings";
 import { getOrgProfile } from "../org-profile";
 import type { OrgContext } from "../tenant";
 import { createMessagingProvider } from "./messaging";
@@ -13,7 +8,6 @@ import { createCalendarProvider } from "./calendar";
 import { createPaymentProvider, type PaymentConfig } from "./payment";
 import type { PacsProvider, ResolvedProviders } from "./types";
 
-// Дістає конфіг оплат із settings_json профілю організації (безпечно).
 function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
   const raw = settings.payment;
   if (!raw || typeof raw !== "object") return {};
@@ -26,15 +20,18 @@ function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
 }
 
 export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise<ResolvedProviders> {
-  const [cfg, profile, pacsRow, icsUrl] = await Promise.all([
-    getSettings(db, [
+  const orgId = ctx.organizationId;
+  const [cfg, profile, pacsRow] = await Promise.all([
+    getTenantSettings(db, [
       "sms_gateway_url", "sms_gateway_auth",
       "email_gateway_url", "email_gateway_auth", "email_gateway_from",
-    ]),
+      "external_ics_url",
+    ], orgId),
     getOrgProfile(db, ctx),
-    db.prepare("SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE id = 1")
-      .first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
-    getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => ""),
+    db.prepare(
+      `SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb
+       FROM pacs_settings WHERE organization_id = ? LIMIT 1`
+    ).bind(orgId).first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
   ]);
 
   const messaging = createMessagingProvider({
@@ -42,7 +39,6 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
-  // PACS доступний, коли його увімкнено в налаштуваннях PACS.
   const pacsEnabled = Boolean(pacsRow?.enabled);
   const pacs: PacsProvider = {
     name: pacsEnabled ? "dicomweb" : "none",
@@ -54,10 +50,7 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     }),
   };
 
-  const calendar = createCalendarProvider(icsUrl);
-
-  // Платіжний провайдер добирається з профілю організації (per-org).
+  const calendar = createCalendarProvider(cfg.external_ics_url || "");
   const payment = createPaymentProvider(paymentConfig(profile.settings));
-
   return { messaging, payment, pacs, calendar };
 }
