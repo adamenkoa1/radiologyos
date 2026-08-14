@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { roleLabelUk } from "../../../lib/labels";
 
@@ -44,7 +44,7 @@ export default function StaffChatPage() {
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState("");
 
-  async function loadConversations(nextChannel = channel) {
+  const loadConversations = useCallback(async (nextChannel: string) => {
     const suffix = nextChannel === "all" ? "" : `?channel=${encodeURIComponent(nextChannel)}`;
     const res = await fetch(`/api/staff/chat${suffix}`, { cache: "no-store" });
     if (res.status === 403) { setForbidden(true); return; }
@@ -56,12 +56,12 @@ export default function StaffChatPage() {
     setFailedDeliveries(Number(data.failedDeliveries || 0));
     if (data.staff) setStaff(data.staff);
     setLoaded(true);
-  }
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadConversations("all"); }, 0);
     return () => window.clearTimeout(timer);
-  }, []);
+  }, [loadConversations]);
 
   async function changeChannel(next: string) {
     setChannel(next); setActive(null); setMessages([]); setIssues([]); setLoaded(false);
