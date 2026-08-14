@@ -1,6 +1,7 @@
 import { serviceByCode } from "../../../../lib/catalog";
 import { canAccessBooking, canManageImaging } from "../../../../lib/staff-auth";
 import {
+  checkDicomAutoLinkMatch,
   isValidAccession,
   parseQidoSeries,
   parseQidoStudies,
@@ -9,6 +10,7 @@ import {
   sanitizeImagingStudy,
   viewerUrl,
 } from "../../../../lib/dicom";
+import { modalityForWorklist } from "../../../../lib/mwl-bridge";
 import { fetchLimited, readLimitedText, safeOutboundUrl } from "../../../../lib/outbound";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
@@ -155,9 +157,14 @@ export async function POST(request: Request) {
     return Response.json({ error:"Немає доступу до цього дослідження" }, { status:403 });
   }
 
+  type AutoLinkBooking = {
+    id:number; code:string; serviceCode:string; equipmentId:string; desiredDate:string; performedAt:string;
+  };
   const [booking, existing, pacs] = await Promise.all([
-    db.prepare(`SELECT id, code, service_code AS serviceCode FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`)
-      .bind(bookingId, ctx.organizationId).first<{ id:number; code:string; serviceCode:string }>(),
+    db.prepare(`SELECT id, code, service_code AS serviceCode, equipment_id AS equipmentId,
+        desired_date AS desiredDate, performed_at AS performedAt
+       FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`)
+      .bind(bookingId, ctx.organizationId).first<AutoLinkBooking>(),
     db.prepare(`SELECT accession_number AS accessionNumber FROM imaging_studies WHERE booking_id = ? AND organization_id = ? LIMIT 1`)
       .bind(bookingId, ctx.organizationId).first<{ accessionNumber:string }>(),
     loadPacs(db, ctx.organizationId),
@@ -193,6 +200,23 @@ export async function POST(request: Request) {
   }
 
   const match = matches[0];
+  const expectedModality = modalityForWorklist(booking.serviceCode, booking.equipmentId);
+  const expectedDate = String(booking.performedAt || booking.desiredDate).slice(0, 10);
+  const metadataCheck = checkDicomAutoLinkMatch(match, expectedModality, expectedDate);
+  if (!metadataCheck.ok) {
+    await db.prepare(
+      `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
+       VALUES (?, ?, 'imaging_auto_link_rejected', ?, ?)`
+    ).bind(ctx.organizationId, bookingId, `QIDO-RS · ${metadataCheck.reason}`, member.email).run();
+    return Response.json({
+      ok:false,
+      status:"metadata_mismatch",
+      reason:metadataCheck.reason,
+      accessionNumber,
+      expected:{ modality:expectedModality, date:expectedDate },
+    }, { status:409 });
+  }
+
   const seriesResult = await querySeries(pacs, match.studyInstanceUid);
   const seriesCount = seriesResult.series.length || match.seriesCount;
   const instancesCount = seriesResult.series.length
