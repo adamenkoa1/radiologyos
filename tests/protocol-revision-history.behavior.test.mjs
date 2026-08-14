@@ -74,7 +74,9 @@ test("authorized clinician can read an exact historical snapshot without mutatin
     const current = await db.prepare(
       "SELECT conclusion, number, version FROM protocols WHERE organization_id=1 AND booking_id=?"
     ).bind(bookingId).first();
-    assert.deepEqual(current, { conclusion:"Current conclusion", number:"PR-CURRENT", version:2 });
+    assert.deepEqual(Object.fromEntries(Object.entries(current)), {
+      conclusion:"Current conclusion", number:"PR-CURRENT", version:2,
+    });
 
     const audit = await db.prepare(
       `SELECT action, target_id AS targetId, details_json AS detailsJson
