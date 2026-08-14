@@ -6,7 +6,7 @@ const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com" };
 
 async function seedAdmin(db) {
   const email = "imaging-admin@example.com";
-  const cookie = await seedStaffSession(db, { email, role: "admin" });
+  const cookie = await seedStaffSession(db, { email, role: "admin", withMembership: false });
   await db.prepare(
     `INSERT INTO memberships (organization_id, member_email, role, active)
      VALUES (1, ?, 'admin', 1)`,
