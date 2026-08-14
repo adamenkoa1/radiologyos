@@ -1,8 +1,8 @@
 import { addMinutes } from "../../../../lib/catalog";
 import { isBookableDate } from "../../../../lib/booking-rules";
 import { effectiveServiceByCode, serviceAvailableTo } from "../../../../lib/effective-services";
-import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../../lib/schedule";
-import { getSetting } from "../../../../lib/settings";
+import { candidateTimesFor, hoursFor, isEquipmentDayOpen } from "../../../../lib/schedule";
+import { getOrganizationSchedule } from "../../../../lib/tenant-schedule";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { normalizeDob } from "../../../../lib/dob";
 import { sendPatientReminder, type ReminderBooking } from "../../../../lib/notify";
@@ -77,7 +77,7 @@ export async function POST(request: Request) {
   if (!serviceAvailableTo(service, category)) {
     return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
   }
-  const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+  const schedule = await getOrganizationSchedule(db, ctx.organizationId);
   radiologist ||= schedule.equipment[service.equipmentId]?.radiologistEmail || "";
   radiographer ||= schedule.equipment[service.equipmentId]?.radiographerEmail || "";
   if (!(await hasActiveTenantRole(db, ctx.organizationId, radiologist, "radiologist"))) {
@@ -298,7 +298,7 @@ export async function PATCH(request: Request) {
         return Response.json({ error: "Ця послуга зараз недоступна для обраної категорії пацієнтів" }, { status: 400 });
       }
       if (cur) {
-        const rSchedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+        const rSchedule = await getOrganizationSchedule(db, ctx.organizationId);
         const validTimes = candidateTimesFor(hoursFor(rSchedule, svc.equipmentId), svc.durationMinutes);
         const endTime = addMinutes(cur.t, svc.durationMinutes);
         const rejectReschedule = Response.json({ error: "Поточний час не підходить для нової послуги (апарат / тривалість / зайнятість) — спершу перенесіть заявку" }, { status: 409 });
@@ -525,7 +525,7 @@ export async function PATCH(request: Request) {
         name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
        FROM bookings WHERE organization_id = ? AND id = ?`
     ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
-    const rSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    const rSched = await getOrganizationSchedule(db, ctx.organizationId);
     if (!booking || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, booking.equipmentId)
         || !candidateTimesFor(hoursFor(rSched, booking.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
       return Response.json({ error: "Некоректні дата або час" }, { status: 400 });
@@ -569,7 +569,7 @@ export async function PATCH(request: Request) {
     if (booking.status === "cancelled" || booking.status === "completed") {
       return Response.json({ error: "Заявку вже закрито — підтвердження недоступне" }, { status: 400 });
     }
-    const cSched = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+    const cSched = await getOrganizationSchedule(db, ctx.organizationId);
     if (!isBookableDate(booking.desiredDate) || !isEquipmentDayOpen(booking.desiredDate, cSched, booking.equipmentId)
         || !candidateTimesFor(hoursFor(cSched, booking.equipmentId), booking.durationMinutes).includes(booking.desiredTime)) {
       return Response.json({ error: "Бажаний час поза розкладом — перенесіть запис на вільний слот" }, { status: 400 });
