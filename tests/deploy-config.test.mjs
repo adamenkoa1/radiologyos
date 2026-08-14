@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
+import { spawnSync } from "node:child_process";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
@@ -79,7 +80,24 @@ test("production deploy paths reject placeholder or malformed administrator hash
     assert.match(source, /CAST\(iterations AS INTEGER\) >= 1000/);
     assert.match(source, /length\(password_hash\) >= 80/);
     assert.match(source, /secure_admins/);
+    assert.match(source, /ADMIN_GUARD_SQL=\$\(cat <<'SQL'/);
+    assert.match(source, /--command \"\$ADMIN_GUARD_SQL\"/);
+    assert.doesNotMatch(source, /--command \"WITH admins AS/);
   }
+});
+
+test("quoted admin-guard heredoc preserves PBKDF2 dollar literals", () => {
+  const command = String.raw`ADMIN_GUARD_SQL=$(cat <<'SQL'
+SELECT 'pbkdf2$sha256$100000$seed';
+SQL
+)
+printf '%s' "$ADMIN_GUARD_SQL"`;
+  const result = spawnSync("bash", ["-c", command], {
+    encoding: "utf8",
+    env: { ...process.env, sha256: "BROKEN", seed: "BROKEN" },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "SELECT 'pbkdf2$sha256$100000$seed';");
 });
 
 test("GitHub production workflow migrates D1 before checking for an administrator", async () => {
