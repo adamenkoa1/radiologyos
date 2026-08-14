@@ -13,6 +13,9 @@
 - Drizzle schema синхронізовано з tenant/UID-індексами `imaging_studies`; додано D1 behavioral tests і перевірку належності PACS settings існуючій організації.
 - Автоматична DICOM-прив'язка за Accession тепер додатково вимагає валідний StudyInstanceUID, збіг модальності та дати дослідження; невідповідність fail-closed і не змінює imaging link.
 - QIDO series parser відкидає некоректні `SeriesInstanceUID`; відмови auto-link аудіюються без UID/ПІБ/телефону та покриті behavioral tests.
+- Patient OTP/session тепер несуть доведену identity scope (`dob` або точний `booking`), тому спільний сімейний номер телефону не розширює доступ до чужих заявок, протоколів, скасування чи оплати; D1 фізично перевіряє scope за реальною заявкою.
+- Telegram deep-link і chat binding також стали identity-scoped. Небезпечні legacy phone-wide patient sessions, link tokens і Telegram chat bindings інвалідовуються під час міграції замість автоматичного перенесення між членами сім'ї.
+- Додано behavioral regression coverage для двох пацієнтів з одним телефоном та різними датами народження.
 
 ### Planned
 - Розділення `staff.html` на окремі модулі.
