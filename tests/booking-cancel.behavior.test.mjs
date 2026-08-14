@@ -5,13 +5,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { withD1, jsonRequest, callWorker, seedPatientSession } from "./helpers/d1.mjs";
 
-async function seed(db, { code, phoneNormalized, status = "new" }) {
+async function seed(db, { code, phoneNormalized, status = "new", orgId = 1 }) {
   await db.prepare(
     `INSERT INTO bookings (code, name, phone, phone_normalized, service, service_code,
        desired_date, desired_time, status, date_of_birth, patient_category, organization_id)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,1)`
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
   ).bind(code, "Пацієнт", "+" + phoneNormalized, phoneNormalized, "КТ", "CT-01",
-    "2026-09-01", "10:00", status, "1990-05-05", "civilian").run();
+    "2026-09-01", "10:00", status, "1990-05-05", "civilian", orgId).run();
 }
 
 const cancel = (db, cookie, code) =>
@@ -27,6 +27,22 @@ test("a patient cancels their own active booking; status and event are written",
     assert.equal(row, "cancelled");
     const ev = await db.prepare("SELECT COUNT(*) AS n FROM booking_events WHERE action = 'cancelled'").first("n");
     assert.equal(ev, 1);
+  });
+});
+
+test("patient cancellation event is attributed to the session organization", async () => {
+  await withD1(async (db) => {
+    await db.prepare(
+      "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'other', 'Інша', 1)"
+    ).run();
+    await seed(db, { code: "RD-ORG2000001", phoneNormalized: "380991112233", orgId: 2 });
+    const cookie = await seedPatientSession(db, "380991112233", 2);
+    const res = await cancel(db, cookie, "RD-ORG2000001");
+    assert.equal(res.status, 200);
+    const event = await db.prepare(
+      "SELECT organization_id AS organizationId FROM booking_events WHERE action = 'cancelled' ORDER BY id DESC LIMIT 1"
+    ).first();
+    assert.equal(event.organizationId, 2);
   });
 });
 
