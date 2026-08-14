@@ -22,32 +22,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
       - name: Set up Node.js
         uses: actions/setup-node@v5
         with:
           node-version: 22.13.0
           cache: npm
+
       - name: Install dependencies deterministically
         run: npm run install:ci
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
+
       - name: Lint
         run: npm run lint
+
       - name: Type check
         run: npm exec tsc -- --noEmit --incremental false
-      - name: Build application
-        run: npm run build
-      - name: OTP rotation diagnostic
-        id: otp_rotation
-        continue-on-error: true
-        run: node --experimental-strip-types --test --test-name-pattern="creating a newer OTP" tests/patient-otp.behavior.test.mjs > otp-rotation.log 2>&1
-      - name: Upload OTP rotation diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: otp-rotation-log
-          path: otp-rotation.log
-          retention-days: 1
-      - name: Fail on OTP rotation diagnostic
-        if: steps.otp_rotation.outcome == 'failure'
-        run: exit 1
+
+      - name: Test and build
+        run: npm test
+
+      - name: Production release gate
+        run: npm run test:production-gate
