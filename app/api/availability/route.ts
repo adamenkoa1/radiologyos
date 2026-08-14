@@ -1,8 +1,8 @@
 import { addMinutes, EQUIPMENT } from "../../../lib/catalog";
 import { isBookableDate } from "../../../lib/booking-rules";
 import { effectiveServiceByCode } from "../../../lib/effective-services";
-import { getSetting } from "../../../lib/settings";
-import { candidateTimesFor, hoursFor, isEquipmentDayOpen, parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
+import { candidateTimesFor, hoursFor, isEquipmentDayOpen } from "../../../lib/schedule";
+import { getOrganizationSchedule } from "../../../lib/tenant-schedule";
 import { requireOrgContext } from "../../../lib/tenant";
 import { dbBinding } from "../../../lib/db";
 
@@ -28,7 +28,7 @@ export async function GET(request: Request) {
     return Response.json({ times: [] });
   }
 
-  const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
+  const schedule = await getOrganizationSchedule(db, organizationId);
   if (!isEquipmentDayOpen(date, schedule, service.equipmentId)) {
     return Response.json({
       times: [],
