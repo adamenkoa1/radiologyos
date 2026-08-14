@@ -11,6 +11,11 @@ export const PATIENT_SESSION_TTL_SECONDS = 30 * 60;
 export const PATIENT_OTP_TTL_SECONDS = 5 * 60;
 export const PATIENT_OTP_MAX_ATTEMPTS = 5;
 
+export type PatientIdentityScope = {
+  kind: "dob" | "booking";
+  value: string;
+};
+
 export function normalizeBookingCode(value: unknown): string {
   const code = String(value || "").trim().toUpperCase().slice(0, 24);
   // Новий формат RD-РРММДД-N (дата + добовий номер) та легасі RD-<hex16>.
@@ -36,27 +41,34 @@ export async function createPatientOtpChallenge(
   db: D1Database,
   phoneNormalized: string,
   organizationId: number,
+  identity: PatientIdentityScope,
   purpose = "cabinet_login",
 ): Promise<{ challengeId: string; code: string; expiresIn: number }> {
   const challengeId = newSessionToken();
   const code = newOtpCode();
   const codeHash = await hashPassword(code);
 
-  // Only the newest challenge for this tenant/phone/purpose remains usable.
+  // Only the newest challenge for the same proven identity remains usable.
+  // Separate family members may share a phone number without invalidating each
+  // other's challenge as long as their DOB/booking proof differs.
   await db.batch([
     db.prepare(
       `UPDATE patient_otp_challenges SET consumed_at = CURRENT_TIMESTAMP
-       WHERE organization_id = ? AND phone_normalized = ? AND purpose = ?
+       WHERE organization_id = ? AND phone_normalized = ?
+         AND identity_kind = ? AND identity_value = ? AND purpose = ?
          AND consumed_at = '' AND expires_at > CURRENT_TIMESTAMP`,
-    ).bind(organizationId, phoneNormalized, purpose),
+    ).bind(organizationId, phoneNormalized, identity.kind, identity.value, purpose),
     db.prepare(
       `INSERT INTO patient_otp_challenges
-       (id, organization_id, phone_normalized, purpose, code_hash, expires_at)
-       VALUES (?, ?, ?, ?, ?, datetime('now', ?))`,
+       (id, organization_id, phone_normalized, identity_kind, identity_value,
+        purpose, code_hash, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
     ).bind(
       challengeId,
       organizationId,
       phoneNormalized,
+      identity.kind,
+      identity.value,
       purpose.slice(0, 40),
       codeHash,
       `+${PATIENT_OTP_TTL_SECONDS} seconds`,
@@ -79,15 +91,17 @@ export async function verifyPatientOtpChallenge(
     code: string;
     purpose?: string;
   },
-): Promise<{ organizationId: number } | null> {
+): Promise<{ organizationId: number; identity: PatientIdentityScope } | null> {
   const code = normalizeOtp(input.code);
   if (!/^[a-f0-9]{64}$/i.test(input.challengeId) || !input.phoneNormalized || !code) return null;
   const purpose = (input.purpose || "cabinet_login").slice(0, 40);
 
   const row = await db.prepare(
-    `SELECT organization_id AS organizationId, code_hash AS codeHash, attempts
+    `SELECT organization_id AS organizationId, identity_kind AS identityKind,
+       identity_value AS identityValue, code_hash AS codeHash, attempts
      FROM patient_otp_challenges
      WHERE id = ? AND phone_normalized = ? AND purpose = ?
+       AND identity_kind IN ('dob','booking') AND identity_value != ''
        AND consumed_at = '' AND expires_at > CURRENT_TIMESTAMP
        AND attempts < ?
      LIMIT 1`,
@@ -96,7 +110,13 @@ export async function verifyPatientOtpChallenge(
     input.phoneNormalized,
     purpose,
     PATIENT_OTP_MAX_ATTEMPTS,
-  ).first<{ organizationId: number; codeHash: string; attempts: number }>();
+  ).first<{
+    organizationId: number;
+    identityKind: "dob" | "booking";
+    identityValue: string;
+    codeHash: string;
+    attempts: number;
+  }>();
   if (!row) return null;
 
   const valid = await verifyPassword(code, row.codeHash);
@@ -122,20 +142,32 @@ export async function verifyPatientOtpChallenge(
     purpose,
     PATIENT_OTP_MAX_ATTEMPTS,
   ).run();
-  return consumed.meta.changes ? { organizationId: row.organizationId } : null;
+  return consumed.meta.changes ? {
+    organizationId: row.organizationId,
+    identity: { kind: row.identityKind, value: row.identityValue },
+  } : null;
 }
 
 export async function createPatientSession(
   db: D1Database,
   phoneNormalized: string,
-  organizationId = 1,
+  organizationId: number,
+  identity: PatientIdentityScope,
 ): Promise<string> {
   const rawToken = newSessionToken();
   const tokenHash = await hashToken(rawToken);
   await db.prepare(
-    `INSERT INTO patient_sessions (token_hash, phone_normalized, organization_id, expires_at)
-     VALUES (?, ?, ?, datetime('now', ?))`,
-  ).bind(tokenHash, phoneNormalized, organizationId, `+${PATIENT_SESSION_TTL_SECONDS} seconds`).run();
+    `INSERT INTO patient_sessions
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, expires_at)
+     VALUES (?, ?, ?, ?, ?, datetime('now', ?))`,
+  ).bind(
+    tokenHash,
+    phoneNormalized,
+    organizationId,
+    identity.kind,
+    identity.value,
+    `+${PATIENT_SESSION_TTL_SECONDS} seconds`,
+  ).run();
   await db.prepare("DELETE FROM patient_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
   return rawToken;
 }
@@ -145,11 +177,18 @@ export async function requirePatientSession(request: Request, db: D1Database) {
   if (!rawToken) return null;
   const tokenHash = await hashToken(rawToken);
   return db.prepare(
-    `SELECT phone_normalized AS phoneNormalized, organization_id AS organizationId
+    `SELECT phone_normalized AS phoneNormalized, organization_id AS organizationId,
+       identity_kind AS identityKind, identity_value AS identityValue
      FROM patient_sessions
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
+       AND identity_kind IN ('dob','booking') AND identity_value != ''
      LIMIT 1`,
-  ).bind(tokenHash).first<{ phoneNormalized: string; organizationId: number }>();
+  ).bind(tokenHash).first<{
+    phoneNormalized: string;
+    organizationId: number;
+    identityKind: "dob" | "booking";
+    identityValue: string;
+  }>();
 }
 
 export async function destroyPatientSession(request: Request, db: D1Database): Promise<void> {
