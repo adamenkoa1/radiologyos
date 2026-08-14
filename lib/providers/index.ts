@@ -1,9 +1,8 @@
 // Резолвер провайдерів — добирає реалізації інтеграцій у tenant-контексті.
 //
-// Наразі конфігурація інтеграцій зберігається глобально (app_settings /
-// pacs_settings), але резолвер — це єдиний шов, куди згодом зайде per-org
-// конфігурація. Профіль організації (feature flags) вже впливає на доступність
-// (напр. PACS вимкнено прапорцем dicom_pacs → provider.enabled = false).
+// Messaging/calendar конфігурація поки зберігається глобально в app_settings;
+// PACS та payment вже мають per-org джерела. Резолвер не повинен підміняти
+// tenant-specific PACS readiness даними першої організації.
 
 import { getSettings } from "../settings";
 import { getOrgProfile } from "../org-profile";
@@ -32,8 +31,9 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
       "email_gateway_url", "email_gateway_auth", "email_gateway_from",
     ]),
     getOrgProfile(db, ctx),
-    db.prepare("SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE id = 1")
-      .first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
+    db.prepare(
+      "SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE organization_id = ? LIMIT 1"
+    ).bind(ctx.organizationId).first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
     getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => ""),
   ]);
 
@@ -42,7 +42,7 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
-  // PACS доступний, коли його увімкнено в налаштуваннях PACS.
+  // PACS доступний, коли його увімкнено в налаштуваннях саме цього tenant.
   const pacsEnabled = Boolean(pacsRow?.enabled);
   const pacs: PacsProvider = {
     name: pacsEnabled ? "dicomweb" : "none",
