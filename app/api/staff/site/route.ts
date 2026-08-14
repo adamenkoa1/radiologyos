@@ -14,12 +14,13 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+  const member = ctx.member;
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || member.role !== "admin") {
     return Response.json({ error: "Сайт клініки редагує лише адміністратор основної організації" }, { status: 403 });
   }
 
   const content = parseSiteContent(await getSetting(db, SITE_CONTENT_KEY));
-  return Response.json({ content, staff: ctx.member }, { headers: { "cache-control": "no-store" } });
+  return Response.json({ content, staff: member }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {
@@ -27,7 +28,8 @@ export async function PUT(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+  const member = ctx.member;
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || member.role !== "admin") {
     return Response.json({ error: "Змінювати сайт може лише адміністратор основної організації" }, { status: 403 });
   }
 
