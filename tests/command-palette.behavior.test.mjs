@@ -70,8 +70,8 @@ test("search never leaks bookings from another organization", async () => {
 
 test("clinician search is limited to bookings assigned to that membership", async () => {
   await withD1(async (db) => {
-    await seed(db, { id: 6, code: "RD-OWNRAD01", name: "Контрольний Пацієнт", phone: "+380971110006", phoneNorm: "380971110006" });
-    await seed(db, { id: 7, code: "RD-OTHERRAD", name: "Контрольний Інший", phone: "+380971110007", phoneNorm: "380971110007" });
+    await seed(db, { id: 6, code: "RD-OWNRAD01", name: "Контрольний Пацієнт", phone: "+380971110006", phoneNorm: "380971110006", time: "10:00" });
+    await seed(db, { id: 7, code: "RD-OTHERRAD", name: "Контрольний Інший", phone: "+380971110007", phoneNorm: "380971110007", time: "10:30" });
     const radEmail = "rad@likarnya.test";
     const cookie = await seedStaffSession(db, { email: radEmail, role: "radiologist" });
     await db.prepare("UPDATE bookings SET assigned_radiologist_email = ? WHERE id = 6").bind(radEmail).run();
@@ -89,7 +89,7 @@ test("global search includes accession, protocol, equipment and maintenance for 
       VALUES (10,'ACC-XYZ-999','CT','linked','2026-09-01 10:00','admin@test')`).run();
     await db.prepare(`INSERT INTO protocols (booking_id, findings, conclusion, number, status, updated_by)
       VALUES (10,'Без особливостей','Унікальний висновок глобального пошуку','PR-777','issued','admin@test')`).run();
-    await db.prepare(`INSERT INTO equipment_maintenance_events
+    await db.prepare(`INSERT INTO equipment_maintenance
       (organization_id,equipment_id,event_type,status,title,details,created_by)
       VALUES (1,'siemens-somatom','fault','open','Помилка E09 стабілізатора','Перевірити живлення','admin@test')`).run();
     const cookie = await seedStaffSession(db, { email: "admin-global@likarnya.test", role: "admin" });
@@ -114,6 +114,7 @@ test("global search source enforces role scopes and never searches Study Instanc
   assert.match(route, /assigned_radiographer_email = \?/);
   assert.match(route, /canManageProtocols\(role\)/);
   assert.match(route, /canManageImaging\(role\)/);
+  assert.match(route, /FROM equipment_maintenance/);
   assert.doesNotMatch(route, /study_instance_uid\s+LIKE/i);
 });
 
