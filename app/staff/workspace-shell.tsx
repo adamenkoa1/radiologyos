@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -51,6 +51,9 @@ const systemModules: NavModule[] = [
     { label:"Графік і слоти кабінетів", href:"/staff/schedule" },
     { label:"Обладнання", href:"/staff/equipment" },
     { label:"Послуги кабінетів", href:"/staff/services" },
+  ]},
+  { label:"Склад", href:"/staff/inventory", sections:["inventory"], icon:"▣", items:[
+    { label:"Витратні матеріали", href:"/staff/inventory" },
   ]},
   { label:"Фінанси і звіти", href:"/staff/reports", sections:["reports","tariffs"], icon:"💳", items:[
     { label:"Звіти відділення", href:"/staff/reports" },
@@ -129,7 +132,7 @@ export default function StaffWorkspaceShell({
 
   // Робочі екрани лікаря працюють на всю ширину (Variant B), тому заголовок
   // сторінки теж розтягуємо, щоб він не «висів» вужчою колонкою над контентом.
-  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks";
+  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory";
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
     <CommandPalette />
     <aside className="workspaceSidebar">
@@ -220,14 +223,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "board" ? "Дошка досліджень":active === "tasks" ? "Завдання":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "board" ? "Дошка досліджень":active === "tasks" ? "Завдання":active === "inventory" ? "Склад":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "equipment" || active === "services" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments" || active === "board" || active === "tasks" || active === "whatsapp" || active === "chat" || active === "schedule" || active === "structure" || active === "audit" || active === "intake"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "equipment" || active === "services" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments" || active === "board" || active === "tasks" || active === "inventory" || active === "whatsapp" || active === "chat" || active === "schedule" || active === "structure" || active === "audit" || active === "intake"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
