@@ -41,19 +41,8 @@ jobs:
       - name: Type check
         run: npm exec tsc -- --noEmit --incremental false
 
-      - name: Full test diagnostic
-        id: full_test
-        continue-on-error: true
-        run: npm test > full-test.log 2>&1
+      - name: Test and build
+        run: npm test
 
-      - name: Upload full test diagnostic
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: full-test-log
-          path: full-test.log
-          retention-days: 1
-
-      - name: Fail on full test diagnostic
-        if: steps.full_test.outcome == 'failure'
-        run: exit 1
+      - name: Production release gate
+        run: npm run test:production-gate
