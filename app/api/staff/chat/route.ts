@@ -1,6 +1,7 @@
 // Єдиний контакт-центр пацієнтів. Історія береться з patient_communications
-// незалежно від каналу; ручні відповіді поки відправляються через уже
-// налаштований WhatsApp-шлюз. Усі читання та записи tenant-scoped.
+// незалежно від каналу; ручні відповіді поки відправляються через legacy-global
+// WhatsApp-шлюз org 1. Усі читання та записи tenant-scoped; secondary tenants
+// можуть читати свою історію, але не використовувати глобальний шлюз для reply.
 
 import { canViewPatientRegistry } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
@@ -9,6 +10,7 @@ import { sendWhatsApp } from "../../../../lib/whatsapp";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
 
+const PRIMARY_ORGANIZATION_ID = 1;
 const CHANNELS = new Set(["whatsapp", "telegram", "sms", "email"]);
 
 function channelFilter(request: Request): string {
@@ -76,7 +78,7 @@ export async function GET(request: Request) {
       name: patient?.name || "",
       messages: rows.results,
       issues: issues.results,
-      availableReplyChannels: ["whatsapp"],
+      availableReplyChannels: orgId === PRIMARY_ORGANIZATION_ID ? ["whatsapp"] : [],
       linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
@@ -142,6 +144,9 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canViewPatientRegistry(member.role)) return Response.json({ error: "Відповідати може реєстратор або адміністратор" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json({ error: "Вихідний WhatsApp ще не налаштований для цієї організації" }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({})) as { phone?: string; text?: string; channel?: string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
