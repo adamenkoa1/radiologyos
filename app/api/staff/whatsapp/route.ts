@@ -1,8 +1,8 @@
-// Підключення WhatsApp (green-api) — лише адміністратор. Зберігає idInstance,
-// apiToken (секрет) і прапорець enabled у app_settings; видає токен вебхука
-// й готову URL, яку треба вписати в green-api.
+// Підключення WhatsApp (green-api) — лише адміністратор активного tenant.
+// Зберігає idInstance, apiToken (секрет) і прапорець enabled у legacy-global
+// app_settings; авторизація при цьому завжди береться з membership context.
 
-import { requireStaff } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { getSetting, getSettings, setSetting } from "../../../../lib/settings";
 import { whatsappConfig, whatsappConfigured } from "../../../../lib/whatsapp";
 import { dbBinding } from "../../../../lib/db";
@@ -22,9 +22,9 @@ async function ensureWebhookToken(db: D1Database): Promise<string> {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "WhatsApp налаштовує лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") return Response.json({ error: "WhatsApp налаштовує лише адміністратор" }, { status: 403 });
 
   const cfg = await whatsappConfig(db);
   const token = await ensureWebhookToken(db);
@@ -37,16 +37,16 @@ export async function GET(request: Request) {
       connected: whatsappConfigured(cfg),
       webhookUrl: `${origin}/api/whatsapp/webhook?token=${token}`,
     },
-    staff: member,
+    staff: ctx.member,
   }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Змінювати WhatsApp може лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.role !== "admin") return Response.json({ error: "Змінювати WhatsApp може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as { idInstance?: string; apiToken?: string; enabled?: boolean };
   const idInstance = clean(body.idInstance, 40);
