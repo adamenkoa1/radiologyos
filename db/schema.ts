@@ -205,10 +205,14 @@ export const protocols = sqliteTable("protocols", {
   updatedBy: text("updated_by").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [index("protocols_status_idx").on(table.status, table.updatedAt)]);
+}, table => [
+  index("protocols_status_idx").on(table.status, table.updatedAt),
+  index("protocols_org_number_idx").on(table.organizationId, table.number),
+]);
 
 export const protocolRevisions = sqliteTable("protocol_revisions", {
   id: integer("id").primaryKey({ autoIncrement: true }),
+  organizationId: integer("organization_id").notNull().default(1),
   bookingId: integer("booking_id").notNull(),
   version: integer("version").notNull(),
   templateKey: text("template_key").notNull(),
@@ -221,7 +225,10 @@ export const protocolRevisions = sqliteTable("protocol_revisions", {
   status: text("status").notNull().default("draft"),
   savedBy: text("saved_by").notNull(),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-}, table => [index("protocol_revisions_booking_idx").on(table.bookingId, table.version)]);
+}, table => [
+  index("protocol_revisions_booking_idx").on(table.bookingId, table.version),
+  index("protocol_revisions_org_booking_idx").on(table.organizationId, table.bookingId, table.version),
+]);
 
 export const patientProfiles = sqliteTable("patient_profiles", {
   organizationId: integer("organization_id").notNull().default(1),
