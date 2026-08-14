@@ -30,8 +30,8 @@ test("PACS settings are isolated by organization", async () => {
   await withD1(async (db) => {
     await addOrganization(db, 2, "second-clinic", "Second Clinic");
 
-    const cookie1 = await seedStaffSession(db, { email: "admin-one@example.com", role: "admin" });
-    const cookie2 = await seedStaffSession(db, { email: "admin-two@example.com", role: "admin" });
+    const cookie1 = await seedStaffSession(db, { email: "admin-one@example.com", role: "admin", withMembership: false });
+    const cookie2 = await seedStaffSession(db, { email: "admin-two@example.com", role: "admin", withMembership: false });
     await addMembership(db, 1, "admin-one@example.com");
     await addMembership(db, 2, "admin-two@example.com");
 
@@ -82,8 +82,8 @@ test("PACS settings are isolated by organization", async () => {
 test("imaging linkage and audit events cannot cross tenant scope", async () => {
   await withD1(async (db) => {
     await addOrganization(db, 2, "second-clinic", "Second Clinic");
-    const cookie1 = await seedStaffSession(db, { email: "image-one@example.com", role: "admin" });
-    const cookie2 = await seedStaffSession(db, { email: "image-two@example.com", role: "admin" });
+    const cookie1 = await seedStaffSession(db, { email: "image-one@example.com", role: "admin", withMembership: false });
+    const cookie2 = await seedStaffSession(db, { email: "image-two@example.com", role: "admin", withMembership: false });
     await addMembership(db, 1, "image-one@example.com");
     await addMembership(db, 2, "image-two@example.com");
 
