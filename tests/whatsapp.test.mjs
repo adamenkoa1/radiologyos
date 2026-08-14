@@ -62,13 +62,15 @@ test("webhook route is token-guarded (constant-time + header), deduped and rate-
   assert.match(route, /interpretBotCommand|botReply/);
 });
 
-test("staff whatsapp + chat routes are permission-guarded", async () => {
+test("staff whatsapp + contact-center routes are permission-guarded", async () => {
   const wa = await read("app/api/staff/whatsapp/route.ts");
   assert.match(wa, /member\.role !== "admin"/);
   assert.match(wa, /whatsapp_api_token_instance/);
   const chat = await read("app/api/staff/chat/route.ts");
   assert.match(chat, /canViewPatientRegistry\(member\.role\)/);
-  assert.match(chat, /channel = 'whatsapp'/);
+  assert.match(chat, /const CHANNELS = new Set\(\["whatsapp", "telegram", "sms", "email"\]\)/);
+  assert.match(chat, /organization_id = \?/);
+  assert.match(chat, /channel !== "whatsapp"/);
   assert.match(chat, /sendWhatsApp\(/);
 });
 
