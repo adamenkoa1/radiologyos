@@ -66,6 +66,21 @@ test("GitHub production workflow uses the same Time Travel command contract", as
   assert.doesNotMatch(workflow, /wrangler d1 time-travel info[^\n]*--remote/);
 });
 
+test("production deploy paths reject placeholder or malformed administrator hashes", async () => {
+  const [script, workflow] = await Promise.all([
+    read("scripts/deploy-cloudflare.sh"),
+    read(".github/workflows/deploy.yml"),
+  ]);
+  for (const source of [script, workflow]) {
+    assert.match(source, /substr\(password_hash,1,15\) = 'pbkdf2\$sha256\$'/);
+    assert.match(source, /length\(password_hash\) - length\(replace\(password_hash,'\$',''\)\) = 4/);
+    assert.match(source, /iterations NOT GLOB '\*\[\^0-9\]\*'/);
+    assert.match(source, /CAST\(iterations AS INTEGER\) >= 1000/);
+    assert.match(source, /length\(password_hash\) >= 80/);
+    assert.match(source, /secure_admins/);
+  }
+});
+
 test("GitHub production workflow migrates D1 before checking for an administrator", async () => {
   const workflow = await read(".github/workflows/deploy.yml");
   const migrations = workflow.indexOf("- name: Apply D1 migrations");
