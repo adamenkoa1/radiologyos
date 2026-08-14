@@ -1,8 +1,9 @@
 // Резолвер провайдерів — добирає реалізації інтеграцій у tenant-контексті.
 //
-// Messaging/calendar конфігурація поки зберігається глобально в app_settings;
-// PACS та payment вже мають per-org джерела. Резолвер не повинен підміняти
-// tenant-specific PACS readiness даними першої організації.
+// Messaging configuration is still legacy-global in app_settings. The external
+// calendar URL is also legacy-global and belongs to the primary/public tenant,
+// so secondary tenants must not receive it until calendar storage is tenantized.
+// PACS та payment вже мають per-org джерела.
 
 import { getSettings } from "../settings";
 import { getOrgProfile } from "../org-profile";
@@ -11,6 +12,8 @@ import { createMessagingProvider } from "./messaging";
 import { createCalendarProvider } from "./calendar";
 import { createPaymentProvider, type PaymentConfig } from "./payment";
 import type { PacsProvider, ResolvedProviders } from "./types";
+
+const PRIMARY_ORGANIZATION_ID = 1;
 
 // Дістає конфіг оплат із settings_json профілю організації (безпечно).
 function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
@@ -25,6 +28,10 @@ function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
 }
 
 export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise<ResolvedProviders> {
+  const calendarUrl = ctx.organizationId === PRIMARY_ORGANIZATION_ID
+    ? getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => "")
+    : Promise.resolve("");
+
   const [cfg, profile, pacsRow, icsUrl] = await Promise.all([
     getSettings(db, [
       "sms_gateway_url", "sms_gateway_auth",
@@ -34,7 +41,7 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     db.prepare(
       "SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE organization_id = ? LIMIT 1"
     ).bind(ctx.organizationId).first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
-    getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => ""),
+    calendarUrl,
   ]);
 
   const messaging = createMessagingProvider({
