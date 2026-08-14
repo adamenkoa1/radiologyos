@@ -17,6 +17,20 @@ Patient {
 }
 ```
 
+Телефон є каналом зв'язку, але не достатнім ідентифікатором пацієнта: один номер може використовуватися кількома членами сім'ї. Після OTP-перевірки patient session зберігає tenant, телефон і доведену identity scope: або `dob + дата народження`, або `booking + точний код заявки`. Усі cabinet/result/self-service запити зобов'язані застосовувати цю scope разом із tenant і телефоном.
+
+```ts
+PatientSession {
+  organizationId
+  phoneNormalized
+  identityKind: dob | booking
+  identityValue
+  expiresAt
+}
+```
+
+OTP challenge, patient session і Telegram deep-link не можуть мати вигадану scope: D1 перевіряє, що в tenant існує заявка з тим самим телефоном і відповідною датою народження або кодом заявки. Telegram chat також зберігається для конкретної patient identity, а не на рівні всього номера телефону.
+
 ## Application
 
 Одна заявка належить одному пацієнту.
