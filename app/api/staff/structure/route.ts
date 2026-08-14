@@ -20,6 +20,7 @@ export async function GET(request: Request) {
   if (!ctx || ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
     return Response.json({ error: "Розділ доступний лише персоналу основної організації" }, { status: 403 });
   }
+  const member = ctx.member;
 
   const [structureStored, siteStored] = await Promise.all([
     getSetting(db, DEPARTMENT_STRUCTURE_KEY),
@@ -28,8 +29,8 @@ export async function GET(request: Request) {
   return Response.json({
     structure: parseDepartmentStructure(structureStored),
     siteContent: parseSiteContent(siteStored),
-    staff: ctx.member,
-    canEdit: ctx.role === "admin",
+    staff: member,
+    canEdit: member.role === "admin",
   }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -37,9 +38,11 @@ export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
-  if (!ctx || ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
-    return Response.json({ error: "Редагувати структуру може лише адміністратор основної організації" }, { status: 403 });
+  if (!ctx || ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json({ error: "Розділ доступний лише персоналу основної організації" }, { status: 403 });
   }
+  const member = ctx.member;
+  if (member.role !== "admin") return Response.json({ error: "Редагувати структуру може лише адміністратор" }, { status: 403 });
 
   const body = await request.json().catch(() => ({})) as { structure?: unknown; siteContent?: unknown };
   const structure = sanitizeDepartmentStructure(body.structure);
