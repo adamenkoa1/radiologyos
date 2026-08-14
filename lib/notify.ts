@@ -85,14 +85,31 @@ async function record(
 async function patientMessagingProfile(
   db: D1Database,
   organizationId: number,
+  bookingId: number,
   phoneNormalized: string,
 ): Promise<{ dnc: number; tg: string } | null> {
-  if (!phoneNormalized || !organizationId) return null;
+  if (!phoneNormalized || !organizationId || !bookingId) return null;
   return db.prepare(
-    `SELECT do_not_contact AS dnc, telegram_chat_id AS tg
-     FROM patient_profiles
-     WHERE organization_id = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(organizationId, phoneNormalized).first<{ dnc: number; tg: string }>().catch(() => null);
+    `SELECT COALESCE(p.do_not_contact, 0) AS dnc,
+       COALESCE((
+         SELECT ti.telegram_chat_id
+         FROM patient_telegram_identities ti
+         WHERE ti.organization_id = b.organization_id
+           AND ti.phone_normalized = b.phone_normalized
+           AND ti.telegram_chat_id != ''
+           AND (
+             (ti.identity_kind = 'booking' AND ti.identity_value = b.code)
+             OR (ti.identity_kind = 'dob' AND b.date_of_birth != '' AND ti.identity_value = b.date_of_birth)
+           )
+         ORDER BY CASE ti.identity_kind WHEN 'booking' THEN 0 ELSE 1 END
+         LIMIT 1
+       ), '') AS tg
+     FROM bookings b
+     LEFT JOIN patient_profiles p
+       ON p.organization_id = b.organization_id AND p.phone_normalized = b.phone_normalized
+     WHERE b.organization_id = ? AND b.id = ? AND b.phone_normalized = ?
+     LIMIT 1`
+  ).bind(organizationId, bookingId, phoneNormalized).first<{ dnc: number; tg: string }>().catch(() => null);
 }
 
 // Ставить нагадування в чергу і намагається відправити наявними каналами.
@@ -121,7 +138,7 @@ export async function sendPatientReminder(
 
   let telegramChatId = "";
   if (booking.phoneNormalized) {
-    const profile = await patientMessagingProfile(db, organizationId, booking.phoneNormalized);
+    const profile = await patientMessagingProfile(db, organizationId, booking.id, booking.phoneNormalized);
     if (profile?.dnc) {
       await record(db, organizationId, booking, kind, "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
       summary.skipped += 1;
@@ -210,7 +227,7 @@ export async function sendPatientMessage(
 
   let telegramChatId = "";
   if (booking.phoneNormalized) {
-    const profile = await patientMessagingProfile(db, organizationId, booking.phoneNormalized);
+    const profile = await patientMessagingProfile(db, organizationId, booking.id, booking.phoneNormalized);
     if (profile?.dnc) {
       await record(db, organizationId, booking, "custom", "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
       summary.skipped += 1;
