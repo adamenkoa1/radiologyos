@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -16,25 +16,19 @@ type StaffWorkspaceShellProps = {
   children: ReactNode;
 };
 
-// Бічна панель: угорі «Огляд» — найчастіші екрани реєстратури; нижче
-// «Модулі» — робочі напрями, згруповані за призначенням. Кожен модуль
-// веде на головну сторінку напряму й розгортається у підпункти-екрани.
 type NavChild = { label:string; href:string };
 type NavLink = { label:string; href:string; section:WorkspaceSection; icon:string };
-// section — головний розділ модуля; sections — усі розділи, що його підсвічують.
 type NavModule = { label:string; href:string; sections:WorkspaceSection[]; icon:string; items:NavChild[] };
 
-// Меню за процесом роботи, а не за модулями системи: як думає відділення —
-// Прийом → Розклад → Опис → Видача. Пульт зверху як загальний огляд дня.
 const processRail: NavLink[] = [
   { label:"Пульт", href:"/staff/dashboard", section:"dashboard", icon:"🏠" },
   { label:"Прийом", href:"/staff/intake", section:"intake", icon:"📥" },
   { label:"Розклад", href:"/staff/appointments", section:"appointments", icon:"🗓️" },
+  { label:"Дошка", href:"/staff/board", section:"board", icon:"▦" },
   { label:"Опис", href:"/staff/protocols", section:"protocols", icon:"✍️" },
   { label:"Видача", href:"/staff/studies", section:"studies", icon:"✅" },
 ];
 
-// Модулі — усе, що поза щоденним потоком: довідники, фінанси, адміністрування.
 const systemModules: NavModule[] = [
   { label:"Пацієнти", href:"/staff/patients", sections:["patients","chat"], icon:"👥", items:[
     { label:"Картки пацієнтів", href:"/staff/patients" },
@@ -125,9 +119,7 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  // Робочі екрани лікаря працюють на всю ширину (Variant B), тому заголовок
-  // сторінки теж розтягуємо, щоб він не «висів» вужчою колонкою над контентом.
-  const wide = active === "dashboard" || active === "appointments" || active === "intake";
+  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board";
   return <div className={`workspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
     <CommandPalette />
     <aside className="workspaceSidebar">
@@ -149,8 +141,6 @@ export default function StaffWorkspaceShell({
         <p>Модулі</p>
         {systemModules.map((item)=>{
           const isActive = item.sections.includes(active);
-          // Акордеон: типово розгорнутий лише модуль поточного розділу, решта
-          // згорнуті в один рядок. Користувач може розгортати вручну.
           const isOpen = openModules[item.href] ?? isActive;
           return <div className="workspaceModuleGroup" key={item.href}>
             <div className="workspaceModuleRow">
@@ -218,14 +208,14 @@ export default function StaffWorkspaceShell({
       <main className="workspacePage">
         <header className="workspacePageHead">
           <div>
-            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
+            <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {active === "reports" ? "Аналітика":active === "protocols" ? "Протоколи":active === "patients" ? "CRM":active === "imaging" ? "DICOM / PACS":active === "equipment" ? "Обладнання":active === "services" ? "Послуги кабінетів":active === "dashboard" ? "Пульт":active === "studies" ? "Дослідження":active === "appointments" ? "Календар записів":active === "board" ? "Дошка досліджень":active === "whatsapp" ? "WhatsApp":active === "chat" ? "Чат з пацієнтами":active === "site" ? "Публічний сайт":active === "schedule" ? "Графік кабінетів":active === "tariffs" ? "Тарифи":active === "settings" ? "Налаштування":active === "organization" ? "Організація":active === "structure" ? "Структура відділення":active === "audit" ? "Журнал дій":active === "intake" ? "Дошка прийому":"Робочий кабінет"}</p>
             <h1>{title}</h1>
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
             {active === "reports"
               ? <Link href="/staff">До черги заявок</Link>
-              : active === "protocols" || active === "patients" || active === "imaging" || active === "equipment" || active === "services" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments" || active === "whatsapp" || active === "chat" || active === "schedule" || active === "structure" || active === "audit" || active === "intake"
+              : active === "protocols" || active === "patients" || active === "imaging" || active === "equipment" || active === "services" || active === "dashboard" || active === "settings" || active === "tariffs" || active === "studies" || active === "organization" || active === "appointments" || active === "board" || active === "whatsapp" || active === "chat" || active === "schedule" || active === "structure" || active === "audit" || active === "intake"
               ? <><Link href="/staff">До черги заявок</Link><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>
               : <><a href="#bookings">Відкрити заявки</a><Link className="primary" href="/staff/reports">Перейти до звітів</Link></>}
           </div>
