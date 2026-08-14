@@ -1,5 +1,5 @@
-// Тестове WhatsApp-повідомлення (кнопка «Надіслати тест») — лише адміністратор.
-import { requireStaff } from "../../../../../lib/staff-auth";
+// Тестове WhatsApp-повідомлення (кнопка «Надіслати тест») — лише адміністратор активного tenant.
+import { requireOrgContext } from "../../../../../lib/tenant";
 import { normalizeUkrainianPhone } from "../../../../../lib/phone";
 import { sendWhatsApp } from "../../../../../lib/whatsapp";
 import { dbBinding } from "../../../../../lib/db";
@@ -7,8 +7,8 @@ import { dbBinding } from "../../../../../lib/db";
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member || member.role !== "admin") return Response.json({ error: "Лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx || ctx.role !== "admin") return Response.json({ error: "Лише адміністратор" }, { status: 403 });
   const body = await request.json().catch(() => ({})) as { phone?: string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
   if (!phone) return Response.json({ error: "Вкажіть коректний номер для тесту" }, { status: 400 });
