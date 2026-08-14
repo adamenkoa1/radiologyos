@@ -6,7 +6,9 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("messaging-test endpoint is admin-only and sends via the saved gateway", async () => {
   const route = await read("app/api/staff/settings/messaging-test/route.ts");
-  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.role !== "admin"/);
+  assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /createMessagingProvider\(/);
   assert.match(route, /messaging\.sendSms\(/);
   assert.match(route, /messaging\.sendEmail\(/);

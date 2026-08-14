@@ -64,7 +64,9 @@ test("webhook route is token-guarded (constant-time + header), deduped and rate-
 
 test("staff whatsapp + contact-center routes are permission-guarded", async () => {
   const wa = await read("app/api/staff/whatsapp/route.ts");
-  assert.match(wa, /member\.role !== "admin"/);
+  assert.match(wa, /requireOrgContext\(request, db\)/);
+  assert.match(wa, /ctx\.role !== "admin"/);
+  assert.doesNotMatch(wa, /requireStaff\(request, db\)/);
   assert.match(wa, /whatsapp_api_token_instance/);
   const chat = await read("app/api/staff/chat/route.ts");
   assert.match(chat, /canViewPatientRegistry\(member\.role\)/);

@@ -52,7 +52,9 @@ test("public webhook is protected by the secret header set on setWebhook", async
 
 test("admin enable endpoint registers the webhook with a stored secret", async () => {
   const route = await read("app/api/staff/settings/telegram-webhook/route.ts");
-  assert.match(route, /member\.role !== "admin"/);
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.role !== "admin"/);
+  assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /setTelegramWebhook\(db, webhookUrl, secret\)/);
   assert.match(route, /\/api\/telegram\/webhook/);
   assert.match(route, /setSetting\(db, "telegram_webhook_secret"/);

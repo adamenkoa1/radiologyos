@@ -1,12 +1,16 @@
 // Department settings managed by an administrator: Telegram notifications for
 // new bookings and the PrivatBank payment link for civilian patients.
+// These settings are still legacy-global in app_settings, so until they are
+// tenantized only the primary/public organization may administer them.
 
-import { requireStaff } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
 import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
+
+const PRIMARY_ORGANIZATION_ID = 1;
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -40,23 +44,27 @@ function settingsView(values: Record<string, string>) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Налаштування доступні лише адміністратору" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+    return Response.json({ error: "Налаштування доступні лише адміністратору основної організації" }, { status: 403 });
+  }
 
   const values = await getSettings(db, SETTING_KEYS);
   return Response.json({
     settings: settingsView(values),
-    staff: member,
+    staff: ctx.member,
   }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (member.role !== "admin") return Response.json({ error: "Змінювати налаштування може лише адміністратор" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
+    return Response.json({ error: "Змінювати налаштування може лише адміністратор основної організації" }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({})) as {
     telegramBotToken?: string; telegramChatId?: string; payLink?: string;
@@ -116,7 +124,12 @@ export async function PUT(request: Request) {
   if (emailAuth === "-") await setSetting(db, "email_gateway_auth", "");
   else if (emailAuth) await setSetting(db, "email_gateway_auth", emailAuth);
 
-  await audit(db, { organizationId: 1, actorEmail: member.email, action: "settings_update", resource: "settings" });
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: ctx.member.email,
+    action: "settings_update",
+    resource: "settings",
+  });
   const values = await getSettings(db, SETTING_KEYS);
   return Response.json({ ok: true, settings: settingsView(values) });
 }
