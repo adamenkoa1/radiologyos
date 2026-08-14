@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect,useState } from "react";
+import { useCallback,useEffect,useState } from "react";
 import styles from "./study-context.module.css";
 
 type StudyRef={id:number;code:string;name:string;service:string;stateLabel:string};
@@ -32,14 +32,14 @@ export default function StudyContextDrawer({study,onClose}:{study:StudyRef;onClo
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
 
-  async function load(){
+  const load=useCallback(async()=>{
     const response=await fetch(`/api/staff/study-context?id=${study.id}`,{cache:"no-store"});
     const payload=await response.json().catch(()=>({})) as ContextData;
     if(!response.ok){setError(payload.error||"Не вдалося завантажити історію");return;}
     setData(payload);setError("");
-  }
+  },[study.id]);
 
-  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[study.id]);
+  useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
   useEffect(()=>{const key=(e:KeyboardEvent)=>{if(e.key==="Escape")onClose();};window.addEventListener("keydown",key);return()=>window.removeEventListener("keydown",key);},[onClose]);
 
   async function submit(){
