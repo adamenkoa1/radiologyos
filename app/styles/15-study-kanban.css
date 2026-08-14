@@ -1,0 +1,423 @@
+/* Study workflow Kanban: operational, read-only view of the clinical lifecycle. */
+
+.workspaceShell .workspaceModuleLink[href="/staff/board"] {
+  --ws-nav-icon: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='5' height='16' rx='1'/%3E%3Crect x='10' y='4' width='5' height='11' rx='1'/%3E%3Crect x='17' y='4' width='4' height='8' rx='1'/%3E%3C/svg%3E");
+}
+
+.workspaceShell .studyBoardShell {
+  display: grid;
+  gap: 12px;
+}
+
+.workspaceShell .studyBoardToolbar {
+  display: flex;
+  align-items: end;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface);
+  box-shadow: var(--ws-shadow-sm);
+}
+
+.workspaceShell .studyBoardToolbar label {
+  display: grid;
+  gap: 4px;
+}
+
+.workspaceShell .studyBoardToolbar label > span {
+  color: var(--ws-muted);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.workspaceShell .studyBoardToolbar input,
+.workspaceShell .studyBoardToolbar button,
+.workspaceShell .studyBoardToolbar a {
+  min-height: 34px;
+  border-radius: var(--ws-radius-sm);
+}
+
+.workspaceShell .studyBoardToolbar input {
+  border: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+  color: var(--ws-ink);
+}
+
+.workspaceShell .studyBoardSearch {
+  flex: 1 1 320px;
+}
+
+.workspaceShell .studyBoardSearch input {
+  width: 100%;
+}
+
+.workspaceShell .studyBoardToolbar button,
+.workspaceShell .studyBoardToolbar a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+  color: var(--ws-ink);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.workspaceShell .studyBoardToolbar button:hover,
+.workspaceShell .studyBoardToolbar a:hover {
+  border-color: rgba(37,99,235,.3);
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+}
+
+.workspaceShell .studyBoardSummary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.workspaceShell .studyBoardSummary > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 42px;
+  padding: 8px 10px;
+  border: 1px solid var(--ws-line);
+  border-radius: 9px;
+  background: var(--ws-surface);
+  color: var(--ws-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.workspaceShell .studyBoardSummary b {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  padding: 0 7px;
+  border-radius: 8px;
+  background: var(--ws-surface-subtle);
+  color: var(--ws-ink);
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .studyKanban {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(245px, 1fr));
+  gap: 9px;
+  align-items: start;
+  overflow-x: auto;
+  padding-bottom: 5px;
+  scrollbar-width: thin;
+}
+
+.workspaceShell .studyKanbanColumn {
+  min-width: 245px;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface-subtle);
+  overflow: hidden;
+}
+
+.workspaceShell .studyKanbanColumn > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 70px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--ws-line);
+  background: var(--ws-surface);
+}
+
+.workspaceShell .studyKanbanColumn > header h2 {
+  margin: 0;
+  color: var(--ws-ink);
+  font-size: 13px;
+  line-height: 1.25;
+  letter-spacing: -.01em;
+}
+
+.workspaceShell .studyKanbanColumn > header p {
+  margin: 4px 0 0;
+  color: var(--ws-muted);
+  font-size: 10px;
+  line-height: 1.3;
+}
+
+.workspaceShell .studyKanbanColumn > header > span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 24px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+  font-size: 11px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .studyKanbanCards {
+  display: grid;
+  gap: 7px;
+  min-height: 132px;
+  max-height: calc(100vh - 330px);
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.workspaceShell .studyKanbanCard {
+  position: relative;
+  display: grid;
+  gap: 5px;
+  padding: 10px 10px 9px 13px;
+  border: 1px solid var(--ws-line);
+  border-radius: 9px;
+  background: var(--ws-surface);
+  color: var(--ws-ink);
+  text-decoration: none;
+  box-shadow: 0 1px 2px rgba(16,24,40,.035);
+  overflow: hidden;
+  transition: border-color .12s ease, box-shadow .12s ease, transform .12s ease;
+}
+
+.workspaceShell .studyKanbanCard::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 3px;
+  background: #94a3b8;
+}
+
+.workspaceShell .studyKanbanCard.mod-ct::before { background: #2563eb; }
+.workspaceShell .studyKanbanCard.mod-xray::before { background: #7c3aed; }
+.workspaceShell .studyKanbanCard.mod-fluoro::before { background: #0891b2; }
+
+.workspaceShell .studyKanbanCard:hover {
+  border-color: rgba(37,99,235,.35);
+  box-shadow: 0 5px 16px rgba(16,24,40,.09);
+  transform: translateY(-1px);
+}
+
+.workspaceShell .studyKanbanCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.workspaceShell .studyKanbanCardTop time {
+  color: var(--ws-ink);
+  font-size: 12px;
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .studyKanbanCardTop > span {
+  color: var(--ws-muted);
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.workspaceShell .studyKanbanCard > b {
+  overflow: hidden;
+  color: var(--ws-ink);
+  font-size: 13px;
+  line-height: 1.25;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspaceShell .studyKanbanCard > p {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  color: var(--ws-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.workspaceShell .studyKanbanCard > small {
+  color: var(--ws-muted);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: .03em;
+}
+
+.workspaceShell .studyKanbanTags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 2px;
+}
+
+.workspaceShell .studyStateTag,
+.workspaceShell .studyTag {
+  display: inline-flex;
+  align-items: center;
+  min-height: 20px;
+  padding: 0 7px;
+  border-radius: 999px;
+  font-size: 9px;
+  line-height: 1;
+  font-weight: 800;
+}
+
+.workspaceShell .studyStateTag {
+  background: rgba(148,163,184,.12);
+  color: var(--ws-muted);
+}
+
+.workspaceShell .studyStateTag.st-arrived,
+.workspaceShell .studyStateTag.st-queued,
+.workspaceShell .studyStateTag.st-in_progress {
+  background: rgba(217,119,6,.11);
+  color: #b45309;
+}
+
+.workspaceShell .studyStateTag.st-performed,
+.workspaceShell .studyStateTag.st-images_ready,
+.workspaceShell .studyStateTag.st-reporting {
+  background: rgba(37,99,235,.11);
+  color: #2563eb;
+}
+
+.workspaceShell .studyStateTag.st-protocol_ready,
+.workspaceShell .studyStateTag.st-issued,
+.workspaceShell .studyStateTag.st-completed {
+  background: rgba(22,163,74,.11);
+  color: #15803d;
+}
+
+.workspaceShell .studyTag.contrast {
+  background: rgba(124,58,237,.1);
+  color: #7c3aed;
+}
+
+.workspaceShell .studyTag.pay {
+  background: rgba(220,38,38,.1);
+  color: #b91c1c;
+}
+
+.workspaceShell .studyKanbanEmpty {
+  margin: 14px 6px;
+  color: var(--ws-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.workspaceShell .studyBoardExceptions {
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface);
+  overflow: hidden;
+}
+
+.workspaceShell .studyBoardExceptions summary {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 12px;
+  color: var(--ws-muted);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.workspaceShell .studyBoardExceptions summary span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 21px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.12);
+}
+
+.workspaceShell .studyBoardExceptions > div {
+  border-top: 1px solid var(--ws-line);
+}
+
+.workspaceShell .studyBoardExceptions > div a {
+  display: grid;
+  grid-template-columns: 72px minmax(0,1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 38px;
+  padding: 6px 12px;
+  border-bottom: 1px solid var(--ws-line);
+  color: var(--ws-ink);
+  font-size: 11px;
+  text-decoration: none;
+}
+
+.workspaceShell .studyBoardExceptions > div a:last-child { border-bottom: 0; }
+.workspaceShell .studyBoardExceptions time { font-variant-numeric: tabular-nums; }
+.workspaceShell .studyBoardExceptions > div a span { color: var(--ws-muted); }
+
+.workspaceShell.themeDark .studyKanbanCard {
+  box-shadow: none;
+}
+
+.workspaceShell.themeDark .studyKanbanCard:hover {
+  box-shadow: 0 5px 16px rgba(0,0,0,.26);
+}
+
+.workspaceShell.themeDark .studyStateTag.st-arrived,
+.workspaceShell.themeDark .studyStateTag.st-queued,
+.workspaceShell.themeDark .studyStateTag.st-in_progress { color: #fbbf24; }
+.workspaceShell.themeDark .studyStateTag.st-performed,
+.workspaceShell.themeDark .studyStateTag.st-images_ready,
+.workspaceShell.themeDark .studyStateTag.st-reporting { color: #93c5fd; }
+.workspaceShell.themeDark .studyStateTag.st-protocol_ready,
+.workspaceShell.themeDark .studyStateTag.st-issued,
+.workspaceShell.themeDark .studyStateTag.st-completed { color: #86efac; }
+.workspaceShell.themeDark .studyTag.contrast { color: #c4b5fd; }
+.workspaceShell.themeDark .studyTag.pay { color: #fca5a5; }
+
+@media (max-width: 1120px) {
+  .workspaceShell .studyBoardSummary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .workspaceShell .studyKanban {
+    grid-template-columns: repeat(5, 260px);
+  }
+}
+
+@media (max-width: 700px) {
+  .workspaceShell .studyBoardSummary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspaceShell .studyBoardToolbar {
+    align-items: stretch;
+  }
+  .workspaceShell .studyBoardToolbar label,
+  .workspaceShell .studyBoardToolbar button,
+  .workspaceShell .studyBoardToolbar a {
+    width: 100%;
+  }
+  .workspaceShell .studyKanbanCards {
+    max-height: 60vh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspaceShell .studyKanbanCard { transition: none; }
+  .workspaceShell .studyKanbanCard:hover { transform: none; }
+}
