@@ -1,5 +1,5 @@
 // Поведінкові тести кабінету після OTP: /api/my-bookings не автентифікує
-// знанням DOB/телефону, а лише читає вже підтверджену tenant-scoped session.
+// знанням DOB/телефону, а лише читає вже підтверджену tenant + identity-scoped session.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -73,6 +73,7 @@ test("patient session is explicitly tenant-scoped", async () => {
 test("expired or missing session is rejected", async () => {
   await withD1(async (db) => {
     assert.equal((await post(db)).status, 401);
+    await seedBooking(db);
     const cookie = await seedPatientSession(db, "380971112233", 1);
     await db.prepare("UPDATE patient_sessions SET expires_at = datetime('now', '-1 minute')").run();
     assert.equal((await post(db, cookie)).status, 401);
@@ -81,6 +82,7 @@ test("expired or missing session is rejected", async () => {
 
 test("cabinet reads are rate-limited", async () => {
   await withD1(async (db) => {
+    await seedBooking(db);
     const cookie = await seedPatientSession(db, "380971112233", 1);
     let last = 200;
     for (let i = 0; i < 22; i += 1) {
