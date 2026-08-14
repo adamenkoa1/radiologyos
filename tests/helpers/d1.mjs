@@ -109,11 +109,25 @@ function loadWorker() {
   return workerPromise;
 }
 
-export async function seedStaffSession(db, { email, role, displayName = "" }) {
+export async function seedStaffSession(db, {
+  email,
+  role,
+  displayName = "",
+  organizationId = 1,
+  withMembership = true,
+}) {
   await db.prepare(
     `INSERT INTO staff_members (email, display_name, role, active) VALUES (?, ?, ?, 1)
      ON CONFLICT(email) DO UPDATE SET role = excluded.role, active = 1`
   ).bind(email, displayName || email, role).run();
+  if (withMembership) {
+    await db.prepare(
+      `INSERT INTO memberships (organization_id, member_email, role, active)
+       VALUES (?, ?, ?, 1)
+       ON CONFLICT(organization_id, member_email)
+       DO UPDATE SET role = excluded.role, active = 1`
+    ).bind(organizationId, email, role).run();
+  }
   const rawToken = randomBytes(32).toString("hex");
   const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
   await db.prepare(
