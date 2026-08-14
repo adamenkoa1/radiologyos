@@ -16,7 +16,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Забагато спроб. Спробуйте трохи пізніше." }, { status: 429 });
   }
 
-  const username = await telegramBotUsername(db);
+  const username = await telegramBotUsername(db, session.organizationId);
   if (!username) {
     return Response.json({ error: "Telegram-канал ще не налаштований відділенням", botConfigured: false }, { status: 503 });
   }
