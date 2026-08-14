@@ -1,9 +1,6 @@
-// Планові нагадування пацієнтам за N годин до візиту (напр. за 3 год і за 1 год).
-// Запускається cron-тригером Cloudflare (scheduled-handler у worker/index.ts).
-// Чиста логіка «які нагадування настали» — у lib/reminders-core.ts (тестована);
-// тут лише ввід-вивід: читання БД, надсилання WhatsApp, дедуплікація.
+// Планові нагадування пацієнтам за N годин до візиту.
 
-import { getSettings } from "./settings";
+import { getTenantSettings } from "./tenant-settings";
 import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "./whatsapp";
 import {
   REMINDER_LEAD_KEY, dueReminders, kyivNow, leadReminderText, minutesOfTime,
@@ -17,9 +14,6 @@ type ReminderRow = {
   service: string; desiredTime: string;
 };
 
-// Раннер завжди отримує явний tenant. Поки messaging credentials зберігаються
-// глобально в app_settings, production scheduled-handler викликає його лише для
-// початкової організації; це не дає одному каналу повідомлень обробляти чужі записи.
 export async function runDueReminders(
   db: D1Database,
   nowMs: number,
@@ -28,22 +22,19 @@ export async function runDueReminders(
   const result = { sent: 0, skipped: 0, failed: 0 };
   if (!Number.isInteger(organizationId) || organizationId <= 0) return result;
   try {
-    const cfg = await getSettings(db, ["patient_reminders_enabled", REMINDER_LEAD_KEY]);
-    if (!["1", "true", "on", "yes"].includes((cfg.patient_reminders_enabled || "").trim().toLowerCase())) {
-      return result; // нагадування вимкнені
-    }
-    const wa = await whatsappConfig(db);
-    if (!whatsappConfigured(wa) || !wa.enabled) return result; // немає куди слати
+    const cfg = await getTenantSettings(db, ["patient_reminders_enabled", REMINDER_LEAD_KEY], organizationId);
+    if (!["1", "true", "on", "yes"].includes((cfg.patient_reminders_enabled || "").trim().toLowerCase())) return result;
+    const wa = await whatsappConfig(db, organizationId);
+    if (!whatsappConfigured(wa) || !wa.enabled) return result;
 
     const leads = parseLeadHours(cfg[REMINDER_LEAD_KEY]);
     const { date, minutes: nowMin } = kyivNow(nowMs);
-
     const rows = await db.prepare(
       `SELECT id, name, phone, phone_normalized AS phoneNormalized, service, desired_time AS desiredTime
        FROM bookings
        WHERE organization_id = ? AND desired_date = ? AND status IN ('confirmed','rescheduled')`
     ).bind(organizationId, date).all<ReminderRow>();
-    const bookings = (rows.results || []);
+    const bookings = rows.results || [];
     if (!bookings.length) return result;
 
     const leadBookings: LeadBooking[] = [];
@@ -55,14 +46,14 @@ export async function runDueReminders(
       leadBookings.push({ id: b.id, minutesUntil: t - nowMin });
     }
 
-    // Уже надіслані нагадування та «не турбувати» читаються лише в tenant scope.
     const [sentRows, dncRows] = await Promise.all([
       db.prepare(
         `SELECT n.booking_id AS bookingId, n.kind
          FROM patient_notifications n
          JOIN bookings b ON b.id = n.booking_id
-         WHERE b.organization_id = ? AND n.kind LIKE 'reminder_%h' AND b.desired_date = ?`
-      ).bind(organizationId, date).all<{ bookingId: number; kind: string }>(),
+         WHERE n.organization_id = ? AND b.organization_id = ?
+           AND n.kind LIKE 'reminder_%h' AND b.desired_date = ?`
+      ).bind(organizationId, organizationId, date).all<{ bookingId: number; kind: string }>(),
       db.prepare(
         "SELECT phone_normalized AS p FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1"
       ).bind(organizationId).all<{ p: string }>(),
@@ -81,7 +72,7 @@ export async function runDueReminders(
       }
       const body = leadReminderText(b.service, b.desiredTime, due.hours);
       try {
-        const r = await sendWhatsApp(db, b.phoneNormalized, body);
+        const r = await sendWhatsApp(db, b.phoneNormalized, body, organizationId);
         if (r.ok) { await record(db, organizationId, b, kind, "sent", ""); result.sent += 1; }
         else { await record(db, organizationId, b, kind, "failed", r.error || "WhatsApp помилка"); result.failed += 1; }
       } catch (error) {
@@ -90,7 +81,7 @@ export async function runDueReminders(
       }
     }
   } catch {
-    // мовчазна відмова — cron не має падати; наступний запуск спробує знову
+    // cron must not fail; a later invocation retries due reminders
   }
   return result;
 }
