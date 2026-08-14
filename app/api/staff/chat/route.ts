@@ -48,8 +48,11 @@ export async function GET(request: Request) {
       `SELECT COALESCE(
          (SELECT display_name FROM patient_profiles WHERE phone_normalized = ?1 AND organization_id = ?2),
          (SELECT name FROM bookings WHERE phone_normalized = ?1 AND organization_id = ?2 ORDER BY id DESC LIMIT 1), '') AS name,
-       COALESCE((SELECT telegram_chat_id FROM patient_profiles WHERE phone_normalized = ?1 AND organization_id = ?2),'') AS telegramChatId`
-    ).bind(phone, orgId).first<{ name: string; telegramChatId: string }>();
+       CASE WHEN EXISTS (
+         SELECT 1 FROM patient_telegram_identities ti
+         WHERE ti.phone_normalized = ?1 AND ti.organization_id = ?2 AND ti.telegram_chat_id != ''
+       ) THEN 1 ELSE 0 END AS telegramLinked`
+    ).bind(phone, orgId).first<{ name: string; telegramLinked: number }>();
 
     const issues = await db.prepare(
       `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
@@ -74,7 +77,7 @@ export async function GET(request: Request) {
       messages: rows.results,
       issues: issues.results,
       availableReplyChannels: ["whatsapp"],
-      linkedTelegram: !!patient?.telegramChatId,
+      linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
   }
