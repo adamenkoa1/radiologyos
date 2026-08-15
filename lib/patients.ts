@@ -2,13 +2,14 @@ import { serviceByCode } from "./catalog";
 import { normalizeUkrainianPhone } from "./phone";
 import { normalizeDob } from "./dob";
 
-// CRM layer. A "patient" is the set of bookings that share one normalized
-// phone number; a profile row and a communications log are overlaid on top.
-// Aggregation lives here (over booking rows) so it stays testable and shared
-// between the list and the single-patient card.
+// CRM aggregation has two modes during the patient-id migration:
+// - the legacy list/card remains phone-grouped for backwards compatibility;
+// - exact patient-id reads aggregate only bookings explicitly linked to one
+//   immutable patient profile. Unlinked historical bookings are never inferred
+//   to belong to a profile from phone/DOB similarity.
 
 export type PatientBookingRow = {
-  id:number; code:string; name:string; phoneNormalized:string;
+  id:number; code:string; name:string; phoneNormalized:string; patientId:string;
   service:string; serviceCode:string; equipmentId:string;
   desiredDate:string; desiredTime:string; status:string;
   patientCategory:string; marketingSource:string;
@@ -17,13 +18,14 @@ export type PatientBookingRow = {
 };
 
 export type PatientProfile = {
+  patientId?:string;
   phoneNormalized:string; displayName:string; birthYear:number;
   birthDate:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
 };
 
 export type PatientSummary = {
-  phoneNormalized:string; name:string; category:string;
+  patientId:string; phoneNormalized:string; name:string; category:string;
   visits:number; completed:number; cancelled:number; upcoming:number;
   firstVisit:string; lastVisit:string;
   awaitingProtocol:number; outstanding:number; dueTotal:number; paidTotal:number;
@@ -64,8 +66,42 @@ function isOutstanding(row:PatientBookingRow) {
     && !["paid", "not_required"].includes(row.paymentStatus);
 }
 
-// Fold booking rows into one summary per phone. Profiles override the display
-// name and carry tags / do-not-contact.
+function summarizePatientRows(
+  rows: PatientBookingRow[],
+  profile: PatientProfile | undefined,
+  fallbackPhone: string,
+): PatientSummary {
+  const chronological = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const latest = chronological[chronological.length - 1];
+  const dates = rows.map((row) => row.desiredDate).filter(Boolean).sort();
+  const marketing = [...chronological].reverse().find((row) => row.marketingSource)?.marketingSource || "";
+  const phoneNormalized = profile?.phoneNormalized || fallbackPhone || latest?.phoneNormalized || "";
+
+  return {
+    patientId:profile?.patientId || "",
+    phoneNormalized,
+    name:(profile?.displayName || latest?.name || "").trim(),
+    category:latest?.patientCategory || "",
+    visits:rows.length,
+    completed:rows.filter((row) => row.status === "completed").length,
+    cancelled:rows.filter((row) => row.status === "cancelled").length,
+    upcoming:rows.filter((row) => activeUpcoming.has(row.status)).length,
+    firstVisit:dates[0] || "",
+    lastVisit:dates[dates.length - 1] || "",
+    awaitingProtocol:rows.filter((row) => row.performedAt && !["ready", "issued"].includes(row.protocolStatus)).length,
+    outstanding:rows.filter(isOutstanding).length,
+    dueTotal:rows.filter(isOutstanding).reduce((sum, row) => sum + listedDue(row), 0),
+    paidTotal:rows.filter((row) => row.paymentStatus === "paid").reduce((sum, row) => sum + Number(row.paidAmount || 0), 0),
+    marketingSource:marketing,
+    tags:profile?.tags || "",
+    doNotContact:!!profile?.doNotContact,
+    hasProfile:!!profile,
+  };
+}
+
+// Legacy list mode: keep grouping by normalized phone until the UI is migrated
+// to exact profile selection. Profiles carry patientId so the client can move
+// to the exact path without making phone the future identity key.
 export function buildPatientSummaries(
   bookings:PatientBookingRow[],
   profiles:Map<string,PatientProfile>,
@@ -79,47 +115,26 @@ export function buildPatientSummaries(
 
   const summaries:PatientSummary[] = [];
   for (const [phone, rows] of groups) {
-    const chronological = [...rows].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
-    const latest = chronological[chronological.length - 1];
-    const profile = profiles.get(phone);
-    const dates = rows.map((row) => row.desiredDate).filter(Boolean).sort();
-    const marketing = [...chronological].reverse().find((row) => row.marketingSource)?.marketingSource || "";
-
-    summaries.push({
-      phoneNormalized:phone,
-      name:(profile?.displayName || latest.name || "").trim(),
-      category:latest.patientCategory,
-      visits:rows.length,
-      completed:rows.filter((row) => row.status === "completed").length,
-      cancelled:rows.filter((row) => row.status === "cancelled").length,
-      upcoming:rows.filter((row) => activeUpcoming.has(row.status)).length,
-      firstVisit:dates[0] || "",
-      lastVisit:dates[dates.length - 1] || "",
-      awaitingProtocol:rows.filter((row) => row.performedAt && !["ready", "issued"].includes(row.protocolStatus)).length,
-      outstanding:rows.filter(isOutstanding).length,
-      dueTotal:rows.filter(isOutstanding).reduce((sum, row) => sum + listedDue(row), 0),
-      paidTotal:rows.filter((row) => row.paymentStatus === "paid").reduce((sum, row) => sum + Number(row.paidAmount || 0), 0),
-      marketingSource:marketing,
-      tags:profile?.tags || "",
-      doNotContact:!!profile?.doNotContact,
-      hasProfile:!!profile,
-    });
+    summaries.push(summarizePatientRows(rows, profiles.get(phone), phone));
   }
 
-  // Пацієнти, доданих вручну (профіль без жодної заявки) — теж у списку.
+  // Пацієнти, додані вручну (профіль без жодної заявки) — теж у списку.
   for (const [phone, profile] of profiles) {
     if (groups.has(phone)) continue;
-    summaries.push({
-      phoneNormalized:phone,
-      name:(profile.displayName || "").trim(),
-      category:"", visits:0, completed:0, cancelled:0, upcoming:0,
-      firstVisit:"", lastVisit:"",
-      awaitingProtocol:0, outstanding:0, dueTotal:0, paidTotal:0,
-      marketingSource:"", tags:profile.tags || "", doNotContact:!!profile.doNotContact, hasProfile:true,
-    });
+    summaries.push(summarizePatientRows([], profile, phone));
   }
 
   return summaries.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name));
+}
+
+// Exact identity mode: callers must already have selected a patient profile by
+// immutable patientId. Every booking supplied here must have been explicitly
+// linked to that patient; phone snapshots are not used as membership evidence.
+export function buildExactPatientSummary(
+  bookings: PatientBookingRow[],
+  profile: PatientProfile,
+): PatientSummary {
+  return summarizePatientRows(bookings, profile, profile.phoneNormalized);
 }
 
 export function matchesSegment(summary:PatientSummary, segment:PatientSegment):boolean {
