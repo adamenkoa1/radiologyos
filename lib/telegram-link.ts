@@ -7,6 +7,8 @@ import { hashToken, newSessionToken } from "./auth";
 import type { PatientIdentityScope } from "./patient-auth";
 
 export const TELEGRAM_LINK_TTL_SECONDS = 15 * 60;
+const PRIMARY_ORGANIZATION_ID = 1;
+const STALE_LINK_REPLY = "Посилання застаріло. Відкрийте кабінет і натисніть «Підключити Telegram» ще раз.";
 
 export async function createTelegramLinkToken(
   db: D1Database,
@@ -108,8 +110,10 @@ export async function handleTelegramUpdate(db: D1Database, update: TelegramUpdat
     return { chatId, reply: "Щоб підключити сповіщення, відкрийте кабінет на сайті й натисніть «Підключити Telegram»." };
   }
   const target = await consumeTelegramLinkToken(db, m[1]);
-  if (!target) {
-    return { chatId, reply: "Посилання застаріло. Відкрийте кабінет і натисніть «Підключити Telegram» ще раз." };
+  // This webhook belongs to the legacy-global bot of the primary organization.
+  // Consume any foreign token once, but never bind that tenant to the org1 bot.
+  if (!target || target.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return { chatId, reply: STALE_LINK_REPLY };
   }
   await linkPatientTelegram(db, target.organizationId, target.phone, target.identity, chatId);
   return { chatId, reply: "✅ Готово! Сповіщення про ваші дослідження надходитимуть у цей чат." };
