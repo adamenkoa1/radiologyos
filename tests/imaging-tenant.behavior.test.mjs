@@ -90,10 +90,12 @@ test("imaging linkage and audit events cannot cross tenant scope", async () => {
     const booking1 = await seedBooking(db, 1, "IMG-ORG-1");
     const booking2 = await seedBooking(db, 2, "IMG-ORG-2");
 
+    // This test covers tenant scoping only. A supplied StudyInstanceUID now
+    // requires PACS-backed identity verification and is covered by the dedicated
+    // DICOM link-verification tests; manual metadata may still be tenant-scoped.
     const link2 = await callWorker(jsonRequest("/api/staff/imaging", {
       bookingId: booking2,
       accessionNumber: "ACC-ORG-2",
-      studyInstanceUid: "1.2.840.113619.2.2",
       modality: "CT",
       studyStatus: "available",
       studyDatetime: "2026-08-20T10:30:00",
