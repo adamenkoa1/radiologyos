@@ -44,6 +44,26 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Diagnose DICOM regressions
+        shell: bash
+        run: |
+          set +e
+          failed=0
+          for f in \
+            tests/dicom-accession.behavior.test.mjs \
+            tests/dicom-auto-link-validation.behavior.test.mjs \
+            tests/dicom-pacs.test.mjs \
+            tests/dicom-study-integrity.behavior.test.mjs
+          do
+            node --experimental-strip-types --test "$f" >/tmp/dicom-test.log 2>&1
+            rc=$?
+            if (( rc != 0 )); then
+              echo "::error file=$f,title=DICOM regression::$f failed after PACS identity hardening"
+              failed=1
+            fi
+          done
+          exit "$failed"
+
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
 
