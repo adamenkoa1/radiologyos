@@ -1,12 +1,15 @@
 // Видає пацієнту (за активною сесією кабінету) deep-link для під'єднання
 // Telegram-бота: t.me/<bot>?start=<token>. Токен прив'язаний до tenant,
-// телефону та доведеної ідентичності пацієнта.
+// телефону та доведеної ідентичності пацієнта. Exact sessions additionally
+// carry immutable patient_id; fully legacy DOB sessions are reduced to their
+// one concrete booking before a persistent Telegram identity is created.
 // Telegram bot config is still legacy-global and belongs to org 1, so secondary
 // tenants must not receive a deep-link until bot configuration is tenantized.
 
 import {
   patientSessionScopeIsUnambiguous,
   requirePatientSession,
+  type PatientIdentityScope,
 } from "../../../lib/patient-auth";
 import { createTelegramLinkToken } from "../../../lib/telegram-link";
 import { telegramBotUsername } from "../../../lib/telegram";
@@ -40,11 +43,36 @@ export async function POST(request: Request) {
   if (!username) {
     return Response.json({ error: "Telegram-канал ще не налаштований відділенням", botConfigured: false }, { status: 503 });
   }
+
+  let telegramIdentity: PatientIdentityScope = {
+    kind: session.identityKind,
+    value: session.identityValue,
+  };
+  if (!session.patientId && session.identityKind === "dob") {
+    const rows = await db.prepare(
+      `SELECT code FROM bookings
+       WHERE organization_id = ? AND phone_normalized = ? AND date_of_birth = ?
+       ORDER BY id LIMIT 2`,
+    ).bind(
+      session.organizationId,
+      session.phoneNormalized,
+      session.identityValue,
+    ).all<{ code:string }>();
+    if (rows.results.length !== 1 || !rows.results[0]?.code) {
+      return Response.json(
+        { error: "Не вдалося однозначно визначити заявку. Увійдіть за кодом конкретної заявки." },
+        { status: 409, headers: { "cache-control": "no-store" } },
+      );
+    }
+    telegramIdentity = { kind:"booking", value:rows.results[0].code };
+  }
+
   const token = await createTelegramLinkToken(
     db,
     session.phoneNormalized,
     session.organizationId,
-    { kind:session.identityKind, value:session.identityValue },
+    telegramIdentity,
+    session.patientId || "",
   );
   const url = `https://t.me/${username}?start=${token}`;
   return Response.json({ url }, { headers: { "cache-control":"no-store" } });
