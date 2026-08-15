@@ -30,7 +30,7 @@ async function seedBooking(db, { organizationId, code, name, phone, date, email 
   const id = Number(result.meta.last_row_id);
   await db.prepare(
     `UPDATE bookings
-     SET performed_at = ?, protocol_status = 'draft', payment_amount = 98765,
+     SET performed_at = ?, payment_amount = 98765,
          assigned_radiologist_email = ?, assigned_radiographer_email = ?
      WHERE id = ?`
   ).bind(`${date}T09:30:00`, email, email, id).run();
