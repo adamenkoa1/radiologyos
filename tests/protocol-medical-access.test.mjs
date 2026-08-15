@@ -50,8 +50,6 @@ test("D1 physically rejects cross-tenant protocol documents and revisions", asyn
       db.prepare("UPDATE protocols SET organization_id=2 WHERE booking_id=?").bind(bookingOne).run(),
       /tenant mismatch/i,
     );
-    // Revisions are now stronger than tenant-scoped: once appended, every UPDATE
-    // is rejected before a cross-tenant mutation can even be evaluated.
     await assert.rejects(
       db.prepare("UPDATE protocol_revisions SET organization_id=2 WHERE booking_id=?").bind(bookingOne).run(),
       /append-only/i,
@@ -59,10 +57,12 @@ test("D1 physically rejects cross-tenant protocol documents and revisions", asyn
   });
 });
 
-test("protocol access and lifecycle writes are security audited with tenant attribution", async () => {
+test("protocol access, signing and delivery are security audited with tenant attribution", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
   assert.match(route, /organizationId: ctx\.organizationId,[\s\S]*action: "protocol_viewed"/);
-  assert.match(route, /action: document\.status === "issued" \? "protocol_issued" : "protocol_saved"/);
+  assert.match(route, /action: document\.status === "signed" \? "protocol_signed" : "protocol_saved"/);
+  assert.match(route, /action: "protocol_issued"/);
+  assert.match(route, /organizationId: ctx\.organizationId/);
 });
 
 test("patient can only read an issued tenant protocol and the access is audited without PII actor data", async () => {
@@ -87,8 +87,15 @@ test("migration repairs protocol ownership and tenant-scopes immutable revisions
   assert.match(integrity, /protocol_revisions_booking_tenant_insert/);
   assert.match(integrity, /RAISE\(ABORT, 'protocol booking tenant mismatch'\)/);
 
+  const signing = await read("drizzle/0049_protocol_signing_lifecycle.sql");
+  assert.match(signing, /signed_by/);
+  assert.match(signing, /signed_at/);
+  assert.match(signing, /signed_version/);
+  assert.match(signing, /protocols_signed_content_immutable/);
+
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const protocolRevisions[\s\S]*organizationId: integer\("organization_id"\)/);
   assert.match(schema, /protocol_revisions_org_booking_idx/);
   assert.match(schema, /protocols_org_number_idx/);
+  assert.match(schema, /signedBy: text\("signed_by"\)/);
 });
