@@ -1,4 +1,4 @@
-import { requireOrgContext } from "../../../../lib/tenant";
+import { requireSelfServiceOrgContext } from "../../../../lib/tenant";
 import { hashPassword, verifyPassword } from "../../../../lib/auth";
 import { passwordProblem } from "../../../../lib/staff-accounts";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
@@ -12,26 +12,25 @@ function clean(value: unknown, max = 120) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSelfServiceOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
   const staff = ctx.member;
 
   const profile = await db.prepare(
     `SELECT email, phone, display_name AS displayName, last_name AS lastName,
        first_name AS firstName, patronymic, contact_email AS contactEmail,
-       military_rank AS militaryRank, position_title AS positionTitle,
-       role, active
+       military_rank AS militaryRank, position_title AS positionTitle, active
      FROM staff_members WHERE email = ? AND active = 1 LIMIT 1`
-  ).bind(staff.email).first();
+  ).bind(staff.email).first<Record<string, unknown>>();
 
   if (!profile) return Response.json({ error: "Обліковий запис не знайдено" }, { status: 404 });
-  return Response.json({ profile });
+  return Response.json({ profile: { ...profile, role: ctx.role } });
 }
 
 export async function PATCH(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSelfServiceOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Потрібно увійти" }, { status: 401 });
   const staff = ctx.member;
 
