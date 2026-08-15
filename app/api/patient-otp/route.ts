@@ -23,6 +23,7 @@ const PRIMARY_ORGANIZATION_ID = 1;
 type ProvenPatientIdentity = {
   organizationId: number;
   identity: PatientIdentityScope;
+  patientId: string;
 };
 
 function maskedPhone(phoneNormalized: string): string {
@@ -48,22 +49,76 @@ async function provePatientIdentity(
 ): Promise<ProvenPatientIdentity | null> {
   const dob = normalizeDob(body.dob);
   if (dob) {
-    const row = await db.prepare(
-      `SELECT organization_id AS organizationId
-       FROM bookings
-       WHERE phone_normalized = ? AND date_of_birth = ?
-       ORDER BY created_at DESC, id DESC LIMIT 1`,
-    ).bind(phoneNormalized, dob).first<{ organizationId: number }>();
-    return row ? { organizationId: row.organizationId, identity: { kind:"dob", value:dob } } : null;
+    const summary = await db.prepare(
+      `SELECT COUNT(*) AS total,
+         SUM(CASE WHEN b.patient_id != '' THEN 1 ELSE 0 END) AS linkedCount,
+         COUNT(DISTINCT CASE WHEN b.patient_id != '' THEN b.patient_id END) AS patientCount,
+         MAX(CASE WHEN b.patient_id != '' THEN b.patient_id ELSE '' END) AS patientId,
+         SUM(CASE
+           WHEN b.patient_id != '' AND COALESCE(p.phone_normalized, '') = ? THEN 1
+           ELSE 0
+         END) AS currentPhoneCount
+       FROM bookings b
+       LEFT JOIN patient_profiles p
+         ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
+       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.date_of_birth = ?`,
+    ).bind(
+      phoneNormalized,
+      PRIMARY_ORGANIZATION_ID,
+      phoneNormalized,
+      dob,
+    ).first<{
+      total:number;
+      linkedCount:number;
+      patientCount:number;
+      patientId:string;
+      currentPhoneCount:number;
+    }>();
+
+    const total = Number(summary?.total || 0);
+    if (!total) return null;
+    const linkedCount = Number(summary?.linkedCount || 0);
+    if (!linkedCount) {
+      return {
+        organizationId: PRIMARY_ORGANIZATION_ID,
+        identity: { kind:"dob", value:dob },
+        patientId:"",
+      };
+    }
+
+    const exact = linkedCount === total
+      && Number(summary?.patientCount || 0) === 1
+      && Number(summary?.currentPhoneCount || 0) === linkedCount
+      && !!summary?.patientId;
+    if (!exact) return null;
+    return {
+      organizationId: PRIMARY_ORGANIZATION_ID,
+      identity: { kind:"dob", value:dob },
+      patientId: summary.patientId,
+    };
   }
 
   const bookingCode = normalizeBookingCode(body.bookingCode);
   if (bookingCode) {
     const row = await db.prepare(
-      `SELECT organization_id AS organizationId
-       FROM bookings WHERE phone_normalized = ? AND code = ? LIMIT 1`,
-    ).bind(phoneNormalized, bookingCode).first<{ organizationId: number }>();
-    return row ? { organizationId: row.organizationId, identity: { kind:"booking", value:bookingCode } } : null;
+      `SELECT b.organization_id AS organizationId, b.patient_id AS patientId,
+         COALESCE(p.phone_normalized, '') AS profilePhone
+       FROM bookings b
+       LEFT JOIN patient_profiles p
+         ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
+       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.code = ? LIMIT 1`,
+    ).bind(PRIMARY_ORGANIZATION_ID, phoneNormalized, bookingCode).first<{
+      organizationId:number; patientId:string; profilePhone:string;
+    }>();
+    if (!row) return null;
+    return {
+      organizationId: row.organizationId,
+      identity: { kind:"booking", value:bookingCode },
+      // A historical booking can still be opened through its exact code even
+      // if the patient's current profile phone has changed, but it must not
+      // expand into the whole immutable patient record via that old number.
+      patientId: row.patientId && row.profilePhone === phoneNormalized ? row.patientId : "",
+    };
   }
   return null;
 }
@@ -133,6 +188,7 @@ export async function POST(request: Request) {
     proof.organizationId,
     proof.identity,
     PURPOSE,
+    proof.patientId,
   );
   const text = `RadiologyOS: код підтвердження ${challenge.code}. Код діє 5 хвилин. Нікому його не повідомляйте.`;
   try {
@@ -225,6 +281,7 @@ export async function PATCH(request: Request) {
     phoneNormalized,
     verified.organizationId,
     verified.identity,
+    verified.patientId || "",
   );
   await audit(db, {
     organizationId: verified.organizationId,

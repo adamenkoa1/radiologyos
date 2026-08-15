@@ -17,11 +17,17 @@ export async function POST(request: Request) {
   if (!code) return Response.json({ error: "Некоректний код заявки" }, { status: 400 });
 
   const identityClause = session.identityKind === "dob" ? "date_of_birth = ?" : "code = ?";
+  const whereClause = session.patientId
+    ? "organization_id = ? AND code = ? AND patient_id = ?"
+    : `organization_id = ? AND code = ? AND phone_normalized = ? AND ${identityClause}`;
+  const bindings = session.patientId
+    ? [session.organizationId, code, session.patientId]
+    : [session.organizationId, code, session.phoneNormalized, session.identityValue];
   const booking = await db.prepare(
     `SELECT id, name, service, protocol_status AS protocolStatus, protocol_issued_at AS issuedAt
      FROM bookings
-     WHERE organization_id = ? AND code = ? AND phone_normalized = ? AND ${identityClause} LIMIT 1`
-  ).bind(session.organizationId, code, session.phoneNormalized, session.identityValue).first<{
+     WHERE ${whereClause} LIMIT 1`
+  ).bind(...bindings).first<{
     id: number; name: string; service: string; protocolStatus: string; issuedAt: string;
   }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
@@ -43,7 +49,7 @@ export async function POST(request: Request) {
     action: "patient_protocol_viewed",
     resource: "protocol",
     targetId: booking.id,
-    details: { channel: "patient_cabinet", identityKind:session.identityKind },
+    details: { channel: "patient_cabinet", identityKind:session.patientId ? "patient_id" : session.identityKind },
   });
 
   return Response.json({

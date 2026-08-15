@@ -22,6 +22,12 @@ export async function POST(request: Request) {
   const identityClause = session.identityKind === "dob"
     ? "b.date_of_birth = ?"
     : "b.code = ?";
+  const whereClause = session.patientId
+    ? "b.organization_id = ? AND b.patient_id = ?"
+    : `b.organization_id = ? AND b.phone_normalized = ? AND ${identityClause}`;
+  const bindings = session.patientId
+    ? [session.organizationId, session.patientId]
+    : [session.organizationId, session.phoneNormalized, session.identityValue];
   const rows = await db.prepare(
     `SELECT b.code, b.name AS patientName, b.service, b.service_code AS serviceCode,
        b.desired_date AS desiredDate, b.desired_time AS desiredTime,
@@ -43,10 +49,10 @@ export async function POST(request: Request) {
          WHERE pt.organization_id = b.organization_id AND pt.booking_id = b.id
          ORDER BY pt.id DESC LIMIT 1), '') AS paymentReference
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
-     WHERE b.organization_id = ? AND b.phone_normalized = ? AND ${identityClause}
+     WHERE ${whereClause}
      ORDER BY b.created_at DESC, b.id DESC
      LIMIT 50`
-  ).bind(session.organizationId, session.phoneNormalized, session.identityValue).all();
+  ).bind(...bindings).all();
 
   const bookings = (rows.results || []).map((row) => ({
     ...row,
