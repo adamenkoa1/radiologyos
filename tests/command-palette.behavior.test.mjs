@@ -43,6 +43,7 @@ test("search matches booking by name, phone and RD code", async () => {
 
     const byPhone = await (await search(db, cookie, "0971112233")).json();
     assert.ok(bookingsOnly(byPhone).some((r) => r.code === "RD-AAAA1111"));
+    assert.equal(bookingsOnly(byPhone)[0].phone, "+380971112233");
     assert.ok(bookingsOnly(byPhone)[0].statusLabel);
   });
 });
@@ -79,6 +80,27 @@ test("clinician search is limited to bookings assigned to that membership", asyn
 
     const data = await (await search(db, cookie, "контрольний")).json();
     assert.deepEqual(bookingsOnly(data).map((r) => r.bookingId), [6]);
+  });
+});
+
+test("clinicians can find assigned bookings by phone without receiving the phone field", async () => {
+  await withD1(async (db) => {
+    await seed(db, { id: 8, code: "RD-RADPHONE", name: "Рентгенолог Пацієнт", phone: "+380971110008", phoneNorm: "380971110008", time: "11:00" });
+    await seed(db, { id: 9, code: "RD-TECHPHONE", name: "Лаборант Пацієнт", phone: "+380971110009", phoneNorm: "380971110009", time: "11:30" });
+
+    const cases = [
+      { role: "radiologist", email: "rad-phone@likarnya.test", bookingId: 8, field: "assigned_radiologist_email", query: "0971110008" },
+      { role: "radiographer", email: "tech-phone@likarnya.test", bookingId: 9, field: "assigned_radiographer_email", query: "0971110009" },
+    ];
+
+    for (const item of cases) {
+      const cookie = await seedStaffSession(db, { email: item.email, role: item.role });
+      await db.prepare(`UPDATE bookings SET ${item.field} = ? WHERE id = ?`).bind(item.email, item.bookingId).run();
+      const data = await (await search(db, cookie, item.query)).json();
+      const booking = bookingsOnly(data).find((r) => r.bookingId === item.bookingId);
+      assert.ok(booking);
+      assert.equal(Object.hasOwn(booking, "phone"), false);
+    }
   });
 });
 

@@ -35,6 +35,7 @@ export async function GET(request: Request) {
   if (q.length < 2) return Response.json({ results: [] }, { headers: { "cache-control": "no-store" } });
 
   const role = ctx.role as StaffRole;
+  const includeBookingPhone = role === "admin" || role === "registrar";
   const variants = nameVariants(q);
   const assignment = bookingAssignment("b", role, ctx.member.email);
   const bookingConds:string[] = [];
@@ -48,18 +49,18 @@ export async function GET(request: Request) {
   }
 
   const bookings = await db.prepare(
-    `SELECT b.id, b.code, b.name, b.phone, b.service, b.desired_date AS desiredDate,
+    `SELECT b.id, b.code, b.name${includeBookingPhone ? ", b.phone" : ""}, b.service, b.desired_date AS desiredDate,
             b.desired_time AS desiredTime, b.status
        FROM bookings b
       WHERE b.organization_id = ?${assignment.sql} AND (${bookingConds.join(" OR ")})
       ORDER BY b.created_at DESC, b.id DESC LIMIT 10`
   ).bind(...bookingBinds).all<{
-    id:number;code:string;name:string;phone:string;service:string;desiredDate:string;desiredTime:string;status:string;
+    id:number;code:string;name:string;phone?:string;service:string;desiredDate:string;desiredTime:string;status:string;
   }>();
 
   const results:Array<Record<string,unknown>> = (bookings.results || []).map((r) => ({
     type:"booking", key:`booking:${r.id}`, id:r.id, bookingId:r.id, code:r.code, name:r.name,
-    phone:r.phone, service:r.service, desiredDate:r.desiredDate, desiredTime:r.desiredTime,
+    ...(includeBookingPhone ? { phone:r.phone } : {}), service:r.service, desiredDate:r.desiredDate, desiredTime:r.desiredTime,
     statusLabel:stateLabel(String(r.status)),
     title:`${r.name || "Без імені"} · ${r.code}`,
     subtitle:`${r.service} · ${r.desiredDate}${r.desiredTime ? ` ${r.desiredTime}` : ""} · ${stateLabel(String(r.status))}`,
