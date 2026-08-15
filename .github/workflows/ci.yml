@@ -44,22 +44,6 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Focused booking-task access diagnostic
-        shell: bash
-        run: |
-          set +e
-          output="$(node --experimental-strip-types --test tests/staff-tasks-medical-scope.behavior.test.mjs 2>&1)"
-          status=$?
-          printf '%s\n' "$output"
-          if [ "$status" -ne 0 ]; then
-            tail_output="$(printf '%s' "$output" | tail -c 6000)"
-            tail_output="${tail_output//'%'/'%25'}"
-            tail_output="${tail_output//$'\r'/'%0D'}"
-            tail_output="${tail_output//$'\n'/'%0A'}"
-            echo "::error title=Focused booking-task access test::${tail_output}"
-            exit "$status"
-          fi
-
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
 
