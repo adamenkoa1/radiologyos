@@ -25,6 +25,9 @@ const PROFILE_COLUMNS = `patient_id AS patientId, phone_normalized AS phoneNorma
   tags, notes, do_not_contact AS doNotContact,
   updated_by AS updatedBy, updated_at AS updatedAt`;
 
+const COMMUNICATION_COLUMNS = `id, patient_id AS patientId, phone_normalized AS phoneNormalized,
+  channel, direction, summary, actor, created_at AS createdAt`;
+
 type PatientProfileRow = PatientProfile & { patientId:string };
 
 export async function GET(request: Request) {
@@ -50,11 +53,18 @@ export async function GET(request: Request) {
     ).bind(orgId, rawPatientId).first<PatientProfileRow>();
     if (!profileRow) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
 
-    const bookings = await db.prepare(
-      `SELECT ${BOOKING_COLUMNS} FROM bookings
-       WHERE organization_id = ? AND patient_id = ?
-       ORDER BY desired_date DESC, desired_time DESC`
-    ).bind(orgId, rawPatientId).all();
+    const [bookings, communications] = await Promise.all([
+      db.prepare(
+        `SELECT ${BOOKING_COLUMNS} FROM bookings
+         WHERE organization_id = ? AND patient_id = ?
+         ORDER BY desired_date DESC, desired_time DESC`
+      ).bind(orgId, rawPatientId).all(),
+      db.prepare(
+        `SELECT ${COMMUNICATION_COLUMNS} FROM patient_communications
+         WHERE organization_id = ? AND patient_id = ?
+         ORDER BY created_at DESC LIMIT 200`
+      ).bind(orgId, rawPatientId).all(),
+    ]);
     const rows = bookings.results as unknown as PatientBookingRow[];
     const summary = buildExactPatientSummary(rows, profileRow);
     await logSecurityEvent(db, {
@@ -70,9 +80,7 @@ export async function GET(request: Request) {
       phone: profileRow.phoneNormalized,
       profile: profileRow,
       bookings: bookings.results,
-      // Legacy communications are phone-scoped. Do not attach them to an exact
-      // identity until the communications table itself carries patient_id.
-      communications: [],
+      communications: communications.results,
       legacyCommunicationsExcluded: true,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
@@ -83,7 +91,7 @@ export async function GET(request: Request) {
     const [bookings, profileRow, communications] = await Promise.all([
       db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY desired_date DESC, desired_time DESC`).bind(phone, orgId).all(),
       db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ? LIMIT 1`).bind(phone, orgId).first<PatientProfileRow>(),
-      db.prepare(`SELECT id, channel, direction, summary, actor, created_at AS createdAt
+      db.prepare(`SELECT ${COMMUNICATION_COLUMNS}
          FROM patient_communications WHERE phone_normalized = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 200`).bind(phone, orgId).all(),
     ]);
     const rows = bookings.results as unknown as PatientBookingRow[];
@@ -91,9 +99,6 @@ export async function GET(request: Request) {
     const profiles = new Map<string, PatientProfile>();
     if (profileRow) profiles.set(phone, profileRow);
     const [summary] = buildPatientSummaries(rows, profiles);
-    // Do not persist a phone number as the audit target. Existing CRM profiles
-    // have an immutable opaque id; booking-only legacy records use a booking id
-    // until an explicit patient linkage exists.
     const auditTarget = profileRow?.patientId || (rows[0]?.id ? `booking:${rows[0].id}` : "unlinked");
     await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_record_viewed", resource: "patient", targetId: auditTarget });
     return Response.json({ patient: summary || null, phone, profile: profileRow || null, bookings: bookings.results, communications: communications.results, staff: member }, { headers: { "cache-control": "no-store" } });
@@ -147,8 +152,6 @@ export async function PUT(request: Request) {
     return Response.json({ ok: true, profile: saved });
   }
 
-  // Compatibility path for the current phone-keyed CRM UI/import workflow.
-  // It remains valid while patient_profiles still enforces tenant+phone unique.
   await db.prepare(
     `INSERT INTO patient_profiles
        (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
@@ -174,9 +177,35 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canViewPatientRegistry(member.role)) return Response.json({ error: "Комунікації доступні лише реєстратору або адміністратору" }, { status: 403 });
-  const parsed = sanitizeCommunication(await request.json());
+
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const patientId = String(body.patientId || "").trim().toLowerCase();
+  let exactPhone = "";
+  if (patientId) {
+    if (!/^[0-9a-f]{32}$/.test(patientId)) {
+      return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
+    }
+    const profile = await db.prepare(
+      `SELECT phone_normalized AS phoneNormalized FROM patient_profiles
+       WHERE organization_id = ? AND patient_id = ? LIMIT 1`
+    ).bind(ctx.organizationId, patientId).first<{ phoneNormalized:string }>();
+    if (!profile) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
+    exactPhone = profile.phoneNormalized;
+  }
+
+  const parsed = sanitizeCommunication({ ...body, ...(exactPhone ? { phoneNormalized: exactPhone, phone: exactPhone } : {}) });
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { communication } = parsed;
-  const inserted = await db.prepare(`INSERT INTO patient_communications (organization_id, phone_normalized, channel, direction, summary, actor) VALUES (?, ?, ?, ?, ?, ?)`).bind(ctx.organizationId, communication.phoneNormalized, communication.channel, communication.direction, communication.summary, member.email).run();
-  return Response.json({ ok: true, communication: { id: inserted.meta.last_row_id, ...communication, actor: member.email } });
+  const inserted = await db.prepare(
+    `INSERT INTO patient_communications
+       (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    ctx.organizationId, patientId, communication.phoneNormalized,
+    communication.channel, communication.direction, communication.summary, member.email,
+  ).run();
+  return Response.json({
+    ok: true,
+    communication: { id: inserted.meta.last_row_id, patientId, ...communication, actor: member.email },
+  });
 }

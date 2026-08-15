@@ -259,6 +259,7 @@ export const patientProfiles = sqliteTable("patient_profiles", {
 export const patientCommunications = sqliteTable("patient_communications", {
   organizationId: integer("organization_id").notNull().default(1),
   id: integer("id").primaryKey({ autoIncrement: true }),
+  patientId: text("patient_id").notNull().default(""),
   phoneNormalized: text("phone_normalized").notNull(),
   channel: text("channel").notNull().default("call"),
   direction: text("direction").notNull().default("outbound"),
@@ -268,6 +269,7 @@ export const patientCommunications = sqliteTable("patient_communications", {
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   index("patient_communications_phone_idx").on(table.phoneNormalized, table.createdAt),
+  index("patient_communications_org_patient_idx").on(table.organizationId, table.patientId, table.createdAt),
   uniqueIndex("patient_comm_external_idx").on(table.externalId).where(sql`external_id != ''`),
 ]);
 
