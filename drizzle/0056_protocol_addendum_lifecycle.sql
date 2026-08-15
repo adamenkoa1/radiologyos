@@ -20,7 +20,11 @@ CREATE TABLE `protocol_addenda` (
   `signed_version` integer NOT NULL DEFAULT 0,
   `created_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CHECK (`length`(`id`) = 32),
+  CHECK (`length`(`id`) = 32 AND `id` NOT GLOB '*[^0-9a-f]*'),
+  CHECK (`length`(`trim`(`reason`)) BETWEEN 1 AND 500),
+  CHECK (`length`(`trim`(`correction_text`)) BETWEEN 1 AND 12000),
+  CHECK (`length`(`trim`(`author_email`)) > 0),
+  CHECK (`length`(`trim`(`updated_by`)) > 0),
   CHECK (`status` IN ('draft','ready','signed','issued')),
   CHECK (`base_protocol_version` > 0),
   CHECK (`version` > 0)
@@ -44,6 +48,10 @@ CREATE TABLE `protocol_addendum_revisions` (
   `saved_by` text NOT NULL,
   `created_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE (`addendum_id`, `version`),
+  CHECK (`length`(`addendum_id`) = 32 AND `addendum_id` NOT GLOB '*[^0-9a-f]*'),
+  CHECK (`length`(`trim`(`reason`)) BETWEEN 1 AND 500),
+  CHECK (`length`(`trim`(`correction_text`)) BETWEEN 1 AND 12000),
+  CHECK (`length`(`trim`(`saved_by`)) > 0),
   CHECK (`status` IN ('draft','ready','signed')),
   CHECK (`base_protocol_version` > 0),
   CHECK (`version` > 0)
