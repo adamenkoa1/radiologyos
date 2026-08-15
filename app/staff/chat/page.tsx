@@ -137,7 +137,7 @@ export default function StaffChatPage() {
   }, [conversations, query]);
 
   const stat = (name: string) => Number(channelStats.find(s => s.channel === name)?.count || 0);
-  const canReplyWhatsApp = !!active && replyChannels.includes("whatsapp") && !activeLegacyAmbiguous;
+  const canReplyWhatsApp = !!active && replyChannels.includes("whatsapp") && !activeSharedPhone && !activeLegacyAmbiguous;
 
   const body = forbidden
     ? <p className="notice error" role="alert">Контакт-центр доступний реєстратору або адміністратору.</p>
@@ -185,7 +185,7 @@ export default function StaffChatPage() {
                       <b>{activeName || displayPhone(active.phone)}</b>
                       <small>{displayPhone(active.phone)}{active.identityKind === "legacy" ? " · legacy / неідентифіковано" : activeSharedPhone ? " · спільний контакт" : ""}</small>
                     </div>
-                    <span className="contactReplyHint">{canReplyWhatsApp ? "Відповідь: WhatsApp" : activeLegacyAmbiguous ? "Відповідь заблокована: потрібна ідентифікація" : "Вихідний канал недоступний"}</span>
+                    <span className="contactReplyHint">{canReplyWhatsApp ? "Відповідь: WhatsApp" : activeLegacyAmbiguous ? "Відповідь заблокована: потрібна ідентифікація" : activeSharedPhone ? "Відповідь заблокована: спільний контакт" : "Вихідний канал недоступний"}</span>
                   </header>
                   {active.identityKind === "legacy" && <div className="deliveryIssues" role="status">
                     <b>Legacy-історія не є карткою пацієнта</b>
@@ -211,7 +211,7 @@ export default function StaffChatPage() {
                   </div>
                   {error && <p className="notice error" role="alert">{error}</p>}
                   <form className="chatReply" onSubmit={reply}>
-                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} placeholder={activeLegacyAmbiguous ? "Спочатку ідентифікуйте пацієнта" : "Відповідь пацієнту у WhatsApp…"} />
+                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} placeholder={activeLegacyAmbiguous ? "Спочатку ідентифікуйте пацієнта" : activeSharedPhone ? "Спільний контакт: ручна відповідь заблокована" : "Відповідь пацієнту у WhatsApp…"} />
                     <button type="submit" disabled={sending || !draft.trim() || !canReplyWhatsApp}>{sending ? "…" : "Надіслати"}</button>
                   </form>
                 </>}
