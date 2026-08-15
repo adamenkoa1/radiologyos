@@ -14,43 +14,62 @@ async function freshDb() {
   return db;
 }
 
-const UPSERT_SQL = `INSERT INTO patient_profiles
-     (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-   ON CONFLICT(organization_id, phone_normalized) DO UPDATE SET
-     display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE patient_profiles.display_name END,
-     birth_year = CASE WHEN excluded.birth_year != 0 THEN excluded.birth_year ELSE patient_profiles.birth_year END,
-     birth_date = CASE WHEN excluded.birth_date != '' THEN excluded.birth_date ELSE patient_profiles.birth_date END,
-     email = CASE WHEN excluded.email != '' THEN excluded.email ELSE patient_profiles.email END,
-     address = CASE WHEN excluded.address != '' THEN excluded.address ELSE patient_profiles.address END,
-     notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE patient_profiles.notes END,
-     updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`;
-
-test("re-import with only phone+name preserves existing card fields", async () => {
+test("shared phone migration keeps existing profile data and removes phone uniqueness", async () => {
   const db = await freshDb();
-  db.prepare(UPSERT_SQL).run(1, "380971112233", "Іван Петренко", 1985, "1985-03-10", "ivan@example.com", "Київ, вул. Тестова 1", "", "нотатка", 0, "admin@clinic");
-  db.prepare(UPSERT_SQL).run(1, "380971112233", "Іван Петренко", 0, "", "", "", "", "", 0, "registrar@clinic");
-  const row = db.prepare("SELECT * FROM patient_profiles WHERE organization_id = 1 AND phone_normalized = ?").get("380971112233");
-  assert.equal(row.birth_date, "1985-03-10");
-  assert.equal(row.birth_year, 1985);
-  assert.equal(row.email, "ivan@example.com");
-  assert.equal(row.address, "Київ, вул. Тестова 1");
-  assert.equal(row.notes, "нотатка");
+  db.prepare(
+    `INSERT INTO patient_profiles
+      (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, notes, updated_by)
+     VALUES (1, ?, 'Іван Петренко', 1985, '1985-03-10', 'ivan@example.com', 'Київ', 'нотатка', 'admin')`,
+  ).run("380971112233");
+  const first = db.prepare(
+    "SELECT patient_id AS patientId FROM patient_profiles WHERE organization_id = 1 AND phone_normalized = ?",
+  ).get("380971112233");
+  db.prepare(
+    `INSERT INTO patient_profiles
+      (organization_id, phone_normalized, display_name, birth_year, updated_by)
+     VALUES (1, ?, 'Марія Петренко', 1990, 'registrar')`,
+  ).run("380971112233");
+
+  const rows = db.prepare(
+    `SELECT patient_id AS patientId, display_name AS displayName, birth_date AS birthDate,
+            email, address, notes
+     FROM patient_profiles WHERE organization_id = 1 AND phone_normalized = ?
+     ORDER BY display_name`,
+  ).all("380971112233");
+  assert.equal(rows.length, 2);
+  assert.notEqual(rows[0].patientId, rows[1].patientId);
+  const ivan = rows.find((row) => row.patientId === first.patientId);
+  assert.equal(ivan.birthDate, "1985-03-10");
+  assert.equal(ivan.email, "ivan@example.com");
+  assert.equal(ivan.address, "Київ");
+  assert.equal(ivan.notes, "нотатка");
 });
 
-test("same phone can coexist independently in two tenants", async () => {
+test("same phone can coexist independently across and within tenants", async () => {
   const db = await freshDb();
   db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'second', 'Second', 1)").run();
-  db.prepare(UPSERT_SQL).run(1, "380971112233", "Org One", 1985, "", "one@example.com", "", "", "", 0, "one@staff");
-  db.prepare(UPSERT_SQL).run(2, "380971112233", "Org Two", 1990, "", "two@example.com", "", "", "", 0, "two@staff");
-  const rows = db.prepare("SELECT organization_id, display_name, email FROM patient_profiles WHERE phone_normalized = ? ORDER BY organization_id").all("380971112233");
-  assert.equal(rows.length, 2);
-  assert.deepEqual(rows.map((r) => [r.organization_id, r.display_name, r.email]), [[1, "Org One", "one@example.com"], [2, "Org Two", "two@example.com"]]);
+  for (const [org, name] of [[1, "Org One A"], [1, "Org One B"], [2, "Org Two"]]) {
+    db.prepare(
+      `INSERT INTO patient_profiles (organization_id, phone_normalized, display_name, updated_by)
+       VALUES (?, '380971112233', ?, 'seed')`,
+    ).run(org, name);
+  }
+  const rows = db.prepare(
+    "SELECT organization_id AS org, display_name AS name FROM patient_profiles WHERE phone_normalized = ? ORDER BY organization_id, display_name",
+  ).all("380971112233");
+  assert.deepEqual(rows.map((r) => [r.org, r.name]), [
+    [1, "Org One A"], [1, "Org One B"], [2, "Org Two"],
+  ]);
 });
 
-test("import route uses the tenant composite conflict target", async () => {
+test("import route updates only explicit patient_id and never upserts by phone", async () => {
   const route = await readFile(new URL("../app/api/staff/patients/import/route.ts", import.meta.url), "utf8");
-  assert.match(route, /ON CONFLICT\(organization_id, phone_normalized\)/);
-  for (const col of ["birth_date", "email", "address"]) assert.match(route, new RegExp(`${col} = CASE WHEN excluded.${col} != ''`));
-  assert.match(route, /birth_year = CASE WHEN excluded\.birth_year != 0/);
+  assert.match(route, /const patientId =/);
+  assert.match(route, /WHERE organization_id = \? AND patient_id = \?/);
+  assert.match(route, /crypto\.randomUUID\(\)\.replace/);
+  assert.match(route, /INSERT INTO patient_profiles/);
+  assert.doesNotMatch(route, /ON CONFLICT\(organization_id, phone_normalized\)/);
+  assert.match(route, /display_name = CASE WHEN \? != '' THEN \? ELSE display_name END/);
+  assert.match(route, /birth_date = CASE WHEN \? != '' THEN \? ELSE birth_date END/);
+  assert.match(route, /email = CASE WHEN \? != '' THEN \? ELSE email END/);
 });
