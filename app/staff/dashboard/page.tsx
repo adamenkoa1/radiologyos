@@ -52,8 +52,6 @@ const needsPay = (b:CalBooking) => b.patientCategory === "civilian" && b.payment
 // Дослідження вже зроблено, але висновку ще немає — черга опису.
 const NEEDS_REPORT = new Set(["performed", "images_ready", "reporting"]);
 const needsReport = (b:CalBooking) => NEEDS_REPORT.has(b.status);
-// Посилання «написати у WhatsApp»: лишаємо тільки цифри номера.
-const waLink = (phone:string) => `https://wa.me/${(phone || "").replace(/[^\d]/g, "")}`;
 // Пацієнт як центр: імʼя веде в єдину картку пацієнта (CRM за номером).
 const patientHref = (phone:string) => `/staff/patients?phone=${(phone || "").replace(/[^\d]/g, "")}`;
 // Кольорова смужка за типом дослідження — розпізнавання за частку секунди.
@@ -331,7 +329,7 @@ export default function DashboardPage() {
                 <span className="dashNeedsCallWho"><b>{b.name || "Без імені"}</b><small>{b.service}{b.desiredDate ? ` · ${b.desiredDate} ${b.desiredTime || ""}` : ""}</small></span>
                 <span className="dashNeedsCallActions">
                   <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone}>📞 {b.phone || "—"}</a>
-                  <a className="dashCardBtn wa" href={waLink(b.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button type="button" className="dashCardBtn wa" onClick={()=>setOpenId(b.id)}>Повідомити</button>
                   <button type="button" className="dashCardBtn ok" onClick={()=>setNeedsCall(cur => cur.filter(x => x.id !== b.id))}>✓ Подзвонив</button>
                 </span>
               </li>
@@ -361,12 +359,12 @@ export default function DashboardPage() {
       {/* Три рівні пріоритету: 1) робота зараз, 2) робота сьогодні, 3) аналітика. */}
       <p className="dashTier t1">Робота зараз</p>
 
-      {/* Дія передусім: нові заявки — картками, з телефоном, WhatsApp і підтвердженням. */}
+      {/* Дія передусім: нові заявки — картками, з телефоном, безпечним повідомленням і підтвердженням. */}
       <section className="dashPending" id="dash-pending">
         <div className="dashPendingHead">
           <h2>Нові заявки {pending.length ? <span className="dashPendingBadge">{pending.length}</span> : null}</h2>
           <small>{canManage
-            ? "Позначте кілька й підтвердьте разом, або по одній. Пацієнту йде WhatsApp."
+            ? "Позначте кілька й підтвердьте разом, або по одній. Сповіщення надсилається через захищений канал."
             : "Заявки, що очікують підтвердження реєстратури."}</small>
           {canManage && pending.length > 0 &&
             <div className="dashPendingTools">
@@ -399,7 +397,7 @@ export default function DashboardPage() {
                   <span className="dashCardWhen">{b.desiredDate} · {b.desiredTime || "—"}{doctorShort(b.assignedRadiologistEmail) ? ` · 👨‍⚕️ ${doctorShort(b.assignedRadiologistEmail)}` : ""}</span>
                   <div className="dashCardActions">
                     <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone}>📞</a>
-                    <a className="dashCardBtn wa" href={waLink(b.phone)} target="_blank" rel="noreferrer">WhatsApp</a>
+                    <button type="button" className="dashCardBtn wa" onClick={()=>setOpenId(b.id)}>Повідомити</button>
                     {canManage
                       ? <button type="button" className="dashCardBtn ok" disabled={busyId===b.id} onClick={()=>void confirmBooking(b.id)}>
                           {busyId===b.id ? "…" : "✓ Підтвердити"}
@@ -486,7 +484,7 @@ export default function DashboardPage() {
                 <span className="dashUndWho"><b>{item.name || "—"}</b><small>{item.serviceTitle}{item.desiredDate ? ` · ${item.desiredDate} ${item.desiredTime || ""}` : ""}</small></span>
                 <span className="dashUndActions">
                   <a className="dashCardBtn" href={`tel:${item.phone || ""}`} title={item.phone}>📞 {item.phone || "—"}</a>
-                  <a className="dashCardBtn wa" href={waLink(item.phone || "")} target="_blank" rel="noreferrer">WhatsApp</a>
+                  <button type="button" className="dashCardBtn wa" onClick={()=>setOpenId(item.id)}>Повідомити</button>
                 </span>
               </li>
             ))}

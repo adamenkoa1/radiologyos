@@ -219,7 +219,6 @@ export default function IntakePage() {
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
                 {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
-                <a className="intakeWa" href={`https://wa.me/${digits(selected.phone)}`} target="_blank" rel="noreferrer">WhatsApp</a>
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
               </div>
             </div>
