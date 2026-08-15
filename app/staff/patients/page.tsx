@@ -112,7 +112,12 @@ export default function PatientsPage() {
     const digits = requestedPhone.replace(/\D/g, "");
     const matches = patients.filter((item) => item.phoneNormalized === digits || item.phoneNormalized.endsWith(digits.slice(-9)));
     if (matches.length === 1) void openPatient(matches[0]);
-    else if (matches.length > 1) setActionError("Цей номер телефону належить кільком карткам. Оберіть конкретного пацієнта зі списку.");
+    if (matches.length > 1) {
+      const timer = window.setTimeout(() => {
+        setActionError("Цей номер телефону належить кільком карткам. Оберіть конкретного пацієнта зі списку.");
+      }, 0);
+      return () => window.clearTimeout(timer);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients]);
 
@@ -404,6 +409,8 @@ export default function PatientsPage() {
         key={openBooking.id}
         booking={openBooking}
         all={drawerBookings}
+        patientHref={card?.patientId ? `/staff/patients?patientId=${encodeURIComponent(card.patientId)}` : ""}
+        historyScoped
         onClose={()=>setOpenId(null)}
         onOpen={setOpenId}
         onConfirm={canManage ? (id)=>void drawerPatch({ id, confirm:true }) : undefined}
