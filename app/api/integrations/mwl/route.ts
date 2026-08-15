@@ -19,7 +19,7 @@ function addDays(date: string, days: number): string {
 
 type FeedRow = {
   code: string;
-  phoneNormalized: string;
+  patientId: string;
   patientName: string;
   patientBirthDate: string;
   service: string;
@@ -30,9 +30,13 @@ type FeedRow = {
   imagingAccession: string;
 };
 
+// DICOM PatientID must follow the same immutable identity boundary as the CRM.
+// Exact-linked bookings for one patient share a stable MWL identity. Historical
+// unlinked bookings deliberately stay booking-scoped: mutable contact data such
+// as phone/DOB must never merge two people in PACS.
 function identityKey(row: FeedRow): string {
-  const phone = String(row.phoneNormalized || "").trim();
-  return phone ? `phone:${phone}` : `booking:${row.code}`;
+  const patientId = String(row.patientId || "").trim().toLowerCase();
+  return patientId ? `patient:${patientId}` : `booking:${row.code}`;
 }
 
 async function patientIdsForRows(db: D1Database, organizationId: number, rows: FeedRow[]) {
@@ -87,7 +91,7 @@ export async function GET(request: Request) {
   }
 
   const { results } = await db.prepare(
-    `SELECT b.code, b.phone_normalized AS phoneNormalized,
+    `SELECT b.code, b.patient_id AS patientId,
        b.name AS patientName, b.date_of_birth AS patientBirthDate,
        b.service, b.service_code AS serviceCode, b.equipment_id AS equipmentId,
        b.desired_date AS scheduledDate, b.desired_time AS scheduledTime,
