@@ -1,5 +1,5 @@
 import { canManageSystem, type AccessRole, type StaffRole } from "../../../../lib/staff-auth";
-import { requireOrgContext } from "../../../../lib/tenant";
+import { requireSystemOrgContext } from "../../../../lib/tenant";
 import { hashPassword } from "../../../../lib/auth";
 import { audit } from "../../../../lib/audit";
 import { passwordProblem } from "../../../../lib/staff-accounts";
@@ -34,7 +34,7 @@ type StaffIdentity = {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx || !canManageSystem(ctx.member.role)) {
     return Response.json({ error: "Доступ лише для системного адміністратора" }, { status: 403 });
   }
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx || !canManageSystem(ctx.member.role)) {
     return Response.json({ error: "Доступ лише для системного адміністратора" }, { status: 403 });
   }
