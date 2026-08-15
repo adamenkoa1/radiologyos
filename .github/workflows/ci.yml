@@ -41,8 +41,11 @@ jobs:
       - name: Type check
         run: npm exec tsc -- --noEmit --incremental false
 
-      - name: Test and build
-        run: npm test
+      - name: Build
+        run: npm run build
+
+      - name: Tests
+        run: node --experimental-strip-types --test tests/*.test.mjs
 
       - name: Production release gate
         run: npm run test:production-gate
