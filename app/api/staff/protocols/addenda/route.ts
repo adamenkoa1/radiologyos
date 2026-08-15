@@ -93,7 +93,7 @@ export async function POST(request:Request) {
 
   const id = crypto.randomUUID().replace(/-/g, "").toLowerCase();
   try {
-    await db.batch([
+    const results = await db.batch([
       db.prepare(
         `INSERT INTO protocol_addenda
           (id, organization_id, booking_id, base_protocol_version, reason, correction_text,
@@ -101,16 +101,11 @@ export async function POST(request:Request) {
          VALUES (?, ?, ?, ?, ?, ?, 'draft', 1, ?, ?)`,
       ).bind(id, ctx.organizationId, bookingId, base.version, parsed.reason, parsed.correctionText, member.email, member.email),
       db.prepare(
-        `INSERT INTO protocol_addendum_revisions
-          (addendum_id, organization_id, booking_id, base_protocol_version, version,
-           reason, correction_text, status, saved_by)
-         VALUES (?, ?, ?, ?, 1, ?, ?, 'draft', ?)`,
-      ).bind(id, ctx.organizationId, bookingId, base.version, parsed.reason, parsed.correctionText, member.email),
-      db.prepare(
         `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
          VALUES (?, ?, 'protocol_addendum_created', ?, ?)`,
       ).bind(ctx.organizationId, bookingId, `addendum ${id} · base v${base.version}`, member.email),
     ]);
+    if (!results[0]?.meta.changes) throw new Error("addendum insert did not change a row");
   } catch {
     return Response.json({ error:"Не вдалося створити виправлення. Оновіть сторінку." }, { status:409 });
   }
@@ -187,20 +182,12 @@ export async function PUT(request:Request) {
       ).bind(parsed.reason, parsed.correctionText, parsed.status, nextVersion, member.email,
         signedBy, signedAt, signedVersion, id, ctx.organizationId, existing.version, existing.status),
       db.prepare(
-        `INSERT INTO protocol_addendum_revisions
-          (addendum_id, organization_id, booking_id, base_protocol_version, version,
-           reason, correction_text, status, saved_by)
-         SELECT id, organization_id, booking_id, base_protocol_version, version,
-           reason, correction_text, status, ? FROM protocol_addenda
-         WHERE id = ? AND organization_id = ? AND version = ?`,
-      ).bind(member.email, id, ctx.organizationId, nextVersion),
-      db.prepare(
         `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
          SELECT organization_id, booking_id, 'protocol_addendum_saved', ?, ?
          FROM protocol_addenda WHERE id = ? AND organization_id = ? AND version = ?`,
       ).bind(`${parsed.status} · addendum ${id} · v${nextVersion}`, member.email, id, ctx.organizationId, nextVersion),
     ]);
-    if (!results[0]?.meta.changes || !results[1]?.meta.changes) {
+    if (!results[0]?.meta.changes) {
       return Response.json({ error:"Конфлікт версій виправлення. Оновіть сторінку." }, { status:409 });
     }
   } catch {
