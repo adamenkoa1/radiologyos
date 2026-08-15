@@ -1,6 +1,6 @@
 import { dbBinding } from "../../../../../lib/db";
 import { canManageSystem } from "../../../../../lib/staff-auth";
-import { requireOrgContext } from "../../../../../lib/tenant";
+import { requireSystemOrgContext } from "../../../../../lib/tenant";
 
 type Check = { state:"operational" | "attention_required"; detail:string };
 
@@ -18,7 +18,7 @@ export async function GET(request:Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
 
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
   if (!canManageSystem(ctx.member.role)) {
     return Response.json({ error:"Стан системи доступний лише системному адміністратору" }, { status:403 });
