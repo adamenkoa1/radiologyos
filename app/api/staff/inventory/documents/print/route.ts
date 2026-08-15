@@ -5,6 +5,11 @@ import { requireOrgContext } from "../../../../../../lib/tenant";
 
 const TEMPLATE_VERSION = 1;
 
+type SnapshotRow={
+  id:number;documentId:number;formType:string;templateVersion:number;documentState:string;
+  payloadJson:string;generatedBy:string;generatedAt:string;storageKey:string;sha256:string;
+};
+
 function int(value:unknown) {
   const n=Number(value);
   return Number.isInteger(n)&&n>0?n:null;
@@ -14,6 +19,12 @@ async function sha256(value:string) {
   const bytes=new TextEncoder().encode(value);
   const digest=await crypto.subtle.digest("SHA-256",bytes);
   return Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");
+}
+
+function publicSnapshot(row:SnapshotRow) {
+  const {payloadJson:_,...snapshot}=row;
+  void _;
+  return snapshot;
 }
 
 async function renderPayload(db:D1Database,organizationId:number,documentId:number) {
@@ -62,15 +73,12 @@ export async function GET(request:Request) {
   if(!snapshotId) return Response.json({error:"Некоректна друкована форма"},{status:400});
   const row=await db.prepare(
     `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
-            payload_json AS payloadJson,generated_by AS generatedBy,generated_at AS generatedAt,
-            storage_key AS storageKey,sha256
+            document_state AS documentState,payload_json AS payloadJson,generated_by AS generatedBy,
+            generated_at AS generatedAt,storage_key AS storageKey,sha256
      FROM printed_form_snapshots WHERE organization_id=? AND id=? LIMIT 1`
-  ).bind(ctx.organizationId,snapshotId).first<{
-    id:number;documentId:number;formType:string;templateVersion:number;payloadJson:string;
-    generatedBy:string;generatedAt:string;storageKey:string;sha256:string;
-  }>();
+  ).bind(ctx.organizationId,snapshotId).first<SnapshotRow>();
   if(!row) return Response.json({error:"Друковану форму не знайдено"},{status:404});
-  return Response.json({snapshot:{...row,payloadJson:undefined},payload:JSON.parse(row.payloadJson)});
+  return Response.json({snapshot:publicSnapshot(row),payload:JSON.parse(row.payloadJson)});
 }
 
 export async function POST(request:Request) {
@@ -81,27 +89,56 @@ export async function POST(request:Request) {
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;
   const documentId=int(body.documentId);
   if(!documentId) return Response.json({error:"Некоректний документ"},{status:400});
+
+  const detail=await getInventoryDocument(db,ctx.organizationId,documentId);
+  if(!detail) return Response.json({error:"Документ не знайдено"},{status:404});
+  const formType=detail.document.documentType;
+  const documentState=detail.document.state;
+
+  // Once a document leaves draft, its first generated form for that immutable state becomes the
+  // canonical reprint. Later master-data edits (for example a renamed inventory item) must not
+  // silently rewrite what was printed for the posted document.
+  if(documentState!=="draft") {
+    const existing=await db.prepare(
+      `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
+              document_state AS documentState,payload_json AS payloadJson,generated_by AS generatedBy,
+              generated_at AS generatedAt,storage_key AS storageKey,sha256
+       FROM printed_form_snapshots
+       WHERE organization_id=? AND document_id=? AND form_type=? AND template_version=? AND document_state=?
+       ORDER BY id ASC LIMIT 1`
+    ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,documentState).first<SnapshotRow>();
+    if(existing) {
+      await audit(db,{
+        organizationId:ctx.organizationId,actorEmail:ctx.member.email,
+        action:"printed_form_reprinted",resource:"business_document",targetId:documentId,
+        details:{formType,templateVersion:TEMPLATE_VERSION,snapshotId:existing.id},
+      });
+      return Response.json({snapshot:publicSnapshot(existing),payload:JSON.parse(existing.payloadJson)});
+    }
+  }
+
   const payload=await renderPayload(db,ctx.organizationId,documentId);
   if(!payload) return Response.json({error:"Документ не знайдено"},{status:404});
-  const formType=payload.formType;
   const payloadJson=JSON.stringify(payload);
   const hash=await sha256(payloadJson);
   await db.prepare(
     `INSERT OR IGNORE INTO printed_form_snapshots
-      (organization_id,document_id,form_type,template_version,payload_json,generated_by,sha256)
-     VALUES (?,?,?,?,?,?,?)`
-  ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,payloadJson,ctx.member.email,hash).run();
+      (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,sha256)
+     VALUES (?,?,?,?,?,?,?,?)`
+  ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,documentState,payloadJson,ctx.member.email,hash).run();
   const snapshot=await db.prepare(
     `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
-            generated_by AS generatedBy,generated_at AS generatedAt,storage_key AS storageKey,sha256
+            document_state AS documentState,payload_json AS payloadJson,generated_by AS generatedBy,
+            generated_at AS generatedAt,storage_key AS storageKey,sha256
      FROM printed_form_snapshots
-     WHERE organization_id=? AND document_id=? AND form_type=? AND template_version=? AND sha256=?
+     WHERE organization_id=? AND document_id=? AND form_type=? AND template_version=? AND document_state=? AND sha256=?
      LIMIT 1`
-  ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,hash).first();
+  ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,documentState,hash).first<SnapshotRow>();
+  if(!snapshot) return Response.json({error:"Не вдалося зберегти друковану форму"},{status:500});
   await audit(db,{
     organizationId:ctx.organizationId,actorEmail:ctx.member.email,
     action:"printed_form_generated",resource:"business_document",targetId:documentId,
-    details:{formType,templateVersion:TEMPLATE_VERSION,snapshotId:Number((snapshot as {id?:number}|null)?.id || 0)},
+    details:{formType,templateVersion:TEMPLATE_VERSION,snapshotId:snapshot.id},
   });
-  return Response.json({snapshot,payload},{status:201});
+  return Response.json({snapshot:publicSnapshot(snapshot),payload},{status:201});
 }
