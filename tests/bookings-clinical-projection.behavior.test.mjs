@@ -18,7 +18,7 @@ async function seedProjectedBooking(db, id, radiologist, radiographer) {
     "private.patient@example.test", "КТ", "CT-01", "ct", 30, "2026-09-03", "12:00",
     "confirmed", "1990-01-01", "civilian", "campaign-private",
     radiologist, radiographer, "paid", 98765, 98765, "cash", "confirmed", "NSZU-PRIVATE-001",
-    "ready", "CLINICAL-REF-001",
+    "not_started", "CLINICAL-REF-001",
   ).run();
 
   for (const [action, details] of [
@@ -73,7 +73,7 @@ for (const roleCase of [
       assert.equal(booking.name, "Projection Patient");
       assert.equal(booking.dateOfBirth, "1990-01-01");
       assert.equal(booking.service, "КТ");
-      assert.equal(booking.protocolStatus, "ready");
+      assert.equal(booking.protocolStatus, "not_started");
       assert.equal(booking.externalReference, "CLINICAL-REF-001");
       assert.equal(booking.assignedRadiologistEmail, radiologist);
       assert.equal(booking.assignedRadiographerEmail, radiographer);
