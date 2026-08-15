@@ -132,8 +132,13 @@ test("exact patient-id update keeps identity stable even when contact phone chan
   });
 });
 
-test.skip("exact patient-id access is tenant-scoped and invalid identifiers fail closed", async () => {
+test("exact patient-id access is tenant-scoped and invalid identifiers fail closed", async () => {
   await withD1(async (db, raw) => {
+    await db.prepare(
+      `INSERT INTO organizations (id, slug, name, active)
+       VALUES (2, 'exact-patient-test-org', 'Exact Patient Test Org', 1)`
+    ).run();
+
     const org1Cookie = await seedStaffSession(db, {
       email: "exact-org1@example.com",
       role: "registrar",
