@@ -97,7 +97,7 @@ test("imaging linkage and audit events cannot cross tenant scope", async () => {
       bookingId: booking2,
       accessionNumber: "ACC-ORG-2",
       modality: "CT",
-      studyStatus: "available",
+      studyStatus: "scheduled",
       studyDatetime: "2026-08-20T10:30:00",
     }, { method: "PUT", headers: { cookie: cookie2 } }), db);
     assert.equal(link2.status, 200);
