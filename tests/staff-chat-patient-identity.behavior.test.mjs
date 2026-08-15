@@ -89,6 +89,28 @@ test("phone-only staff chat fails closed when a shared contact has multiple iden
   });
 });
 
+test("phone-only compatibility remains ambiguous across channel filters", async () => {
+  await withD1(async (db) => {
+    await seedProfile(db, 1, PATIENT_A, "Patient Alpha");
+    await seedProfile(db, 1, PATIENT_B, "Patient Beta");
+    await seedCommunication(db, 1, PATIENT_A, PHONE, "ALPHA_WHATSAPP_SECRET");
+    await db.prepare(
+      `INSERT INTO patient_communications
+        (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
+       VALUES (1, ?, ?, 'telegram', 'inbound', 'BETA_TELEGRAM_SECRET', 'system')`
+    ).bind(PATIENT_B, PHONE).run();
+
+    const cookie = await seedStaffSession(db, { email:"registrar@example.com", role:"registrar", organizationId:1 });
+    const response = await callWorker(
+      staffGet(`/api/staff/chat?phone=${PHONE}&channel=whatsapp`, cookie),
+      db,
+    );
+    assert.equal(response.status, 409);
+    const text = await response.text();
+    assert.doesNotMatch(text, /ALPHA_WHATSAPP_SECRET|BETA_TELEGRAM_SECRET/);
+  });
+});
+
 test("legacy reply fails closed when the phone belongs to an exact profile", async () => {
   await withD1(async (db) => {
     await seedProfile(db, 1, PATIENT_A, "Patient Alpha");
