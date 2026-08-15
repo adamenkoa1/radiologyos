@@ -70,14 +70,8 @@ export default function ProtocolCorrectionsPage() {
     .filter((item)=>!query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.service}`.toLowerCase().includes(query.trim().toLowerCase())),
   [queue,query]);
 
-  useEffect(()=>{
-    if (selectedId !== null || issued.length === 0) return;
-    const requested = Number(new URLSearchParams(window.location.search).get("open"));
-    const initial = issued.find((item)=>item.id === requested) || issued[0];
-    setSelectedId(initial.id);
-  },[issued,selectedId]);
-
-  const selected = issued.find((item)=>item.id === selectedId) || null;
+  const selected = issued.find((item)=>item.id === selectedId) || issued[0] || null;
+  const effectiveSelectedId = selected?.id ?? null;
   const canManage = staff?.role === "admin" || staff?.role === "radiologist";
 
   return <StaffWorkspaceShell
@@ -103,7 +97,7 @@ export default function ProtocolCorrectionsPage() {
             {loading ? <p className={styles.muted}>Завантаження…</p>
               : issued.length === 0 ? <p className={styles.muted}>Виданих протоколів не знайдено.</p>
                 : issued.map((item)=><button type="button" key={item.id}
-                  className={item.id === selectedId ? styles.activeItem : styles.item}
+                  className={item.id === effectiveSelectedId ? styles.activeItem : styles.item}
                   onClick={()=>setSelectedId(item.id)}>
                   <b>{item.serviceTitle || item.service}</b>
                   <span>{item.code} · {item.name}</span>
