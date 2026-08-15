@@ -13,8 +13,8 @@ import {
 export { REMINDER_LEAD_KEY, parseLeadHours };
 
 type ReminderRow = {
-  id: number; name: string; phone: string; phoneNormalized: string;
-  service: string; desiredTime: string;
+  id: number; patientId:string; name: string; phone: string; phoneNormalized: string;
+  service: string; desiredTime: string; doNotContact:number; sharedProfileCount:number;
 };
 
 // Раннер завжди отримує явний tenant. Поки messaging credentials зберігаються
@@ -39,9 +39,24 @@ export async function runDueReminders(
     const { date, minutes: nowMin } = kyivNow(nowMs);
 
     const rows = await db.prepare(
-      `SELECT id, name, phone, phone_normalized AS phoneNormalized, service, desired_time AS desiredTime
-       FROM bookings
-       WHERE organization_id = ? AND desired_date = ? AND status IN ('confirmed','rescheduled')`
+      `SELECT b.id, b.patient_id AS patientId, b.name, b.phone,
+         b.phone_normalized AS phoneNormalized, b.service, b.desired_time AS desiredTime,
+         CASE
+           WHEN b.patient_id != '' AND EXISTS (
+             SELECT 1 FROM patient_profiles p
+             WHERE p.organization_id = b.organization_id
+               AND p.patient_id = b.patient_id
+               AND p.do_not_contact = 1
+           ) THEN 1
+           ELSE 0
+         END AS doNotContact,
+         CASE WHEN b.patient_id = '' THEN (
+           SELECT COUNT(*) FROM patient_profiles p
+           WHERE p.organization_id = b.organization_id
+             AND p.phone_normalized = b.phone_normalized
+         ) ELSE 0 END AS sharedProfileCount
+       FROM bookings b
+       WHERE b.organization_id = ? AND b.desired_date = ? AND b.status IN ('confirmed','rescheduled')`
     ).bind(organizationId, date).all<ReminderRow>();
     const bookings = (rows.results || []);
     if (!bookings.length) return result;
@@ -55,27 +70,27 @@ export async function runDueReminders(
       leadBookings.push({ id: b.id, minutesUntil: t - nowMin });
     }
 
-    // Уже надіслані нагадування та «не турбувати» читаються лише в tenant scope.
-    const [sentRows, dncRows] = await Promise.all([
-      db.prepare(
-        `SELECT n.booking_id AS bookingId, n.kind
-         FROM patient_notifications n
-         JOIN bookings b ON b.id = n.booking_id
-         WHERE b.organization_id = ? AND n.kind LIKE 'reminder_%h' AND b.desired_date = ?`
-      ).bind(organizationId, date).all<{ bookingId: number; kind: string }>(),
-      db.prepare(
-        "SELECT phone_normalized AS p FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1"
-      ).bind(organizationId).all<{ p: string }>(),
-    ]);
+    const sentRows = await db.prepare(
+      `SELECT n.booking_id AS bookingId, n.kind
+       FROM patient_notifications n
+       JOIN bookings b ON b.id = n.booking_id
+       WHERE b.organization_id = ? AND n.kind LIKE 'reminder_%h' AND b.desired_date = ?`
+    ).bind(organizationId, date).all<{ bookingId: number; kind: string }>();
     const alreadySent = new Set((sentRows.results || []).map((r) => `${r.bookingId}:${r.kind}`));
-    const dnc = new Set((dncRows.results || []).map((r) => r.p));
 
     for (const due of dueReminders(leadBookings, leads, alreadySent)) {
       const b = byId.get(due.id);
       if (!b || !b.phoneNormalized) continue;
       const kind = `reminder_${due.hours}h`;
-      if (dnc.has(b.phoneNormalized)) {
-        await record(db, organizationId, b, kind, "skipped", "Пацієнт у списку «не турбувати»");
+      // Exact bookings use only their own profile's DNC flag. For an unlinked
+      // legacy booking, a phone that now belongs to one or more CRM profiles is
+      // identity-ambiguous: automated messaging fails closed instead of using
+      // another family member's preferences or disclosing appointment details.
+      if (b.doNotContact || (!b.patientId && b.sharedProfileCount > 0)) {
+        const reason = b.doNotContact
+          ? "Пацієнт у списку «не турбувати»"
+          : "Неприв’язаний запис має неоднозначну CRM-ідентичність";
+        await record(db, organizationId, b, kind, "skipped", reason);
         result.skipped += 1;
         continue;
       }
