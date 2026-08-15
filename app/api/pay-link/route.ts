@@ -1,5 +1,6 @@
-// Public GET exposes only the department's generic payment link. POST starts a
-// booking-bound manual payment for an OTP-authenticated patient.
+// Public GET exposes the primary department's generic payment link. POST starts a
+// booking-bound manual payment for an OTP-authenticated patient only while the
+// legacy payment destination remains primary-tenant scoped.
 
 import { getSetting } from "../../../lib/settings";
 import { dbBinding } from "../../../lib/db";
@@ -7,6 +8,7 @@ import { requirePatientSession } from "../../../lib/patient-auth";
 import { createPendingPayment, latestPaymentForBooking } from "../../../lib/payments";
 import { recordAnalyticsEvent } from "../../../lib/analytics";
 
+const PRIMARY_ORGANIZATION_ID = 1;
 const DEFAULT_PRIVAT24_PAY_LINK = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params=%7B%22token%22%3A%22cadc7a4d-d56c-4005-9cfe-04a96077f8c1%22%7D';
 
 async function configuredPayLink(db: D1Database | null | undefined) {
@@ -28,6 +30,12 @@ export async function POST(request: Request) {
 
   const session = await requirePatientSession(request, db);
   if (!session) return Response.json({ error: "Потрібне підтвердження номера телефону" }, { status: 401 });
+  if (session.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json(
+      { error: "Онлайн-оплата ще не налаштована для цієї організації" },
+      { status: 503, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const body = await request.json().catch(() => ({})) as Record<string, unknown>;
   const code = typeof body.code === "string" ? body.code.trim().toUpperCase().slice(0, 24) : "";
