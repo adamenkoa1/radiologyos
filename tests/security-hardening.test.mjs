@@ -26,7 +26,7 @@ test("worker delegates generated and public static assets to the Cloudflare ASSE
   assert.match(worker, /env\.ASSETS\.fetch\(request\)/);
 });
 
-test("patient data requires a short-lived OTP-backed tenant + identity-scoped server session", async () => {
+test("patient data requires a short-lived OTP-backed tenant + immutable-or-legacy identity-scoped server session", async () => {
   const auth = await read("lib/patient-auth.ts");
   const otp = await read("app/api/patient-otp/route.ts");
   const bookings = await read("app/api/my-bookings/route.ts");
@@ -35,16 +35,19 @@ test("patient data requires a short-lived OTP-backed tenant + identity-scoped se
   assert.match(auth, /PATIENT_OTP_TTL_SECONDS = 5 \* 60/);
   assert.match(auth, /HttpOnly; Secure; SameSite=Strict/);
   assert.match(auth, /identity_kind AS identityKind, identity_value AS identityValue/);
-  assert.match(otp, /createPatientSession\([\s\S]*verified\.organizationId,[\s\S]*verified\.identity/);
+  assert.match(auth, /patient_id AS patientId/);
+  assert.match(otp, /createPatientSession\([\s\S]*verified\.organizationId,[\s\S]*verified\.identity,[\s\S]*verified\.patientId/);
   assert.match(bookings, /requirePatientSession\(/);
   assert.doesNotMatch(bookings, /createPatientSession\(/);
   assert.match(bookings, /session\.identityKind === "dob"/);
   assert.match(bookings, /session\.identityValue/);
-  assert.match(bookings, /WHERE b\.organization_id = \? AND b\.phone_normalized = \? AND \$\{identityClause\}/);
+  assert.match(bookings, /session\.patientId[\s\S]*b\.organization_id = \? AND b\.patient_id = \?/);
+  assert.match(bookings, /b\.organization_id = \? AND b\.phone_normalized = \? AND \$\{identityClause\}/);
   assert.match(protocol, /requirePatientSession\(/);
   assert.match(protocol, /session\.identityKind === "dob"/);
   assert.match(protocol, /session\.identityValue/);
-  assert.match(protocol, /WHERE organization_id = \? AND code = \? AND phone_normalized = \? AND \$\{identityClause\}/);
+  assert.match(protocol, /session\.patientId[\s\S]*organization_id = \? AND code = \? AND patient_id = \?/);
+  assert.match(protocol, /organization_id = \? AND code = \? AND phone_normalized = \? AND \$\{identityClause\}/);
   assert.doesNotMatch(protocol, /substr\(phone_normalized, -4\)/);
 });
 
