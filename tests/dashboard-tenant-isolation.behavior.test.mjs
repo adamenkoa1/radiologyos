@@ -61,7 +61,10 @@ test("staff dashboard excludes every other tenant from KPI and list output", asy
     assert.equal(body.kpi.newToday, 1);
     assert.equal(body.kpi.outstandingCount, 1);
     assert.equal(body.kpi.outstandingSum, 100);
-    assert.equal(body.kpi.patients, 1);
+    // The exact CRM profile and the unlinked legacy booking are intentionally two
+    // identity buckets even when they carry the same contact phone. Linking them
+    // requires an explicit patient_id; the dashboard must not infer that link.
+    assert.equal(body.kpi.patients, 2);
     assert.equal(body.kpi.doNotContact, 0);
     assert.equal(body.kpi.availableStudies, 0);
     assert.equal(body.kpi.pacsEnabled, false);
