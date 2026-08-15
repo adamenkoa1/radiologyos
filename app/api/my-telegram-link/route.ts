@@ -1,8 +1,9 @@
 // Видає пацієнту (за активною сесією кабінету) deep-link для під'єднання
 // Telegram-бота: t.me/<bot>?start=<token>. Токен прив'язаний до tenant,
 // телефону та доведеної ідентичності пацієнта. Exact sessions additionally
-// carry immutable patient_id; fully legacy DOB sessions are reduced to their
-// one concrete booking before a persistent Telegram identity is created.
+// carry immutable patient_id. Any DOB proof is canonicalized to a concrete
+// booking code before persistence so relatives with the same phone and DOB do
+// not collide in the legacy identity-key primary key.
 // Telegram bot config is still legacy-global and belongs to org 1, so secondary
 // tenants must not receive a deep-link until bot configuration is tenantized.
 
@@ -48,23 +49,29 @@ export async function POST(request: Request) {
     kind: session.identityKind,
     value: session.identityValue,
   };
-  if (!session.patientId && session.identityKind === "dob") {
+  if (session.identityKind === "dob") {
+    const exactClause = session.patientId ? "AND patient_id = ?" : "";
+    const bindings = session.patientId
+      ? [session.organizationId, session.phoneNormalized, session.identityValue, session.patientId]
+      : [session.organizationId, session.phoneNormalized, session.identityValue];
     const rows = await db.prepare(
       `SELECT code FROM bookings
-       WHERE organization_id = ? AND phone_normalized = ? AND date_of_birth = ?
-       ORDER BY id LIMIT 2`,
-    ).bind(
-      session.organizationId,
-      session.phoneNormalized,
-      session.identityValue,
-    ).all<{ code:string }>();
-    if (rows.results.length !== 1 || !rows.results[0]?.code) {
+       WHERE organization_id = ? AND phone_normalized = ? AND date_of_birth = ? ${exactClause}
+       ORDER BY id DESC LIMIT 2`,
+    ).bind(...bindings).all<{ code:string }>();
+
+    // A legacy DOB session is permitted only while it maps to one booking.
+    // An exact patient_id session may have many bookings; any one explicitly
+    // linked booking is sufficient as a unique proof-key because patient_id is
+    // the persisted delivery authority.
+    const chosen = session.patientId ? rows.results[0] : rows.results.length === 1 ? rows.results[0] : null;
+    if (!chosen?.code) {
       return Response.json(
         { error: "Не вдалося однозначно визначити заявку. Увійдіть за кодом конкретної заявки." },
         { status: 409, headers: { "cache-control": "no-store" } },
       );
     }
-    telegramIdentity = { kind:"booking", value:rows.results[0].code };
+    telegramIdentity = { kind:"booking", value:chosen.code };
   }
 
   const token = await createTelegramLinkToken(
