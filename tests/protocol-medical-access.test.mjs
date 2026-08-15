@@ -67,7 +67,8 @@ test("protocol access, signing and delivery are security audited with tenant att
 
 test("patient can only read an issued tenant protocol and the access is audited without PII actor data", async () => {
   const route = await read("app/api/my-protocol/route.ts");
-  assert.match(route, /WHERE organization_id = \? AND code = \? AND phone_normalized = \?/);
+  assert.match(route, /session\.patientId[\s\S]*organization_id = \? AND code = \? AND patient_id = \?/);
+  assert.match(route, /organization_id = \? AND code = \? AND phone_normalized = \? AND \$\{identityClause\}/);
   assert.match(route, /WHERE organization_id = \? AND booking_id = \? AND status = 'issued'/);
   assert.match(route, /actorEmail: "patient_session"/);
   assert.match(route, /action: "patient_protocol_viewed"/);
