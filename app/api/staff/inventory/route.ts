@@ -1,8 +1,12 @@
 import { audit } from "../../../../lib/audit";
 import { dbBinding } from "../../../../lib/db";
+import {
+  cancelInventoryDocument,
+  createInventoryDocument,
+  postInventoryDocument,
+} from "../../../../lib/inventory-documents";
 import { requireOrgContext } from "../../../../lib/tenant";
 
-const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const CATEGORIES = new Set(["contrast","catheter","syringe","infusion","ppe","film","paper","disinfectant","other"]);
 const MANAGER_ROLES = new Set(["admin","radiographer"]);
 
@@ -16,6 +20,7 @@ type LotRow = {
 type MovementRow = {
   id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; movementType:string;
   quantityDelta:number; unit:string; reason:string; bookingId:number|null; actorEmail:string; createdAt:string;
+  documentId:number|null;
 };
 
 function cleanText(value:unknown,max:number) { return String(value || "").trim().slice(0,max); }
@@ -33,17 +38,15 @@ async function itemForOrg(db:D1Database,organizationId:number,itemId:number) {
   return db.prepare("SELECT id, name, unit, active FROM inventory_items WHERE organization_id = ? AND id = ? LIMIT 1")
     .bind(organizationId,itemId).first<{id:number;name:string;unit:string;active:number}>();
 }
-async function lotForOrg(db:D1Database,organizationId:number,lotId:number) {
-  return db.prepare(
-    `SELECT l.id, l.item_id AS itemId, i.name, i.unit
-     FROM inventory_lots l JOIN inventory_items i ON i.id = l.item_id
-     WHERE l.organization_id = ? AND i.organization_id = ? AND l.id = ? LIMIT 1`
-  ).bind(organizationId,organizationId,lotId).first<{id:number;itemId:number;name:string;unit:string}>();
-}
-async function bookingForOrg(db:D1Database,organizationId:number,bookingId:number|null) {
-  if (!bookingId) return true;
-  return !!(await db.prepare("SELECT 1 AS ok FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1")
-    .bind(organizationId,bookingId).first<{ok:number}>());
+
+function inventoryDocumentError(error:unknown) {
+  const code = String(error instanceof Error ? error.message : error);
+  if (code.includes("invalid_expiry")) return Response.json({ error:"Некоректний термін придатності" },{status:400});
+  if (code.includes("item_not_found")) return Response.json({ error:"Матеріал не знайдено або він неактивний" },{status:404});
+  if (code.includes("lot_not_found")) return Response.json({ error:"Партію не знайдено" },{status:404});
+  if (code.includes("booking_not_found")) return Response.json({ error:"Дослідження не належить до цієї організації" },{status:400});
+  if (code.includes("reason_required")) return Response.json({ error:"Вкажіть причину списання" },{status:400});
+  return null;
 }
 
 export async function GET(request:Request) {
@@ -82,7 +85,7 @@ export async function GET(request:Request) {
     `SELECT m.id, m.item_id AS itemId, i.name AS itemName, m.lot_id AS lotId,
             l.lot_number AS lotNumber, m.movement_type AS movementType,
             m.quantity_delta AS quantityDelta, i.unit, m.reason, m.booking_id AS bookingId,
-            m.actor_email AS actorEmail, m.created_at AS createdAt
+            m.actor_email AS actorEmail, m.created_at AS createdAt,m.document_id AS documentId
      FROM inventory_movements m
      JOIN inventory_items i ON i.id = m.item_id AND i.organization_id = m.organization_id
      JOIN inventory_lots l ON l.id = m.lot_id AND l.organization_id = m.organization_id
@@ -124,28 +127,39 @@ export async function POST(request:Request) {
     }
   }
 
+  // Compatibility actions: old callers still work, but every NEW movement is now registered by
+  // a BAS-style document and posting engine. The UI moves to explicit draft/post forms separately.
   if (action === "receive") {
     const itemId = Number(body.itemId);
     const quantity = positiveNumber(body.quantity);
-    const lotNumber = cleanText(body.lotNumber,100);
-    const expiresOn = cleanText(body.expiresOn,10);
-    const supplier = cleanText(body.supplier,180);
-    const reason = cleanText(body.reason,500) || "Надходження";
     if (!Number.isInteger(itemId) || itemId < 1 || !quantity) return Response.json({ error:"Вкажіть матеріал і кількість" }, { status:400 });
-    if (expiresOn && !DATE_RE.test(expiresOn)) return Response.json({ error:"Некоректний термін придатності" }, { status:400 });
-    const item = await itemForOrg(db,ctx.organizationId,itemId);
-    if (!item || !item.active) return Response.json({ error:"Матеріал не знайдено або він неактивний" }, { status:404 });
-
-    const lotResult = await db.prepare(
-      `INSERT INTO inventory_lots (organization_id,item_id,lot_number,expires_on,supplier) VALUES (?,?,?,?,?)`
-    ).bind(ctx.organizationId,itemId,lotNumber,expiresOn,supplier).run();
-    const lotId = Number(lotResult.meta.last_row_id || 0);
-    await db.prepare(
-      `INSERT INTO inventory_movements (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,actor_email)
-       VALUES (?,?,?,'receipt',?,?,?)`
-    ).bind(ctx.organizationId,itemId,lotId,quantity,reason,ctx.member.email).run();
-    await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_received", resource:"inventory", targetId:itemId, details:{ lotId, quantity, hasExpiry:!!expiresOn } });
-    return Response.json({ ok:true,lotId }, { status:201 });
+    try {
+      const created = await createInventoryDocument(db,{
+        organizationId:ctx.organizationId,
+        actorEmail:ctx.member.email,
+        type:"inventory_receipt",
+        lines:[{
+          itemId,quantity,
+          lotNumber:cleanText(body.lotNumber,100),
+          expiresOn:cleanText(body.expiresOn,10),
+          supplier:cleanText(body.supplier,180),
+          reason:cleanText(body.reason,500) || "Надходження",
+        }],
+      });
+      if (!created) return Response.json({ error:"Не вдалося створити документ надходження" },{status:500});
+      const posted = await postInventoryDocument(db,{organizationId:ctx.organizationId,documentId:created.document.id,actorEmail:ctx.member.email});
+      if (!posted.ok) {
+        await cancelInventoryDocument(db,ctx.organizationId,created.document.id).catch(()=>{});
+        return Response.json({error:posted.error},{status:posted.status});
+      }
+      const lotId = posted.document?.lines[0]?.lotId || 0;
+      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_received", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, hasExpiry:!!cleanText(body.expiresOn,10) } });
+      return Response.json({ ok:true,lotId,documentId:created.document.id }, { status:201 });
+    } catch (error) {
+      const mapped = inventoryDocumentError(error);
+      if (mapped) return mapped;
+      throw error;
+    }
   }
 
   if (action === "writeoff") {
@@ -155,29 +169,27 @@ export async function POST(request:Request) {
     const rawBookingId = Number(body.bookingId);
     const bookingId = Number.isInteger(rawBookingId) && rawBookingId > 0 ? rawBookingId : null;
     if (!Number.isInteger(lotId) || lotId < 1 || !quantity || !reason) return Response.json({ error:"Вкажіть партію, кількість і причину списання" }, { status:400 });
-    const lot = await lotForOrg(db,ctx.organizationId,lotId);
-    if (!lot) return Response.json({ error:"Партію не знайдено" }, { status:404 });
-    if (!(await bookingForOrg(db,ctx.organizationId,bookingId))) return Response.json({ error:"Дослідження не належить до цієї організації" }, { status:400 });
-
-    const result = await db.prepare(
-      `INSERT INTO inventory_movements
-        (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,booking_id,actor_email)
-       SELECT ?,?,?,'writeoff',-?,?,?,?
-       WHERE COALESCE((
-         SELECT SUM(quantity_delta)
-         FROM inventory_movements
-         WHERE organization_id = ? AND lot_id = ?
-       ),0) + 0.000001 >= ?`
-    ).bind(
-      ctx.organizationId,lot.itemId,lotId,quantity,reason,bookingId,ctx.member.email,
-      ctx.organizationId,lotId,quantity,
-    ).run();
-    if (Number(result.meta.changes || 0) < 1) {
-      return Response.json({ error:"Недостатній залишок у цій партії" }, { status:409 });
+    try {
+      const created = await createInventoryDocument(db,{
+        organizationId:ctx.organizationId,
+        actorEmail:ctx.member.email,
+        type:"inventory_writeoff",
+        lines:[{lotId,quantity,reason,bookingId}],
+      });
+      if (!created) return Response.json({ error:"Не вдалося створити документ списання" },{status:500});
+      const posted = await postInventoryDocument(db,{organizationId:ctx.organizationId,documentId:created.document.id,actorEmail:ctx.member.email});
+      if (!posted.ok) {
+        await cancelInventoryDocument(db,ctx.organizationId,created.document.id).catch(()=>{});
+        return Response.json({error:posted.error},{status:posted.status});
+      }
+      const itemId = posted.document?.lines[0]?.itemId || 0;
+      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_written_off", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, linkedBooking:!!bookingId } });
+      return Response.json({ ok:true,documentId:created.document.id });
+    } catch (error) {
+      const mapped = inventoryDocumentError(error);
+      if (mapped) return mapped;
+      throw error;
     }
-
-    await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_written_off", resource:"inventory", targetId:lot.itemId, details:{ lotId, quantity, linkedBooking:!!bookingId } });
-    return Response.json({ ok:true });
   }
 
   return Response.json({ error:"Невідома операція складу" }, { status:400 });
