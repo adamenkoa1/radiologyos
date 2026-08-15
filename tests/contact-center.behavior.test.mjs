@@ -41,17 +41,21 @@ test("contact-center communication history stays tenant scoped across channels",
   assert.deepEqual(telegramOnly.map((row) => row.summary), ["Org1 Telegram"]);
 });
 
-test("contact-center route derives tenant from membership and audits manual replies", async () => {
+test("contact-center route derives tenant, preserves exact ids, and fails closed on shared-phone replies", async () => {
   const route = await read("app/api/staff/chat/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /patient_communications[\s\S]*organization_id = \?/);
+  assert.match(route, /patient_id AS patientId/);
+  assert.match(route, /profileCount/);
+  assert.match(route, /if \(profileCount > 1\)/);
+  assert.match(route, /availableReplyChannels/);
   assert.match(route, /contact_center_thread_viewed/);
   assert.match(route, /contact_center_message_sent/);
-  assert.match(route, /patientExists/);
   assert.match(route, /channel !== "whatsapp"/);
+  assert.match(route, /\(organization_id, patient_id, phone_normalized, channel/);
 });
 
-test("contact-center UI exposes one inbox with channel filters and delivery issues", async () => {
+test("contact-center UI exposes channels, delivery issues, and shared-phone ambiguity", async () => {
   const [page, globals, styles] = await Promise.all([
     read("app/staff/chat/page.tsx"),
     read("app/globals.css"),
@@ -60,7 +64,10 @@ test("contact-center UI exposes one inbox with channel filters and delivery issu
   assert.match(page, /title="Контакт-центр"/);
   for (const channel of ["whatsapp", "telegram", "sms", "email"]) assert.match(page, new RegExp(`"${channel}"`));
   assert.match(page, /Помилки доставки/);
-  assert.match(page, /Відповідь: WhatsApp/);
+  assert.match(page, /sharedPhone/);
+  assert.match(page, /Відповідь заблокована: неоднозначна особа/);
+  assert.match(page, /replyChannels\.includes\("whatsapp"\)/);
+  assert.match(page, /Один номер використовують кілька пацієнтів/);
   assert.match(globals, /18-contact-center\.css/);
   assert.match(styles, /\.contactKpis/);
   assert.match(styles, /\.deliveryIssues/);
