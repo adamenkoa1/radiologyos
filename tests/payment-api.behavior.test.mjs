@@ -14,6 +14,19 @@ async function seedBooking(db, { code, phone = "380501112233", amount = 1500, or
   return Number(result.meta.last_row_id);
 }
 
+async function addOrganizationTwo(db) {
+  await db.prepare(
+    "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'payment-two', 'Payment Two', 1)",
+  ).run();
+}
+
+async function setGlobal(db, key, value) {
+  await db.prepare(
+    `INSERT INTO app_settings (key, value) VALUES (?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+  ).bind(key, value).run();
+}
+
 test("patient payment start is session-scoped and server derives the amount", async () => {
   await withD1(async (db) => {
     await seedBooking(db, { code: "RD-PAY-001", amount: 1800, desiredTime: "10:00" });
@@ -34,6 +47,41 @@ test("patient payment start is session-scoped and server derives the amount", as
       headers: { cookie },
     }), db);
     assert.equal(foreign.status, 404);
+  });
+});
+
+test("secondary tenant payment start cannot use the primary global pay link or create a pending payment", async () => {
+  await withD1(async (db) => {
+    await addOrganizationTwo(db);
+    const phone = "380502224466";
+    const code = "RD-PAY-ORG2";
+    const bookingId = await seedBooking(db, {
+      code,
+      phone,
+      amount: 2600,
+      organizationId: 2,
+      desiredTime: "11:00",
+    });
+    await setGlobal(db, "pay_link", "https://pay.example/org1-only");
+    const cookie = await seedPatientSession(db, phone, 2, { kind: "booking", value: code });
+
+    const response = await callWorker(jsonRequest("/api/pay-link", { code }, {
+      headers: { cookie },
+    }), db);
+    assert.equal(response.status, 503);
+    const body = await response.json();
+    assert.match(body.error, /не налаштована/i);
+    assert.equal(JSON.stringify(body).includes("pay.example/org1-only"), false);
+
+    const paymentCount = await db.prepare(
+      "SELECT COUNT(*) AS n FROM payment_transactions WHERE organization_id = 2 AND booking_id = ?",
+    ).bind(bookingId).first();
+    assert.equal(paymentCount.n, 0);
+
+    const analyticsCount = await db.prepare(
+      "SELECT COUNT(*) AS n FROM analytics_events WHERE organization_id = 2 AND event_name = 'payment_started'",
+    ).first();
+    assert.equal(analyticsCount.n, 0);
   });
 });
 
