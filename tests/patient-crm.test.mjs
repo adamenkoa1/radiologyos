@@ -17,12 +17,19 @@ test("CRM migration creates profile and communication tables with indexes", asyn
   const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
   assert.ok(journal.entries.some((entry) => entry.tag === "0006_patient_crm"));
 
+  const sharedPhone = await read("drizzle/0054_patient_shared_phone.sql");
+  assert.match(sharedPhone, /patient_id.*PRIMARY KEY/s);
+  assert.match(sharedPhone, /CREATE INDEX IF NOT EXISTS `patient_profiles_org_phone_idx`/);
+  assert.doesNotMatch(sharedPhone, /CREATE UNIQUE INDEX[^\n]*patient_profiles_org_phone_idx/);
+
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const patientProfiles = sqliteTable\("patient_profiles"/);
   assert.match(schema, /export const patientCommunications = sqliteTable\("patient_communications"/);
+  assert.match(schema, /index\("patient_profiles_org_phone_idx"\)/);
+  assert.doesNotMatch(schema, /uniqueIndex\("patient_profiles_org_phone_idx"\)/);
 });
 
-test("CRM library aggregates bookings into patient summaries by phone", async () => {
+test("CRM library aggregates exact profiles by patient_id and keeps legacy phone groups separate", async () => {
   const source = await read("lib/patients.ts");
   for (const fn of [
     "buildPatientSummaries", "matchesSegment", "segmentCounts",
@@ -31,20 +38,25 @@ test("CRM library aggregates bookings into patient summaries by phone", async ()
   for (const segment of ["repeat", "upcoming", "awaiting_protocol", "outstanding_payment", "do_not_contact"]) {
     assert.match(source, new RegExp(`"${segment}"`));
   }
-  // Patients are grouped strictly by normalized phone.
-  assert.match(source, /const key = row\.phoneNormalized/);
+  assert.match(source, /if \(row\.patientId\)/);
+  assert.match(source, /exactGroups\.get\(row\.patientId\)/);
+  assert.match(source, /legacyGroups\.get\(row\.phoneNormalized\)/);
+  assert.match(source, /for \(const \[patientId, profile\] of profiles\)/);
+  assert.doesNotMatch(source, /const key = row\.phoneNormalized/);
 });
 
-test("CRM API guards profile writes and validates before persisting", async () => {
+test("CRM API guards profile writes and uses patient_id as the update key", async () => {
   const route = await read("app/api/staff/patients/route.ts");
-  assert.match(route, /requireOrgContext\(request, db\)/); // tenant-scoped доступ
+  assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /canManageBookings\(member\.role\)/);
   assert.match(route, /canViewPatientRegistry\(member\.role\)/);
   assert.match(route, /logSecurityEvent\(/);
   assert.match(route, /sanitizeProfile\(/);
   assert.match(route, /sanitizeCommunication\(/);
+  assert.match(route, /WHERE organization_id = \? AND patient_id = \?/);
   assert.match(route, /INSERT INTO patient_profiles/);
   assert.match(route, /INSERT INTO patient_communications/);
+  assert.doesNotMatch(route, /ON CONFLICT\(organization_id, phone_normalized\)/);
   assert.doesNotMatch(route, /CREATE\s+TABLE/i);
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
 });
@@ -80,30 +92,28 @@ test("CRM page renders inside the staff workspace", async () => {
   assert.match(html, /Оберіть пацієнта зі списку/);
 });
 
-test("CRM card shows a loading state, a book action, and context-correct visit links", async () => {
+test("CRM card shows a loading state, exact book action, and context-correct visit links", async () => {
   const page = await read("app/staff/patients/page.tsx");
-  // Окремий стан завантаження картки (не плутати з плейсхолдером «оберіть пацієнта»).
   assert.match(page, /cardLoading/);
   assert.match(page, /Завантаження картки…/);
-  // Кнопка «Записати на дослідження» веде у форму запису з даними пацієнта.
   assert.match(page, /crmBookBtn/);
+  assert.match(page, /patientId:card\.patientId/);
   assert.match(page, /\/staff\/book\?/);
   assert.match(page, /Записати на дослідження/);
-  // Майбутні візити ведуть у календар, виконані — у протокол.
   assert.match(page, /\/staff\/appointments\?date=/);
   assert.match(page, /performedAt \|\| \["ready","issued","in_progress"\]/);
-  // Drawer у CRM: клік по візиту відкриває спільну панель (контекст + дії).
   assert.match(page, /<BookingDrawer/);
   assert.match(page, /button type="button" className="crmVisitHead"/);
-  assert.match(page, /drawerPatch/); // підтвердження/перенесення з панелі
+  assert.match(page, /drawerPatch/);
 });
 
-test("booking form pre-fills patient data from query params (CRM → book)", async () => {
+test("booking form pre-fills immutable patient identity and contact snapshots from CRM", async () => {
   const page = await read("app/staff/book/page.tsx");
-  for (const p of ["name", "phone", "dob", "category"]) {
+  for (const p of ["patientId", "name", "phone", "dob", "category"]) {
     assert.match(page, new RegExp(`params\\.get\\("${p}"\\)`), `reads ${p}`);
   }
-  // Поля контрольовані, щоб передзаповнення справді відображалося.
+  assert.match(page, /fetch\(patientId \? "\/api\/staff\/bookings\/exact" : "\/api\/staff\/bookings"/);
+  assert.match(page, /\.\.\.\(patientId \? \{ patientId \} : \{\}\)/);
   assert.match(page, /value=\{name\} onChange/);
   assert.match(page, /value=\{phone\} onChange/);
   assert.match(page, /value=\{category\} onChange/);
