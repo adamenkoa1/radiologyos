@@ -1,15 +1,17 @@
 import { serviceByCode } from "../../../../lib/catalog";
 import { audit } from "../../../../lib/audit";
-import { canAccessBooking, canManageProtocols } from "../../../../lib/staff-auth";
+import { canAccessBooking, canManageProtocols, canSignProtocols } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { dbBinding } from "../../../../lib/db";
 import {
   ProtocolSectionValues,
-  bookingProtocolStatus,
   protocolTemplateByKey,
-  sanitizeDocument,
 } from "../../../../lib/protocols";
-
+import {
+  bookingProtocolLifecycleStatus,
+  sanitizeLifecycleDocument,
+  type ProtocolLifecycleDocument,
+} from "../../../../lib/protocol-lifecycle";
 
 const QUEUE_SQL = `SELECT b.id, b.code, b.name, b.service, b.service_code AS serviceCode,
     b.equipment_id AS equipmentId, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
@@ -17,7 +19,9 @@ const QUEUE_SQL = `SELECT b.id, b.code, b.name, b.service, b.service_code AS ser
     b.protocol_number AS protocolNumber, b.protocol_status AS protocolStatus,
     b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
     b.assigned_radiologist_email AS assignedRadiologistEmail,
-    COALESCE(p.status, '') AS documentStatus, COALESCE(p.version, 0) AS documentVersion
+    COALESCE(p.status, '') AS documentStatus, COALESCE(p.version, 0) AS documentVersion,
+    COALESCE(p.signed_by, '') AS signedBy, COALESCE(p.signed_at, '') AS signedAt,
+    COALESCE(p.signed_version, 0) AS signedVersion
   FROM bookings b
   LEFT JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
   WHERE b.status != 'cancelled' AND (b.performed_at != '' OR b.protocol_status != 'not_started')
@@ -31,6 +35,32 @@ function parseSections(raw: string): ProtocolSectionValues {
   } catch {
     return {};
   }
+}
+
+type ExistingProtocol = {
+  version: number;
+  authorEmail: string;
+  status: string;
+  templateKey: string;
+  method: string;
+  sectionsJson: string;
+  findings: string;
+  conclusion: string;
+  recommendations: string;
+  number: string;
+  signedBy: string;
+  signedAt: string;
+  signedVersion: number;
+};
+
+function sameClinicalDocument(existing: ExistingProtocol, document: ProtocolLifecycleDocument): boolean {
+  return existing.templateKey === document.templateKey
+    && existing.method === document.method
+    && existing.sectionsJson === JSON.stringify(document.sections)
+    && existing.findings === document.findings
+    && existing.conclusion === document.conclusion
+    && existing.recommendations === document.recommendations
+    && existing.number === document.number;
 }
 
 export async function GET(request: Request) {
@@ -62,7 +92,8 @@ export async function GET(request: Request) {
       db.prepare(
       `SELECT template_key AS templateKey, method, sections_json AS sectionsJson,
         findings, conclusion, recommendations, number, status, version,
-        author_email AS authorEmail, updated_by AS updatedBy, updated_at AS updatedAt
+        author_email AS authorEmail, updated_by AS updatedBy, updated_at AS updatedAt,
+        signed_by AS signedBy, signed_at AS signedAt, signed_version AS signedVersion
        FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1`
       ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>(),
       db.prepare(
@@ -84,6 +115,9 @@ export async function GET(request: Request) {
           authorEmail: String(row.authorEmail || ""),
           updatedBy: String(row.updatedBy || ""),
           updatedAt: String(row.updatedAt || ""),
+          signedBy: String(row.signedBy || ""),
+          signedAt: String(row.signedAt || ""),
+          signedVersion: Number(row.signedVersion || 0),
         }
       : null;
     await audit(db, {
@@ -130,7 +164,7 @@ export async function PUT(request: Request) {
   if (!Number.isInteger(bookingId) || bookingId <= 0) {
     return Response.json({ error: "Некоректні дані" }, { status: 400 });
   }
-  const parsed = sanitizeDocument(body);
+  const parsed = sanitizeLifecycleDocument(body);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { document } = parsed;
 
@@ -147,8 +181,12 @@ export async function PUT(request: Request) {
   }
 
   const existing = await db.prepare(
-    "SELECT version, author_email AS authorEmail, status FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1"
-  ).bind(bookingId, ctx.organizationId).first<{ version: number; authorEmail: string; status: string }>();
+    `SELECT version, author_email AS authorEmail, status,
+       template_key AS templateKey, method, sections_json AS sectionsJson,
+       findings, conclusion, recommendations, number,
+       signed_by AS signedBy, signed_at AS signedAt, signed_version AS signedVersion
+     FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1`
+  ).bind(bookingId, ctx.organizationId).first<ExistingProtocol>();
   const baseVersion = Number(body.baseVersion ?? existing?.version ?? 0);
   if (existing && baseVersion !== Number(existing.version)) {
     return Response.json({ error: "Протокол уже змінено в іншому вікні. Оновіть сторінку." }, { status: 409 });
@@ -156,12 +194,76 @@ export async function PUT(request: Request) {
   if (existing?.status === "issued") {
     return Response.json({ error: "Виданий протокол незмінний. Створіть окреме виправлення за регламентом." }, { status: 409 });
   }
+
+  // Delivery is administrative state, not a new clinical revision. It is only
+  // allowed for the exact already-signed version and never changes its content.
+  if (document.status === "issued") {
+    if (!existing || existing.status !== "signed") {
+      return Response.json({ error: "Перед видачею протокол має бути підписаний лікарем-рентгенологом" }, { status: 409 });
+    }
+    if (!sameClinicalDocument(existing, document)) {
+      return Response.json({ error: "Підписаний протокол незмінний. Оновіть сторінку перед видачею." }, { status: 409 });
+    }
+    try {
+      await db.batch([
+        db.prepare(
+          `UPDATE protocols SET status = 'issued', updated_by = ?, updated_at = CURRENT_TIMESTAMP
+           WHERE booking_id = ? AND organization_id = ? AND status = 'signed' AND version = ?`
+        ).bind(member.email, bookingId, ctx.organizationId, existing.version),
+        db.prepare(
+          "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_issued', ?, ?)"
+        ).bind(ctx.organizationId, bookingId, `signed v${existing.signedVersion}`, member.email),
+      ]);
+    } catch {
+      return Response.json({ error: "Не вдалося видати підписаний протокол. Оновіть сторінку." }, { status: 409 });
+    }
+    const state = await db.prepare(
+      `SELECT b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
+        p.status AS documentStatus, p.version, p.signed_by AS signedBy,
+        p.signed_at AS signedAt, p.signed_version AS signedVersion
+       FROM bookings b JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
+       WHERE b.id = ? AND b.organization_id = ? LIMIT 1`
+    ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
+    if (!state || state.documentStatus !== "issued") {
+      return Response.json({ error: "Статус протоколу змінився. Оновіть сторінку." }, { status: 409 });
+    }
+    await audit(db, {
+      organizationId: ctx.organizationId,
+      actorEmail: member.email,
+      action: "protocol_issued",
+      resource: "protocol",
+      targetId: bookingId,
+      details: { version: existing.version, signedVersion: existing.signedVersion },
+    });
+    return Response.json({
+      ok: true,
+      version: existing.version,
+      protocolStatus: "issued",
+      protocolNumber: existing.number,
+      documentStatus: "issued",
+      signedBy: String(state.signedBy || ""),
+      signedAt: String(state.signedAt || ""),
+      signedVersion: Number(state.signedVersion || 0),
+      protocolReadyAt: String(state.protocolReadyAt || ""),
+      protocolIssuedAt: String(state.protocolIssuedAt || ""),
+    });
+  }
+
+  if (existing?.status === "signed") {
+    return Response.json({ error: "Підписаний протокол незмінний. Доступна лише видача пацієнту." }, { status: 409 });
+  }
+  if (!existing && document.status === "signed") {
+    return Response.json({ error: "Спочатку збережіть і підготуйте протокол до підпису" }, { status: 409 });
+  }
   const allowedTransitions: Record<string, string[]> = {
     draft: ["draft", "ready"],
-    ready: ["ready", "issued"],
+    ready: ["ready", "signed"],
   };
   if (existing && !(allowedTransitions[existing.status] || []).includes(document.status)) {
-    return Response.json({ error: "Неможливо повернути протокол до попереднього статусу" }, { status: 409 });
+    return Response.json({ error: "Недопустимий перехід статусу протоколу" }, { status: 409 });
+  }
+  if (document.status === "signed" && !canSignProtocols(member.role)) {
+    return Response.json({ error: "Підписати протокол може лише лікар-рентгенолог" }, { status: 403 });
   }
   if (document.number) {
     const duplicate = await db.prepare(
@@ -169,29 +271,38 @@ export async function PUT(request: Request) {
     ).bind(ctx.organizationId, document.number, bookingId).first();
     if (duplicate) return Response.json({ error: "Такий номер протоколу вже використано" }, { status: 409 });
   }
+
   const version = existing ? Number(existing.version) + 1 : 1;
   const authorEmail = existing?.authorEmail || member.email;
   const sectionsJson = JSON.stringify(document.sections);
+  const legacyStatus = bookingProtocolLifecycleStatus(document.status);
+  const signedBy = document.status === "signed" ? member.email : "";
+  const signedVersion = document.status === "signed" ? version : 0;
+  const signedAtRow = document.status === "signed"
+    ? await db.prepare("SELECT CURRENT_TIMESTAMP AS now").first<{ now: string }>()
+    : null;
+  const signedAt = signedAtRow?.now || "";
 
-  const legacyStatus = bookingProtocolStatus(document.status);
   try {
     await db.batch([
       db.prepare(
         `INSERT INTO protocols
        (organization_id, booking_id, template_key, method, sections_json, findings, conclusion, recommendations,
-        number, status, version, author_email, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+        number, status, version, author_email, updated_by, updated_at, signed_by, signed_at, signed_version)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
      ON CONFLICT(booking_id) DO UPDATE SET
        organization_id = excluded.organization_id,
        template_key = excluded.template_key, method = excluded.method,
        sections_json = excluded.sections_json, findings = excluded.findings,
        conclusion = excluded.conclusion, recommendations = excluded.recommendations,
        number = excluded.number, status = excluded.status, version = excluded.version,
-       updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+       updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP,
+       signed_by = excluded.signed_by, signed_at = excluded.signed_at,
+       signed_version = excluded.signed_version`
       ).bind(
         ctx.organizationId, bookingId, document.templateKey, document.method, sectionsJson, document.findings,
         document.conclusion, document.recommendations, document.number, document.status,
-        version, authorEmail, member.email,
+        version, authorEmail, member.email, signedBy, signedAt, signedVersion,
       ),
       db.prepare(
         `INSERT INTO protocol_revisions
@@ -204,17 +315,6 @@ export async function PUT(request: Request) {
         document.number, document.status, member.email,
       ),
       db.prepare(
-        `UPDATE bookings SET protocol_number = ?, protocol_status = ?,
-       protocol_updated_at = CURRENT_TIMESTAMP,
-       protocol_ready_at = CASE
-         WHEN ? IN ('ready','issued') AND protocol_ready_at = '' THEN CURRENT_TIMESTAMP
-         ELSE protocol_ready_at END,
-       protocol_issued_at = CASE
-         WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
-         ELSE protocol_issued_at END
-         WHERE id = ? AND organization_id = ?`
-      ).bind(document.number, legacyStatus, legacyStatus, legacyStatus, bookingId, ctx.organizationId),
-      db.prepare(
         "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_document_saved', ?, ?)"
       ).bind(
         ctx.organizationId,
@@ -224,21 +324,24 @@ export async function PUT(request: Request) {
       ),
     ]);
   } catch {
-    return Response.json({ error: "Конфлікт версій протоколу. Оновіть сторінку." }, { status: 409 });
+    return Response.json({ error: "Конфлікт версій або стану протоколу. Оновіть сторінку." }, { status: 409 });
   }
 
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: member.email,
-    action: document.status === "issued" ? "protocol_issued" : "protocol_saved",
+    action: document.status === "signed" ? "protocol_signed" : "protocol_saved",
     resource: "protocol",
     targetId: bookingId,
     details: { version, status: document.status },
   });
 
-  const dates = await db.prepare(
-    "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE id = ? AND organization_id = ?"
-  ).bind(bookingId, ctx.organizationId).first<{ protocolReadyAt: string; protocolIssuedAt: string }>();
+  const state = await db.prepare(
+    `SELECT b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
+      p.signed_by AS signedBy, p.signed_at AS signedAt, p.signed_version AS signedVersion
+     FROM bookings b JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
+     WHERE b.id = ? AND b.organization_id = ? LIMIT 1`
+  ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
 
   return Response.json({
     ok: true,
@@ -246,6 +349,10 @@ export async function PUT(request: Request) {
     protocolStatus: legacyStatus,
     protocolNumber: document.number,
     documentStatus: document.status,
-    ...dates,
+    signedBy: String(state?.signedBy || ""),
+    signedAt: String(state?.signedAt || ""),
+    signedVersion: Number(state?.signedVersion || 0),
+    protocolReadyAt: String(state?.protocolReadyAt || ""),
+    protocolIssuedAt: String(state?.protocolIssuedAt || ""),
   });
 }
