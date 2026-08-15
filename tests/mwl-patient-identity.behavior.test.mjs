@@ -29,14 +29,14 @@ async function addProfile(db, name, phone) {
   return row.patientId;
 }
 
-async function addBooking(db, { code, phone, patientId = "" }) {
+async function addBooking(db, { code, phone, patientId = "", desiredTime }) {
   await db.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, patient_id, date_of_birth,
        service, service_code, equipment_id, desired_date, desired_time, patient_category, status)
      VALUES (1, ?, ?, ?, ?, ?, '1990-02-03', 'КТ ОГК', '403', 'ct',
-       '2026-08-20', '10:00', 'civilian', 'confirmed')`,
-  ).bind(code, `Пацієнт ${code}`, `+${phone}`, phone, patientId).run();
+       '2026-08-20', ?, 'civilian', 'confirmed')`,
+  ).bind(code, `Пацієнт ${code}`, `+${phone}`, phone, patientId, desiredTime).run();
 }
 
 async function loadMwl(db, token) {
@@ -63,11 +63,11 @@ test("MWL PatientID follows immutable patient identity and never shared phone", 
        VALUES (1, ?, ?)`,
     ).bind(`phone:${sharedPhone}`, historicalPhoneDicomId).run();
 
-    await addBooking(db, { code:"MWL-A-1", phone:sharedPhone, patientId:patientA });
-    await addBooking(db, { code:"MWL-B-1", phone:sharedPhone, patientId:patientB });
-    await addBooking(db, { code:"MWL-A-2", phone:sharedPhone, patientId:patientA });
-    await addBooking(db, { code:"MWL-LEGACY-1", phone:sharedPhone });
-    await addBooking(db, { code:"MWL-LEGACY-2", phone:sharedPhone });
+    await addBooking(db, { code:"MWL-A-1", phone:sharedPhone, patientId:patientA, desiredTime:"08:00" });
+    await addBooking(db, { code:"MWL-B-1", phone:sharedPhone, patientId:patientB, desiredTime:"09:00" });
+    await addBooking(db, { code:"MWL-A-2", phone:sharedPhone, patientId:patientA, desiredTime:"10:00" });
+    await addBooking(db, { code:"MWL-LEGACY-1", phone:sharedPhone, desiredTime:"11:00" });
+    await addBooking(db, { code:"MWL-LEGACY-2", phone:sharedPhone, desiredTime:"12:00" });
 
     const body = await loadMwl(db, token);
     const byCode = new Map(body.items.map((item) => [item.scheduledProcedureStepId, item]));
