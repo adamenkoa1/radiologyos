@@ -1,5 +1,6 @@
 import { dbBinding } from "../../../../../lib/db";
 import { generateBridgeToken, hashBridgeToken } from "../../../../../lib/mwl-bridge";
+import { canManageSystem } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 
 export async function GET(request: Request) {
@@ -7,8 +8,8 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error: "Керувати MWL bridge може лише адміністратор" }, { status: 403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Керувати MWL bridge може лише системний адміністратор" }, { status: 403 });
   }
 
   const row = await db.prepare(
@@ -32,8 +33,8 @@ export async function POST(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error: "Керувати MWL bridge може лише адміністратор" }, { status: 403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Керувати MWL bridge може лише системний адміністратор" }, { status: 403 });
   }
 
   const token = `mwl_${generateBridgeToken()}`;
@@ -63,8 +64,8 @@ export async function DELETE(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error: "Керувати MWL bridge може лише адміністратор" }, { status: 403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Керувати MWL bridge може лише системний адміністратор" }, { status: 403 });
   }
 
   const result = await db.prepare(
