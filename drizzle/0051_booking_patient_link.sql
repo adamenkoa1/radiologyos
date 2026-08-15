@@ -44,3 +44,16 @@ WHEN NEW.organization_id != OLD.organization_id
 BEGIN
   SELECT RAISE(ABORT, 'patient organization is immutable');
 END;
+--> statement-breakpoint
+-- Do not allow a profile to disappear while clinical bookings still reference it.
+CREATE TRIGGER IF NOT EXISTS `patient_profiles_linked_delete_guard`
+BEFORE DELETE ON `patient_profiles`
+FOR EACH ROW
+WHEN EXISTS (
+  SELECT 1 FROM bookings b
+  WHERE b.organization_id = OLD.organization_id
+    AND b.patient_id = OLD.patient_id
+)
+BEGIN
+  SELECT RAISE(ABORT, 'linked patient cannot be deleted');
+END;
