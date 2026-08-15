@@ -1,5 +1,6 @@
 import { sanitizePacsSettings } from "../../../../../lib/dicom";
 import { safeOutboundUrl } from "../../../../../lib/outbound";
+import { canManageSystem } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 import { audit } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
@@ -12,8 +13,8 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error: "Налаштування PACS доступні лише адміністратору" }, { status: 403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Налаштування PACS доступні лише системному адміністратору" }, { status: 403 });
   }
 
   const settings = await db.prepare(
@@ -27,8 +28,8 @@ export async function PUT(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error: "Налаштування PACS може змінювати лише адміністратор" }, { status: 403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Налаштування PACS може змінювати лише системний адміністратор" }, { status: 403 });
   }
 
   const parsed = sanitizePacsSettings(await request.json());
