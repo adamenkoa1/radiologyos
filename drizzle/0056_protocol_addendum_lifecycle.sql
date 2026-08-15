@@ -5,7 +5,7 @@
 -- before it may be delivered to the patient.
 
 CREATE TABLE `protocol_addenda` (
-  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  `id` text PRIMARY KEY NOT NULL,
   `organization_id` integer NOT NULL,
   `booking_id` integer NOT NULL,
   `base_protocol_version` integer NOT NULL,
@@ -20,21 +20,20 @@ CREATE TABLE `protocol_addenda` (
   `signed_version` integer NOT NULL DEFAULT 0,
   `created_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `updated_at` text NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  CHECK (`length`(`id`) = 32),
   CHECK (`status` IN ('draft','ready','signed','issued')),
   CHECK (`base_protocol_version` > 0),
   CHECK (`version` > 0)
 );
 --> statement-breakpoint
-CREATE INDEX `protocol_addenda_org_booking_idx`
-ON `protocol_addenda` (`organization_id`, `booking_id`, `created_at`);
+CREATE INDEX `protocol_addenda_org_booking_idx` ON `protocol_addenda` (`organization_id`, `booking_id`, `created_at`);
 --> statement-breakpoint
-CREATE INDEX `protocol_addenda_status_idx`
-ON `protocol_addenda` (`organization_id`, `status`, `updated_at`);
+CREATE INDEX `protocol_addenda_status_idx` ON `protocol_addenda` (`organization_id`, `status`, `updated_at`);
 --> statement-breakpoint
 
 CREATE TABLE `protocol_addendum_revisions` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
-  `addendum_id` integer NOT NULL,
+  `addendum_id` text NOT NULL,
   `organization_id` integer NOT NULL,
   `booking_id` integer NOT NULL,
   `base_protocol_version` integer NOT NULL,
@@ -50,21 +49,16 @@ CREATE TABLE `protocol_addendum_revisions` (
   CHECK (`version` > 0)
 );
 --> statement-breakpoint
-CREATE INDEX `protocol_addendum_revisions_scope_idx`
-ON `protocol_addendum_revisions` (`organization_id`, `booking_id`, `addendum_id`, `version`);
+CREATE INDEX `protocol_addendum_revisions_scope_idx` ON `protocol_addendum_revisions` (`organization_id`, `booking_id`, `addendum_id`, `version`);
 --> statement-breakpoint
 
--- An addendum may only belong to the same tenant/booking as an already issued
--- base report and must remain anchored to that exact immutable base version.
 CREATE TRIGGER `protocol_addenda_base_guard_insert`
 BEFORE INSERT ON `protocol_addenda`
 FOR EACH ROW
 WHEN NOT EXISTS (
   SELECT 1 FROM protocols p
-  WHERE p.organization_id = NEW.organization_id
-    AND p.booking_id = NEW.booking_id
-    AND p.status = 'issued'
-    AND p.version = NEW.base_protocol_version
+  WHERE p.organization_id = NEW.organization_id AND p.booking_id = NEW.booking_id
+    AND p.status = 'issued' AND p.version = NEW.base_protocol_version
 )
 BEGIN
   SELECT RAISE(ABORT, 'protocol addendum base must be issued');
@@ -81,17 +75,11 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Signature metadata and lifecycle state must always agree.
 CREATE TRIGGER `protocol_addenda_signature_guard_insert`
 BEFORE INSERT ON `protocol_addenda`
 FOR EACH ROW
-WHEN (
-    NEW.status IN ('signed','issued') AND
-      (NEW.signed_by = '' OR NEW.signed_at = '' OR NEW.signed_version != NEW.version)
-  ) OR (
-    NEW.status NOT IN ('signed','issued') AND
-      (NEW.signed_by != '' OR NEW.signed_at != '' OR NEW.signed_version != 0)
-  )
+WHEN (NEW.status IN ('signed','issued') AND (NEW.signed_by = '' OR NEW.signed_at = '' OR NEW.signed_version != NEW.version))
+   OR (NEW.status NOT IN ('signed','issued') AND (NEW.signed_by != '' OR NEW.signed_at != '' OR NEW.signed_version != 0))
 BEGIN
   SELECT RAISE(ABORT, 'protocol addendum signature state mismatch');
 END;
@@ -99,30 +87,20 @@ END;
 CREATE TRIGGER `protocol_addenda_signature_guard_update`
 BEFORE UPDATE ON `protocol_addenda`
 FOR EACH ROW
-WHEN (
-    NEW.status IN ('signed','issued') AND
-      (NEW.signed_by = '' OR NEW.signed_at = '' OR NEW.signed_version != NEW.version)
-  ) OR (
-    NEW.status NOT IN ('signed','issued') AND
-      (NEW.signed_by != '' OR NEW.signed_at != '' OR NEW.signed_version != 0)
-  )
+WHEN (NEW.status IN ('signed','issued') AND (NEW.signed_by = '' OR NEW.signed_at = '' OR NEW.signed_version != NEW.version))
+   OR (NEW.status NOT IN ('signed','issued') AND (NEW.signed_by != '' OR NEW.signed_at != '' OR NEW.signed_version != 0))
 BEGIN
   SELECT RAISE(ABORT, 'protocol addendum signature state mismatch');
 END;
 --> statement-breakpoint
 
--- Once signed, the clinical correction, version, author and signature cannot be
--- rewritten. Delivery is the only permitted transition: signed -> issued.
 CREATE TRIGGER `protocol_addenda_signed_content_immutable`
 BEFORE UPDATE ON `protocol_addenda`
 FOR EACH ROW
 WHEN OLD.status IN ('signed','issued') AND (
-     NEW.reason IS NOT OLD.reason
-  OR NEW.correction_text IS NOT OLD.correction_text
-  OR NEW.version IS NOT OLD.version
-  OR NEW.author_email IS NOT OLD.author_email
-  OR NEW.signed_by IS NOT OLD.signed_by
-  OR NEW.signed_at IS NOT OLD.signed_at
+     NEW.reason IS NOT OLD.reason OR NEW.correction_text IS NOT OLD.correction_text
+  OR NEW.version IS NOT OLD.version OR NEW.author_email IS NOT OLD.author_email
+  OR NEW.signed_by IS NOT OLD.signed_by OR NEW.signed_at IS NOT OLD.signed_at
   OR NEW.signed_version IS NOT OLD.signed_version
 )
 BEGIN
@@ -139,50 +117,33 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Revision rows are permanent medical evidence. No application or maintenance
--- query may rewrite or delete a saved snapshot.
 CREATE TRIGGER `protocol_addendum_revisions_scope_guard_insert`
 BEFORE INSERT ON `protocol_addendum_revisions`
 FOR EACH ROW
 WHEN NOT EXISTS (
   SELECT 1 FROM protocol_addenda a
-  WHERE a.id = NEW.addendum_id
-    AND a.organization_id = NEW.organization_id
-    AND a.booking_id = NEW.booking_id
-    AND a.base_protocol_version = NEW.base_protocol_version
+  WHERE a.id = NEW.addendum_id AND a.organization_id = NEW.organization_id
+    AND a.booking_id = NEW.booking_id AND a.base_protocol_version = NEW.base_protocol_version
 )
 BEGIN
   SELECT RAISE(ABORT, 'protocol addendum revision scope mismatch');
 END;
 --> statement-breakpoint
 CREATE TRIGGER `protocol_addendum_revisions_append_only_update`
-BEFORE UPDATE ON `protocol_addendum_revisions`
-FOR EACH ROW
-BEGIN
-  SELECT RAISE(ABORT, 'protocol addendum revisions are append-only');
-END;
+BEFORE UPDATE ON `protocol_addendum_revisions` FOR EACH ROW
+BEGIN SELECT RAISE(ABORT, 'protocol addendum revisions are append-only'); END;
 --> statement-breakpoint
 CREATE TRIGGER `protocol_addendum_revisions_append_only_delete`
-BEFORE DELETE ON `protocol_addendum_revisions`
-FOR EACH ROW
-BEGIN
-  SELECT RAISE(ABORT, 'protocol addendum revisions are append-only');
-END;
+BEFORE DELETE ON `protocol_addendum_revisions` FOR EACH ROW
+BEGIN SELECT RAISE(ABORT, 'protocol addendum revisions are append-only'); END;
 --> statement-breakpoint
 
--- Audit delivery from the physical state transition so concurrent/repeated
--- requests can never fabricate duplicate delivery events.
 CREATE TRIGGER `protocol_addendum_issue_event`
 AFTER UPDATE OF `status` ON `protocol_addenda`
-FOR EACH ROW
-WHEN OLD.status = 'signed' AND NEW.status = 'issued'
+FOR EACH ROW WHEN OLD.status = 'signed' AND NEW.status = 'issued'
 BEGIN
   INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
-  VALUES (
-    NEW.organization_id,
-    NEW.booking_id,
-    'protocol_addendum_issued',
+  VALUES (NEW.organization_id, NEW.booking_id, 'protocol_addendum_issued',
     'addendum ' || NEW.id || ' · base v' || NEW.base_protocol_version || ' · v' || NEW.version,
-    NEW.updated_by
-  );
+    NEW.updated_by);
 END;
