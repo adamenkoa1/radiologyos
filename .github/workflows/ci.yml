@@ -44,6 +44,69 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Diagnose changed identity tests
+        id: identity_diag
+        shell: bash
+        run: |
+          set +e
+          node --experimental-strip-types --test \
+            tests/ai-prior-study-identity.behavior.test.mjs \
+            tests/contact-center.behavior.test.mjs \
+            tests/exact-patient-staff-booking.behavior.test.mjs
+          echo "behavior_a=$?" >> "$GITHUB_OUTPUT"
+
+          node --experimental-strip-types --test \
+            tests/patient-exact-id-api.behavior.test.mjs \
+            tests/patient-import-guard.test.mjs \
+            tests/patient-shared-phone.behavior.test.mjs
+          echo "behavior_b=$?" >> "$GITHUB_OUTPUT"
+
+          node --experimental-strip-types --test \
+            tests/booking-drawer-identity.test.mjs \
+            tests/contact-center.test.mjs \
+            tests/legacy-global-consent.test.mjs \
+            tests/patient-add.test.mjs
+          echo "source_a=$?" >> "$GITHUB_OUTPUT"
+
+          node --experimental-strip-types --test \
+            tests/patient-crm.test.mjs \
+            tests/patient-import.test.mjs \
+            tests/patient-reminders.test.mjs
+          echo "source_b=$?" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: DIAG FAIL - behavior A
+        if: steps.identity_diag.outputs.behavior_a != '0'
+        run: echo "behavior A failed"
+
+      - name: DIAG PASS - behavior A
+        if: steps.identity_diag.outputs.behavior_a == '0'
+        run: echo "behavior A passed"
+
+      - name: DIAG FAIL - behavior B
+        if: steps.identity_diag.outputs.behavior_b != '0'
+        run: echo "behavior B failed"
+
+      - name: DIAG PASS - behavior B
+        if: steps.identity_diag.outputs.behavior_b == '0'
+        run: echo "behavior B passed"
+
+      - name: DIAG FAIL - source A
+        if: steps.identity_diag.outputs.source_a != '0'
+        run: echo "source A failed"
+
+      - name: DIAG PASS - source A
+        if: steps.identity_diag.outputs.source_a == '0'
+        run: echo "source A passed"
+
+      - name: DIAG FAIL - source B
+        if: steps.identity_diag.outputs.source_b != '0'
+        run: echo "source B failed"
+
+      - name: DIAG PASS - source B
+        if: steps.identity_diag.outputs.source_b == '0'
+        run: echo "source B passed"
+
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
 
