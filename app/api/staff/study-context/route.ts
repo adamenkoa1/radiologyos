@@ -1,6 +1,6 @@
 import { audit } from "../../../../lib/audit";
 import { dbBinding } from "../../../../lib/db";
-import { canAccessBooking, canWriteNotes } from "../../../../lib/staff-auth";
+import { canAccessBooking, canManageFinance, canWriteNotes } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 
 function clean(value:unknown,max:number){return String(value||"").trim().slice(0,max)}
@@ -17,6 +17,9 @@ export async function GET(request:Request){
   const id=Number(new URL(request.url).searchParams.get("id"));
   if(!Number.isInteger(id)||id<1)return Response.json({error:"Некоректне дослідження"},{status:400});
   const ctx=await accessible(request,db,id); if(!ctx)return Response.json({error:"Дослідження не знайдено або не призначено вам"},{status:404});
+  const financeEventScope=canManageFinance(ctx.member.role)
+    ? ""
+    : " AND action NOT IN ('finance_updated','payment_confirmed','payment_refunded')";
 
   const [booking,note,comments,events]=await Promise.all([
     db.prepare(`SELECT id,code,name,service,status,comment,created_at AS createdAt
@@ -30,7 +33,7 @@ export async function GET(request:Request){
       WHERE c.organization_id=? AND c.booking_id=? ORDER BY c.id DESC LIMIT 100`)
       .bind(ctx.organizationId,id).all(),
     db.prepare(`SELECT id,action,details,actor,created_at AS createdAt
-      FROM booking_events WHERE organization_id=? AND booking_id=? ORDER BY id DESC LIMIT 100`)
+      FROM booking_events WHERE organization_id=? AND booking_id=?${financeEventScope} ORDER BY id DESC LIMIT 100`)
       .bind(ctx.organizationId,id).all(),
   ]);
 
