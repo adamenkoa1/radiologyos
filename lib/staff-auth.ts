@@ -69,6 +69,13 @@ export function canManageProtocols(role: AccessRole) {
   return role === "admin" || role === "radiologist";
 }
 
+// A clinical signature must identify an actual radiologist membership. Legacy
+// `admin` remains able to prepare and issue documents for compatibility, but is
+// deliberately not treated as a clinical signer.
+export function canSignProtocols(role: AccessRole) {
+  return role === "radiologist";
+}
+
 export function canManageFinance(role: AccessRole) {
   return role === "admin" || role === "registrar";
 }

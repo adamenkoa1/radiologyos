@@ -55,9 +55,33 @@ test("protocol document is the authoritative projection for booking protocol sta
     assert.equal(booking.issuedAt, "");
 
     await assert.rejects(
-      db.prepare("UPDATE bookings SET protocol_number='OTHER' WHERE id=? AND organization_id=1")
+      db.prepare("UPDATE protocols SET status='issued' WHERE booking_id=? AND organization_id=1")
         .bind(bookingId).run(),
-      /projection mismatch/i,
+      /signature state mismatch/i,
+    );
+
+    await db.prepare(
+      `UPDATE protocols
+       SET status='signed', signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=version
+       WHERE booking_id=? AND organization_id=1`
+    ).bind(bookingId).run();
+    booking = await db.prepare(`SELECT protocol_status AS status, protocol_number AS number,
+      protocol_ready_at AS readyAt, protocol_issued_at AS issuedAt
+      FROM bookings WHERE id=? AND organization_id=1`).bind(bookingId).first();
+    assert.equal(booking.status, "ready", "signed protocol remains ready in the legacy booking projection");
+    assert.equal(booking.number, "CT-2026-001");
+    assert.ok(booking.readyAt);
+    assert.equal(booking.issuedAt, "");
+
+    await assert.rejects(
+      db.prepare("UPDATE protocols SET number='OTHER' WHERE booking_id=? AND organization_id=1")
+        .bind(bookingId).run(),
+      /signed protocol content is immutable/i,
+    );
+    await assert.rejects(
+      db.prepare("UPDATE protocols SET status='ready' WHERE booking_id=? AND organization_id=1")
+        .bind(bookingId).run(),
+      /signed protocol status is immutable|signature state mismatch/i,
     );
 
     await db.prepare("UPDATE protocols SET status='issued' WHERE booking_id=? AND organization_id=1")
@@ -72,13 +96,22 @@ test("protocol document is the authoritative projection for booking protocol sta
   });
 });
 
-test("lifecycle migration repairs orphan projections without fabricating clinical documents", async () => {
-  const migration = await read("drizzle/0044_protocol_lifecycle_projection.sql");
-  assert.match(migration, /protocol_projection_repaired/);
-  assert.match(migration, /system:migration-0044/);
-  assert.match(migration, /SET protocol_number = '',[\s\S]*protocol_status = 'not_started'/);
-  assert.match(migration, /protocols_project_booking_insert/);
-  assert.match(migration, /protocols_project_booking_update/);
-  assert.match(migration, /bookings_protocol_projection_guard/);
-  assert.match(migration, /RAISE\(ABORT, 'booking protocol projection mismatch'\)/);
+test("lifecycle migrations protect projection and explicit signing semantics", async () => {
+  const projectionMigration = await read("drizzle/0044_protocol_lifecycle_projection.sql");
+  assert.match(projectionMigration, /protocol_projection_repaired/);
+  assert.match(projectionMigration, /system:migration-0044/);
+  assert.match(projectionMigration, /SET protocol_number = '',[\s\S]*protocol_status = 'not_started'/);
+
+  const signingMigration = await read("drizzle/0049_protocol_signing_lifecycle.sql");
+  assert.match(signingMigration, /signed_by/);
+  assert.match(signingMigration, /signed_at/);
+  assert.match(signingMigration, /signed_version/);
+  assert.match(signingMigration, /system:legacy-issued/);
+  assert.match(signingMigration, /protocol_signature_migrated/);
+  assert.match(signingMigration, /WHEN 'signed' THEN 'ready'/);
+  assert.match(signingMigration, /protocols_signed_content_immutable/);
+  assert.match(signingMigration, /protocols_signed_status_guard/);
+  assert.match(signingMigration, /RAISE\(ABORT, 'signed protocol content is immutable'\)/);
+  assert.match(signingMigration, /bookings_protocol_projection_guard/);
+  assert.match(signingMigration, /RAISE\(ABORT, 'booking protocol projection mismatch'\)/);
 });
