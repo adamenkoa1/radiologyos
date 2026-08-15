@@ -60,15 +60,15 @@ export async function GET(request: Request) {
     one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND nszu_status = 'pending' AND status != 'cancelled'", orgId),
     one(
       `SELECT
-         (SELECT COUNT(*) FROM patient_profiles p WHERE p.organization_id = ?1)
+         (SELECT COUNT(*) FROM patient_profiles p WHERE p.organization_id = ?)
          +
          (SELECT COUNT(*) FROM (
            SELECT b.phone_normalized
            FROM bookings b
-           WHERE b.organization_id = ?1 AND b.patient_id = '' AND b.phone_normalized != ''
+           WHERE b.organization_id = ? AND b.patient_id = '' AND b.phone_normalized != ''
            GROUP BY b.phone_normalized
          )) AS c`,
-      orgId,
+      orgId, orgId,
     ),
     one(
       `SELECT COUNT(*) AS c FROM (
@@ -76,15 +76,15 @@ export async function GET(request: Request) {
          FROM patient_profiles p
          JOIN bookings b
            ON b.organization_id = p.organization_id AND b.patient_id = p.patient_id
-         WHERE p.organization_id = ?1
+         WHERE p.organization_id = ?
          GROUP BY p.patient_id HAVING COUNT(b.id) > 1
          UNION ALL
          SELECT 'legacy:' || b.phone_normalized AS identityKey
          FROM bookings b
-         WHERE b.organization_id = ?1 AND b.patient_id = '' AND b.phone_normalized != ''
+         WHERE b.organization_id = ? AND b.patient_id = '' AND b.phone_normalized != ''
          GROUP BY b.phone_normalized HAVING COUNT(*) > 1
        )`,
-      orgId,
+      orgId, orgId,
     ),
     one("SELECT COUNT(*) AS c FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1", orgId),
     many("SELECT equipment_id AS id, COUNT(*) AS c FROM bookings WHERE organization_id = ? AND desired_date = ? AND status != 'cancelled' GROUP BY equipment_id", orgId, today),
