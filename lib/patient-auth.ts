@@ -16,6 +16,14 @@ export type PatientIdentityScope = {
   value: string;
 };
 
+export type PatientSession = {
+  phoneNormalized: string;
+  organizationId: number;
+  identityKind: "dob" | "booking";
+  identityValue: string;
+  patientId: string;
+};
+
 export function normalizeBookingCode(value: unknown): string {
   const code = String(value || "").trim().toUpperCase().slice(0, 24);
   // Новий формат RD-РРММДД-N (дата + добовий номер) та легасі RD-<hex16>.
@@ -180,7 +188,7 @@ export async function createPatientSession(
   return rawToken;
 }
 
-export async function requirePatientSession(request: Request, db: D1Database) {
+export async function requirePatientSession(request: Request, db: D1Database): Promise<PatientSession | null> {
   const rawToken = readCookie(request, PATIENT_SESSION_COOKIE);
   if (!rawToken) return null;
   const tokenHash = await hashToken(rawToken);
@@ -192,13 +200,26 @@ export async function requirePatientSession(request: Request, db: D1Database) {
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
        AND identity_kind IN ('dob','booking') AND identity_value != ''
      LIMIT 1`,
-  ).bind(tokenHash).first<{
-    phoneNormalized: string;
-    organizationId: number;
-    identityKind: "dob" | "booking";
-    identityValue: string;
-    patientId: string;
-  }>();
+  ).bind(tokenHash).first<PatientSession>();
+}
+
+// Exact patient sessions and booking-code sessions are already identity-scoped.
+// A legacy DOB session has no immutable patient id, so more than one matching
+// booking is intrinsically ambiguous (shared family phone, twins, duplicate DOB,
+// or mixed historical records). Never infer that those rows belong to one person.
+export async function patientSessionScopeIsUnambiguous(
+  db: D1Database,
+  session: PatientSession,
+): Promise<boolean> {
+  if (session.patientId) return true;
+  if (session.identityKind === "booking") return true;
+  if (session.identityKind !== "dob") return false;
+
+  const row = await db.prepare(
+    `SELECT COUNT(*) AS n FROM bookings
+     WHERE organization_id = ? AND phone_normalized = ? AND date_of_birth = ?`,
+  ).bind(session.organizationId, session.phoneNormalized, session.identityValue).first<{ n:number }>();
+  return Number(row?.n || 0) === 1;
 }
 
 export async function destroyPatientSession(request: Request, db: D1Database): Promise<void> {
