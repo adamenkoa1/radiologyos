@@ -1,5 +1,5 @@
 // Export patients as a Google Contacts CSV (name + phone), ready for
-// contacts.google.com → Import. Excludes "do not contact" patients.
+// contacts.google.com → Import. Excludes exact "do not contact" profiles.
 
 import { logSecurityEvent } from "../../../../../lib/audit";
 import { canExportPatientData } from "../../../../../lib/staff-auth";
@@ -22,16 +22,28 @@ export async function GET(request: Request) {
     return Response.json({ error: "Експорт персональних даних доступний лише адміністратору" }, { status: 403 });
   }
 
-  // Latest booking per phone gives the freshest name; the profile name wins if set.
-  // Обмежено організацією контексту (tenant-isolation).
+  // Exact CRM profiles are separate contacts even when they share a phone.
+  // Historical unlinked bookings are exported only when no profile at all uses
+  // that phone, so a legacy phone row can never collapse/override exact people.
   const rows = await db.prepare(
-    `SELECT b.phone_normalized AS phone,
-       COALESCE(NULLIF(p.display_name, ''), b.name) AS name
+    `SELECT phone_normalized AS phone,
+       COALESCE(NULLIF(display_name, ''), 'Пацієнт') AS name
+     FROM patient_profiles
+     WHERE organization_id = ?1 AND phone_normalized != '' AND do_not_contact = 0
+     UNION ALL
+     SELECT b.phone_normalized AS phone, b.name AS name
      FROM bookings b
-     JOIN (SELECT phone_normalized, MAX(id) AS mid FROM bookings
-           WHERE phone_normalized != '' AND organization_id = ?1 GROUP BY phone_normalized) last ON last.mid = b.id
-     LEFT JOIN patient_profiles p ON p.phone_normalized = b.phone_normalized AND p.organization_id = ?1
-     WHERE b.organization_id = ?1 AND COALESCE(p.do_not_contact, 0) = 0
+     JOIN (
+       SELECT phone_normalized, MAX(id) AS mid
+       FROM bookings
+       WHERE organization_id = ?1 AND patient_id = '' AND phone_normalized != ''
+       GROUP BY phone_normalized
+     ) last ON last.mid = b.id
+     WHERE b.organization_id = ?1
+       AND NOT EXISTS (
+         SELECT 1 FROM patient_profiles p
+         WHERE p.organization_id = ?1 AND p.phone_normalized = b.phone_normalized
+       )
      ORDER BY name`
   ).bind(ctx.organizationId).all<{ phone: string; name: string }>();
 
