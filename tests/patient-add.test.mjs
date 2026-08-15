@@ -35,7 +35,8 @@ test("buildPatientSummaries lists manually-added profile-only patients", async (
   const src = await read("lib/patients.ts");
   assert.match(src, /for \(const \[phone, profile\] of profiles\)/);
   assert.match(src, /if \(groups\.has\(phone\)\) continue/);
-  assert.match(src, /hasProfile:true/);
+  assert.match(src, /summarizePatientRows\(\[\], profile, phone\)/);
+  assert.match(src, /hasProfile:!!profile/);
 });
 
 test("patients page exposes an add-patient form", async () => {
