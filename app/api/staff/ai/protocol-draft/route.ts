@@ -30,12 +30,18 @@ export async function POST(request: Request) {
 
   let priorStudies = 0;
   const booking = await db.prepare(
-    "SELECT phone_normalized AS phone FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1"
-  ).bind(bookingId, ctx.organizationId).first<{ phone: string }>();
-  if (booking?.phone) {
+    `SELECT phone_normalized AS phone, date_of_birth AS dob
+     FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
+  ).bind(bookingId, ctx.organizationId).first<{ phone: string; dob: string }>();
+  // A phone number can be shared by family members. Only use prior studies as
+  // AI context when the tenant-local booking identity also matches DOB. If DOB
+  // is absent, fail closed instead of treating the phone as a patient id.
+  if (booking?.phone && booking.dob) {
     const prior = await db.prepare(
-      "SELECT COUNT(*) AS count FROM bookings WHERE phone_normalized = ? AND performed_at != '' AND id != ? AND organization_id = ?"
-    ).bind(booking.phone, bookingId, ctx.organizationId).first<{ count: number }>();
+      `SELECT COUNT(*) AS count FROM bookings
+       WHERE phone_normalized = ? AND date_of_birth = ?
+         AND performed_at != '' AND id != ? AND organization_id = ?`
+    ).bind(booking.phone, booking.dob, bookingId, ctx.organizationId).first<{ count: number }>();
     priorStudies = Number(prior?.count || 0);
   }
 
