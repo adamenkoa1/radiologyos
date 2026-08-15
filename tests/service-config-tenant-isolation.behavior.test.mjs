@@ -4,7 +4,7 @@ import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.
 
 const LEGACY_KEY = "service_catalog_config_v1";
 const ORG2_KEY = `${LEGACY_KEY}:org:2`;
-const SERVICE_CODE = "ct-chest";
+const SERVICE_CODE = "408";
 
 async function addOrganizationTwo(db) {
   await db.prepare(
