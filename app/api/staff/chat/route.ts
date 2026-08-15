@@ -51,17 +51,21 @@ export async function GET(request: Request) {
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(phone, orgId).all();
 
+    // Keep the identity lookup on two ordinary positional bindings. Reusing
+    // numbered parameters in this scalar-subquery shape is not portable across
+    // D1 and Node's SQLite runtime used by the production test harness.
     const patient = await db.prepare(
-      `SELECT
+      `WITH input(phone, org_id) AS (VALUES (?, ?))
+       SELECT
          (SELECT COUNT(*) FROM patient_profiles p
-          WHERE p.phone_normalized = ?1 AND p.organization_id = ?2) AS profileCount,
+          WHERE p.phone_normalized = i.phone AND p.organization_id = i.org_id) AS profileCount,
          COALESCE((
            SELECT MAX(display_name) FROM patient_profiles p
-           WHERE p.phone_normalized = ?1 AND p.organization_id = ?2
+           WHERE p.phone_normalized = i.phone AND p.organization_id = i.org_id
            HAVING COUNT(*) = 1
          ), (
            SELECT name FROM bookings b
-           WHERE b.phone_normalized = ?1 AND b.organization_id = ?2
+           WHERE b.phone_normalized = i.phone AND b.organization_id = i.org_id
              AND NOT EXISTS (
                SELECT 1 FROM patient_profiles p2
                WHERE p2.phone_normalized = b.phone_normalized AND p2.organization_id = b.organization_id
@@ -70,12 +74,12 @@ export async function GET(request: Request) {
          ), '') AS name,
          CASE WHEN EXISTS (
            SELECT 1 FROM patient_telegram_identities ti
-           WHERE ti.phone_normalized = ?1 AND ti.organization_id = ?2 AND ti.telegram_chat_id != ''
+           WHERE ti.phone_normalized = i.phone AND ti.organization_id = i.org_id AND ti.telegram_chat_id != ''
          ) THEN 1 ELSE 0 END AS telegramLinked,
          CASE WHEN EXISTS (
            SELECT 1 FROM bookings b
-           WHERE b.organization_id = ?2
-             AND b.phone_normalized = ?1
+           WHERE b.organization_id = i.org_id
+             AND b.phone_normalized = i.phone
              AND b.patient_id != ''
              AND NOT EXISTS (
                SELECT 1 FROM patient_profiles p3
@@ -83,7 +87,8 @@ export async function GET(request: Request) {
                  AND p3.patient_id = b.patient_id
                  AND p3.phone_normalized = b.phone_normalized
              )
-         ) THEN 1 ELSE 0 END AS staleLinkedContact`
+         ) THEN 1 ELSE 0 END AS staleLinkedContact
+       FROM input i`
     ).bind(phone, orgId).first<{
       profileCount:number; name:string; telegramLinked:number; staleLinkedContact:number;
     }>();
@@ -124,7 +129,7 @@ export async function GET(request: Request) {
           : [],
       linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
-    }, { headers: { "cache-control": "no-store" } });
+    }, { headers: { "cache-control":"no-store" } });
   }
 
   const conversations = channel
@@ -185,7 +190,7 @@ export async function GET(request: Request) {
   ).bind(orgId).all();
   const failed = await db.prepare(
     `SELECT COUNT(*) AS count FROM patient_notifications WHERE organization_id = ? AND status = 'failed'`
-  ).bind(orgId).first<{ count: number }>();
+  ).bind(orgId).first<{ count:number }>();
 
   return Response.json({
     conversations: conversations.results,
@@ -193,7 +198,7 @@ export async function GET(request: Request) {
     failedDeliveries: Number(failed?.count || 0),
     activeChannel: channel || "all",
     staff: member,
-  }, { headers: { "cache-control": "no-store" } });
+  }, { headers: { "cache-control":"no-store" } });
 }
 
 export async function POST(request: Request) {
@@ -207,7 +212,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Вихідний WhatsApp ще не налаштований для цієї організації" }, { status: 403 });
   }
 
-  const body = await request.json().catch(() => ({})) as { phone?: string; text?: string; channel?: string };
+  const body = await request.json().catch(() => ({})) as { phone?:string; text?:string; channel?:string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
   const text = String(body.text || "").trim().slice(0, 2000);
   const channel = String(body.channel || "whatsapp").trim().toLowerCase();
@@ -215,18 +220,19 @@ export async function POST(request: Request) {
   if (channel !== "whatsapp") return Response.json({ error: "Ручна відповідь для цього каналу ще не підключена" }, { status: 400 });
 
   const identity = await db.prepare(
-    `SELECT
+    `WITH input(org_id, phone) AS (VALUES (?, ?))
+     SELECT
        (SELECT COUNT(*) FROM patient_profiles p
-        WHERE p.organization_id = ?1 AND p.phone_normalized = ?2) AS profileCount,
+        WHERE p.organization_id = i.org_id AND p.phone_normalized = i.phone) AS profileCount,
        COALESCE((SELECT MAX(patient_id) FROM patient_profiles p
-        WHERE p.organization_id = ?1 AND p.phone_normalized = ?2 HAVING COUNT(*) = 1), '') AS patientId,
+        WHERE p.organization_id = i.org_id AND p.phone_normalized = i.phone HAVING COUNT(*) = 1), '') AS patientId,
        CASE WHEN EXISTS (
-         SELECT 1 FROM bookings b WHERE b.organization_id = ?1 AND b.phone_normalized = ?2
+         SELECT 1 FROM bookings b WHERE b.organization_id = i.org_id AND b.phone_normalized = i.phone
        ) THEN 1 ELSE 0 END AS hasBooking,
        CASE WHEN EXISTS (
          SELECT 1 FROM bookings b
-         WHERE b.organization_id = ?1
-           AND b.phone_normalized = ?2
+         WHERE b.organization_id = i.org_id
+           AND b.phone_normalized = i.phone
            AND b.patient_id != ''
            AND NOT EXISTS (
              SELECT 1 FROM patient_profiles p
@@ -234,7 +240,8 @@ export async function POST(request: Request) {
                AND p.patient_id = b.patient_id
                AND p.phone_normalized = b.phone_normalized
            )
-       ) THEN 1 ELSE 0 END AS staleLinkedContact`
+       ) THEN 1 ELSE 0 END AS staleLinkedContact
+     FROM input i`
   ).bind(ctx.organizationId, phone).first<{
     profileCount:number; patientId:string; hasBooking:number; staleLinkedContact:number;
   }>();
@@ -267,8 +274,8 @@ export async function POST(request: Request) {
     action: "contact_center_message_sent",
     resource: "patient_communication",
     targetId: identity?.patientId || phone,
-    details: { channel: "whatsapp", length: text.length, exactPatient:!!identity?.patientId },
+    details: { channel:"whatsapp", length:text.length, exactPatient:!!identity?.patientId },
   });
 
-  return Response.json({ ok: true, message: { direction: "outbound", channel: "whatsapp", text, actor: member.email, createdAt: new Date().toISOString() } });
+  return Response.json({ ok:true, message:{ direction:"outbound", channel:"whatsapp", text, actor:member.email, createdAt:new Date().toISOString() } });
 }
