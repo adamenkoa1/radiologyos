@@ -44,66 +44,95 @@ jobs:
       - name: Build
         run: npm run build
 
-      - name: Diagnose changed identity tests
-        id: identity_diag
+      - name: Diagnose legacy regression tests
+        id: legacy_diag
         shell: bash
         run: |
           set +e
-          node --experimental-strip-types --test \
-            tests/ai-prior-study-identity.behavior.test.mjs \
-            tests/contact-center.behavior.test.mjs \
-            tests/exact-patient-staff-booking.behavior.test.mjs
-          echo "behavior_a=$?" >> "$GITHUB_OUTPUT"
+          mapfile -t legacy < <(
+            find tests -maxdepth 1 -type f -name '*.test.mjs' | sort | while read -r f; do
+              case "$f" in
+                tests/ai-prior-study-identity.behavior.test.mjs|\
+                tests/booking-drawer-identity.test.mjs|\
+                tests/contact-center.behavior.test.mjs|\
+                tests/exact-patient-staff-booking.behavior.test.mjs|\
+                tests/patient-add.test.mjs|\
+                tests/patient-crm.test.mjs|\
+                tests/patient-exact-id-api.behavior.test.mjs|\
+                tests/patient-import-guard.test.mjs|\
+                tests/patient-import.test.mjs|\
+                tests/patient-reminders.test.mjs|\
+                tests/patient-shared-phone.behavior.test.mjs) ;;
+                *) echo "$f" ;;
+              esac
+            done
+          )
 
-          node --experimental-strip-types --test \
-            tests/patient-exact-id-api.behavior.test.mjs \
-            tests/patient-import-guard.test.mjs \
-            tests/patient-shared-phone.behavior.test.mjs
-          echo "behavior_b=$?" >> "$GITHUB_OUTPUT"
-
-          node --experimental-strip-types --test \
-            tests/booking-drawer-identity.test.mjs \
-            tests/patient-add.test.mjs
-          echo "source_a=$?" >> "$GITHUB_OUTPUT"
-
-          node --experimental-strip-types --test \
-            tests/patient-crm.test.mjs \
-            tests/patient-import.test.mjs \
-            tests/patient-reminders.test.mjs
-          echo "source_b=$?" >> "$GITHUB_OUTPUT"
+          for g in 0 1 2 3 4 5 6 7; do
+            group=()
+            i=0
+            for f in "${legacy[@]}"; do
+              if (( i % 8 == g )); then group+=("$f"); fi
+              ((i++))
+            done
+            if (( ${#group[@]} == 0 )); then
+              rc=0
+            else
+              node --experimental-strip-types --test "${group[@]}"
+              rc=$?
+            fi
+            echo "g${g}=${rc}" >> "$GITHUB_OUTPUT"
+          done
           exit 0
 
-      - name: DIAG FAIL - behavior A
-        if: steps.identity_diag.outputs.behavior_a != '0'
-        run: echo "behavior A failed"
-
-      - name: DIAG PASS - behavior A
-        if: steps.identity_diag.outputs.behavior_a == '0'
-        run: echo "behavior A passed"
-
-      - name: DIAG FAIL - behavior B
-        if: steps.identity_diag.outputs.behavior_b != '0'
-        run: echo "behavior B failed"
-
-      - name: DIAG PASS - behavior B
-        if: steps.identity_diag.outputs.behavior_b == '0'
-        run: echo "behavior B passed"
-
-      - name: DIAG FAIL - source A
-        if: steps.identity_diag.outputs.source_a != '0'
-        run: echo "source A failed"
-
-      - name: DIAG PASS - source A
-        if: steps.identity_diag.outputs.source_a == '0'
-        run: echo "source A passed"
-
-      - name: DIAG FAIL - source B
-        if: steps.identity_diag.outputs.source_b != '0'
-        run: echo "source B failed"
-
-      - name: DIAG PASS - source B
-        if: steps.identity_diag.outputs.source_b == '0'
-        run: echo "source B passed"
+      - name: LEGACY G0 FAIL
+        if: steps.legacy_diag.outputs.g0 != '0'
+        run: echo "legacy group 0 failed"
+      - name: LEGACY G0 PASS
+        if: steps.legacy_diag.outputs.g0 == '0'
+        run: echo "legacy group 0 passed"
+      - name: LEGACY G1 FAIL
+        if: steps.legacy_diag.outputs.g1 != '0'
+        run: echo "legacy group 1 failed"
+      - name: LEGACY G1 PASS
+        if: steps.legacy_diag.outputs.g1 == '0'
+        run: echo "legacy group 1 passed"
+      - name: LEGACY G2 FAIL
+        if: steps.legacy_diag.outputs.g2 != '0'
+        run: echo "legacy group 2 failed"
+      - name: LEGACY G2 PASS
+        if: steps.legacy_diag.outputs.g2 == '0'
+        run: echo "legacy group 2 passed"
+      - name: LEGACY G3 FAIL
+        if: steps.legacy_diag.outputs.g3 != '0'
+        run: echo "legacy group 3 failed"
+      - name: LEGACY G3 PASS
+        if: steps.legacy_diag.outputs.g3 == '0'
+        run: echo "legacy group 3 passed"
+      - name: LEGACY G4 FAIL
+        if: steps.legacy_diag.outputs.g4 != '0'
+        run: echo "legacy group 4 failed"
+      - name: LEGACY G4 PASS
+        if: steps.legacy_diag.outputs.g4 == '0'
+        run: echo "legacy group 4 passed"
+      - name: LEGACY G5 FAIL
+        if: steps.legacy_diag.outputs.g5 != '0'
+        run: echo "legacy group 5 failed"
+      - name: LEGACY G5 PASS
+        if: steps.legacy_diag.outputs.g5 == '0'
+        run: echo "legacy group 5 passed"
+      - name: LEGACY G6 FAIL
+        if: steps.legacy_diag.outputs.g6 != '0'
+        run: echo "legacy group 6 failed"
+      - name: LEGACY G6 PASS
+        if: steps.legacy_diag.outputs.g6 == '0'
+        run: echo "legacy group 6 passed"
+      - name: LEGACY G7 FAIL
+        if: steps.legacy_diag.outputs.g7 != '0'
+        run: echo "legacy group 7 failed"
+      - name: LEGACY G7 PASS
+        if: steps.legacy_diag.outputs.g7 == '0'
+        run: echo "legacy group 7 passed"
 
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
