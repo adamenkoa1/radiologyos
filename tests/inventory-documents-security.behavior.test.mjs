@@ -9,7 +9,7 @@ async function postDocument(db,cookie,body) {
   return callWorker(jsonRequest("/api/staff/inventory/documents",body,{headers:{cookie}}),db);
 }
 
-test("inventory register is append-only and draft line tenant ownership cannot be tampered",async()=>{
+test("inventory register is append-only and draft tenant identity cannot be tampered",async()=>{
   await withD1(async(db,raw)=>{
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Org 2','org-2',1)");
     const org1=await seedStaffSession(db,{email:"hardening1@example.com",role:"admin",organizationId:1});
@@ -30,6 +30,15 @@ test("inventory register is append-only and draft line tenant ownership cannot b
       action:"create",documentType:"inventory_receipt",lines:[{itemId:item1Id,quantity:1,lotNumber:"DRAFT"}],
     });
     const draft=await draftRes.json();
+
+    assert.throws(
+      ()=>raw.prepare("UPDATE business_documents SET organization_id=2 WHERE id=?").run(draft.document.id),
+      /business_document_identity_immutable/,
+    );
+    assert.throws(
+      ()=>raw.prepare("UPDATE business_documents SET document_type='payment' WHERE id=?").run(draft.document.id),
+      /business_document_identity_immutable/,
+    );
     assert.throws(
       ()=>raw.prepare("UPDATE inventory_document_lines SET item_id=? WHERE id=?").run(item2Id,draft.lines[0].id),
       /inventory_item_tenant_mismatch/,
@@ -63,7 +72,7 @@ test("D1 rejects movement quantity/type mismatches and atomically prevents negat
       `INSERT INTO inventory_movements
        (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
        VALUES (1,?,?,'writeoff',-2,'Race protected','test',?,?)`
-    ).run(itemId,lotId,writeoff.document.id,writeoff.lines[0].id),/inventory_negative_stock|inventory_document_link_invalid/);
+    ).run(itemId,lotId,writeoff.document.id,writeoff.lines[0].id),/inventory_negative_stock/);
 
     const balance=raw.prepare("SELECT SUM(quantity_delta) AS stock FROM inventory_movements WHERE organization_id=1 AND lot_id=?").get(lotId);
     assert.equal(balance.stock,1);
