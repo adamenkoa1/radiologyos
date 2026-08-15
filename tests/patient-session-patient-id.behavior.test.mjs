@@ -48,30 +48,14 @@ async function setSmsGateway(db) {
 }
 
 async function requestOtp(db, phone = PHONE, dob = DOB) {
-  const previousFetch = globalThis.fetch;
-  const previousHosts = globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-  globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = "gateway.example";
-  globalThis.fetch = async (input, init) => {
-    const url = typeof input === "string" ? input : String(input?.url || input);
-    if (url.startsWith("https://gateway.example/")) {
-      return new Response("ok", { status:200 });
-    }
-    return previousFetch(input, init);
-  };
-  try {
-    return await callWorker(
-      jsonRequest(
-        "/api/patient-otp",
-        { phone:`+${phone}`, dob },
-        { ip:"203.0.113.81" },
-      ),
-      db,
-    );
-  } finally {
-    globalThis.fetch = previousFetch;
-    if (previousHosts === undefined) delete globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
-    else globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = previousHosts;
-  }
+  return callWorker(
+    jsonRequest(
+      "/api/patient-otp",
+      { phone:`+${phone}`, dob },
+      { ip:"203.0.113.81" },
+    ),
+    db,
+  );
 }
 
 function requestWithCookie(path, cookie, body) {
@@ -85,16 +69,21 @@ test("DOB proof upgrades to patient_id only when every matching booking resolves
     await seedBooking(db, { code:"RD-EXACT002", patientId:PID, time:"10:30" });
     await setSmsGateway(db);
 
+    // The test gateway is intentionally not allowlisted in the Worker VM. A
+    // proven identity still creates the challenge first; failed delivery then
+    // consumes it and returns 503. That lets this test verify identity proof
+    // without weakening the real outbound policy or mocking across VM realms.
     const exactResponse = await requestOtp(db);
-    assert.equal(exactResponse.status, 202);
+    assert.equal(exactResponse.status, 503);
     const exact = await db.prepare(
-      `SELECT patient_id AS patientId
+      `SELECT patient_id AS patientId, consumed_at AS consumedAt
        FROM patient_otp_challenges
        WHERE organization_id = 1 AND phone_normalized = ?
          AND identity_kind = 'dob' AND identity_value = ?
        ORDER BY created_at DESC, id DESC LIMIT 1`
     ).bind(PHONE, DOB).first();
     assert.equal(exact.patientId, PID);
+    assert.ok(exact.consumedAt, "undelivered exact challenge must be unusable");
 
     const before = await db.prepare(
       "SELECT COUNT(*) AS n FROM patient_otp_challenges WHERE organization_id = 1 AND phone_normalized = ?"
@@ -120,15 +109,16 @@ test("fully legacy DOB proof remains compatible without inventing a patient link
     await setSmsGateway(db);
 
     const response = await requestOtp(db);
-    assert.equal(response.status, 202);
-    const patientId = await db.prepare(
-      `SELECT patient_id AS patientId
+    assert.equal(response.status, 503);
+    const challenge = await db.prepare(
+      `SELECT patient_id AS patientId, consumed_at AS consumedAt
        FROM patient_otp_challenges
        WHERE organization_id = 1 AND phone_normalized = ?
          AND identity_kind = 'dob' AND identity_value = ?
        ORDER BY created_at DESC, id DESC LIMIT 1`
-    ).bind(PHONE, DOB).first("patientId");
-    assert.equal(patientId, "");
+    ).bind(PHONE, DOB).first();
+    assert.equal(challenge.patientId, "");
+    assert.ok(challenge.consumedAt, "undelivered legacy challenge must be unusable");
   });
 });
 
