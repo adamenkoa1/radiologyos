@@ -1,0 +1,26 @@
+.nav {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 80;
+  display: flex;
+  gap: 4px;
+  padding: 5px;
+  border: 1px solid var(--line, #d9e0e8);
+  border-radius: 999px;
+  background: var(--surface, #fff);
+  box-shadow: 0 8px 28px rgb(15 23 42 / 14%);
+}
+
+.nav a {
+  padding: 8px 12px;
+  border-radius: 999px;
+  text-decoration: none;
+  font-size: .84rem;
+  font-weight: 700;
+}
+
+.nav a:not(.active) { opacity: .7; }
+.active { outline: 1px solid currentColor; }
+
+@media print { .nav { display: none; } }
