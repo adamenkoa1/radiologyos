@@ -52,20 +52,22 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
   // Виправлено (аудит): помилки завантаження не кладуться в data (не білий екран).
   assert.match(page, /!Array\.isArray\(payload\.bookings\) \|\| !payload\.staff/);
-  // Notion-стиль: картка «живе» — контекст пацієнта, направлення, історія.
-  assert.match(page, /intakeCtx/); // блок контексту
-  assert.match(page, /Попередні дослідження/); // історія за телефоном
-  assert.match(page, /REFERRAL_UK/); // направлення людською мовою
-  assert.match(page, /intakeEdit/); // форма корекції — згорнута
-  assert.match(page, /digits\(b\.phone\) === ph/); // історія за номером телефону
-  // Пацієнт як центр: із Дошки — перехід у повну картку пацієнта (CRM).
+  // Notion-стиль: картка «живе» — контекст пацієнта та направлення.
+  assert.match(page, /intakeCtx/);
+  assert.match(page, /Попередні дослідження/);
+  assert.match(page, /REFERRAL_UK/);
+  assert.match(page, /intakeEdit/);
+  // Телефон — контакт, а не identity: intake не має права самостійно зливати
+  // записи в одну клінічну історію. Для цього користувач переходить у CRM,
+  // де shared-phone вимагає вибрати конкретну картку patient_id.
+  assert.doesNotMatch(page, /digits\(b\.phone\) === ph/);
+  assert.doesNotMatch(page, /Перше звернення цього пацієнта \(за номером телефону\)/);
+  assert.match(page, /Історію не визначаємо за номером телефону/);
   assert.match(page, /Картка пацієнта/);
   assert.match(page, /\/staff\/patients\?phone=/);
-  // Drawer у Дошці: клік по попередньому дослідженню відкриває спільну панель.
-  assert.match(page, /<BookingDrawer/);
-  assert.match(page, /setDrawerId\(h\.id\)/);
+  assert.doesNotMatch(page, /<BookingDrawer/);
   const css = await globalsCss();
-  assert.match(css, /\.intakeHistory\b/); // стилі історії
+  assert.match(css, /\.intakeHistory\b/); // стилі identity-safe handoff секції
   assert.match(css, /\.intakeFacts\b/);   // сітка фактів
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/intake"/);
