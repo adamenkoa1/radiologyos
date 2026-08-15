@@ -234,8 +234,9 @@ export const protocolRevisions = sqliteTable("protocol_revisions", {
 ]);
 
 export const patientProfiles = sqliteTable("patient_profiles", {
+  patientId: text("patient_id").primaryKey().default(sql`lower(hex(randomblob(16)))`),
   organizationId: integer("organization_id").notNull().default(1),
-  phoneNormalized: text("phone_normalized").primaryKey(),
+  phoneNormalized: text("phone_normalized").notNull(),
   displayName: text("display_name").notNull().default(""),
   birthYear: integer("birth_year").notNull().default(0),
   birthDate: text("birth_date").notNull().default(""),
@@ -244,9 +245,14 @@ export const patientProfiles = sqliteTable("patient_profiles", {
   tags: text("tags").notNull().default(""),
   notes: text("notes").notNull().default(""),
   doNotContact: integer("do_not_contact").notNull().default(0),
+  telegramChatId: text("telegram_chat_id").notNull().default(""),
   updatedBy: text("updated_by").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
-});
+}, table => [
+  uniqueIndex("patient_profiles_org_phone_idx").on(table.organizationId, table.phoneNormalized),
+  index("patient_profiles_phone_idx").on(table.phoneNormalized),
+  index("patient_profiles_org_updated_idx").on(table.organizationId, table.updatedAt),
+]);
 
 export const patientCommunications = sqliteTable("patient_communications", {
   organizationId: integer("organization_id").notNull().default(1),
