@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { callWorker, jsonRequest, seedPatientSession, withD1 } from "./helpers/d1.mjs";
+import { callWorker, jsonRequest, seedPatientSession, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
 const PHONE = "380971112233";
 const CODE = "RD-260920-1";
@@ -11,15 +11,16 @@ function plainRows(rows) {
   return rows.map((row) => ({ ...row }));
 }
 
-function seedBooking(raw, { code = CODE, protocolStatus = "issued" } = {}) {
+function seedBooking(raw, { code = CODE, protocolStatus = "issued", assignedRadiologistEmail = "" } = {}) {
   const result = raw.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, date_of_birth,
-       service, desired_date, desired_time, status, protocol_status, protocol_issued_at)
+       service, desired_date, desired_time, status, protocol_status, protocol_issued_at,
+       assigned_radiologist_email)
      VALUES (1, ?, 'Пацієнт Addendum', ?, ?, '1980-01-02',
        'КТ ОГК', '2026-09-20', '10:00', 'completed', ?,
-       CASE WHEN ? = 'issued' THEN CURRENT_TIMESTAMP ELSE '' END)`,
-  ).run(code, `+${PHONE}`, PHONE, protocolStatus, protocolStatus);
+       CASE WHEN ? = 'issued' THEN CURRENT_TIMESTAMP ELSE '' END, ?)`,
+  ).run(code, `+${PHONE}`, PHONE, protocolStatus, protocolStatus, assignedRadiologistEmail);
   return Number(result.lastInsertRowid);
 }
 
@@ -172,6 +173,132 @@ test("D1 enforces addendum base, lifecycle, immutable identity and append-only r
        WHERE booking_id = ? AND action = 'protocol_addendum_issued'`,
     ).all(bookingId);
     assert.equal(issueEvents.length, 1);
+  });
+});
+
+test("staff API preserves signer separation and rejects stale addendum versions", async () => {
+  await withD1(async (db, raw) => {
+    const doctorEmail = "addendum-doctor@example.com";
+    const adminCookie = await seedStaffSession(db, { email:"addendum-admin@example.com", role:"admin" });
+    const doctorCookie = await seedStaffSession(db, { email:doctorEmail, role:"radiologist" });
+    const bookingId = seedBooking(raw, {
+      code:"RD-260920-3",
+      assignedRadiologistEmail:doctorEmail,
+    });
+    seedProtocol(raw, bookingId);
+
+    const createResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        bookingId,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+      }, { method:"POST", headers:{ cookie:adminCookie } }),
+      db,
+    );
+    assert.equal(createResponse.status, 201);
+    const created = await createResponse.json();
+    const id = created.addendum.id;
+    assert.equal(created.addendum.status, "draft");
+    assert.equal(created.addendum.version, 1);
+
+    const readyResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:1,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"ready",
+      }, { method:"PUT", headers:{ cookie:adminCookie } }),
+      db,
+    );
+    assert.equal(readyResponse.status, 200);
+    const ready = await readyResponse.json();
+    assert.equal(ready.addendum.version, 2);
+    assert.equal(ready.addendum.status, "ready");
+
+    const adminSignResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:2,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"signed",
+      }, { method:"PUT", headers:{ cookie:adminCookie } }),
+      db,
+    );
+    assert.equal(adminSignResponse.status, 403);
+
+    const staleSignResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:1,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"signed",
+      }, { method:"PUT", headers:{ cookie:doctorCookie } }),
+      db,
+    );
+    assert.equal(staleSignResponse.status, 409);
+
+    let revisions = await db.prepare(
+      `SELECT version, status FROM protocol_addendum_revisions
+       WHERE organization_id=1 AND addendum_id=? ORDER BY version`,
+    ).bind(id).all();
+    assert.deepEqual(revisions.results.map((row) => [row.version, row.status]), [
+      [1, "draft"], [2, "ready"],
+    ]);
+
+    const signResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:2,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"signed",
+      }, { method:"PUT", headers:{ cookie:doctorCookie } }),
+      db,
+    );
+    assert.equal(signResponse.status, 200);
+    const signed = await signResponse.json();
+    assert.equal(signed.addendum.status, "signed");
+    assert.equal(signed.addendum.version, 3);
+    assert.equal(signed.addendum.signedBy, doctorEmail);
+    assert.ok(signed.addendum.signedAt);
+
+    const issueResponse = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:3,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"issued",
+      }, { method:"PUT", headers:{ cookie:adminCookie } }),
+      db,
+    );
+    assert.equal(issueResponse.status, 200);
+    const issued = await issueResponse.json();
+    assert.equal(issued.addendum.status, "issued");
+    assert.equal(issued.addendum.version, 3, "issuance must not create a clinical revision");
+    assert.equal(issued.addendum.signedBy, doctorEmail);
+
+    const repeatedIssue = await callWorker(
+      jsonRequest("/api/staff/protocols/addenda", {
+        id, baseVersion:3,
+        reason:"Уточнення сторони у висновку",
+        correctionText:"У висновку слід читати: зміни зліва.",
+        status:"issued",
+      }, { method:"PUT", headers:{ cookie:adminCookie } }),
+      db,
+    );
+    assert.equal(repeatedIssue.status, 409);
+
+    revisions = await db.prepare(
+      `SELECT version, status FROM protocol_addendum_revisions
+       WHERE organization_id=1 AND addendum_id=? ORDER BY version`,
+    ).bind(id).all();
+    assert.deepEqual(revisions.results.map((row) => [row.version, row.status]), [
+      [1, "draft"], [2, "ready"], [3, "signed"],
+    ]);
+    const eventCount = await db.prepare(
+      `SELECT COUNT(*) AS count FROM booking_events
+       WHERE organization_id=1 AND booking_id=? AND action='protocol_addendum_issued'`,
+    ).bind(bookingId).first();
+    assert.equal(Number(eventCount.count), 1);
   });
 });
 
