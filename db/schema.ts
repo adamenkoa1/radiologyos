@@ -59,6 +59,7 @@ export const bookings = sqliteTable("bookings", {
   name: text("name").notNull(),
   phone: text("phone").notNull(),
   phoneNormalized: text("phone_normalized").notNull().default(""),
+  patientId: text("patient_id").notNull().default(""),
   patientEmail: text("patient_email").notNull().default(""),
   dateOfBirth: text("date_of_birth").notNull().default(""),
   service: text("service").notNull(),
@@ -102,6 +103,7 @@ export const bookings = sqliteTable("bookings", {
   index("bookings_performed_report_idx").on(table.performedAt, table.equipmentId),
   index("bookings_staff_report_idx").on(table.assignedRadiologistEmail, table.assignedRadiographerEmail),
   index("bookings_patient_idx").on(table.phoneNormalized, table.desiredDate),
+  index("bookings_org_patient_idx").on(table.organizationId, table.patientId, table.desiredDate),
 ]);
 
 export const bookingEvents = sqliteTable("booking_events", {
