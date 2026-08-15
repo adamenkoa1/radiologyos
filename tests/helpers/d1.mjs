@@ -137,7 +137,13 @@ export async function seedStaffSession(db, {
   return `rid_session=${rawToken}`;
 }
 
-export async function seedPatientSession(db, phoneNormalized, organizationId = 1, identity = null) {
+export async function seedPatientSession(
+  db,
+  phoneNormalized,
+  organizationId = 1,
+  identity = null,
+  patientId = "",
+) {
   let scope = identity;
   if (!scope) {
     const booking = await db.prepare(
@@ -155,9 +161,9 @@ export async function seedPatientSession(db, phoneNormalized, organizationId = 1
   const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
   await db.prepare(
     `INSERT INTO patient_sessions
-      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, expires_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now', '+30 minutes'))`
-  ).bind(tokenHash, phoneNormalized, organizationId, scope.kind, scope.value).run();
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+30 minutes'))`
+  ).bind(tokenHash, phoneNormalized, organizationId, scope.kind, scope.value, patientId).run();
   return `rid_patient=${rawToken}`;
 }
 
