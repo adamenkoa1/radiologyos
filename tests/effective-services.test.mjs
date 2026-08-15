@@ -75,10 +75,12 @@ test("staff booking UI consumes effective services rather than the static catalo
 
 test("staff booking mutations resolve effective services and preserve booking price snapshots", async () => {
   const route = await read("app/api/staff/bookings/route.ts");
+  const projection = await read("lib/staff-booking-projection.ts");
   assert.match(route, /effectiveServiceByCode\(db, serviceCode, ctx\.organizationId\)/);
   assert.match(route, /serviceAvailableTo\(service, category\)/);
   assert.match(route, /paymentStatus, service\.price/);
-  assert.match(route, /listedPrice: Number\(booking\.paymentAmount\) \|\| 0/);
+  assert.match(route, /projectBookingForStaff\(booking, capabilities\)/);
+  assert.match(projection, /booking\.listedPrice = Number\(booking\.paymentAmount\) \|\| 0/);
   assert.match(route, /effectiveServiceByCode\(db, e\.serviceCode\.trim\(\)\.slice\(0, 12\), ctx\.organizationId\)/);
   assert.match(route, /binds\.push\(svc\.price\)/);
   assert.doesNotMatch(route, /effectivePrice\(/);
