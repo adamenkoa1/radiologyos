@@ -11,6 +11,8 @@ import {
 } from "../../../../lib/service-config";
 import { requireOrgContext } from "../../../../lib/tenant";
 
+const PRIMARY_ORGANIZATION_ID = 1;
+
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
@@ -18,7 +20,9 @@ export async function GET(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
 
   const tenantStored = await getSetting(db, serviceConfigKey(ctx.organizationId));
-  const legacyStored = tenantStored ? "" : await getSetting(db, SERVICE_CONFIG_KEY);
+  const legacyStored = !tenantStored && ctx.organizationId === PRIMARY_ORGANIZATION_ID
+    ? await getSetting(db, SERVICE_CONFIG_KEY)
+    : "";
   const services = parseServiceConfig(tenantStored || legacyStored);
   const effective = await effectiveServices(db, ctx.organizationId);
   return Response.json(
