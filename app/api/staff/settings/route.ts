@@ -4,7 +4,7 @@
 // tenantized only the primary/public organization may administer them.
 
 import { canManageSystem } from "../../../../lib/staff-auth";
-import { requireOrgContext } from "../../../../lib/tenant";
+import { requireSystemOrgContext } from "../../../../lib/tenant";
 import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
 import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
@@ -45,7 +45,7 @@ function settingsView(values: Record<string, string>) {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
     return Response.json({ error: "Налаштування доступні лише системному адміністратору основної організації" }, { status: 403 });
@@ -61,7 +61,7 @@ export async function GET(request: Request) {
 export async function PUT(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
     return Response.json({ error: "Змінювати налаштування може лише системний адміністратор основної організації" }, { status: 403 });
