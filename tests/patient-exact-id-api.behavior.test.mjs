@@ -87,7 +87,7 @@ test("exact patient-id reads include only explicitly linked bookings and exclude
   });
 });
 
-test.skip("exact patient-id update keeps identity stable even when contact phone changes", async () => {
+test("exact patient-id update keeps identity stable even when contact phone changes", async () => {
   await withD1(async (db) => {
     const cookie = await seedStaffSession(db, {
       email: "exact-update@example.com",
