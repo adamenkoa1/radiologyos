@@ -246,7 +246,51 @@ InventoryItem {
 }
 ```
 
-Поле `quantity` є сумісною read-model на перехідному етапі. Цільове джерело залишку — рухи регістру `inventory_balance`.
+Поле `quantity` є сумісною read-model на перехідному етапі. Фактичний залишок складу вже обчислюється з immutable `inventory_movements`; нові рухи після BAS-переходу мають документ-реєстратор. Старі рухи без документа не backfill-яться за телефоном, датою, партією чи іншою евристикою і залишаються explicit legacy records.
+
+## InventoryDocumentLine
+
+Перша практична таблична частина BAS-подібного `BusinessDocument`.
+
+```ts
+InventoryDocumentLine {
+  id
+  organizationId
+  documentId
+  lineNo
+  itemId
+  lotId?
+  lotNumber
+  expiresOn
+  supplier
+  quantity
+  reason
+  bookingId?
+}
+```
+
+Для `inventory_receipt` рядок створюється з номенклатурою та реквізитами майбутньої партії; партія і складський рух з'являються під час проведення. Для `inventory_writeoff` рядок посилається на конкретну існуючу tenant-scoped партію. D1 дозволяє INSERT/UPDATE/DELETE рядків лише поки документ у `draft`.
+
+## InventoryMovement
+
+```ts
+InventoryMovement {
+  id
+  organizationId
+  itemId
+  lotId
+  movementType: receipt | writeoff
+  quantityDelta
+  reason
+  bookingId?
+  actorEmail
+  documentId?
+  documentLineId?
+  createdAt
+}
+```
+
+`documentId/documentLineId = null` допустимі лише для історичних legacy-рухів, створених до введення документного ядра. Новий linked movement має фізично посилатися на проведений документ того самого tenant і на точний рядок документа. Унікальність `(organizationId, documentLineId)` робить повторне проведення ідемпотентним на рівні руху.
 
 ## EquipmentEvent
 
@@ -276,6 +320,7 @@ BusinessDocument {
   number
   occurredAt
   state: draft | posted | reversed | cancelled
+  comment
   createdBy
   createdAt
   postedBy?
@@ -284,7 +329,18 @@ BusinessDocument {
 }
 ```
 
-Після `posted` господарські факти документа не редагуються тихо. Виправлення робиться через коригування/сторно з явним посиланням на першоджерело. Проведення документа створює tenant-scoped рухи в регістрах.
+Після `posted` господарські факти документа не редагуються тихо. Виправлення робиться через коригування/сторно з явним посиланням на першоджерело. Проведення документа створює tenant-scoped рухи в регістрах. D1 забороняє UPDATE/DELETE проведених фактів; єдиний дозволений post-state transition у базовому lifecycle — `posted → reversed` без зміни первинних реквізитів.
+
+### Реалізовано для складу
+
+`inventory_receipt` і `inventory_writeoff` вже використовують `business_documents` як registrar:
+
+- `draft` не змінює залишок;
+- `posted` створює `inventory_movements`;
+- повторне `post` не дублює рух;
+- недостатній залишок блокує списання до створення нового руху;
+- cross-tenant document/item/lot/booking references відхиляються;
+- compatibility API `receive/writeoff` теж проходить через створення + проведення документа.
 
 ## RegisterMovement
 
@@ -314,7 +370,7 @@ RegisterMovement {
 - `studies_performed`;
 - `receivables`.
 
-Рух без документа-реєстратора не допускається. Повторне проведення не повинно дублювати рухи.
+Рух без документа-реєстратора не допускається для нових бізнес-операцій. Історичні записи, що реально існували до введення registrar-моделі, не отримують вигаданий документ шляхом backfill.
 
 ## PrintedFormDefinition
 
@@ -332,6 +388,8 @@ PrintedFormDefinition {
 
 Типові форми: рахунок, квитанція, акт наданих послуг, направлення, протокол, результат, складські форми та службові форми.
 
+На першому практичному етапі складські шаблони є code-defined (`templateVersion = 1`). Окремий persistent каталог `PrintedFormDefinition` буде потрібен, коли шаблони стануть конфігурованими tenant-ами; це не блокує immutable snapshots уже сформованих форм.
+
 ## PrintedFormSnapshot
 
 ```ts
@@ -339,8 +397,10 @@ PrintedFormSnapshot {
   id
   organizationId
   documentId
-  formDefinitionId
+  formType
   templateVersion
+  documentState
+  payloadJson
   generatedAt
   generatedBy
   storageKey
@@ -348,7 +408,9 @@ PrintedFormSnapshot {
 }
 ```
 
-Snapshot зберігає, якою саме версією шаблону був сформований документ. Історичний повторний друк не повинен непомітно підміняти стару форму поточною версією шаблону.
+Конкретна D1-реалізація зберігає canonical render payload, версію шаблону, стан документа та SHA-256. Snapshot є append-only: UPDATE/DELETE заборонені trigger-ами. Для non-draft складського документа перша сформована форма конкретного `documentState + templateVersion` стає канонічною для повторного друку; подальше перейменування номенклатури чи інша зміна master data не переписує історичну форму.
+
+`storageKey` зарезервований для persisted binary PDF/object storage. Поточна v1 форма вже має A4 print layout і підтримує browser print / Save as PDF; канонічні дані та hash зберігаються в D1.
 
 ## AuditEvent
 
