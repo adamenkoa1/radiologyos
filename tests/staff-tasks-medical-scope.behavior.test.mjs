@@ -105,3 +105,36 @@ test("booking-linked tasks follow current booking access while department tasks 
       "new booking assignee receives patient-linked task visibility");
   });
 });
+
+test("D1 rejects cross-tenant booking references on staff tasks", async () => {
+  await withD1(async (db) => {
+    await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'task-org-two', 'Task Org Two', 1)").run();
+    const foreignBooking = await db.prepare(
+      `INSERT INTO bookings
+        (organization_id, code, name, phone, phone_normalized, service, service_code,
+         equipment_id, desired_date, desired_time)
+       VALUES (2, 'TASK-ORG2-001', 'Foreign Patient', '+380509999999', '380509999999',
+         'КТ', '408', 'ct', '2026-08-21', '15:00')`
+    ).run();
+    const foreignBookingId = Number(foreignBooking.meta.last_row_id);
+
+    await assert.rejects(
+      db.prepare(
+        `INSERT INTO staff_tasks
+          (organization_id, title, details, booking_id, created_by)
+         VALUES (1, 'Cross tenant', 'SECRET', ?, 'admin@example.com')`
+      ).bind(foreignBookingId).run(),
+      /staff task booking tenant mismatch/i,
+    );
+
+    const localTask = await db.prepare(
+      `INSERT INTO staff_tasks (organization_id, title, details, created_by)
+       VALUES (1, 'Department task', '', 'admin@example.com')`
+    ).run();
+    await assert.rejects(
+      db.prepare("UPDATE staff_tasks SET booking_id = ? WHERE organization_id = 1 AND id = ?")
+        .bind(foreignBookingId, Number(localTask.meta.last_row_id)).run(),
+      /staff task booking tenant mismatch/i,
+    );
+  });
+});
