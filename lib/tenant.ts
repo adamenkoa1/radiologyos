@@ -4,7 +4,7 @@
 // він виводиться виключно з перевіреної серверної сесії персоналу через
 // членство (`memberships`). Це фундамент tenant-isolation.
 
-import { requireStaff, type StaffRole } from "./staff-auth";
+import { requireStaff, type AccessRole, type StaffRole, type SystemRole } from "./staff-auth";
 
 export const ORG_ROLES = [
   "platform_owner",
@@ -19,23 +19,33 @@ export const ORG_ROLES = [
 
 export type OrgRole = (typeof ORG_ROLES)[number] | StaffRole;
 
-const ACTIVE_STAFF_ROLES = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
+const MEDICAL_OPERATIONAL_ROLES = new Set<StaffRole>([
+  "admin",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
+const SYSTEM_ADMIN_ROLES = new Set<SystemRole>(["admin", "organization_admin"]);
 
-export interface OrgMember {
+export interface OrgMember<R extends AccessRole = StaffRole> {
   email: string;
   displayName: string;
-  role: StaffRole;
+  role: R;
 }
 
-export interface OrgContext {
+export interface OrgContext<R extends AccessRole = StaffRole> {
   organizationId: number;
   slug: string;
   organizationName: string;
-  role: OrgRole;
-  member: OrgMember;
+  role: R;
+  member: OrgMember<R>;
 }
 
-export async function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext | null> {
+async function resolveOrgContext<R extends AccessRole>(
+  request: Request,
+  db: D1Database,
+  allowedRoles: ReadonlySet<R>,
+): Promise<OrgContext<R> | null> {
   const identity = await requireStaff(request, db);
   if (!identity) return null;
 
@@ -63,6 +73,7 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
          (SELECT COUNT(*) FROM organizations WHERE active = 1) AS activeOrgCount`
     ).first<{ membershipCount: number; activeOrgCount: number }>();
     if (!bootstrap || Number(bootstrap.membershipCount) !== 0 || Number(bootstrap.activeOrgCount) !== 1) return null;
+    if (!allowedRoles.has(identity.role as R)) return null;
 
     const org = await db.prepare(
       "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
@@ -75,8 +86,8 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     row = { ...org, role: identity.role };
   }
 
-  if (!ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
-  const role = row.role as StaffRole;
+  if (!allowedRoles.has(row.role as R)) return null;
+  const role = row.role as R;
   return {
     organizationId: row.organizationId,
     slug: row.slug,
@@ -84,4 +95,19 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     role,
     member: { email: identity.email, displayName: identity.displayName, role },
   };
+}
+
+// Medical/operational context used by patient, booking, protocol, imaging and
+// day-to-day workflow routes. System-only administrators are deliberately not
+// admitted here, so legacy routes fail closed even if they contain role-specific
+// assumptions of their own.
+export function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext<StaffRole> | null> {
+  return resolveOrgContext(request, db, MEDICAL_OPERATIONAL_ROLES);
+}
+
+// Dedicated control-plane context. A tenant-local `organization_admin` can
+// manage accounts and integrations without becoming a medical-data authority.
+// Legacy `admin` remains accepted for backwards compatibility.
+export function requireSystemOrgContext(request: Request, db: D1Database): Promise<OrgContext<SystemRole> | null> {
+  return resolveOrgContext(request, db, SYSTEM_ADMIN_ROLES);
 }

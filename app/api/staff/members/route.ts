@@ -1,12 +1,24 @@
-import { type StaffRole } from "../../../../lib/staff-auth";
-import { requireOrgContext } from "../../../../lib/tenant";
+import { canManageSystem, type AccessRole, type StaffRole } from "../../../../lib/staff-auth";
+import { requireSystemOrgContext } from "../../../../lib/tenant";
 import { hashPassword } from "../../../../lib/auth";
 import { audit } from "../../../../lib/audit";
 import { passwordProblem } from "../../../../lib/staff-accounts";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
 
-const roles = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
+const roles = new Set<AccessRole>([
+  "admin",
+  "organization_admin",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
+
+function identityRoleForMembership(role: AccessRole): StaffRole {
+  // Global staff_members.role is retained only for legacy login/bootstrap
+  // compatibility. Organization-specific authorization comes from memberships.
+  return role === "organization_admin" ? "admin" : role;
+}
 
 type StaffIdentity = {
   email:string;
@@ -22,9 +34,9 @@ type StaffIdentity = {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
-  if (!ctx || ctx.member.role !== "admin") {
-    return Response.json({ error: "Доступ лише для адміністратора" }, { status: 403 });
+  const ctx = await requireSystemOrgContext(request, db);
+  if (!ctx || !canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Доступ лише для системного адміністратора" }, { status: 403 });
   }
   const result = await db.prepare(
     `SELECT s.email, s.phone, s.display_name AS displayName, s.last_name AS lastName,
@@ -42,11 +54,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
-  if (!ctx || ctx.member.role !== "admin") {
-    return Response.json({ error: "Доступ лише для адміністратора" }, { status: 403 });
+  const ctx = await requireSystemOrgContext(request, db);
+  if (!ctx || !canManageSystem(ctx.member.role)) {
+    return Response.json({ error: "Доступ лише для системного адміністратора" }, { status: 403 });
   }
-  const body = await request.json() as { phone?:string; lastName?:string; firstName?:string; patronymic?:string; contactEmail?:string; militaryRank?:string; positionTitle?:string; role?:StaffRole; active?:boolean; password?:string };
+  const body = await request.json() as { phone?:string; lastName?:string; firstName?:string; patronymic?:string; contactEmail?:string; militaryRank?:string; positionTitle?:string; role?:AccessRole; active?:boolean; password?:string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
   const email = phone ? `${phone}@phone.local` : "";
   const clean = (value:unknown, max=120) => String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
@@ -64,8 +76,8 @@ export async function POST(request: Request) {
     return Response.json({ error: "Перевірте номер телефону і роль. Заповніть також прізвище, ім’я та посаду" }, { status: 400 });
   }
   if (contactEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(contactEmail)) return Response.json({ error: "Перевірте e-mail працівника" }, { status: 400 });
-  if (email === ctx.member.email && (role !== "admin" || active !== 1)) {
-    return Response.json({ error: "Не можна забрати власний адміністративний доступ" }, { status: 409 });
+  if (email === ctx.member.email && (!canManageSystem(role) || active !== 1)) {
+    return Response.json({ error: "Не можна забрати власний системний адміністративний доступ" }, { status: 409 });
   }
 
   const [identity, existing, otherMembership] = await Promise.all([
@@ -119,7 +131,10 @@ export async function POST(request: Request) {
            first_name=excluded.first_name, patronymic=excluded.patronymic,
            contact_email=excluded.contact_email, military_rank=excluded.military_rank,
            position_title=excluded.position_title`
-      ).bind(email, phone, displayName, lastName, firstName, patronymic, contactEmail, militaryRank, positionTitle, role),
+      ).bind(
+        email, phone, displayName, lastName, firstName, patronymic,
+        contactEmail, militaryRank, positionTitle, identityRoleForMembership(role),
+      ),
     );
   }
   statements.push(

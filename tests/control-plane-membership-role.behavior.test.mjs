@@ -80,17 +80,16 @@ test("secondary tenant admin cannot administer legacy-global integration setting
   });
 });
 
-test("integration control-plane routes derive authorization from tenant membership and fail closed outside the primary tenant", async () => {
+test("integration control-plane routes derive authorization from the correct tenant context and fail closed outside the primary tenant", async () => {
   const { readFile } = await import("node:fs/promises");
-  const paths = [
-    "../app/api/staff/settings/route.ts",
+  const medicalContextPaths = [
     "../app/api/staff/settings/messaging-test/route.ts",
     "../app/api/staff/settings/telegram-test/route.ts",
     "../app/api/staff/settings/telegram-webhook/route.ts",
     "../app/api/staff/whatsapp/route.ts",
     "../app/api/staff/whatsapp/test/route.ts",
   ];
-  for (const path of paths) {
+  for (const path of medicalContextPaths) {
     const source = await readFile(new URL(path, import.meta.url), "utf8");
     assert.match(source, /requireOrgContext\(request, db\)/, path);
     assert.doesNotMatch(source, /requireStaff\(request, db\)/, path);
@@ -99,6 +98,11 @@ test("integration control-plane routes derive authorization from tenant membersh
   }
 
   const settings = await readFile(new URL("../app/api/staff/settings/route.ts", import.meta.url), "utf8");
+  assert.match(settings, /requireSystemOrgContext\(request, db\)/);
+  assert.match(settings, /canManageSystem\(ctx\.role\)/);
+  assert.doesNotMatch(settings, /requireStaff\(request, db\)/);
+  assert.match(settings, /PRIMARY_ORGANIZATION_ID = 1/);
+  assert.match(settings, /ctx\.organizationId !== PRIMARY_ORGANIZATION_ID/);
   assert.match(settings, /organizationId: ctx\.organizationId/);
   assert.doesNotMatch(settings, /organizationId: 1/);
 });

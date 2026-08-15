@@ -76,10 +76,11 @@ test("new bookings notify the registrar via Telegram (best-effort)", async () =>
   assert.match(route, /bookingMessage\(/);
 });
 
-test("department settings are admin-only and validated", async () => {
+test("department settings use system-admin authority and validate input", async () => {
   const route = await read("app/api/staff/settings/route.ts");
-  assert.match(route, /requireOrgContext\(request, db\)/);
-  assert.match(route, /ctx\.role !== "admin"/);
+  assert.match(route, /requireSystemOrgContext\(request, db\)/);
+  assert.match(route, /canManageSystem\(ctx\.role\)/);
+  assert.match(route, /ctx\.organizationId !== PRIMARY_ORGANIZATION_ID/);
   assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /telegram_bot_token/);
   assert.match(route, /pay_link/);
