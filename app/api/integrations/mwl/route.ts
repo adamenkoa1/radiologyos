@@ -6,6 +6,7 @@ import {
   generateDicomPatientId,
   hashBridgeToken,
   modalityForWorklist,
+  mwlIdentityKey,
   parseBearerToken,
   validIsoDate,
   type MwlFeedItem,
@@ -30,17 +31,8 @@ type FeedRow = {
   imagingAccession: string;
 };
 
-// DICOM PatientID must follow the same immutable identity boundary as the CRM.
-// Exact-linked bookings for one patient share a stable MWL identity. Historical
-// unlinked bookings deliberately stay booking-scoped: mutable contact data such
-// as phone/DOB must never merge two people in PACS.
-function identityKey(row: FeedRow): string {
-  const patientId = String(row.patientId || "").trim().toLowerCase();
-  return patientId ? `patient:${patientId}` : `booking:${row.code}`;
-}
-
 async function patientIdsForRows(db: D1Database, organizationId: number, rows: FeedRow[]) {
-  const keys = [...new Set(rows.map(identityKey))];
+  const keys = [...new Set(rows.map((row) => mwlIdentityKey(row.patientId, row.code)))];
   if (!keys.length) return new Map<string, string>();
   const placeholders = keys.map(() => "?").join(",");
   const load = async () => db.prepare(
@@ -110,7 +102,7 @@ export async function GET(request: Request) {
   const items: MwlFeedItem[] = results.map((row) => ({
     scheduledProcedureStepId: row.code,
     accessionNumber: canonicalWorklistAccession(row.code, row.imagingAccession),
-    patientId: patientIds.get(identityKey(row)) || "",
+    patientId: patientIds.get(mwlIdentityKey(row.patientId, row.code)) || "",
     patientName: row.patientName,
     patientBirthDate: row.patientBirthDate || "",
     modality: modalityForWorklist(row.serviceCode, row.equipmentId),

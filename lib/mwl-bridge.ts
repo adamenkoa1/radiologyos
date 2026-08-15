@@ -25,6 +25,14 @@ export function canonicalWorklistAccession(bookingCode: string, imagingAccession
   return existing || String(bookingCode || "").trim();
 }
 
+// Shared identity primitive for MWL generation and subsequent PACS study
+// verification. Exact bookings follow immutable CRM patient_id; historical
+// unlinked bookings remain scoped to one booking and are never merged by phone.
+export function mwlIdentityKey(patientId: string | null | undefined, bookingCode: string): string {
+  const exact = String(patientId || "").trim().toLowerCase();
+  return exact ? `patient:${exact}` : `booking:${String(bookingCode || "").trim()}`;
+}
+
 export function parseBearerToken(request: Request): string {
   const value = request.headers.get("authorization") || "";
   const match = /^Bearer\s+([A-Za-z0-9_-]{32,160})$/i.exec(value.trim());

@@ -43,6 +43,10 @@ test("staff imaging detail access is security-audited in the active tenant witho
       headers: { cookie },
     }), db);
     assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.linkVerificationRequired, true);
+    assert.equal(body.study.studyInstanceUid, "");
+    assert.equal(body.viewerUrl, "");
 
     const event = await db.prepare(
       `SELECT organization_id AS organizationId, actor_email AS actorEmail,
@@ -54,7 +58,11 @@ test("staff imaging detail access is security-audited in the active tenant witho
     assert.equal(event.actorEmail, "imaging-auditor@example.com");
     assert.equal(event.resource, "imaging");
     assert.equal(event.targetId, String(bookingId));
-    assert.deepEqual(JSON.parse(event.detailsJson), { linked: true, seriesCount: 0 });
+    assert.deepEqual(JSON.parse(event.detailsJson), {
+      linked: true,
+      seriesCount: 0,
+      linkVerificationRequired: true,
+    });
     assert.doesNotMatch(event.detailsJson, /Sensitive Patient|SECRET-ACC-2|1\.2\.840|viewer\.secret/i);
   });
 });

@@ -32,12 +32,13 @@ async function configurePacs(db) {
   ).bind("https://pacs.example.com/dicom-web", "https://viewer.example.com/viewer").run();
 }
 
-function studyRow(accession, uid, { modality = "CT", series = 2, instances = 10 } = {}) {
+function studyRow(accession, uid, { modality = "CT", series = 2, instances = 10, patientId = "" } = {}) {
   return {
     "00080020": { vr: "DA", Value: ["20260820"] },
     "00080030": { vr: "TM", Value: ["103015"] },
     "00080050": { vr: "SH", Value: [accession] },
     "00080061": { vr: "CS", Value: [modality] },
+    "00100020": { vr: "LO", Value: patientId ? [patientId] : [] },
     "0020000D": { vr: "UI", Value: [uid] },
     "00201206": { vr: "IS", Value: [series] },
     "00201208": { vr: "IS", Value: [instances] },
@@ -176,10 +177,16 @@ test("zero accession matches do not create an imaging link", async () => {
   });
 });
 
-test("manual override after auto-link resets PACS-derived metadata", async () => {
+test("manual UID override is persisted only after exact PACS identity verification", async () => {
   await withD1(async (db) => {
     const cookie = await seedAdmin(db);
     const bookingId = await seedBooking(db, "AUTO-004");
+    await configurePacs(db);
+    const expectedPatientId = "ROS-1234567890ABCDEF1234";
+    await db.prepare(
+      `INSERT INTO mwl_patient_ids (organization_id, identity_key, patient_id)
+       VALUES (1, 'booking:AUTO-004', ?)`,
+    ).bind(expectedPatientId).run();
     await db.prepare(
       `INSERT INTO imaging_studies
         (organization_id, booking_id, accession_number, study_instance_uid, modality,
@@ -187,16 +194,40 @@ test("manual override after auto-link resets PACS-derived metadata", async () =>
        VALUES (1, ?, 'AUTO-004', '1.2.840.113619.2.4', 'CT', 5, 100, 'available', 'qido_accession', 'seed')`,
     ).bind(bookingId).run();
 
-    const response = await callWorker(jsonRequest("/api/staff/imaging", {
-      bookingId,
-      accessionNumber: "MANUAL-004",
-      studyInstanceUid: "1.2.840.10008.5.1",
-      modality: "DX",
-      studyStatus: "available",
-      studyDatetime: "2026-08-20T11:00:00",
-    }, { method: "PUT", headers: { cookie } }), db);
-    assert.equal(response.status, 200);
+    const requested = [];
+    await withMockFetch(async (input) => {
+      const url = String(input);
+      requested.push(url);
+      if (url.includes("/studies?")) {
+        return Response.json([
+          studyRow("MANUAL-004", "1.2.840.10008.5.1", { patientId:expectedPatientId }),
+        ], { headers:{ "content-type":"application/dicom+json" } });
+      }
+      if (url.includes("/series")) {
+        return Response.json([seriesRow("1.2.840.1.44", 7)], { headers:{ "content-type":"application/dicom+json" } });
+      }
+      return new Response("not found", { status:404 });
+    }, async () => {
+      const response = await callWorker(jsonRequest("/api/staff/imaging", {
+        bookingId,
+        accessionNumber: "MANUAL-004",
+        studyInstanceUid: "1.2.840.10008.5.1",
+        // Client metadata is not trusted; PACS metadata below is authoritative.
+        modality: "DX",
+        studyStatus: "scheduled",
+        studyDatetime: "2024-01-01T00:00:00",
+      }, { method: "PUT", headers: { cookie } }), db, PACS_ENV);
+      assert.equal(response.status, 200);
+      const body = await response.json();
+      assert.equal(body.study.source, "qido_uid_manual");
+      assert.equal(body.study.modality, "CT");
+      assert.equal(body.study.studyStatus, "available");
+      assert.equal(body.study.studyDatetime, "2026-08-20T10:30:15");
+      assert.equal(body.study.seriesCount, 1);
+      assert.equal(body.study.instancesCount, 7);
+    });
 
+    assert.ok(requested.some((url) => url.includes("StudyInstanceUID=1.2.840.10008.5.1")));
     const row = await db.prepare(
       `SELECT accession_number AS accessionNumber, study_instance_uid AS studyInstanceUid,
         modality, series_count AS seriesCount, instances_count AS instancesCount, source
@@ -204,9 +235,89 @@ test("manual override after auto-link resets PACS-derived metadata", async () =>
     ).bind(bookingId).first();
     assert.equal(row.accessionNumber, "MANUAL-004");
     assert.equal(row.studyInstanceUid, "1.2.840.10008.5.1");
-    assert.equal(row.modality, "DX");
-    assert.equal(row.seriesCount, 0);
-    assert.equal(row.instancesCount, 0);
-    assert.equal(row.source, "manual");
+    assert.equal(row.modality, "CT");
+    assert.equal(row.seriesCount, 1);
+    assert.equal(row.instancesCount, 7);
+    assert.equal(row.source, "qido_uid_manual");
+  });
+});
+
+test("manual UID link rejects a PACS PatientID belonging to another identity", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedAdmin(db);
+    const bookingId = await seedBooking(db, "AUTO-005");
+    await configurePacs(db);
+    await db.prepare(
+      `INSERT INTO mwl_patient_ids (organization_id, identity_key, patient_id)
+       VALUES (1, 'booking:AUTO-005', 'ROS-AAAAAAAAAAAAAAAAAAAA')`,
+    ).run();
+
+    await withMockFetch(async () => Response.json([
+      studyRow("CUSTOM-005", "1.2.840.10008.5.5", { patientId:"ROS-BBBBBBBBBBBBBBBBBBBB" }),
+    ]), async () => {
+      const response = await callWorker(jsonRequest("/api/staff/imaging", {
+        bookingId,
+        accessionNumber:"CUSTOM-005",
+        studyInstanceUid:"1.2.840.10008.5.5",
+        modality:"CT",
+        studyStatus:"available",
+        studyDatetime:"2026-08-20T10:30:15",
+      }, { method:"PUT", headers:{ cookie } }), db, PACS_ENV);
+      assert.equal(response.status, 409);
+      const body = await response.json();
+      assert.equal(body.status, "identity_mismatch");
+      assert.equal(body.reason, "patient_id_mismatch");
+    });
+
+    const row = await db.prepare("SELECT booking_id FROM imaging_studies WHERE booking_id=?").bind(bookingId).first();
+    assert.equal(row, null);
+    const event = await db.prepare(
+      `SELECT action, details FROM booking_events
+       WHERE organization_id=1 AND booking_id=? ORDER BY id DESC LIMIT 1`,
+    ).bind(bookingId).first();
+    assert.equal(event.action, "imaging_manual_link_rejected");
+    assert.match(event.details, /patient_id_mismatch/);
+    assert.doesNotMatch(event.details, /ROS-|1\.2\.840|Пацієнт|\+380/);
+  });
+});
+
+test("historical unverified manual UID stays server-side and cannot open the viewer", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedAdmin(db);
+    const bookingId = await seedBooking(db, "AUTO-006");
+    await configurePacs(db);
+    const historicalUid = "1.2.840.10008.6.1";
+    await db.prepare(
+      `INSERT INTO imaging_studies
+        (organization_id, booking_id, accession_number, study_instance_uid, modality,
+         study_status, source, updated_by)
+       VALUES (1, ?, 'AUTO-006', ?, 'CT', 'available', 'manual', 'legacy')`,
+    ).bind(bookingId, historicalUid).run();
+
+    const response = await callWorker(jsonRequest(`/api/staff/imaging?bookingId=${bookingId}`, undefined, {
+      method:"GET", headers:{ cookie },
+    }), db, PACS_ENV);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.study.studyInstanceUid, "", "unverified UID must not leave the server");
+    assert.equal(body.linkVerificationRequired, true);
+    assert.equal(body.viewerUrl, "");
+    assert.deepEqual(body.series, []);
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(historicalUid.replaceAll(".", "\\.")));
+
+    const stored = await db.prepare(
+      "SELECT study_instance_uid AS studyInstanceUid FROM imaging_studies WHERE booking_id=? AND organization_id=1",
+    ).bind(bookingId).first();
+    assert.equal(stored.studyInstanceUid, historicalUid, "DB history is preserved for explicit remediation");
+
+    const listResponse = await callWorker(jsonRequest("/api/staff/imaging", undefined, {
+      method:"GET", headers:{ cookie },
+    }), db, PACS_ENV);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    const item = listBody.worklist.find((row) => row.id === bookingId);
+    assert.equal(item.studyInstanceUid, "");
+    assert.equal(Number(item.linkVerificationRequired), 1);
+    assert.doesNotMatch(JSON.stringify(listBody), new RegExp(historicalUid.replaceAll(".", "\\.")));
   });
 });

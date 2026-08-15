@@ -27,12 +27,13 @@ async function configurePacs(db) {
   ).bind("https://pacs.example.com/dicom-web", "https://viewer.example.com/viewer").run();
 }
 
-function studyRow(accession, uid, { modality = "CT", date = "20260820" } = {}) {
+function studyRow(accession, uid, { modality = "CT", date = "20260820", patientId = "" } = {}) {
   return {
     "00080020": { vr:"DA", Value:[date] },
     "00080030": { vr:"TM", Value:["103015"] },
     "00080050": { vr:"SH", Value:[accession] },
     "00080061": { vr:"CS", Value:[modality] },
+    "00100020": { vr:"LO", Value:patientId ? [patientId] : [] },
     "0020000D": { vr:"UI", Value:[uid] },
   };
 }
@@ -69,7 +70,7 @@ async function assertNoLinkAndRejectedAudit(db, bookingId, reason) {
   ).bind(bookingId).first();
   assert.equal(event.action, "imaging_auto_link_rejected");
   assert.match(event.details, new RegExp(reason));
-  assert.doesNotMatch(event.details, /1\.2\.840|Пацієнт|\+380/);
+  assert.doesNotMatch(event.details, /1\.2\.840|Пацієнт|\+380|ROS-/);
 }
 
 test("auto-link rejects an exact Accession match when PACS modality differs", async () => {
@@ -118,6 +119,66 @@ test("auto-link rejects QIDO rows missing required study metadata", async () => 
     assert.equal(body.status, "metadata_mismatch");
     assert.equal(body.reason, "missing_metadata");
     await assertNoLinkAndRejectedAudit(db, bookingId, "missing_metadata");
+  });
+});
+
+test("custom Accession auto-link fails closed until a stable MWL PatientID exists", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedAdmin(db);
+    const bookingId = await seedBooking(db, "VALIDATE-CUSTOM-NO-ID");
+    await configurePacs(db);
+    await db.prepare(
+      `INSERT INTO imaging_studies
+        (organization_id, booking_id, accession_number, study_status, source, updated_by)
+       VALUES (1, ?, 'CUSTOM-NO-ID', 'scheduled', 'manual', 'seed')`,
+    ).bind(bookingId).run();
+
+    const response = await autoLink(db, cookie, bookingId, [
+      studyRow("CUSTOM-NO-ID", "1.2.840.113619.2.55.3.4", { patientId:"ROS-UNTRUSTED" }),
+    ]);
+    assert.equal(response.status, 409);
+    const body = await response.json();
+    assert.equal(body.status, "identity_mismatch");
+    assert.equal(body.reason, "patient_identity_unverified");
+
+    const stored = await db.prepare(
+      "SELECT study_instance_uid AS uid, source FROM imaging_studies WHERE booking_id=? AND organization_id=1",
+    ).bind(bookingId).first();
+    assert.equal(stored.uid, "");
+    assert.equal(stored.source, "manual");
+    const event = await db.prepare(
+      `SELECT action, details FROM booking_events
+       WHERE organization_id=1 AND booking_id=? ORDER BY id DESC LIMIT 1`,
+    ).bind(bookingId).first();
+    assert.equal(event.action, "imaging_auto_link_rejected");
+    assert.match(event.details, /patient_identity_unverified/);
+  });
+});
+
+test("custom Accession auto-link requires the PACS PatientID issued by MWL", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedAdmin(db);
+    const bookingId = await seedBooking(db, "VALIDATE-CUSTOM-ID");
+    await configurePacs(db);
+    const patientId = "ROS-1234567890ABCDEF1234";
+    await db.prepare(
+      `INSERT INTO mwl_patient_ids (organization_id, identity_key, patient_id)
+       VALUES (1, 'booking:VALIDATE-CUSTOM-ID', ?)`,
+    ).bind(patientId).run();
+    await db.prepare(
+      `INSERT INTO imaging_studies
+        (organization_id, booking_id, accession_number, study_status, source, updated_by)
+       VALUES (1, ?, 'CUSTOM-WITH-ID', 'scheduled', 'manual', 'seed')`,
+    ).bind(bookingId).run();
+
+    const response = await autoLink(db, cookie, bookingId, [
+      studyRow("CUSTOM-WITH-ID", "1.2.840.113619.2.55.3.5", { patientId }),
+    ]);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.status, "linked");
+    assert.equal(body.study.accessionNumber, "CUSTOM-WITH-ID");
+    assert.equal(body.study.source, "qido_accession");
   });
 });
 
