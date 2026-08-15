@@ -19,13 +19,6 @@ function normArg(a) {
   return a;
 }
 
-function diagnosticSqlError(op, sql, error) {
-  const preview = sql.replace(/\s+/g, " ").trim().slice(0, 180);
-  const message = error instanceof Error ? `${error.name}: ${error.message}` : String(error);
-  console.error(`[d1-test:${op}] ${message}; sql=${preview}`);
-  throw error;
-}
-
 function wrapAsD1(db) {
   const makeStmt = (sql) => {
     const prepared = db.prepare(sql);
@@ -33,26 +26,19 @@ function wrapAsD1(db) {
     const api = {
       bind(...args) { bound = args.map(normArg); return api; },
       async first(column) {
-        let row;
-        try { row = prepared.get(...bound); }
-        catch (e) { diagnosticSqlError("first", sql, e); }
+        const row = prepared.get(...bound);
         if (row == null) return null;
         return column ? (row[column] ?? null) : row;
       },
       async all() {
-        try { return { results: prepared.all(...bound), success: true, meta: {} }; }
-        catch (e) { diagnosticSqlError("all", sql, e); }
+        return { results: prepared.all(...bound), success: true, meta: {} };
       },
       async run() {
-        let r;
-        try { r = prepared.run(...bound); }
-        catch (e) { diagnosticSqlError("run", sql, e); }
+        const r = prepared.run(...bound);
         return { success: true, meta: { changes: r.changes, last_row_id: Number(r.lastInsertRowid), duration: 0 } };
       },
       async raw() {
-        let rows;
-        try { rows = prepared.all(...bound); }
-        catch (e) { diagnosticSqlError("raw", sql, e); }
+        const rows = prepared.all(...bound);
         return rows.map((row) => Object.values(row));
       },
     };
