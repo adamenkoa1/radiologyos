@@ -42,50 +42,59 @@ function opaqueChallengeResponse() {
   );
 }
 
-export async function provePatientIdentity(
+async function provePatientIdentity(
   db: D1Database,
   phoneNormalized: string,
   body: { dob?: unknown; bookingCode?: unknown },
 ): Promise<ProvenPatientIdentity | null> {
   const dob = normalizeDob(body.dob);
   if (dob) {
-    const owner = await db.prepare(
-      `SELECT organization_id AS organizationId
-       FROM bookings
-       WHERE phone_normalized = ? AND date_of_birth = ?
-       ORDER BY created_at DESC, id DESC LIMIT 1`,
-    ).bind(phoneNormalized, dob).first<{ organizationId: number }>();
-    if (!owner) return null;
-
-    const matches = await db.prepare(
-      `SELECT b.patient_id AS patientId,
-         COALESCE(p.phone_normalized, '') AS profilePhone
+    const summary = await db.prepare(
+      `SELECT COUNT(*) AS total,
+         SUM(CASE WHEN b.patient_id != '' THEN 1 ELSE 0 END) AS linkedCount,
+         COUNT(DISTINCT CASE WHEN b.patient_id != '' THEN b.patient_id END) AS patientCount,
+         MAX(CASE WHEN b.patient_id != '' THEN b.patient_id ELSE '' END) AS patientId,
+         SUM(CASE
+           WHEN b.patient_id != '' AND COALESCE(p.phone_normalized, '') = ? THEN 1
+           ELSE 0
+         END) AS currentPhoneCount
        FROM bookings b
        LEFT JOIN patient_profiles p
          ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
-       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.date_of_birth = ?
-       ORDER BY b.created_at DESC, b.id DESC
-       LIMIT 100`,
-    ).bind(owner.organizationId, phoneNormalized, dob).all();
-    const candidates = (matches.results || []) as unknown as { patientId:string; profilePhone:string }[];
-    const linked = candidates.filter((row) => !!row.patientId);
+       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.date_of_birth = ?`,
+    ).bind(
+      phoneNormalized,
+      PRIMARY_ORGANIZATION_ID,
+      phoneNormalized,
+      dob,
+    ).first<{
+      total:number;
+      linkedCount:number;
+      patientCount:number;
+      patientId:string;
+      currentPhoneCount:number;
+    }>();
 
-    // Historical unlinked data keeps the existing portal scope. Once any row
-    // is explicitly linked, DOB may upgrade to immutable patient_id only when
-    // every matching booking resolves to the same exact patient and that
-    // patient's current contact phone is the number being possession-verified.
-    if (!linked.length) {
-      return { organizationId: owner.organizationId, identity: { kind:"dob", value:dob }, patientId:"" };
+    const total = Number(summary?.total || 0);
+    if (!total) return null;
+    const linkedCount = Number(summary?.linkedCount || 0);
+    if (!linkedCount) {
+      return {
+        organizationId: PRIMARY_ORGANIZATION_ID,
+        identity: { kind:"dob", value:dob },
+        patientId:"",
+      };
     }
-    const ids = new Set(linked.map((row) => row.patientId));
-    const exact = linked.length === candidates.length
-      && ids.size === 1
-      && linked.every((row) => row.profilePhone === phoneNormalized);
+
+    const exact = linkedCount === total
+      && Number(summary?.patientCount || 0) === 1
+      && Number(summary?.currentPhoneCount || 0) === linkedCount
+      && !!summary?.patientId;
     if (!exact) return null;
     return {
-      organizationId: owner.organizationId,
+      organizationId: PRIMARY_ORGANIZATION_ID,
       identity: { kind:"dob", value:dob },
-      patientId: linked[0].patientId,
+      patientId: summary.patientId,
     };
   }
 
@@ -97,8 +106,8 @@ export async function provePatientIdentity(
        FROM bookings b
        LEFT JOIN patient_profiles p
          ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
-       WHERE b.phone_normalized = ? AND b.code = ? LIMIT 1`,
-    ).bind(phoneNormalized, bookingCode).first<{
+       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.code = ? LIMIT 1`,
+    ).bind(PRIMARY_ORGANIZATION_ID, phoneNormalized, bookingCode).first<{
       organizationId:number; patientId:string; profilePhone:string;
     }>();
     if (!row) return null;
