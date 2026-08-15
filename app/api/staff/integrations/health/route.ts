@@ -1,5 +1,6 @@
 import { dbBinding } from "../../../../../lib/db";
 import { fetchLimited, safeOutboundUrl } from "../../../../../lib/outbound";
+import { canManageSystem } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 
 function probeUrl(base:string):URL | null {
@@ -23,8 +24,8 @@ export async function GET(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
-  if (ctx.member.role !== "admin") {
-    return Response.json({ error:"Стан інтеграцій доступний лише адміністратору" }, { status:403 });
+  if (!canManageSystem(ctx.member.role)) {
+    return Response.json({ error:"Стан інтеграцій доступний лише системному адміністратору" }, { status:403 });
   }
 
   const [pacs, mwl] = await Promise.all([
