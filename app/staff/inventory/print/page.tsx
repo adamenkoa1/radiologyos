@@ -16,17 +16,19 @@ export default function InventoryPrintPage(){
   const [data,setData]=useState<ResponsePayload|null>(null);
   const [error,setError]=useState("");
   useEffect(()=>{
-    const id=Number(new URLSearchParams(window.location.search).get("id"));
-    if(!Number.isInteger(id)||id<1){setError("Некоректний документ");return;}
     const controller=new AbortController();
-    void fetch("/api/staff/inventory/documents/print",{
-      method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({documentId:id}),signal:controller.signal,
-    }).then(async r=>{
-      const p=await r.json().catch(()=>({})) as ResponsePayload;
-      if(!r.ok) throw new Error(p.error||"Не вдалося сформувати друковану форму");
-      setData(p);
-    }).catch(e=>{if(e?.name!=="AbortError")setError(e instanceof Error?e.message:"Помилка друку");});
-    return()=>controller.abort();
+    const timer=window.setTimeout(()=>{
+      const id=Number(new URLSearchParams(window.location.search).get("id"));
+      if(!Number.isInteger(id)||id<1){setError("Некоректний документ");return;}
+      void fetch("/api/staff/inventory/documents/print",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({documentId:id}),signal:controller.signal,
+      }).then(async r=>{
+        const p=await r.json().catch(()=>({})) as ResponsePayload;
+        if(!r.ok) throw new Error(p.error||"Не вдалося сформувати друковану форму");
+        setData(p);
+      }).catch(e=>{if(e?.name!=="AbortError")setError(e instanceof Error?e.message:"Помилка друку");});
+    },0);
+    return()=>{window.clearTimeout(timer);controller.abort();};
   },[]);
 
   if(error)return <main className="inventoryPrintPage"><div className="inventoryPrintSheet"><h1>Не вдалося сформувати документ</h1><p>{error}</p></div></main>;
