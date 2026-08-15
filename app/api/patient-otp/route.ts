@@ -23,6 +23,7 @@ const PRIMARY_ORGANIZATION_ID = 1;
 type ProvenPatientIdentity = {
   organizationId: number;
   identity: PatientIdentityScope;
+  patientId: string;
 };
 
 function maskedPhone(phoneNormalized: string): string {
@@ -41,29 +42,74 @@ function opaqueChallengeResponse() {
   );
 }
 
-async function provePatientIdentity(
+export async function provePatientIdentity(
   db: D1Database,
   phoneNormalized: string,
   body: { dob?: unknown; bookingCode?: unknown },
 ): Promise<ProvenPatientIdentity | null> {
   const dob = normalizeDob(body.dob);
   if (dob) {
-    const row = await db.prepare(
+    const owner = await db.prepare(
       `SELECT organization_id AS organizationId
        FROM bookings
        WHERE phone_normalized = ? AND date_of_birth = ?
        ORDER BY created_at DESC, id DESC LIMIT 1`,
     ).bind(phoneNormalized, dob).first<{ organizationId: number }>();
-    return row ? { organizationId: row.organizationId, identity: { kind:"dob", value:dob } } : null;
+    if (!owner) return null;
+
+    const matches = await db.prepare(
+      `SELECT b.patient_id AS patientId,
+         COALESCE(p.phone_normalized, '') AS profilePhone
+       FROM bookings b
+       LEFT JOIN patient_profiles p
+         ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
+       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.date_of_birth = ?
+       ORDER BY b.created_at DESC, b.id DESC
+       LIMIT 100`,
+    ).bind(owner.organizationId, phoneNormalized, dob).all();
+    const candidates = (matches.results || []) as unknown as { patientId:string; profilePhone:string }[];
+    const linked = candidates.filter((row) => !!row.patientId);
+
+    // Historical unlinked data keeps the existing portal scope. Once any row
+    // is explicitly linked, DOB may upgrade to immutable patient_id only when
+    // every matching booking resolves to the same exact patient and that
+    // patient's current contact phone is the number being possession-verified.
+    if (!linked.length) {
+      return { organizationId: owner.organizationId, identity: { kind:"dob", value:dob }, patientId:"" };
+    }
+    const ids = new Set(linked.map((row) => row.patientId));
+    const exact = linked.length === candidates.length
+      && ids.size === 1
+      && linked.every((row) => row.profilePhone === phoneNormalized);
+    if (!exact) return null;
+    return {
+      organizationId: owner.organizationId,
+      identity: { kind:"dob", value:dob },
+      patientId: linked[0].patientId,
+    };
   }
 
   const bookingCode = normalizeBookingCode(body.bookingCode);
   if (bookingCode) {
     const row = await db.prepare(
-      `SELECT organization_id AS organizationId
-       FROM bookings WHERE phone_normalized = ? AND code = ? LIMIT 1`,
-    ).bind(phoneNormalized, bookingCode).first<{ organizationId: number }>();
-    return row ? { organizationId: row.organizationId, identity: { kind:"booking", value:bookingCode } } : null;
+      `SELECT b.organization_id AS organizationId, b.patient_id AS patientId,
+         COALESCE(p.phone_normalized, '') AS profilePhone
+       FROM bookings b
+       LEFT JOIN patient_profiles p
+         ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
+       WHERE b.phone_normalized = ? AND b.code = ? LIMIT 1`,
+    ).bind(phoneNormalized, bookingCode).first<{
+      organizationId:number; patientId:string; profilePhone:string;
+    }>();
+    if (!row) return null;
+    return {
+      organizationId: row.organizationId,
+      identity: { kind:"booking", value:bookingCode },
+      // A historical booking can still be opened through its exact code even
+      // if the patient's current profile phone has changed, but it must not
+      // expand into the whole immutable patient record via that old number.
+      patientId: row.patientId && row.profilePhone === phoneNormalized ? row.patientId : "",
+    };
   }
   return null;
 }
@@ -133,6 +179,7 @@ export async function POST(request: Request) {
     proof.organizationId,
     proof.identity,
     PURPOSE,
+    proof.patientId,
   );
   const text = `RadiologyOS: код підтвердження ${challenge.code}. Код діє 5 хвилин. Нікому його не повідомляйте.`;
   try {
@@ -225,6 +272,7 @@ export async function PATCH(request: Request) {
     phoneNormalized,
     verified.organizationId,
     verified.identity,
+    verified.patientId || "",
   );
   await audit(db, {
     organizationId: verified.organizationId,
