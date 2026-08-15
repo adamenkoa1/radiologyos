@@ -109,12 +109,15 @@ export default function ProtocolAddendaPanel({ bookingId, staffRole }:{ bookingI
   }
 
   useEffect(()=>{
-    setSelectedId("");
-    setReason("");
-    setCorrectionText("");
-    setNewReason("");
-    setNewText("");
-    const timer = window.setTimeout(()=>{ void load(); },0);
+    const timer = window.setTimeout(()=>{
+      setSelectedId("");
+      setReason("");
+      setCorrectionText("");
+      setNewReason("");
+      setNewText("");
+      setSuccess("");
+      void load();
+    },0);
     return ()=>window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   },[bookingId]);
@@ -221,7 +224,7 @@ export default function ProtocolAddendaPanel({ bookingId, staffRole }:{ bookingI
 
         {selected && <div className={styles.editor}>
           <div className={styles.meta}>
-            <span className={`${styles.status} ${styles[selected.status]}`}>{statusLabels[selected.status]}</span>
+            <span className={styles.status}>{statusLabels[selected.status]}</span>
             <span>Версія {selected.version}</span>
             <span>База v{selected.baseProtocolVersion}</span>
             <span>Автор: {selected.authorEmail}</span>
