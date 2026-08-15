@@ -4,7 +4,7 @@
 // він виводиться виключно з перевіреної серверної сесії персоналу через
 // членство (`memberships`). Це фундамент tenant-isolation.
 
-import { requireStaff, type StaffRole } from "./staff-auth";
+import { requireStaff, type AccessRole, type StaffRole } from "./staff-auth";
 
 export const ORG_ROLES = [
   "platform_owner",
@@ -19,19 +19,28 @@ export const ORG_ROLES = [
 
 export type OrgRole = (typeof ORG_ROLES)[number] | StaffRole;
 
-const ACTIVE_STAFF_ROLES = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
+// Only roles with a complete authorization contract are admitted to runtime.
+// Future roles stay documented in ORG_ROLES but fail closed until their
+// permissions are explicitly implemented and tested.
+const ACTIVE_ACCESS_ROLES = new Set<AccessRole>([
+  "admin",
+  "organization_admin",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
 
 export interface OrgMember {
   email: string;
   displayName: string;
-  role: StaffRole;
+  role: AccessRole;
 }
 
 export interface OrgContext {
   organizationId: number;
   slug: string;
   organizationName: string;
-  role: OrgRole;
+  role: AccessRole;
   member: OrgMember;
 }
 
@@ -75,8 +84,8 @@ export async function requireOrgContext(request: Request, db: D1Database): Promi
     row = { ...org, role: identity.role };
   }
 
-  if (!ACTIVE_STAFF_ROLES.has(row.role as StaffRole)) return null;
-  const role = row.role as StaffRole;
+  if (!ACTIVE_ACCESS_ROLES.has(row.role as AccessRole)) return null;
+  const role = row.role as AccessRole;
   return {
     organizationId: row.organizationId,
     slug: row.slug,
