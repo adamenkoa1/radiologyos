@@ -281,26 +281,43 @@ test("manual UID link rejects a PACS PatientID belonging to another identity", a
   });
 });
 
-test("historical unverified manual UID is preserved but cannot open the viewer", async () => {
+test("historical unverified manual UID stays server-side and cannot open the viewer", async () => {
   await withD1(async (db) => {
     const cookie = await seedAdmin(db);
     const bookingId = await seedBooking(db, "AUTO-006");
     await configurePacs(db);
+    const historicalUid = "1.2.840.10008.6.1";
     await db.prepare(
       `INSERT INTO imaging_studies
         (organization_id, booking_id, accession_number, study_instance_uid, modality,
          study_status, source, updated_by)
-       VALUES (1, ?, 'AUTO-006', '1.2.840.10008.6.1', 'CT', 'available', 'manual', 'legacy')`,
-    ).bind(bookingId).run();
+       VALUES (1, ?, 'AUTO-006', ?, 'CT', 'available', 'manual', 'legacy')`,
+    ).bind(bookingId, historicalUid).run();
 
     const response = await callWorker(jsonRequest(`/api/staff/imaging?bookingId=${bookingId}`, undefined, {
       method:"GET", headers:{ cookie },
     }), db, PACS_ENV);
     assert.equal(response.status, 200);
     const body = await response.json();
-    assert.equal(body.study.studyInstanceUid, "1.2.840.10008.6.1", "historical record stays visible for remediation");
+    assert.equal(body.study.studyInstanceUid, "", "unverified UID must not leave the server");
     assert.equal(body.linkVerificationRequired, true);
     assert.equal(body.viewerUrl, "");
     assert.deepEqual(body.series, []);
+    assert.doesNotMatch(JSON.stringify(body), new RegExp(historicalUid.replaceAll(".", "\\.")));
+
+    const stored = await db.prepare(
+      "SELECT study_instance_uid AS studyInstanceUid FROM imaging_studies WHERE booking_id=? AND organization_id=1",
+    ).bind(bookingId).first();
+    assert.equal(stored.studyInstanceUid, historicalUid, "DB history is preserved for explicit remediation");
+
+    const listResponse = await callWorker(jsonRequest("/api/staff/imaging", undefined, {
+      method:"GET", headers:{ cookie },
+    }), db, PACS_ENV);
+    assert.equal(listResponse.status, 200);
+    const listBody = await listResponse.json();
+    const item = listBody.worklist.find((row) => row.id === bookingId);
+    assert.equal(item.studyInstanceUid, "");
+    assert.equal(Number(item.linkVerificationRequired), 1);
+    assert.doesNotMatch(JSON.stringify(listBody), new RegExp(historicalUid.replaceAll(".", "\\.")));
   });
 });
