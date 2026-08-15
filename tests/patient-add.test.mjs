@@ -46,7 +46,7 @@ test("patients page exposes an add-patient form and uses exact selection keys", 
   assert.match(page, /name="birthDate"/);
   assert.match(page, /name="address"/);
   assert.match(page, /patientKey\(item\.patientId, item\.phoneNormalized\)/);
-  assert.match(page, /patientId=result\.profile\.patientId/);
+  assert.match(page, /patientId:result\.profile\.patientId/);
 });
 
 test("profile write persists contact fields and updates by patient_id", async () => {
