@@ -1,5 +1,19 @@
 -- Harden the first BAS-style register against concurrency and registrar mismatches.
 
+-- Tenant/type/creator identity of a document cannot be rewritten, even while it is a draft.
+-- The system may assign its generated number exactly once after INSERT.
+CREATE TRIGGER IF NOT EXISTS `business_documents_identity_immutable`
+BEFORE UPDATE ON `business_documents`
+WHEN NEW.organization_id <> OLD.organization_id
+  OR NEW.document_type <> OLD.document_type
+  OR NEW.created_by <> OLD.created_by
+  OR NEW.created_at <> OLD.created_at
+  OR (OLD.number <> '' AND NEW.number <> OLD.number)
+BEGIN
+  SELECT RAISE(ABORT,'business_document_identity_immutable');
+END;
+--> statement-breakpoint
+
 -- Draft line edits must preserve tenant ownership just like inserts.
 CREATE TRIGGER IF NOT EXISTS `inventory_document_lines_tenant_update`
 BEFORE UPDATE ON `inventory_document_lines`
