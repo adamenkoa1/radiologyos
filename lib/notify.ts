@@ -111,7 +111,7 @@ async function patientMessagingProfile(
   organizationId: number,
   bookingId: number,
   phoneNormalized: string,
-): Promise<{ dnc: number; ambiguous: number; tg: string } | null> {
+): Promise<{ dnc: number; ambiguous: number; stale: number; tg: string } | null> {
   if (!phoneNormalized || !organizationId || !bookingId) return null;
   return db.prepare(
     `SELECT
@@ -132,6 +132,15 @@ async function patientMessagingProfile(
          ) THEN 1
          ELSE 0
        END AS ambiguous,
+       CASE
+         WHEN b.patient_id != '' AND NOT EXISTS (
+           SELECT 1 FROM patient_profiles p
+           WHERE p.organization_id = b.organization_id
+             AND p.patient_id = b.patient_id
+             AND p.phone_normalized = b.phone_normalized
+         ) THEN 1
+         ELSE 0
+       END AS stale,
        COALESCE((
          SELECT ti.telegram_chat_id
          FROM patient_telegram_identities ti
@@ -148,11 +157,14 @@ async function patientMessagingProfile(
      FROM bookings b
      WHERE b.organization_id = ? AND b.id = ? AND b.phone_normalized = ?
      LIMIT 1`
-  ).bind(organizationId, bookingId, phoneNormalized).first<{ dnc: number; ambiguous: number; tg: string }>().catch(() => null);
+  ).bind(organizationId, bookingId, phoneNormalized)
+    .first<{ dnc: number; ambiguous: number; stale: number; tg: string }>()
+    .catch(() => null);
 }
 
-function messagingSkipReason(profile: { dnc:number; ambiguous:number } | null): string {
+function messagingSkipReason(profile: { dnc:number; ambiguous:number; stale:number } | null): string {
   if (profile?.dnc) return "Пацієнт у списку «не турбувати»";
+  if (profile?.stale) return "Контакт exact-пацієнта змінено після створення запису";
   if (profile?.ambiguous) return "Неприв’язаний запис має неоднозначну CRM-ідентичність";
   return "";
 }
