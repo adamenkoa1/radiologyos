@@ -33,7 +33,7 @@ export const DOCUMENT_TYPES = [
   "inventory_writeoff",
   "inventory_transfer",
   "inventory_count",
-  "imaging_study",
+  "study_performance",
   "result_delivery",
 ] as const;
 
@@ -153,7 +153,7 @@ export const DOCUMENT_REGISTER_MAP: Readonly<Partial<Record<DocumentType, readon
   inventory_writeoff: ["inventory_balance", "expenses"],
   inventory_transfer: ["inventory_balance"],
   inventory_count: ["inventory_balance"],
-  imaging_study: ["studies_performed", "equipment_load", "staff_output"],
+  study_performance: ["studies_performed", "equipment_load", "staff_output"],
   result_delivery: [],
 };
 
