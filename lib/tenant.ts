@@ -27,6 +27,14 @@ const MEDICAL_OPERATIONAL_ROLES = new Set<StaffRole>([
 ]);
 const SYSTEM_ADMIN_ROLES = new Set<SystemRole>(["admin", "organization_admin"]);
 const MANAGEMENT_ROLES = new Set<ManagementRole>(["admin", "department_head"]);
+const SELF_SERVICE_ROLES = new Set<AccessRole>([
+  "admin",
+  "organization_admin",
+  "department_head",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
 
 export interface OrgMember<R extends AccessRole = StaffRole> {
   email: string;
@@ -116,4 +124,11 @@ export function requireSystemOrgContext(request: Request, db: D1Database): Promi
 // state but is kept outside both medical/operational and system-admin contexts.
 export function requireManagementOrgContext(request: Request, db: D1Database): Promise<OrgContext<ManagementRole> | null> {
   return resolveOrgContext(request, db, MANAGEMENT_ROLES);
+}
+
+// Neutral self-service identity context. It is intentionally capability-free:
+// it exists only for a user to read/update their own account profile and does
+// not grant access to medical, management, or system-admin resources.
+export function requireSelfServiceOrgContext(request: Request, db: D1Database): Promise<OrgContext<AccessRole> | null> {
+  return resolveOrgContext(request, db, SELF_SERVICE_ROLES);
 }
