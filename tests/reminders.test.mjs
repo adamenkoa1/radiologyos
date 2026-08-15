@@ -66,11 +66,15 @@ test("worker schedules tenant-limited reminders and internal operational tasks e
   assert.match(wrangler, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
 });
 
-test("runner scopes bookings, dedupe and do-not-contact by organization", async () => {
+test("runner scopes bookings, dedupe and contact consent by exact identity and organization", async () => {
   const src = await read("lib/reminders.ts");
-  assert.match(src, /WHERE organization_id = \? AND desired_date = \?/);
-  assert.match(src, /b\.organization_id = \?/);
-  assert.match(src, /patient_profiles WHERE organization_id = \? AND do_not_contact = 1/);
+  assert.match(src, /WHERE b\.organization_id = \? AND b\.desired_date = \? AND b\.status IN \('confirmed','rescheduled'\)/);
+  assert.match(src, /p\.organization_id = b\.organization_id/);
+  assert.match(src, /p\.patient_id = b\.patient_id/);
+  assert.match(src, /p\.do_not_contact = 1/);
+  assert.match(src, /sharedProfileCount/);
+  assert.match(src, /staleLinkedContact/);
+  assert.match(src, /!b\.patientId && b\.sharedProfileCount > 0/);
   assert.match(src, /sendWhatsApp\(db, b\.phoneNormalized, body\)/);
   assert.match(src, /kind LIKE 'reminder_%h'/);
   assert.match(src, /status IN \('confirmed','rescheduled'\)/);
