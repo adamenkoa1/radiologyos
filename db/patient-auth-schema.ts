@@ -51,6 +51,7 @@ export const telegramLinkTokensScoped = sqliteTable("telegram_link_tokens", {
   phoneNormalized: text("phone_normalized").notNull(),
   identityKind: text("identity_kind").notNull().default(""),
   identityValue: text("identity_value").notNull().default(""),
+  patientId: text("patient_id").notNull().default(""),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   expiresAt: text("expires_at").notNull(),
 }, table => [
@@ -58,6 +59,7 @@ export const telegramLinkTokensScoped = sqliteTable("telegram_link_tokens", {
   index("telegram_link_tokens_identity_scope_idx").on(
     table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue, table.expiresAt,
   ),
+  index("telegram_link_tokens_patient_idx").on(table.organizationId, table.patientId, table.expiresAt),
 ]);
 
 export const patientTelegramIdentities = sqliteTable("patient_telegram_identities", {
@@ -65,9 +67,11 @@ export const patientTelegramIdentities = sqliteTable("patient_telegram_identitie
   phoneNormalized: text("phone_normalized").notNull(),
   identityKind: text("identity_kind").notNull(),
   identityValue: text("identity_value").notNull(),
+  patientId: text("patient_id").notNull().default(""),
   telegramChatId: text("telegram_chat_id").notNull().default(""),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
   primaryKey({ columns:[table.organizationId, table.phoneNormalized, table.identityKind, table.identityValue] }),
   index("patient_telegram_chat_idx").on(table.telegramChatId).where(sql`telegram_chat_id != ''`),
+  index("patient_telegram_patient_idx").on(table.organizationId, table.patientId, table.updatedAt),
 ]);

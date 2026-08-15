@@ -148,10 +148,13 @@ async function patientMessagingProfile(
            AND ti.phone_normalized = b.phone_normalized
            AND ti.telegram_chat_id != ''
            AND (
-             (ti.identity_kind = 'booking' AND ti.identity_value = b.code)
-             OR (ti.identity_kind = 'dob' AND b.date_of_birth != '' AND ti.identity_value = b.date_of_birth)
+             (b.patient_id != '' AND ti.patient_id = b.patient_id)
+             OR (
+               b.patient_id = '' AND ti.patient_id = ''
+               AND ti.identity_kind = 'booking' AND ti.identity_value = b.code
+             )
            )
-         ORDER BY CASE ti.identity_kind WHEN 'booking' THEN 0 ELSE 1 END
+         ORDER BY ti.updated_at DESC
          LIMIT 1
        ), '') AS tg
      FROM bookings b
