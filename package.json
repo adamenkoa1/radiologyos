@@ -14,7 +14,7 @@
     "test:production-gate": "npm run build && node --experimental-strip-types --test tests/canonical-public-url.test.mjs tests/hosting-headers.test.mjs tests/deploy-config.test.mjs tests/outbound-security.test.mjs tests/reminders-tenant.behavior.test.mjs tests/site-booking.behavior.test.mjs tests/booking-capacity.test.mjs tests/staff-confirm-reschedule.behavior.test.mjs tests/staff-rbac.behavior.test.mjs tests/patient-otp.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs tests/my-bookings.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/payment-ledger.behavior.test.mjs tests/payment-settlement.behavior.test.mjs tests/study-state.test.mjs tests/protocol-builder.test.mjs tests/dashboard.test.mjs tests/security-hardening.test.mjs tests/tenant-hardening.test.mjs tests/migration-upgrade.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern public",
-    "db:generate": "bash scripts/sites-env.sh -- drizzle-kit generate"
+    "db:generate": "node scripts/db-generate-guard.mjs"
   },
   "dependencies": {
     "drizzle-orm": "0.45.2",
@@ -34,7 +34,6 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.12",
-    "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
     "typescript": "5.9.3",
     "vinext": "0.0.50",
