@@ -2,6 +2,11 @@
 // незалежно від каналу; ручні відповіді поки відправляються через legacy-global
 // WhatsApp-шлюз org 1. Усі читання та записи tenant-scoped; secondary tenants
 // можуть читати свою історію, але не використовувати глобальний шлюз для reply.
+//
+// A transport thread is still phone-scoped because WhatsApp/SMS physically use
+// that destination. Phone is NOT patient identity: if several exact profiles
+// share a phone, the thread is marked shared and a manual reply fails closed
+// until the caller works from a concrete patient/booking context.
 
 import { canViewPatientRegistry } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
@@ -34,30 +39,42 @@ export async function GET(request: Request) {
   if (phone) {
     const rows = channel
       ? await db.prepare(
-          `SELECT id, channel, direction, summary AS text, actor, external_id AS externalId, created_at AS createdAt
+          `SELECT id, patient_id AS patientId, channel, direction, summary AS text, actor, external_id AS externalId, created_at AS createdAt
            FROM patient_communications
            WHERE phone_normalized = ? AND organization_id = ? AND channel = ?
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(phone, orgId, channel).all()
       : await db.prepare(
-          `SELECT id, channel, direction, summary AS text, actor, external_id AS externalId, created_at AS createdAt
+          `SELECT id, patient_id AS patientId, channel, direction, summary AS text, actor, external_id AS externalId, created_at AS createdAt
            FROM patient_communications
            WHERE phone_normalized = ? AND organization_id = ?
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(phone, orgId).all();
 
-    // Use ordinary positional placeholders here. Node's SQLite test runtime and
-    // D1 both accept them reliably; repeated numbered ?1/?2 parameters in this
-    // scalar-subquery shape trigger SQLITE_RANGE in node:sqlite.
     const patient = await db.prepare(
-      `SELECT COALESCE(
-         (SELECT display_name FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ?),
-         (SELECT name FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY id DESC LIMIT 1), '') AS name,
-       CASE WHEN EXISTS (
-         SELECT 1 FROM patient_telegram_identities ti
-         WHERE ti.phone_normalized = ? AND ti.organization_id = ? AND ti.telegram_chat_id != ''
-       ) THEN 1 ELSE 0 END AS telegramLinked`
-    ).bind(phone, orgId, phone, orgId, phone, orgId).first<{ name: string; telegramLinked: number }>();
+      `SELECT
+         (SELECT COUNT(*) FROM patient_profiles p
+          WHERE p.phone_normalized = ? AND p.organization_id = ?) AS profileCount,
+         COALESCE((
+           SELECT MAX(display_name) FROM patient_profiles p
+           WHERE p.phone_normalized = ? AND p.organization_id = ?
+           HAVING COUNT(*) = 1
+         ), (
+           SELECT name FROM bookings b
+           WHERE b.phone_normalized = ? AND b.organization_id = ?
+             AND NOT EXISTS (
+               SELECT 1 FROM patient_profiles p2
+               WHERE p2.phone_normalized = b.phone_normalized AND p2.organization_id = b.organization_id
+             )
+           ORDER BY b.id DESC LIMIT 1
+         ), '') AS name,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM patient_telegram_identities ti
+           WHERE ti.phone_normalized = ? AND ti.organization_id = ? AND ti.telegram_chat_id != ''
+         ) THEN 1 ELSE 0 END AS telegramLinked`
+    ).bind(phone, orgId, phone, orgId, phone, orgId, phone, orgId).first<{
+      profileCount:number; name:string; telegramLinked:number;
+    }>();
 
     const issues = await db.prepare(
       `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
@@ -73,15 +90,16 @@ export async function GET(request: Request) {
       action: "contact_center_thread_viewed",
       resource: "patient_communication",
       targetId: phone,
-      details: { channel: channel || "all" },
+      details: { channel: channel || "all", sharedPhone:Number(patient?.profileCount || 0) > 1 },
     });
 
     return Response.json({
       phone,
       name: patient?.name || "",
+      sharedPhone: Number(patient?.profileCount || 0) > 1,
       messages: rows.results,
       issues: issues.results,
-      availableReplyChannels: orgId === PRIMARY_ORGANIZATION_ID ? ["whatsapp"] : [],
+      availableReplyChannels: orgId === PRIMARY_ORGANIZATION_ID && Number(patient?.profileCount || 0) <= 1 ? ["whatsapp"] : [],
       linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
@@ -91,9 +109,17 @@ export async function GET(request: Request) {
     ? await db.prepare(
         `SELECT c.phone_normalized AS phone, c.summary AS lastText, c.direction AS lastDirection,
                 c.channel AS lastChannel, c.created_at AS lastAt,
-                COALESCE(
-                  (SELECT display_name FROM patient_profiles p WHERE p.phone_normalized = c.phone_normalized AND p.organization_id = ?1),
-                  (SELECT name FROM bookings b WHERE b.phone_normalized = c.phone_normalized AND b.organization_id = ?1 ORDER BY id DESC LIMIT 1), '') AS name,
+                CASE WHEN (
+                  SELECT COUNT(*) FROM patient_profiles p0
+                  WHERE p0.phone_normalized = c.phone_normalized AND p0.organization_id = ?1
+                ) = 1 THEN COALESCE((
+                  SELECT MAX(display_name) FROM patient_profiles p
+                  WHERE p.phone_normalized = c.phone_normalized AND p.organization_id = ?1
+                ), '') ELSE '' END AS name,
+                CASE WHEN (
+                  SELECT COUNT(*) FROM patient_profiles p3
+                  WHERE p3.phone_normalized = c.phone_normalized AND p3.organization_id = ?1
+                ) > 1 THEN 1 ELSE 0 END AS sharedPhone,
                 (SELECT COUNT(*) FROM patient_notifications n
                    JOIN bookings b2 ON b2.id = n.booking_id AND b2.organization_id = n.organization_id
                   WHERE n.organization_id = ?1 AND b2.phone_normalized = c.phone_normalized AND n.status = 'failed') AS issueCount
@@ -107,9 +133,17 @@ export async function GET(request: Request) {
     : await db.prepare(
         `SELECT c.phone_normalized AS phone, c.summary AS lastText, c.direction AS lastDirection,
                 c.channel AS lastChannel, c.created_at AS lastAt,
-                COALESCE(
-                  (SELECT display_name FROM patient_profiles p WHERE p.phone_normalized = c.phone_normalized AND p.organization_id = ?1),
-                  (SELECT name FROM bookings b WHERE b.phone_normalized = c.phone_normalized AND b.organization_id = ?1 ORDER BY id DESC LIMIT 1), '') AS name,
+                CASE WHEN (
+                  SELECT COUNT(*) FROM patient_profiles p0
+                  WHERE p0.phone_normalized = c.phone_normalized AND p0.organization_id = ?1
+                ) = 1 THEN COALESCE((
+                  SELECT MAX(display_name) FROM patient_profiles p
+                  WHERE p.phone_normalized = c.phone_normalized AND p.organization_id = ?1
+                ), '') ELSE '' END AS name,
+                CASE WHEN (
+                  SELECT COUNT(*) FROM patient_profiles p3
+                  WHERE p3.phone_normalized = c.phone_normalized AND p3.organization_id = ?1
+                ) > 1 THEN 1 ELSE 0 END AS sharedPhone,
                 (SELECT COUNT(*) FROM patient_notifications n
                    JOIN bookings b2 ON b2.id = n.booking_id AND b2.organization_id = n.organization_id
                   WHERE n.organization_id = ?1 AND b2.phone_normalized = c.phone_normalized AND n.status = 'failed') AS issueCount
@@ -158,29 +192,41 @@ export async function POST(request: Request) {
   if (!phone || !text) return Response.json({ error: "Вкажіть номер і текст повідомлення" }, { status: 400 });
   if (channel !== "whatsapp") return Response.json({ error: "Ручна відповідь для цього каналу ще не підключена" }, { status: 400 });
 
-  const patientExists = await db.prepare(
-    `SELECT 1 AS ok FROM (
-       SELECT phone_normalized FROM patient_profiles WHERE organization_id = ?1 AND phone_normalized = ?2
-       UNION ALL
-       SELECT phone_normalized FROM bookings WHERE organization_id = ?1 AND phone_normalized = ?2 LIMIT 1
-     ) LIMIT 1`
-  ).bind(ctx.organizationId, phone).first<{ ok: number }>();
-  if (!patientExists) return Response.json({ error: "Пацієнта не знайдено в цій організації" }, { status: 404 });
+  const identity = await db.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM patient_profiles p
+        WHERE p.organization_id = ?1 AND p.phone_normalized = ?2) AS profileCount,
+       COALESCE((SELECT MAX(patient_id) FROM patient_profiles p
+        WHERE p.organization_id = ?1 AND p.phone_normalized = ?2 HAVING COUNT(*) = 1), '') AS patientId,
+       CASE WHEN EXISTS (
+         SELECT 1 FROM bookings b WHERE b.organization_id = ?1 AND b.phone_normalized = ?2
+       ) THEN 1 ELSE 0 END AS hasBooking`
+  ).bind(ctx.organizationId, phone).first<{ profileCount:number; patientId:string; hasBooking:number }>();
+  const profileCount = Number(identity?.profileCount || 0);
+  if (profileCount > 1) {
+    return Response.json({
+      error: "Цей номер використовується кількома пацієнтами. Надішліть повідомлення з конкретної картки або заявки.",
+    }, { status: 409 });
+  }
+  if (!profileCount && !Number(identity?.hasBooking || 0)) {
+    return Response.json({ error: "Пацієнта не знайдено в цій організації" }, { status: 404 });
+  }
 
   const result = await sendWhatsApp(db, phone, text);
   if (!result.ok) return Response.json({ error: result.error || "Не вдалося надіслати" }, { status: 400 });
 
   await db.prepare(
-    `INSERT INTO patient_communications (organization_id, phone_normalized, channel, direction, summary, actor, external_id)
-     VALUES (?, ?, 'whatsapp', 'outbound', ?, ?, ?)`
-  ).bind(ctx.organizationId, phone, text, member.email, result.idMessage || "").run();
+    `INSERT INTO patient_communications
+       (organization_id, patient_id, phone_normalized, channel, direction, summary, actor, external_id)
+     VALUES (?, ?, ?, 'whatsapp', 'outbound', ?, ?, ?)`
+  ).bind(ctx.organizationId, identity?.patientId || "", phone, text, member.email, result.idMessage || "").run();
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "contact_center_message_sent",
     resource: "patient_communication",
-    targetId: phone,
-    details: { channel: "whatsapp", length: text.length },
+    targetId: identity?.patientId || phone,
+    details: { channel: "whatsapp", length: text.length, exactPatient:!!identity?.patientId },
   });
 
   return Response.json({ ok: true, message: { direction: "outbound", channel: "whatsapp", text, actor: member.email, createdAt: new Date().toISOString() } });
