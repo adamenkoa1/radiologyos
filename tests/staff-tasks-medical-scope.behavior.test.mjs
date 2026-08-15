@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
-async function addBooking(db, { code, doctor = "", radiographer = "" }) {
+async function addBooking(db, { code, doctor = "", radiographer = "", time = "10:00" }) {
   const result = await db.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, service, service_code,
        equipment_id, desired_date, desired_time, assigned_radiologist_email, assigned_radiographer_email)
      VALUES (1, ?, ?, '+380501112233', '380501112233', 'КТ', '408', 'ct',
-       '2026-08-20', '10:00', ?, ?)`
-  ).bind(code, `Patient ${code}`, doctor, radiographer).run();
+       '2026-08-20', ?, ?, ?)`
+  ).bind(code, `Patient ${code}`, time, doctor, radiographer).run();
   return Number(result.meta.last_row_id);
 }
 
@@ -30,8 +30,8 @@ test("booking-linked tasks follow current booking access while department tasks 
     const doctorB = await seedStaffSession(db, { email:"task-b@example.com", role:"radiologist" });
     const techA = await seedStaffSession(db, { email:"task-tech@example.com", role:"radiographer" });
 
-    const bookingA = await addBooking(db, { code:"TASK-A-001", doctor:"task-a@example.com", radiographer:"task-tech@example.com" });
-    const bookingB = await addBooking(db, { code:"TASK-B-001", doctor:"task-b@example.com" });
+    const bookingA = await addBooking(db, { code:"TASK-A-001", doctor:"task-a@example.com", radiographer:"task-tech@example.com", time:"10:00" });
+    const bookingB = await addBooking(db, { code:"TASK-B-001", doctor:"task-b@example.com", time:"13:00" });
 
     const general = await createTask(db, admin, { title:"Перевірити запас контрасту" });
     assert.equal(general.status, 201);
