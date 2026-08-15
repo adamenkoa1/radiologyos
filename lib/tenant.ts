@@ -4,7 +4,7 @@
 // він виводиться виключно з перевіреної серверної сесії персоналу через
 // членство (`memberships`). Це фундамент tenant-isolation.
 
-import { requireStaff, type AccessRole, type StaffRole, type SystemRole } from "./staff-auth";
+import { requireStaff, type AccessRole, type ManagementRole, type StaffRole, type SystemRole } from "./staff-auth";
 
 export const ORG_ROLES = [
   "platform_owner",
@@ -26,6 +26,7 @@ const MEDICAL_OPERATIONAL_ROLES = new Set<StaffRole>([
   "radiographer",
 ]);
 const SYSTEM_ADMIN_ROLES = new Set<SystemRole>(["admin", "organization_admin"]);
+const MANAGEMENT_ROLES = new Set<ManagementRole>(["admin", "department_head"]);
 
 export interface OrgMember<R extends AccessRole = StaffRole> {
   email: string;
@@ -98,9 +99,8 @@ async function resolveOrgContext<R extends AccessRole>(
 }
 
 // Medical/operational context used by patient, booking, protocol, imaging and
-// day-to-day workflow routes. System-only administrators are deliberately not
-// admitted here, so legacy routes fail closed even if they contain role-specific
-// assumptions of their own.
+// day-to-day workflow routes. System-only administrators and management-only
+// roles are deliberately not admitted here.
 export function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext<StaffRole> | null> {
   return resolveOrgContext(request, db, MEDICAL_OPERATIONAL_ROLES);
 }
@@ -110,4 +110,10 @@ export function requireOrgContext(request: Request, db: D1Database): Promise<Org
 // Legacy `admin` remains accepted for backwards compatibility.
 export function requireSystemOrgContext(request: Request, db: D1Database): Promise<OrgContext<SystemRole> | null> {
   return resolveOrgContext(request, db, SYSTEM_ADMIN_ROLES);
+}
+
+// Dedicated management context. `department_head` can read aggregate operational
+// state but is kept outside both medical/operational and system-admin contexts.
+export function requireManagementOrgContext(request: Request, db: D1Database): Promise<OrgContext<ManagementRole> | null> {
+  return resolveOrgContext(request, db, MANAGEMENT_ROLES);
 }
