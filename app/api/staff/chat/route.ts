@@ -80,10 +80,10 @@ export async function GET(request: Request) {
 
   // Backward compatibility for old bookmarks/callers: phone-only reads are
   // accepted only when that phone maps to exactly one communication scope.
-  // A shared exact/legacy or multi-patient phone fails closed before any rows
-  // are returned.
+  // Scope ambiguity is global across channels: a channel filter may narrow
+  // messages only after identity has already been resolved safely.
   if (!patientId && !legacyPhone && compatibilityPhone) {
-    const scope = await resolvePhoneCompatibilityScope(db, orgId, compatibilityPhone, channel);
+    const scope = await resolvePhoneCompatibilityScope(db, orgId, compatibilityPhone, "");
     if (scope.ambiguous) {
       return Response.json({
         error: "Цей номер містить кілька окремих історій. Виберіть конкретного пацієнта або legacy-історію.",
