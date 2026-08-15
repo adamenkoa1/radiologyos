@@ -15,6 +15,7 @@ export { REMINDER_LEAD_KEY, parseLeadHours };
 type ReminderRow = {
   id: number; patientId:string; name: string; phone: string; phoneNormalized: string;
   service: string; desiredTime: string; doNotContact:number; sharedProfileCount:number;
+  staleLinkedContact:number;
 };
 
 // Раннер завжди отримує явний tenant. Поки messaging credentials зберігаються
@@ -54,7 +55,16 @@ export async function runDueReminders(
            SELECT COUNT(*) FROM patient_profiles p
            WHERE p.organization_id = b.organization_id
              AND p.phone_normalized = b.phone_normalized
-         ) ELSE 0 END AS sharedProfileCount
+         ) ELSE 0 END AS sharedProfileCount,
+         CASE
+           WHEN b.patient_id != '' AND NOT EXISTS (
+             SELECT 1 FROM patient_profiles p
+             WHERE p.organization_id = b.organization_id
+               AND p.patient_id = b.patient_id
+               AND p.phone_normalized = b.phone_normalized
+           ) THEN 1
+           ELSE 0
+         END AS staleLinkedContact
        FROM bookings b
        WHERE b.organization_id = ? AND b.desired_date = ? AND b.status IN ('confirmed','rescheduled')`
     ).bind(organizationId, date).all<ReminderRow>();
@@ -82,14 +92,17 @@ export async function runDueReminders(
       const b = byId.get(due.id);
       if (!b || !b.phoneNormalized) continue;
       const kind = `reminder_${due.hours}h`;
-      // Exact bookings use only their own profile's DNC flag. For an unlinked
-      // legacy booking, a phone that now belongs to one or more CRM profiles is
-      // identity-ambiguous: automated messaging fails closed instead of using
-      // another family member's preferences or disclosing appointment details.
-      if (b.doNotContact || (!b.patientId && b.sharedProfileCount > 0)) {
+      // Exact bookings use only their own profile's DNC flag and current phone.
+      // If the profile phone changed since the booking snapshot was created, the
+      // old destination is no longer trusted and automated messaging fails closed.
+      // For an unlinked legacy booking, any CRM profile on that phone is also
+      // identity-ambiguous and must not receive appointment details automatically.
+      if (b.doNotContact || b.staleLinkedContact || (!b.patientId && b.sharedProfileCount > 0)) {
         const reason = b.doNotContact
           ? "Пацієнт у списку «не турбувати»"
-          : "Неприв’язаний запис має неоднозначну CRM-ідентичність";
+          : b.staleLinkedContact
+            ? "Контакт exact-пацієнта змінено після створення запису"
+            : "Неприв’язаний запис має неоднозначну CRM-ідентичність";
         await record(db, organizationId, b, kind, "skipped", reason);
         result.skipped += 1;
         continue;
