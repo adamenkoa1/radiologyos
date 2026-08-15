@@ -41,13 +41,17 @@ test("contact-center communication history stays tenant scoped across channels",
   assert.deepEqual(telegramOnly.map((row) => row.summary), ["Org1 Telegram"]);
 });
 
-test("contact-center route derives tenant, preserves exact ids, and fails closed on shared-phone replies", async () => {
+test("contact-center route derives tenant, preserves exact ids, and fails closed on ambiguous or stale replies", async () => {
   const route = await read("app/api/staff/chat/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /patient_communications[\s\S]*organization_id = \?/);
   assert.match(route, /patient_id AS patientId/);
   assert.match(route, /profileCount/);
   assert.match(route, /if \(profileCount > 1\)/);
+  assert.match(route, /staleLinkedContact/);
+  assert.match(route, /p\.patient_id = b\.patient_id/);
+  assert.match(route, /p\.phone_normalized = b\.phone_normalized/);
+  assert.match(route, /Number\(identity\?\.staleLinkedContact \|\| 0\) === 1/);
   assert.match(route, /availableReplyChannels/);
   assert.match(route, /contact_center_thread_viewed/);
   assert.match(route, /contact_center_message_sent/);
