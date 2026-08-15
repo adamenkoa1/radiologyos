@@ -42,8 +42,8 @@ export default function BookingDrawer({
 }) {
   const b = booking;
   const ph = digits(b.phone);
-  const history = historyScoped && ph
-    ? all.filter(x => x.id !== b.id && digits(x.phone) === ph)
+  const history = historyScoped
+    ? all.filter(x => x.id !== b.id)
         .sort((a, c) => (c.desiredDate + c.desiredTime).localeCompare(a.desiredDate + a.desiredTime))
     : [];
   const canConfirm = !!onConfirm && (b.status === "new" || b.status === "rescheduled");
@@ -176,8 +176,6 @@ export default function BookingDrawer({
         {canConfirm && <button type="button" className="apptDrawerBtn confirm" disabled={confirming} onClick={() => onConfirm!(b.id)}>{confirming ? "…" : "✓ Підтвердити"}</button>}
         {canReschedule && !reschedOpen && <button type="button" className="apptDrawerBtn" onClick={()=>setReschedOpen(true)}>↻ Перенести</button>}
         {ph && <button type="button" className="apptDrawerBtn" onClick={()=>setNotifyOpen(v=>!v)}>✉ Повідомити</button>}
-        {ph && <a className="apptDrawerBtn" href={`tel:${b.phone}`}>📞 Подзвонити</a>}
-        {ph && <a className="apptDrawerBtn wa" href={`https://wa.me/${ph}`} target="_blank" rel="noreferrer">WhatsApp</a>}
         {patientHref && <a className="apptDrawerBtn" href={patientHref}>Картка пацієнта →</a>}
         <a className="apptDrawerBtn primary" href={`/staff?open=${b.id}#bookings`}>Відкрити повну заявку →</a>
       </div>
