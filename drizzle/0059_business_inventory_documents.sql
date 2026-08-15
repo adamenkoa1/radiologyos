@@ -68,6 +68,32 @@ CREATE INDEX IF NOT EXISTS `inventory_movements_document_idx`
   ON `inventory_movements` (`organization_id`,`document_id`,`id`) WHERE `document_id` IS NOT NULL;
 --> statement-breakpoint
 
+-- Versioned generated forms. payload_json is the immutable render snapshot; storage_key is reserved
+-- for a persisted PDF/file representation when object storage is attached.
+CREATE TABLE IF NOT EXISTS `printed_form_snapshots` (
+  `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
+  `organization_id` integer NOT NULL,
+  `document_id` integer NOT NULL,
+  `form_type` text NOT NULL CHECK (`form_type` IN (
+    'invoice','payment_receipt','service_act','referral','protocol','result',
+    'inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count','service_note'
+  )),
+  `template_version` integer DEFAULT 1 NOT NULL CHECK (`template_version` > 0),
+  `payload_json` text NOT NULL,
+  `generated_by` text NOT NULL,
+  `generated_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  `storage_key` text DEFAULT '' NOT NULL,
+  `sha256` text NOT NULL,
+  FOREIGN KEY (`document_id`,`organization_id`) REFERENCES `business_documents`(`id`,`organization_id`)
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX IF NOT EXISTS `printed_form_snapshots_same_render_idx`
+  ON `printed_form_snapshots` (`organization_id`,`document_id`,`form_type`,`template_version`,`sha256`);
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS `printed_form_snapshots_document_idx`
+  ON `printed_form_snapshots` (`organization_id`,`document_id`,`id` DESC);
+--> statement-breakpoint
+
 -- A warehouse line must point to a warehouse document in the same tenant and its referenced records
 -- must also belong to that tenant. This protects against API filter mistakes.
 CREATE TRIGGER IF NOT EXISTS `inventory_document_lines_tenant_insert`
@@ -87,6 +113,25 @@ BEGIN
   SELECT CASE WHEN NEW.booking_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM `bookings` b WHERE b.id = NEW.booking_id AND b.organization_id = NEW.organization_id
   ) THEN RAISE(ABORT,'inventory_booking_tenant_mismatch') END;
+END;
+--> statement-breakpoint
+
+CREATE TRIGGER IF NOT EXISTS `business_document_reversal_tenant_insert`
+BEFORE INSERT ON `business_documents`
+WHEN NEW.reversed_document_id IS NOT NULL
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1 FROM `business_documents` d WHERE d.id=NEW.reversed_document_id AND d.organization_id=NEW.organization_id
+  ) THEN RAISE(ABORT,'business_document_reversal_tenant_mismatch') END;
+END;
+--> statement-breakpoint
+CREATE TRIGGER IF NOT EXISTS `business_document_reversal_tenant_update`
+BEFORE UPDATE OF `reversed_document_id`,`organization_id` ON `business_documents`
+WHEN NEW.reversed_document_id IS NOT NULL
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1 FROM `business_documents` d WHERE d.id=NEW.reversed_document_id AND d.organization_id=NEW.organization_id
+  ) THEN RAISE(ABORT,'business_document_reversal_tenant_mismatch') END;
 END;
 --> statement-breakpoint
 
@@ -151,3 +196,13 @@ BEGIN
       AND (l.lot_id IS NULL OR l.lot_id=NEW.lot_id)
   ) THEN RAISE(ABORT,'inventory_document_link_invalid') END;
 END;
+--> statement-breakpoint
+
+-- Generated forms are evidence: snapshots are append-only.
+CREATE TRIGGER IF NOT EXISTS `printed_form_snapshots_no_update`
+BEFORE UPDATE ON `printed_form_snapshots`
+BEGIN SELECT RAISE(ABORT,'printed_form_snapshot_immutable'); END;
+--> statement-breakpoint
+CREATE TRIGGER IF NOT EXISTS `printed_form_snapshots_no_delete`
+BEFORE DELETE ON `printed_form_snapshots`
+BEGIN SELECT RAISE(ABORT,'printed_form_snapshot_immutable'); END;
