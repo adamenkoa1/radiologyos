@@ -1,7 +1,17 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { todayInKyiv } from "../lib/booking-rules.ts";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
+
+function todayInKyivForTest() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Kyiv",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (type) => parts.find((part) => part.type === type)?.value || "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
+}
 
 async function setMembershipRole(db, email, role, organizationId = 1) {
   await db.prepare(
@@ -29,7 +39,7 @@ async function seedBooking(db, { organizationId, code, name, phone, date, email 
 
 test("department_head receives tenant aggregate operations without patient or finance data", async () => {
   await withD1(async (db) => {
-    const today = todayInKyiv();
+    const today = todayInKyivForTest();
     const email = "department-head@example.com";
     const cookie = await seedStaffSession(db, { email, role: "admin", displayName: "Завідувач" });
     await setMembershipRole(db, email, "department_head");
