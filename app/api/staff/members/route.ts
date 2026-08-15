@@ -8,6 +8,17 @@ import { dbBinding } from "../../../../lib/db";
 
 const roles = new Set<StaffRole>(["admin", "registrar", "radiologist", "radiographer"]);
 
+type StaffIdentity = {
+  email:string;
+  phone:string | null;
+  lastName:string | null;
+  firstName:string | null;
+  patronymic:string | null;
+  contactEmail:string | null;
+  militaryRank:string | null;
+  positionTitle:string | null;
+};
+
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
@@ -57,11 +68,18 @@ export async function POST(request: Request) {
     return Response.json({ error: "Не можна забрати власний адміністративний доступ" }, { status: 409 });
   }
 
-  const [identity, existing] = await Promise.all([
-    db.prepare("SELECT email FROM staff_members WHERE email = ? LIMIT 1").bind(email).first(),
+  const [identity, existing, otherMembership] = await Promise.all([
+    db.prepare(
+      `SELECT email, phone, last_name AS lastName, first_name AS firstName, patronymic,
+         contact_email AS contactEmail, military_rank AS militaryRank, position_title AS positionTitle
+       FROM staff_members WHERE email = ? LIMIT 1`
+    ).bind(email).first<StaffIdentity>(),
     db.prepare(
       "SELECT role, active FROM memberships WHERE organization_id = ? AND member_email = ? LIMIT 1"
     ).bind(ctx.organizationId, email).first<{ role:string; active:number }>(),
+    db.prepare(
+      "SELECT 1 AS ok FROM memberships WHERE member_email = ? AND organization_id <> ? LIMIT 1"
+    ).bind(email, ctx.organizationId).first<{ ok:number }>(),
   ]);
   if (!identity && !password) {
     return Response.json({ error: "Для нового працівника потрібно задати PIN-код" }, { status: 400 });
@@ -71,34 +89,54 @@ export async function POST(request: Request) {
     if (problem) return Response.json({ error: problem }, { status: 400 });
   }
 
-  const statements = [
-    db.prepare(
-      `INSERT INTO staff_members (email, phone, display_name, last_name, first_name, patronymic,
-         contact_email, military_rank, position_title, role, active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-       ON CONFLICT(email) DO UPDATE SET
-         phone=excluded.phone, display_name=excluded.display_name, last_name=excluded.last_name,
-         first_name=excluded.first_name, patronymic=excluded.patronymic,
-         contact_email=excluded.contact_email, military_rank=excluded.military_rank,
-         position_title=excluded.position_title`
-    ).bind(email, phone, displayName, lastName, firstName, patronymic, contactEmail, militaryRank, positionTitle, role),
+  const sharedIdentity = Boolean(identity && otherMembership);
+  if (sharedIdentity && identity) {
+    const sameProfile =
+      String(identity.phone || "") === phone &&
+      String(identity.lastName || "") === lastName &&
+      String(identity.firstName || "") === firstName &&
+      String(identity.patronymic || "") === patronymic &&
+      String(identity.contactEmail || "").toLowerCase() === contactEmail &&
+      String(identity.militaryRank || "") === militaryRank &&
+      String(identity.positionTitle || "") === positionTitle;
+    if (password || !sameProfile) {
+      return Response.json(
+        { error: "Цей обліковий запис використовується іншою організацією. Тут можна змінити лише роль та активність; PIN і профіль залишаються спільними" },
+        { status: 409 },
+      );
+    }
+  }
+
+  const statements = [];
+  if (!sharedIdentity) {
+    statements.push(
+      db.prepare(
+        `INSERT INTO staff_members (email, phone, display_name, last_name, first_name, patronymic,
+           contact_email, military_rank, position_title, role, active)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+         ON CONFLICT(email) DO UPDATE SET
+           phone=excluded.phone, display_name=excluded.display_name, last_name=excluded.last_name,
+           first_name=excluded.first_name, patronymic=excluded.patronymic,
+           contact_email=excluded.contact_email, military_rank=excluded.military_rank,
+           position_title=excluded.position_title`
+      ).bind(email, phone, displayName, lastName, firstName, patronymic, contactEmail, militaryRank, positionTitle, role),
+    );
+  }
+  statements.push(
     db.prepare(
       `INSERT INTO memberships (organization_id, member_email, role, active)
        VALUES (?, ?, ?, ?)
        ON CONFLICT(organization_id, member_email) DO UPDATE SET
          role=excluded.role, active=excluded.active`
     ).bind(ctx.organizationId, email, role, active),
-  ];
+  );
 
   if (password) {
     statements.push(
       db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
         .bind(await hashPassword(password), email),
+      db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email),
     );
-  }
-  const accessChanged = !existing || existing.role !== role || Number(existing.active) !== active;
-  if (password || accessChanged) {
-    statements.push(db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email));
   }
   await db.batch(statements);
 
@@ -108,7 +146,7 @@ export async function POST(request: Request) {
     action: existing ? "member_role" : "member_add",
     resource: "staff",
     targetId: phone,
-    details: { role, active: Boolean(active), passwordChanged: Boolean(password) },
+    details: { role, active: Boolean(active), passwordChanged: Boolean(password), sharedIdentity },
   });
   return Response.json({ ok:true, needsPassword:false }, { status:201 });
 }
