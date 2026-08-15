@@ -16,10 +16,14 @@ async function booking(db, organizationId, code, phoneNormalized) {
   return Number(result.meta.last_row_id);
 }
 
-test("scheduled reminder SQL isolates bookings, dedupe and do-not-contact by organization", async () => {
-  assert.match(remindersSource, /WHERE organization_id = \? AND desired_date = \? AND status IN \('confirmed','rescheduled'\)/);
+test("scheduled reminder SQL isolates bookings, dedupe and exact contact consent by organization", async () => {
+  assert.match(remindersSource, /WHERE b\.organization_id = \? AND b\.desired_date = \? AND b\.status IN \('confirmed','rescheduled'\)/);
   assert.match(remindersSource, /JOIN bookings b ON b\.id = n\.booking_id[\s\S]*WHERE b\.organization_id = \?/);
-  assert.match(remindersSource, /patient_profiles WHERE organization_id = \? AND do_not_contact = 1/);
+  assert.match(remindersSource, /p\.organization_id = b\.organization_id/);
+  assert.match(remindersSource, /p\.patient_id = b\.patient_id/);
+  assert.match(remindersSource, /p\.do_not_contact = 1/);
+  assert.match(remindersSource, /sharedProfileCount/);
+  assert.match(remindersSource, /staleLinkedContact/);
   assert.match(remindersSource, /record\(db, organizationId, b, kind/);
   assert.match(
     remindersSource,
