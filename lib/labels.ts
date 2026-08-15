@@ -2,10 +2,12 @@
 // правильне відмінювання числівників (слот/слоти/слотів тощо). Виносимо сюди,
 // щоб не дублювати ці мапи по десятку сторінок.
 
-export type StaffRoleKey = "admin" | "registrar" | "radiologist" | "radiographer";
+export type StaffRoleKey = "admin" | "organization_admin" | "department_head" | "registrar" | "radiologist" | "radiographer";
 
 export const STAFF_ROLE_LABELS: Record<string, string> = {
   admin: "Адміністратор",
+  organization_admin: "Системний адміністратор",
+  department_head: "Завідувач відділення",
   registrar: "Реєстратор",
   radiologist: "Лікар-рентгенолог",
   radiographer: "Рентгенолаборант",

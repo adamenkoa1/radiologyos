@@ -9,6 +9,7 @@ import { dbBinding } from "../../../../lib/db";
 const roles = new Set<AccessRole>([
   "admin",
   "organization_admin",
+  "department_head",
   "registrar",
   "radiologist",
   "radiographer",
@@ -17,7 +18,7 @@ const roles = new Set<AccessRole>([
 function identityRoleForMembership(role: AccessRole): StaffRole {
   // Global staff_members.role is retained only for legacy login/bootstrap
   // compatibility. Organization-specific authorization comes from memberships.
-  return role === "organization_admin" ? "admin" : role;
+  return role === "organization_admin" || role === "department_head" ? "admin" : role;
 }
 
 type StaffIdentity = {
