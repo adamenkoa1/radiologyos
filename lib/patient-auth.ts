@@ -43,6 +43,7 @@ export async function createPatientOtpChallenge(
   organizationId: number,
   identity: PatientIdentityScope,
   purpose = "cabinet_login",
+  patientId = "",
 ): Promise<{ challengeId: string; code: string; expiresIn: number }> {
   const challengeId = newSessionToken();
   const code = newOtpCode();
@@ -61,14 +62,15 @@ export async function createPatientOtpChallenge(
     db.prepare(
       `INSERT INTO patient_otp_challenges
        (id, organization_id, phone_normalized, identity_kind, identity_value,
-        purpose, code_hash, expires_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
+        patient_id, purpose, code_hash, expires_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
     ).bind(
       challengeId,
       organizationId,
       phoneNormalized,
       identity.kind,
       identity.value,
+      patientId,
       purpose.slice(0, 40),
       codeHash,
       `+${PATIENT_OTP_TTL_SECONDS} seconds`,
@@ -91,14 +93,15 @@ export async function verifyPatientOtpChallenge(
     code: string;
     purpose?: string;
   },
-): Promise<{ organizationId: number; identity: PatientIdentityScope } | null> {
+): Promise<{ organizationId: number; identity: PatientIdentityScope; patientId?: string } | null> {
   const code = normalizeOtp(input.code);
   if (!/^[a-f0-9]{64}$/i.test(input.challengeId) || !input.phoneNormalized || !code) return null;
   const purpose = (input.purpose || "cabinet_login").slice(0, 40);
 
   const row = await db.prepare(
     `SELECT organization_id AS organizationId, identity_kind AS identityKind,
-       identity_value AS identityValue, code_hash AS codeHash, attempts
+       identity_value AS identityValue, patient_id AS patientId,
+       code_hash AS codeHash, attempts
      FROM patient_otp_challenges
      WHERE id = ? AND phone_normalized = ? AND purpose = ?
        AND identity_kind IN ('dob','booking') AND identity_value != ''
@@ -114,6 +117,7 @@ export async function verifyPatientOtpChallenge(
     organizationId: number;
     identityKind: "dob" | "booking";
     identityValue: string;
+    patientId: string;
     codeHash: string;
     attempts: number;
   }>();
@@ -142,10 +146,12 @@ export async function verifyPatientOtpChallenge(
     purpose,
     PATIENT_OTP_MAX_ATTEMPTS,
   ).run();
-  return consumed.meta.changes ? {
+  if (!consumed.meta.changes) return null;
+  return {
     organizationId: row.organizationId,
     identity: { kind: row.identityKind, value: row.identityValue },
-  } : null;
+    ...(row.patientId ? { patientId: row.patientId } : {}),
+  };
 }
 
 export async function createPatientSession(
@@ -153,19 +159,21 @@ export async function createPatientSession(
   phoneNormalized: string,
   organizationId: number,
   identity: PatientIdentityScope,
+  patientId = "",
 ): Promise<string> {
   const rawToken = newSessionToken();
   const tokenHash = await hashToken(rawToken);
   await db.prepare(
     `INSERT INTO patient_sessions
-      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, expires_at)
-     VALUES (?, ?, ?, ?, ?, datetime('now', ?))`,
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))`,
   ).bind(
     tokenHash,
     phoneNormalized,
     organizationId,
     identity.kind,
     identity.value,
+    patientId,
     `+${PATIENT_SESSION_TTL_SECONDS} seconds`,
   ).run();
   await db.prepare("DELETE FROM patient_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
@@ -178,7 +186,8 @@ export async function requirePatientSession(request: Request, db: D1Database) {
   const tokenHash = await hashToken(rawToken);
   return db.prepare(
     `SELECT phone_normalized AS phoneNormalized, organization_id AS organizationId,
-       identity_kind AS identityKind, identity_value AS identityValue
+       identity_kind AS identityKind, identity_value AS identityValue,
+       patient_id AS patientId
      FROM patient_sessions
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
        AND identity_kind IN ('dob','booking') AND identity_value != ''
@@ -188,6 +197,7 @@ export async function requirePatientSession(request: Request, db: D1Database) {
     organizationId: number;
     identityKind: "dob" | "booking";
     identityValue: string;
+    patientId: string;
   }>();
 }
 
