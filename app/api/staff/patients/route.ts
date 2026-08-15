@@ -6,12 +6,13 @@ import { dbBinding } from "../../../../lib/db";
 import {
   PatientBookingRow,
   PatientProfile,
+  buildExactPatientSummary,
   buildPatientSummaries,
   sanitizeCommunication,
   sanitizeProfile,
 } from "../../../../lib/patients";
 
-const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, service,
+const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, patient_id AS patientId, service,
   service_code AS serviceCode, equipment_id AS equipmentId, desired_date AS desiredDate,
   desired_time AS desiredTime, status, patient_category AS patientCategory,
   marketing_source AS marketingSource, protocol_status AS protocolStatus,
@@ -37,7 +38,47 @@ export async function GET(request: Request) {
     return Response.json({ error: "Реєстр пацієнтів доступний лише реєстратору або адміністратору" }, { status: 403 });
   }
 
-  const phone = normalizeUkrainianPhone(new URL(request.url).searchParams.get("phone") || "");
+  const url = new URL(request.url);
+  const rawPatientId = (url.searchParams.get("patientId") || "").trim().toLowerCase();
+  if (rawPatientId) {
+    if (!/^[0-9a-f]{32}$/.test(rawPatientId)) {
+      return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
+    }
+    const profileRow = await db.prepare(
+      `SELECT ${PROFILE_COLUMNS} FROM patient_profiles
+       WHERE organization_id = ? AND patient_id = ? LIMIT 1`
+    ).bind(orgId, rawPatientId).first<PatientProfileRow>();
+    if (!profileRow) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
+
+    const bookings = await db.prepare(
+      `SELECT ${BOOKING_COLUMNS} FROM bookings
+       WHERE organization_id = ? AND patient_id = ?
+       ORDER BY desired_date DESC, desired_time DESC`
+    ).bind(orgId, rawPatientId).all();
+    const rows = bookings.results as unknown as PatientBookingRow[];
+    const summary = buildExactPatientSummary(rows, profileRow);
+    await logSecurityEvent(db, {
+      organizationId: orgId,
+      actorEmail: member.email,
+      action: "patient_record_viewed",
+      resource: "patient",
+      targetId: rawPatientId,
+    });
+    return Response.json({
+      patient: summary,
+      patientId: rawPatientId,
+      phone: profileRow.phoneNormalized,
+      profile: profileRow,
+      bookings: bookings.results,
+      // Legacy communications are phone-scoped. Do not attach them to an exact
+      // identity until the communications table itself carries patient_id.
+      communications: [],
+      legacyCommunicationsExcluded: true,
+      staff: member,
+    }, { headers: { "cache-control": "no-store" } });
+  }
+
+  const phone = normalizeUkrainianPhone(url.searchParams.get("phone") || "");
   if (phone) {
     const [bookings, profileRow, communications] = await Promise.all([
       db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY desired_date DESC, desired_time DESC`).bind(phone, orgId).all(),
@@ -52,7 +93,7 @@ export async function GET(request: Request) {
     const [summary] = buildPatientSummaries(rows, profiles);
     // Do not persist a phone number as the audit target. Existing CRM profiles
     // have an immutable opaque id; booking-only legacy records use a booking id
-    // until an explicit patient linkage exists in a later migration.
+    // until an explicit patient linkage exists.
     const auditTarget = profileRow?.patientId || (rows[0]?.id ? `booking:${rows[0].id}` : "unlinked");
     await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_record_viewed", resource: "patient", targetId: auditTarget });
     return Response.json({ patient: summary || null, phone, profile: profileRow || null, bookings: bookings.results, communications: communications.results, staff: member }, { headers: { "cache-control": "no-store" } });
@@ -76,10 +117,38 @@ export async function PUT(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canManageBookings(member.role)) return Response.json({ error: "Картку пацієнта може змінювати лише реєстратор або адміністратор" }, { status: 403 });
-  const parsed = sanitizeProfile(await request.json());
+
+  const body = await request.json().catch(() => ({})) as Record<string, unknown>;
+  const parsed = sanitizeProfile(body);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { profile } = parsed;
+  const patientId = String(body.patientId || "").trim().toLowerCase();
 
+  if (patientId) {
+    if (!/^[0-9a-f]{32}$/.test(patientId)) {
+      return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
+    }
+    const updated = await db.prepare(
+      `UPDATE patient_profiles SET
+         phone_normalized = ?, display_name = ?, birth_year = ?, birth_date = ?,
+         email = ?, address = ?, tags = ?, notes = ?, do_not_contact = ?,
+         updated_by = ?, updated_at = CURRENT_TIMESTAMP
+       WHERE organization_id = ? AND patient_id = ?`
+    ).bind(
+      profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate,
+      profile.email, profile.address, profile.tags, profile.notes, profile.doNotContact,
+      member.email, ctx.organizationId, patientId,
+    ).run();
+    if (!updated.meta.changes) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
+    const saved = await db.prepare(
+      `SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? AND patient_id = ? LIMIT 1`
+    ).bind(ctx.organizationId, patientId).first<PatientProfileRow>();
+    if (!saved) return Response.json({ error: "Не вдалося зберегти картку пацієнта" }, { status: 500 });
+    return Response.json({ ok: true, profile: saved });
+  }
+
+  // Compatibility path for the current phone-keyed CRM UI/import workflow.
+  // It remains valid while patient_profiles still enforces tenant+phone unique.
   await db.prepare(
     `INSERT INTO patient_profiles
        (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
