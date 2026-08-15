@@ -41,6 +41,7 @@ export type DicomSeries = {
 export type DicomStudyMatch = {
   accessionNumber:string;
   studyInstanceUid:string;
+  patientId:string;
   modality:string;
   studyDatetime:string;
   seriesCount:number;
@@ -95,6 +96,13 @@ export function normalizeBaseUrl(value:string):string {
 // still accepting servers that ignore the optional limit parameter.
 export function qidoStudiesByAccessionUrl(base:string, accessionNumber:string):string {
   const query = new URLSearchParams({ AccessionNumber: accessionNumber, limit: "2" });
+  return `${normalizeBaseUrl(base)}/studies?${query.toString()}`;
+}
+
+// QIDO-RS: resolve a manually supplied StudyInstanceUID independently of any
+// client-provided AccessionNumber. The caller still verifies the returned UID.
+export function qidoStudiesByUidUrl(base:string, studyInstanceUid:string):string {
+  const query = new URLSearchParams({ StudyInstanceUID: studyInstanceUid, limit: "2" });
   return `${normalizeBaseUrl(base)}/studies?${query.toString()}`;
 }
 
@@ -154,6 +162,7 @@ export function parseQidoStudies(payload:unknown):DicomStudyMatch[] {
     return {
       accessionNumber:dicomValue(row, "00080050"),
       studyInstanceUid:dicomValue(row, "0020000D"),
+      patientId:dicomValue(row, "00100020"),
       modality:(modalities[0] || dicomValue(row, "00080060")).toUpperCase(),
       studyDatetime:dicomStudyDatetime(row),
       seriesCount:Number(dicomValue(row, "00201206")) || 0,
