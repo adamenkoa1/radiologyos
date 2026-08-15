@@ -19,7 +19,7 @@ import {
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type PatientProfile = {
-  phoneNormalized:string; displayName:string; birthYear:number;
+  patientId:string; phoneNormalized:string; displayName:string; birthYear:number;
   birthDate:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
 };
@@ -29,11 +29,12 @@ type PatientBooking = {
   protocolStatus:string; protocolNumber:string; paymentStatus:string;
   paymentAmount:number; paidAmount:number; performedAt:string;
 };
-type Communication = { id:number; channel:string; direction:string; summary:string; actor:string; createdAt:string };
+type Communication = { id:number; patientId?:string; channel:string; direction:string; summary:string; actor:string; createdAt:string };
 type PatientCard = {
-  patient:PatientSummary | null; phone:string; profile:PatientProfile | null;
+  patient:PatientSummary | null; patientId?:string; phone:string; profile:PatientProfile | null;
   bookings:PatientBooking[]; communications:Communication[];
 };
+type PatientIdentity = { patientId:string; phone:string };
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
@@ -66,13 +67,19 @@ function displayPhone(phone:string) {
 function parseTags(tags:string) {
   return tags.split(",").map((tag) => tag.trim()).filter(Boolean);
 }
+function identityKey(identity:PatientIdentity) {
+  return identity.patientId ? `id:${identity.patientId}` : `phone:${identity.phone}`;
+}
+function summaryIdentity(patient:PatientSummary):PatientIdentity {
+  return { patientId:patient.patientId || "", phone:patient.phoneNormalized };
+}
 
 export default function PatientsPage() {
   const [patients,setPatients] = useState<PatientSummary[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [segment,setSegment] = useState<PatientSegment>("all");
   const [query,setQuery] = useState("");
-  const [selectedPhone,setSelectedPhone] = useState<string | null>(null);
+  const [selected,setSelected] = useState<PatientIdentity | null>(null);
   const [card,setCard] = useState<PatientCard | null>(null);
   const [cardLoading,setCardLoading] = useState(false);
   const [creating,setCreating] = useState(false);
@@ -96,22 +103,38 @@ export default function PatientsPage() {
   }, []);
 
   useEffect(() => {
-    if (!patients.length || selectedPhone !== null) return;
-    const requested = new URLSearchParams(window.location.search).get("phone");
-    if (!requested) return;
-    const digits = requested.replace(/\D/g, "");
+    if (!patients.length || selected !== null) return;
+    const params = new URLSearchParams(window.location.search);
+    const requestedPatientId = (params.get("patientId") || "").trim().toLowerCase();
+    if (/^[0-9a-f]{32}$/.test(requestedPatientId)) {
+      const match = patients.find((item) => item.patientId === requestedPatientId);
+      void openPatient(match ? summaryIdentity(match) : { patientId:requestedPatientId, phone:"" });
+      return;
+    }
+    const requestedPhone = params.get("phone");
+    if (!requestedPhone) return;
+    const digits = requestedPhone.replace(/\D/g, "");
     const match = patients.find((item) => item.phoneNormalized === digits || item.phoneNormalized.endsWith(digits.slice(-9)));
-    if (match) void openPatient(match.phoneNormalized);
+    // Old phone deep links intentionally retain the legacy phone-wide view.
+    // This prevents an unlinked booking from silently disappearing just because
+    // a profile with the same contact phone also exists.
+    if (match) void openPatient({ patientId:"", phone:match.phoneNormalized });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [patients]);
 
-  async function openPatient(phone:string) {
-    setActionError(""); setActionSuccess(""); setCreating(false); setSelectedPhone(phone); setCard(null); setCardLoading(true);
+  async function openPatient(identity:PatientIdentity) {
+    setActionError(""); setActionSuccess(""); setCreating(false); setSelected(identity); setCard(null); setCardLoading(true);
     try {
-      const response = await fetch(`/api/staff/patients?phone=${encodeURIComponent(phone)}`, { cache:"no-store" });
+      const queryString = identity.patientId
+        ? `patientId=${encodeURIComponent(identity.patientId)}`
+        : `phone=${encodeURIComponent(identity.phone)}`;
+      const response = await fetch(`/api/staff/patients?${queryString}`, { cache:"no-store" });
       const data = await response.json() as PatientCard & { error?:string };
       if (!response.ok) { setActionError(data.error || "Не вдалося відкрити картку"); return; }
       setCard(data);
+      if (identity.patientId && data.phone && data.phone !== identity.phone) {
+        setSelected({ patientId:identity.patientId, phone:data.phone });
+      }
     } catch {
       setActionError("Помилка мережі — спробуйте ще раз");
     } finally {
@@ -120,12 +143,13 @@ export default function PatientsPage() {
   }
 
   async function saveProfile(form:HTMLFormElement) {
-    if (!card) return;
+    if (!card || !selected) return;
     setActionError(""); setActionSuccess(""); setSaving(true);
     const data = new FormData(form);
     const response = await fetch("/api/staff/patients", {
       method:"PUT", headers:{"content-type":"application/json"},
       body:JSON.stringify({
+        patientId:selected.patientId || undefined,
         phone:card.phone,
         displayName:String(data.get("displayName") || ""),
         birthDate:String(data.get("birthDate") || ""),
@@ -138,11 +162,22 @@ export default function PatientsPage() {
     });
     const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
     setSaving(false);
-    if (!response.ok || !result.ok) { setActionError(result.error || "Не вдалося зберегти картку"); return; }
-    const profile = { ...(result.profile as PatientProfile), phoneNormalized:card.phone, updatedAt:new Date().toISOString() };
-    setCard((current) => current && ({ ...current, profile }));
-    setPatients((current) => current.map((item) => item.phoneNormalized === card.phone ? {
-      ...item, name:profile.displayName || item.name, tags:profile.tags, doNotContact:!!profile.doNotContact, hasProfile:true,
+    if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося зберегти картку"); return; }
+    const profile = { ...result.profile, updatedAt:new Date().toISOString() };
+    const previousPhone = card.phone;
+    const selectedPatientId = selected.patientId;
+    setCard((current) => current && ({ ...current, patientId:profile.patientId, phone:profile.phoneNormalized, profile }));
+    setSelected((current) => current && ({ ...current, phone:profile.phoneNormalized }));
+    setPatients((current) => current.map((item) => (selectedPatientId
+      ? item.patientId === selectedPatientId
+      : item.phoneNormalized === previousPhone) ? {
+      ...item,
+      patientId:profile.patientId || item.patientId,
+      phoneNormalized:profile.phoneNormalized,
+      name:profile.displayName || item.name,
+      tags:profile.tags,
+      doNotContact:!!profile.doNotContact,
+      hasProfile:true,
     } : item));
     setActionSuccess("Картку пацієнта збережено.");
   }
@@ -169,16 +204,17 @@ export default function PatientsPage() {
     setCreating(false);
     await loadList();
     setActionSuccess("Пацієнта додано.");
-    void openPatient(result.profile.phoneNormalized);
+    void openPatient({ patientId:result.profile.patientId, phone:result.profile.phoneNormalized });
   }
 
   async function logCommunication(form:HTMLFormElement) {
-    if (!card) return;
+    if (!card || !selected) return;
     setActionError(""); setActionSuccess(""); setSaving(true);
     const data = new FormData(form);
     const response = await fetch("/api/staff/patients", {
       method:"POST", headers:{"content-type":"application/json"},
       body:JSON.stringify({
+        patientId:selected.patientId || undefined,
         phone:card.phone,
         channel:String(data.get("channel")),
         direction:String(data.get("direction")),
@@ -213,8 +249,8 @@ export default function PatientsPage() {
     setDrawerBusy(id);
     try {
       const res = await fetch("/api/staff/bookings", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
-      if (res.ok && card) await openPatient(card.phone);
-      else { const d = await res.json().catch(()=>({})) as { error?:string }; setActionError(d.error || "Не вдалося виконати дію"); }
+      if (res.ok && selected) await openPatient(selected);
+      else if (!res.ok) { const d = await res.json().catch(()=>({})) as { error?:string }; setActionError(d.error || "Не вдалося виконати дію"); }
     } finally { setDrawerBusy(null); }
   }
 
@@ -242,24 +278,27 @@ export default function PatientsPage() {
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ПІБ, телефон, тег"/>
-          {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelectedPhone(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
+          {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelected(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
           <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
           {canManage && <a className="crmExport" href="/staff/patients/import" title="Імпорт пацієнтів із CSV">↥ Імпорт із CSV</a>}
         </div>
         <div className="protocolQueueList">
-          {visible.length === 0 ? <p className="empty">Пацієнтів у цій категорії немає.</p> : visible.map((item)=><button
-            key={item.phoneNormalized}
-            className={`protocolQueueItem${selectedPhone===item.phoneNormalized?" active":""}`}
-            onClick={()=>void openPatient(item.phoneNormalized)}
-          >
-            <span className="crmItemTop">
-              <span className={`protocolTag ${item.upcoming?"in_progress":item.completed?"issued":""}`}>{item.visits} візит{item.visits===1?"":item.visits<5?"и":"ів"}</span>
-              {item.doNotContact && <span className="crmDnc">Не турбувати</span>}
-            </span>
-            <b>{item.name || "Без імені"}</b>
-            <small>{displayPhone(item.phoneNormalized)} · {categoryLabels[item.category] || item.category}</small>
-            <small>Останній візит: {formatDate(item.lastVisit)}{item.dueTotal>0?` · борг ${item.dueTotal} грн`:""}</small>
-          </button>)}
+          {visible.length === 0 ? <p className="empty">Пацієнтів у цій категорії немає.</p> : visible.map((item)=>{
+            const identity = summaryIdentity(item);
+            return <button
+              key={identityKey(identity)}
+              className={`protocolQueueItem${selected && identityKey(selected)===identityKey(identity)?" active":""}`}
+              onClick={()=>void openPatient(identity)}
+            >
+              <span className="crmItemTop">
+                <span className={`protocolTag ${item.upcoming?"in_progress":item.completed?"issued":""}`}>{item.visits} візит{item.visits===1?"":item.visits<5?"и":"ів"}</span>
+                {item.doNotContact && <span className="crmDnc">Не турбувати</span>}
+              </span>
+              <b>{item.name || "Без імені"}</b>
+              <small>{displayPhone(item.phoneNormalized)} · {categoryLabels[item.category] || item.category}</small>
+              <small>Останній візит: {formatDate(item.lastVisit)}{item.dueTotal>0?` · борг ${item.dueTotal} грн`:""}</small>
+            </button>;
+          })}
         </div>
       </aside>
 
@@ -287,7 +326,7 @@ export default function PatientsPage() {
           <span aria-hidden="true">⏳</span>
           <b>Завантаження картки…</b>
           <p>Збираємо історію візитів, протоколів, оплат і комунікацій пацієнта.</p>
-        </div> : !card || !selectedPhone ? <div className="protocolPlaceholder">
+        </div> : !card || !selected ? <div className="protocolPlaceholder">
           <span aria-hidden="true">☺</span>
           <b>Оберіть пацієнта зі списку</b>
           <p>Картка з історією візитів, протоколів, оплат і комунікацій відкриється тут. Або натисніть «Додати пацієнта», щоб створити картку вручну.</p>
