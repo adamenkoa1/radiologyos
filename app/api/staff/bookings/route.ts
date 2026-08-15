@@ -150,6 +150,11 @@ export async function GET(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   const scope = bookingScope(member, ctx.organizationId);
+  const includeFinancialDetails = canManageFinance(member.role);
+  const financeEventScope = includeFinancialDetails
+    ? ""
+    : " AND action NOT IN ('finance_updated','payment_confirmed','payment_refunded')";
+  const notificationRecipientColumn = includeFinancialDetails ? ", recipient" : "";
 
   const [result, events, notes, staffOptions, notifications] = await Promise.all([
     db.prepare(
@@ -174,7 +179,7 @@ export async function GET(request: Request) {
     db.prepare(
       `SELECT id, booking_id AS bookingId, action, details, actor, created_at AS createdAt
        FROM booking_events
-       WHERE organization_id = ? AND booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
+       WHERE organization_id = ? AND booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})${financeEventScope}
        ORDER BY created_at DESC LIMIT 1000`
     ).bind(ctx.organizationId, ...scope.values).all(),
     db.prepare(
@@ -190,7 +195,7 @@ export async function GET(request: Request) {
        ORDER BY m.role, s.display_name, s.email`
     ).bind(ctx.organizationId).all(),
     db.prepare(
-      `SELECT id, booking_id AS bookingId, kind, channel, recipient, status, error,
+      `SELECT id, booking_id AS bookingId, kind, channel${notificationRecipientColumn}, status, error,
         created_at AS createdAt, sent_at AS sentAt
        FROM patient_notifications
        WHERE organization_id = ? AND booking_id IN (SELECT id FROM bookings WHERE ${scope.sql})
