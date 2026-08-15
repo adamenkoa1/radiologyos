@@ -121,7 +121,7 @@ export default function StaffBookPage() {
     event.preventDefault();
     setStatus("saving"); setError(""); setCode("");
     const data = new FormData(event.currentTarget);
-    const res = await fetch("/api/staff/bookings", {
+    const res = await fetch(patientId ? "/api/staff/bookings/exact" : "/api/staff/bookings", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({
         ...(patientId ? { patientId } : {}),
