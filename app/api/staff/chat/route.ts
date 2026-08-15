@@ -101,9 +101,6 @@ export async function GET(request: Request) {
          WHERE organization_id = ? AND patient_id = ? LIMIT 1`
       ).bind(orgId, patientId).first<{ name:string; phone:string; doNotContact:number }>();
 
-      // Exact patient identity is tenant-scoped and authoritative. If the
-      // patient does not exist in this organization, fail closed immediately;
-      // never consult communication rows or phone compatibility fallback.
       if (!profile) {
         return Response.json({ error:"Діалог пацієнта не знайдено" }, { status:404, headers:{ "cache-control":"no-store" } });
       }
@@ -163,7 +160,10 @@ export async function GET(request: Request) {
         messages:rows.results,
         issues:issues.results,
         availableReplyChannels:
-          orgId === PRIMARY_ORGANIZATION_ID && !!profile.phone && Number(profile.doNotContact || 0) !== 1
+          orgId === PRIMARY_ORGANIZATION_ID
+          && !!profile.phone
+          && Number(profile.doNotContact || 0) !== 1
+          && Number(shared?.count || 0) <= 1
             ? ["whatsapp"] : [],
         linkedTelegram:Number(telegram?.linked || 0) === 1,
         staff:member,
@@ -377,7 +377,7 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
   const member = ctx.member;
   if (!canViewPatientRegistry(member.role)) {
-    return Response.json({ error:"Відповідати може реєстратор або адміністратор" }, { status:403 });
+    return Response.json({ error:"Відповідати може реєстратор або адміністратору" }, { status:403 });
   }
   if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
     return Response.json({ error:"Вихідний WhatsApp ще не налаштований для цієї організації" }, { status:403 });
@@ -411,6 +411,15 @@ export async function POST(request: Request) {
     }
     if (Number(profile.doNotContact || 0) === 1) {
       return Response.json({ error:"Для пацієнта встановлено заборону на контакт" }, { status:409 });
+    }
+    const shared = await db.prepare(
+      `SELECT COUNT(*) AS count FROM patient_profiles
+       WHERE organization_id = ? AND phone_normalized = ?`
+    ).bind(ctx.organizationId, phone).first<{ count:number }>();
+    if (Number(shared?.count || 0) > 1) {
+      return Response.json({
+        error:"Цей номер є спільним контактом кількох пацієнтів. Ручна відправка медичної інформації заблокована.",
+      }, { status:409 });
     }
     storedPatientId = patientId;
   } else {
