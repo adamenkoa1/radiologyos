@@ -19,10 +19,12 @@ const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, se
   payment_amount AS paymentAmount, paid_amount AS paidAmount,
   performed_at AS performedAt, created_at AS createdAt`;
 
-const PROFILE_COLUMNS = `phone_normalized AS phoneNormalized, display_name AS displayName,
+const PROFILE_COLUMNS = `patient_id AS patientId, phone_normalized AS phoneNormalized, display_name AS displayName,
   birth_year AS birthYear, birth_date AS birthDate, email, address,
   tags, notes, do_not_contact AS doNotContact,
   updated_by AS updatedBy, updated_at AS updatedAt`;
+
+type PatientProfileRow = PatientProfile & { patientId:string };
 
 export async function GET(request: Request) {
   const db = dbBinding();
@@ -39,7 +41,7 @@ export async function GET(request: Request) {
   if (phone) {
     const [bookings, profileRow, communications] = await Promise.all([
       db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY desired_date DESC, desired_time DESC`).bind(phone, orgId).all(),
-      db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ? LIMIT 1`).bind(phone, orgId).first<PatientProfile>(),
+      db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ? LIMIT 1`).bind(phone, orgId).first<PatientProfileRow>(),
       db.prepare(`SELECT id, channel, direction, summary, actor, created_at AS createdAt
          FROM patient_communications WHERE phone_normalized = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 200`).bind(phone, orgId).all(),
     ]);
@@ -48,7 +50,11 @@ export async function GET(request: Request) {
     const profiles = new Map<string, PatientProfile>();
     if (profileRow) profiles.set(phone, profileRow);
     const [summary] = buildPatientSummaries(rows, profiles);
-    await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_record_viewed", resource: "patient", targetId: phone });
+    // Do not persist a phone number as the audit target. Existing CRM profiles
+    // have an immutable opaque id; booking-only legacy records use a booking id
+    // until an explicit patient linkage exists in a later migration.
+    const auditTarget = profileRow?.patientId || (rows[0]?.id ? `booking:${rows[0].id}` : "unlinked");
+    await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_record_viewed", resource: "patient", targetId: auditTarget });
     return Response.json({ patient: summary || null, phone, profile: profileRow || null, bookings: bookings.results, communications: communications.results, staff: member }, { headers: { "cache-control": "no-store" } });
   }
 
@@ -57,7 +63,7 @@ export async function GET(request: Request) {
     db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? ORDER BY updated_at DESC LIMIT 5000`).bind(orgId).all(),
   ]);
   const profiles = new Map<string, PatientProfile>();
-  for (const row of profileRows.results as unknown as PatientProfile[]) profiles.set(row.phoneNormalized, row);
+  for (const row of profileRows.results as unknown as PatientProfileRow[]) profiles.set(row.phoneNormalized, row);
   const patients = buildPatientSummaries(bookings.results as unknown as PatientBookingRow[], profiles);
   await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_registry_viewed", resource: "patient_registry", details: { rows: patients.length } });
   return Response.json({ patients, staff: member }, { headers: { "cache-control": "no-store" } });
@@ -84,7 +90,12 @@ export async function PUT(request: Request) {
        tags = excluded.tags, notes = excluded.notes, do_not_contact = excluded.do_not_contact,
        updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
   ).bind(ctx.organizationId, profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate, profile.email, profile.address, profile.tags, profile.notes, profile.doNotContact, member.email).run();
-  return Response.json({ ok: true, profile: { ...profile, updatedBy: member.email } });
+
+  const saved = await db.prepare(
+    `SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? AND phone_normalized = ? LIMIT 1`
+  ).bind(ctx.organizationId, profile.phoneNormalized).first<PatientProfileRow>();
+  if (!saved) return Response.json({ error: "Не вдалося зберегти картку пацієнта" }, { status: 500 });
+  return Response.json({ ok: true, profile: saved });
 }
 
 export async function POST(request: Request) {
