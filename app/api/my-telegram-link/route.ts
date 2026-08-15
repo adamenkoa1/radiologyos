@@ -4,7 +4,10 @@
 // Telegram bot config is still legacy-global and belongs to org 1, so secondary
 // tenants must not receive a deep-link until bot configuration is tenantized.
 
-import { requirePatientSession } from "../../../lib/patient-auth";
+import {
+  patientSessionScopeIsUnambiguous,
+  requirePatientSession,
+} from "../../../lib/patient-auth";
 import { createTelegramLinkToken } from "../../../lib/telegram-link";
 import { telegramBotUsername } from "../../../lib/telegram";
 import { isRateLimited } from "../../../lib/rate-limit";
@@ -17,6 +20,12 @@ export async function POST(request: Request) {
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
   const session = await requirePatientSession(request, db);
   if (!session) return Response.json({ error: "Сесію не підтверджено" }, { status: 401 });
+  if (!await patientSessionScopeIsUnambiguous(db, session)) {
+    return Response.json(
+      { error: "За цим номером і датою народження знайдено кілька записів. Увійдіть за кодом конкретної заявки." },
+      { status: 409, headers: { "cache-control": "no-store" } },
+    );
+  }
   if (session.organizationId !== PRIMARY_ORGANIZATION_ID) {
     return Response.json(
       { error: "Telegram-канал ще не налаштований відділенням", botConfigured: false },
@@ -38,5 +47,5 @@ export async function POST(request: Request) {
     { kind:session.identityKind, value:session.identityValue },
   );
   const url = `https://t.me/${username}?start=${token}`;
-  return Response.json({ url }, { headers: { "cache-control": "no-store" } });
+  return Response.json({ url }, { headers: { "cache-control":"no-store" } });
 }
