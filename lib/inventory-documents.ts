@@ -229,6 +229,29 @@ export async function updateInventoryDocumentDraft(
   return { ok:true as const,document:await getInventoryDocument(db,input.organizationId,input.documentId) };
 }
 
+async function cleanupUnpostedReceiptLots(
+  db:D1Database,
+  organizationId:number,
+  documentId:number,
+  created:Array<{lineId:number;lotId:number}>,
+) {
+  if (created.length === 0) return;
+  const current = await getInventoryDocument(db,organizationId,documentId).catch(()=>null);
+  if (!current || current.document.state !== "draft") return;
+  for (const entry of created) {
+    await db.prepare(
+      `UPDATE inventory_document_lines SET lot_id=NULL
+       WHERE organization_id=? AND document_id=? AND id=? AND lot_id=?`
+    ).bind(organizationId,documentId,entry.lineId,entry.lotId).run().catch(()=>{});
+    await db.prepare(
+      `DELETE FROM inventory_lots
+       WHERE organization_id=? AND id=?
+         AND NOT EXISTS (SELECT 1 FROM inventory_movements WHERE organization_id=? AND lot_id=?)
+         AND NOT EXISTS (SELECT 1 FROM inventory_document_lines WHERE organization_id=? AND lot_id=?)`
+    ).bind(organizationId,entry.lotId,organizationId,entry.lotId,organizationId,entry.lotId).run().catch(()=>{});
+  }
+}
+
 export async function postInventoryDocument(
   db:D1Database,
   input:{organizationId:number;documentId:number;actorEmail:string},
@@ -257,6 +280,7 @@ export async function postInventoryDocument(
   }
 
   const lines = [...current.lines];
+  const createdReceiptLots:Array<{lineId:number;lotId:number}> = [];
   if (current.document.documentType === "inventory_receipt") {
     for (const line of lines) {
       if (line.lotId) continue;
@@ -265,12 +289,16 @@ export async function postInventoryDocument(
          VALUES (?,?,?,?,?)`
       ).bind(input.organizationId,line.itemId,line.lotNumber,line.expiresOn,line.supplier).run();
       const lotId = Number(lotResult.meta.last_row_id || 0);
-      if (!lotId) throw new Error("inventory_lot_create_failed");
+      if (!lotId) {
+        await cleanupUnpostedReceiptLots(db,input.organizationId,input.documentId,createdReceiptLots);
+        throw new Error("inventory_lot_create_failed");
+      }
       await db.prepare(
         `UPDATE inventory_document_lines SET lot_id=?
          WHERE organization_id=? AND document_id=? AND id=?`
       ).bind(lotId,input.organizationId,input.documentId,line.id).run();
       line.lotId = lotId;
+      createdReceiptLots.push({lineId:line.id,lotId});
     }
   }
 
@@ -295,9 +323,14 @@ export async function postInventoryDocument(
   try {
     await db.batch(statements);
   } catch (error) {
-    if (String(error).toLowerCase().includes("unique")) {
+    const message = String(error).toLowerCase();
+    if (message.includes("unique")) {
       const again = await getInventoryDocument(db,input.organizationId,input.documentId);
       if (again?.document.state === "posted") return { ok:true as const,idempotent:true,document:again };
+    }
+    await cleanupUnpostedReceiptLots(db,input.organizationId,input.documentId,createdReceiptLots);
+    if (message.includes("inventory_negative_stock")) {
+      return { ok:false as const,status:409,error:"Недостатній залишок у партії для проведення документа" };
     }
     throw error;
   }
