@@ -204,18 +204,17 @@ export async function PUT(request: Request) {
     if (!sameClinicalDocument(existing, document)) {
       return Response.json({ error: "Підписаний протокол незмінний. Оновіть сторінку перед видачею." }, { status: 409 });
     }
+    let issued;
     try {
-      await db.batch([
-        db.prepare(
-          `UPDATE protocols SET status = 'issued', updated_by = ?, updated_at = CURRENT_TIMESTAMP
-           WHERE booking_id = ? AND organization_id = ? AND status = 'signed' AND version = ?`
-        ).bind(member.email, bookingId, ctx.organizationId, existing.version),
-        db.prepare(
-          "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_issued', ?, ?)"
-        ).bind(ctx.organizationId, bookingId, `signed v${existing.signedVersion}`, member.email),
-      ]);
+      issued = await db.prepare(
+        `UPDATE protocols SET status = 'issued', updated_by = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE booking_id = ? AND organization_id = ? AND status = 'signed' AND version = ?`
+      ).bind(member.email, bookingId, ctx.organizationId, existing.version).run();
     } catch {
       return Response.json({ error: "Не вдалося видати підписаний протокол. Оновіть сторінку." }, { status: 409 });
+    }
+    if (Number(issued.meta.changes || 0) !== 1) {
+      return Response.json({ error: "Статус протоколу змінився. Оновіть сторінку." }, { status: 409 });
     }
     const state = await db.prepare(
       `SELECT b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
