@@ -4,7 +4,8 @@ import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_CO
 // installations keep working. Tenant authorization is derived from
 // `memberships.role` and may use a narrower organization-only role.
 export type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
-export type AccessRole = StaffRole | "organization_admin";
+export type SystemRole = "admin" | "organization_admin";
+export type AccessRole = StaffRole | SystemRole;
 
 // Resolve the signed-in staff member from the session cookie. Returns null for
 // anonymous or expired sessions.
