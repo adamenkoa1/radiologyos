@@ -45,7 +45,6 @@ jobs:
         run: npm run build
 
       - name: Diagnose legacy regression tests
-        id: legacy_diag
         shell: bash
         run: |
           set +e
@@ -59,6 +58,7 @@ jobs:
                 tests/patient-add.test.mjs|\
                 tests/patient-crm.test.mjs|\
                 tests/patient-exact-id-api.behavior.test.mjs|\
+                tests/patient-id-foundation.behavior.test.mjs|\
                 tests/patient-import-guard.test.mjs|\
                 tests/patient-import.test.mjs|\
                 tests/patient-reminders.test.mjs|\
@@ -68,6 +68,7 @@ jobs:
             done
           )
 
+          failed=0
           for g in 0 1 2 3 4 5 6 7; do
             group=()
             i=0
@@ -75,64 +76,22 @@ jobs:
               if (( i % 8 == g )); then group+=("$f"); fi
               ((i++))
             done
-            if (( ${#group[@]} == 0 )); then
-              rc=0
-            else
-              node --experimental-strip-types --test "${group[@]}"
-              rc=$?
-            fi
-            echo "g${g}=${rc}" >> "$GITHUB_OUTPUT"
-          done
-          exit 0
+            (( ${#group[@]} == 0 )) && continue
 
-      - name: LEGACY G0 FAIL
-        if: steps.legacy_diag.outputs.g0 != '0'
-        run: echo "legacy group 0 failed"
-      - name: LEGACY G0 PASS
-        if: steps.legacy_diag.outputs.g0 == '0'
-        run: echo "legacy group 0 passed"
-      - name: LEGACY G1 FAIL
-        if: steps.legacy_diag.outputs.g1 != '0'
-        run: echo "legacy group 1 failed"
-      - name: LEGACY G1 PASS
-        if: steps.legacy_diag.outputs.g1 == '0'
-        run: echo "legacy group 1 passed"
-      - name: LEGACY G2 FAIL
-        if: steps.legacy_diag.outputs.g2 != '0'
-        run: echo "legacy group 2 failed"
-      - name: LEGACY G2 PASS
-        if: steps.legacy_diag.outputs.g2 == '0'
-        run: echo "legacy group 2 passed"
-      - name: LEGACY G3 FAIL
-        if: steps.legacy_diag.outputs.g3 != '0'
-        run: echo "legacy group 3 failed"
-      - name: LEGACY G3 PASS
-        if: steps.legacy_diag.outputs.g3 == '0'
-        run: echo "legacy group 3 passed"
-      - name: LEGACY G4 FAIL
-        if: steps.legacy_diag.outputs.g4 != '0'
-        run: echo "legacy group 4 failed"
-      - name: LEGACY G4 PASS
-        if: steps.legacy_diag.outputs.g4 == '0'
-        run: echo "legacy group 4 passed"
-      - name: LEGACY G5 FAIL
-        if: steps.legacy_diag.outputs.g5 != '0'
-        run: echo "legacy group 5 failed"
-      - name: LEGACY G5 PASS
-        if: steps.legacy_diag.outputs.g5 == '0'
-        run: echo "legacy group 5 passed"
-      - name: LEGACY G6 FAIL
-        if: steps.legacy_diag.outputs.g6 != '0'
-        run: echo "legacy group 6 failed"
-      - name: LEGACY G6 PASS
-        if: steps.legacy_diag.outputs.g6 == '0'
-        run: echo "legacy group 6 passed"
-      - name: LEGACY G7 FAIL
-        if: steps.legacy_diag.outputs.g7 != '0'
-        run: echo "legacy group 7 failed"
-      - name: LEGACY G7 PASS
-        if: steps.legacy_diag.outputs.g7 == '0'
-        run: echo "legacy group 7 passed"
+            node --experimental-strip-types --test "${group[@]}" >/tmp/legacy-group.log 2>&1
+            group_rc=$?
+            if (( group_rc != 0 )); then
+              for f in "${group[@]}"; do
+                node --experimental-strip-types --test "$f" >/tmp/legacy-file.log 2>&1
+                file_rc=$?
+                if (( file_rc != 0 )); then
+                  echo "::error file=$f,title=Legacy regression::$f failed under the shared-phone identity model"
+                  failed=1
+                fi
+              done
+            fi
+          done
+          exit "$failed"
 
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
