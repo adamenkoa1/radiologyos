@@ -208,6 +208,8 @@ Payment {
 }
 ```
 
+`Payment` залишається сумісною медичною/read-model сутністю на перехідному етапі. Господарським джерелом істини цільової моделі є бізнес-документ `payment` та його рухи в `cash` і `patient_settlements`.
+
 ## ContrastChecklist
 
 ```ts
@@ -242,6 +244,8 @@ InventoryItem {
 }
 ```
 
+Поле `quantity` є сумісною read-model на перехідному етапі. Цільове джерело залишку — рухи регістру `inventory_balance`.
+
 ## EquipmentEvent
 
 ```ts
@@ -255,6 +259,94 @@ EquipmentEvent {
   responsibleId?
 }
 ```
+
+## BusinessDocument
+
+Усі господарські події клініки у BAS-подібному ядрі мають спільний документний lifecycle.
+
+```ts
+BusinessDocument {
+  id
+  organizationId
+  type: patient_order | appointment | service_delivery | payment | refund |
+        inventory_receipt | inventory_writeoff | inventory_transfer |
+        inventory_count | imaging_study | result_delivery
+  number
+  occurredAt
+  state: draft | posted | reversed | cancelled
+  createdBy
+  createdAt
+  postedBy?
+  postedAt?
+  reversedDocumentId?
+}
+```
+
+Після `posted` господарські факти документа не редагуються тихо. Виправлення робиться через коригування/сторно з явним посиланням на першоджерело. Проведення документа створює tenant-scoped рухи в регістрах.
+
+## RegisterMovement
+
+```ts
+RegisterMovement {
+  id
+  organizationId
+  register
+  documentId
+  occurredAt
+  dimensions
+  resources
+}
+```
+
+Канонічні регістри:
+
+- `patient_settlements`;
+- `cash`;
+- `revenue`;
+- `expenses`;
+- `inventory_balance`;
+- `inventory_reservations`;
+- `services_delivered`;
+- `equipment_load`;
+- `staff_output`;
+- `studies_performed`;
+- `receivables`.
+
+Рух без документа-реєстратора не допускається. Повторне проведення не повинно дублювати рухи.
+
+## PrintedFormDefinition
+
+```ts
+PrintedFormDefinition {
+  id
+  organizationId
+  formType
+  documentType
+  templateVersion
+  title
+  active
+}
+```
+
+Типові форми: рахунок, квитанція, акт наданих послуг, направлення, протокол, результат, складські форми та службові форми.
+
+## PrintedFormSnapshot
+
+```ts
+PrintedFormSnapshot {
+  id
+  organizationId
+  documentId
+  formDefinitionId
+  templateVersion
+  generatedAt
+  generatedBy
+  storageKey
+  sha256
+}
+```
+
+Snapshot зберігає, якою саме версією шаблону був сформований документ. Історичний повторний друк не повинен непомітно підміняти стару форму поточною версією шаблону.
 
 ## AuditEvent
 
