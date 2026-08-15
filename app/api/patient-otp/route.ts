@@ -18,6 +18,7 @@ import { dbBinding } from "../../../lib/db";
 
 const PURPOSE = "cabinet_login";
 const PHONE_REQUEST_LIMIT = 5;
+const PRIMARY_ORGANIZATION_ID = 1;
 
 type ProvenPatientIdentity = {
   organizationId: number;
@@ -26,6 +27,18 @@ type ProvenPatientIdentity = {
 
 function maskedPhone(phoneNormalized: string): string {
   return phoneNormalized ? `***${phoneNormalized.slice(-4)}` : "";
+}
+
+function opaqueChallengeResponse() {
+  return Response.json(
+    {
+      ok: true,
+      challengeId: newSessionToken(),
+      expiresIn: 300,
+      message: "Якщо дані збігаються із записом, код підтвердження надіслано.",
+    },
+    { status: 202, headers: { "cache-control": "no-store" } },
+  );
 }
 
 async function provePatientIdentity(
@@ -59,6 +72,11 @@ async function provePatientIdentity(
 // deliver a possession challenge. Unknown identities receive the same neutral
 // response shape and never get a session/challenge row. The proof scope is
 // persisted with the challenge and later copied into the patient session.
+//
+// SMS gateway storage is still legacy-global and belongs to org 1. A valid
+// secondary-tenant identity therefore follows the SAME opaque fake-challenge
+// path as an unknown identity: no DB challenge and no SMS. This avoids turning
+// the temporary org1-only delivery boundary into a patient-enumeration oracle.
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
@@ -92,19 +110,12 @@ export async function POST(request: Request) {
   }
 
   const proof = await provePatientIdentity(db, phoneNormalized, body);
-  if (!proof) {
+  if (!proof || proof.organizationId !== PRIMARY_ORGANIZATION_ID) {
     // Burn similar local crypto work and return an opaque fake challenge id.
-    // No database row exists, so verification can never succeed.
+    // No database row exists, so verification can never succeed. Secondary
+    // tenant identities deliberately share this response to prevent enumeration.
     await hashPassword("000000");
-    return Response.json(
-      {
-        ok: true,
-        challengeId: newSessionToken(),
-        expiresIn: 300,
-        message: "Якщо дані збігаються із записом, код підтвердження надіслано.",
-      },
-      { status: 202, headers: { "cache-control": "no-store" } },
-    );
+    return opaqueChallengeResponse();
   }
 
   const recent = await db.prepare(

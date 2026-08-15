@@ -1,6 +1,7 @@
 // Єдиний контакт-центр пацієнтів. Історія береться з patient_communications
-// незалежно від каналу; ручні відповіді поки відправляються через уже
-// налаштований WhatsApp-шлюз. Усі читання та записи tenant-scoped.
+// незалежно від каналу; ручні відповіді поки відправляються через legacy-global
+// WhatsApp-шлюз org 1. Усі читання та записи tenant-scoped; secondary tenants
+// можуть читати свою історію, але не використовувати глобальний шлюз для reply.
 
 import { canViewPatientRegistry } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
@@ -9,6 +10,7 @@ import { sendWhatsApp } from "../../../../lib/whatsapp";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
 
+const PRIMARY_ORGANIZATION_ID = 1;
 const CHANNELS = new Set(["whatsapp", "telegram", "sms", "email"]);
 
 function channelFilter(request: Request): string {
@@ -44,15 +46,18 @@ export async function GET(request: Request) {
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(phone, orgId).all();
 
+    // Use ordinary positional placeholders here. Node's SQLite test runtime and
+    // D1 both accept them reliably; repeated numbered ?1/?2 parameters in this
+    // scalar-subquery shape trigger SQLITE_RANGE in node:sqlite.
     const patient = await db.prepare(
       `SELECT COALESCE(
-         (SELECT display_name FROM patient_profiles WHERE phone_normalized = ?1 AND organization_id = ?2),
-         (SELECT name FROM bookings WHERE phone_normalized = ?1 AND organization_id = ?2 ORDER BY id DESC LIMIT 1), '') AS name,
+         (SELECT display_name FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ?),
+         (SELECT name FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY id DESC LIMIT 1), '') AS name,
        CASE WHEN EXISTS (
          SELECT 1 FROM patient_telegram_identities ti
-         WHERE ti.phone_normalized = ?1 AND ti.organization_id = ?2 AND ti.telegram_chat_id != ''
+         WHERE ti.phone_normalized = ? AND ti.organization_id = ? AND ti.telegram_chat_id != ''
        ) THEN 1 ELSE 0 END AS telegramLinked`
-    ).bind(phone, orgId).first<{ name: string; telegramLinked: number }>();
+    ).bind(phone, orgId, phone, orgId, phone, orgId).first<{ name: string; telegramLinked: number }>();
 
     const issues = await db.prepare(
       `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
@@ -76,7 +81,7 @@ export async function GET(request: Request) {
       name: patient?.name || "",
       messages: rows.results,
       issues: issues.results,
-      availableReplyChannels: ["whatsapp"],
+      availableReplyChannels: orgId === PRIMARY_ORGANIZATION_ID ? ["whatsapp"] : [],
       linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
@@ -142,6 +147,9 @@ export async function POST(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   if (!canViewPatientRegistry(member.role)) return Response.json({ error: "Відповідати може реєстратор або адміністратор" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
+    return Response.json({ error: "Вихідний WhatsApp ще не налаштований для цієї організації" }, { status: 403 });
+  }
 
   const body = await request.json().catch(() => ({})) as { phone?: string; text?: string; channel?: string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
