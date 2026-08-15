@@ -1,7 +1,7 @@
 -- Telegram delivery contains patient-specific appointment information, so an
 -- exact booking -> patient link must never fall back to phone + DOB ownership.
 -- Carry immutable patient_id through short-lived link tokens and persisted
--- Telegram identities. Existing links predate this proof and are cleared rather
+-- Telegram identities. Existing links predate this proof and are removed rather
 -- than guessed; patients can reconnect from a freshly verified cabinet session.
 
 ALTER TABLE `telegram_link_tokens` ADD COLUMN `patient_id` text NOT NULL DEFAULT '';
@@ -17,12 +17,11 @@ ON `patient_telegram_identities` (`organization_id`, `patient_id`, `updated_at`)
 --> statement-breakpoint
 
 -- Old tokens/links cannot prove immutable ownership. Fail closed instead of
--- attributing a family-phone/DOB identity to a person retroactively.
+-- attributing a family-phone/DOB identity to a person retroactively. Remove the
+-- identity rows too so a fresh exact link does not collide with legacy scope.
 DELETE FROM `telegram_link_tokens`;
 --> statement-breakpoint
-UPDATE `patient_telegram_identities`
-SET `telegram_chat_id` = '', `updated_at` = CURRENT_TIMESTAMP
-WHERE `telegram_chat_id` != '';
+DELETE FROM `patient_telegram_identities`;
 --> statement-breakpoint
 
 CREATE TRIGGER IF NOT EXISTS `telegram_link_patient_link_insert`
