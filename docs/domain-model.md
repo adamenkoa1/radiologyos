@@ -194,6 +194,8 @@ ImagingStudy {
 
 Зв'язок із PACS належить тому самому tenant, що й заявка: `(bookingId, organizationId)` перевіряється на рівні D1. Непорожній `StudyInstanceUID` може бути прив'язаний лише до однієї заявки в межах однієї організації; різні організації не пов'язуються цим обмеженням між собою. Налаштування PACS також tenant-scoped і не можуть посилатися на неіснуючу організацію.
 
+`ImagingStudy` — виключно DICOM/PACS-сутність. Господарський документ, який фіксує факт виконання дослідження для облікових рухів, має окремий тип `study_performance`.
+
 ## Payment
 
 ```ts
@@ -270,7 +272,7 @@ BusinessDocument {
   organizationId
   type: patient_order | appointment | service_delivery | payment | refund |
         inventory_receipt | inventory_writeoff | inventory_transfer |
-        inventory_count | imaging_study | result_delivery
+        inventory_count | study_performance | result_delivery
   number
   occurredAt
   state: draft | posted | reversed | cancelled
