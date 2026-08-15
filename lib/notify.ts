@@ -87,11 +87,22 @@ async function record(
     const label = kind === "confirmed" ? "Автонагадування (підтвердження)"
       : kind === "rescheduled" ? "Автонагадування (перенесення)"
         : "Повідомлення персоналу";
+    // Communication history follows the booking's explicit patient_id. A
+    // legacy booking stays patient_id='' and is never assigned to a profile by
+    // phone as a side effect of sending a message.
     await db.prepare(
       `INSERT INTO patient_communications
-         (organization_id, phone_normalized, channel, direction, summary, actor)
-       VALUES (?, ?, ?, 'outbound', ?, 'system')`
-    ).bind(organizationId, booking.phoneNormalized, channel, `${label}: ${body}`.slice(0, 500)).run();
+         (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
+       SELECT ?, patient_id, ?, ?, 'outbound', ?, 'system'
+       FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1`
+    ).bind(
+      organizationId,
+      booking.phoneNormalized,
+      channel,
+      `${label}: ${body}`.slice(0, 500),
+      organizationId,
+      booking.id,
+    ).run();
   }
 }
 
@@ -100,10 +111,27 @@ async function patientMessagingProfile(
   organizationId: number,
   bookingId: number,
   phoneNormalized: string,
-): Promise<{ dnc: number; tg: string } | null> {
+): Promise<{ dnc: number; ambiguous: number; tg: string } | null> {
   if (!phoneNormalized || !organizationId || !bookingId) return null;
   return db.prepare(
-    `SELECT COALESCE(p.do_not_contact, 0) AS dnc,
+    `SELECT
+       CASE
+         WHEN b.patient_id != '' THEN COALESCE((
+           SELECT p.do_not_contact FROM patient_profiles p
+           WHERE p.organization_id = b.organization_id
+             AND p.patient_id = b.patient_id
+           LIMIT 1
+         ), 0)
+         ELSE 0
+       END AS dnc,
+       CASE
+         WHEN b.patient_id = '' AND EXISTS (
+           SELECT 1 FROM patient_profiles p
+           WHERE p.organization_id = b.organization_id
+             AND p.phone_normalized = b.phone_normalized
+         ) THEN 1
+         ELSE 0
+       END AS ambiguous,
        COALESCE((
          SELECT ti.telegram_chat_id
          FROM patient_telegram_identities ti
@@ -118,11 +146,15 @@ async function patientMessagingProfile(
          LIMIT 1
        ), '') AS tg
      FROM bookings b
-     LEFT JOIN patient_profiles p
-       ON p.organization_id = b.organization_id AND p.phone_normalized = b.phone_normalized
      WHERE b.organization_id = ? AND b.id = ? AND b.phone_normalized = ?
      LIMIT 1`
-  ).bind(organizationId, bookingId, phoneNormalized).first<{ dnc: number; tg: string }>().catch(() => null);
+  ).bind(organizationId, bookingId, phoneNormalized).first<{ dnc: number; ambiguous: number; tg: string }>().catch(() => null);
+}
+
+function messagingSkipReason(profile: { dnc:number; ambiguous:number } | null): string {
+  if (profile?.dnc) return "Пацієнт у списку «не турбувати»";
+  if (profile?.ambiguous) return "Неприв’язаний запис має неоднозначну CRM-ідентичність";
+  return "";
 }
 
 // Ставить нагадування в чергу і намагається відправити наявними каналами.
@@ -152,8 +184,9 @@ export async function sendPatientReminder(
   let telegramChatId = "";
   if (booking.phoneNormalized) {
     const profile = await patientMessagingProfile(db, organizationId, booking.id, booking.phoneNormalized);
-    if (profile?.dnc) {
-      await record(db, organizationId, booking, kind, "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
+    const skipReason = messagingSkipReason(profile);
+    if (skipReason) {
+      await record(db, organizationId, booking, kind, "sms", booking.phone, body, "skipped", skipReason);
       summary.skipped += 1;
       return summary;
     }
@@ -243,8 +276,9 @@ export async function sendPatientMessage(
   let telegramChatId = "";
   if (booking.phoneNormalized) {
     const profile = await patientMessagingProfile(db, organizationId, booking.id, booking.phoneNormalized);
-    if (profile?.dnc) {
-      await record(db, organizationId, booking, "custom", "sms", booking.phone, body, "skipped", "Пацієнт у списку «не турбувати»");
+    const skipReason = messagingSkipReason(profile);
+    if (skipReason) {
+      await record(db, organizationId, booking, "custom", "sms", booking.phone, body, "skipped", skipReason);
       summary.skipped += 1;
       return summary;
     }
