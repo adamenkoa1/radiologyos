@@ -8,7 +8,6 @@ import {
   requirePatientSession,
   verifyPatientOtpChallenge,
 } from "../lib/patient-auth.ts";
-import { provePatientIdentity } from "../app/api/patient-otp/route.ts";
 
 const PHONE = "380971112233";
 const OTHER_PHONE = "380975556677";
@@ -41,6 +40,40 @@ async function seedBooking(db, {
   ).bind(code, `+${phone}`, phone, patientId, dob, time).run();
 }
 
+async function setSmsGateway(db) {
+  await db.prepare(
+    `INSERT INTO app_settings (key, value) VALUES ('sms_gateway_url', 'https://gateway.example/sms')
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
+  ).run();
+}
+
+async function requestOtp(db, phone = PHONE, dob = DOB) {
+  const previousFetch = globalThis.fetch;
+  const previousHosts = globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
+  globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = "gateway.example";
+  globalThis.fetch = async (input, init) => {
+    const url = typeof input === "string" ? input : String(input?.url || input);
+    if (url.startsWith("https://gateway.example/")) {
+      return new Response("ok", { status:200 });
+    }
+    return previousFetch(input, init);
+  };
+  try {
+    return await callWorker(
+      jsonRequest(
+        "/api/patient-otp",
+        { phone:`+${phone}`, dob },
+        { ip:"203.0.113.81" },
+      ),
+      db,
+    );
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousHosts === undefined) delete globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__;
+    else globalThis.__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = previousHosts;
+  }
+}
+
 function requestWithCookie(path, cookie, body) {
   return jsonRequest(path, body, { headers:{ cookie } });
 }
@@ -50,19 +83,33 @@ test("DOB proof upgrades to patient_id only when every matching booking resolves
     await seedProfile(db);
     await seedBooking(db, { code:"RD-EXACT001", patientId:PID, time:"10:00" });
     await seedBooking(db, { code:"RD-EXACT002", patientId:PID, time:"10:30" });
+    await setSmsGateway(db);
 
-    const exact = await provePatientIdentity(db, PHONE, { dob:DOB });
-    assert.deepEqual(exact, {
-      organizationId:1,
-      identity:IDENTITY,
-      patientId:PID,
-    });
+    const exactResponse = await requestOtp(db);
+    assert.equal(exactResponse.status, 202);
+    const exact = await db.prepare(
+      `SELECT patient_id AS patientId
+       FROM patient_otp_challenges
+       WHERE organization_id = 1 AND phone_normalized = ?
+         AND identity_kind = 'dob' AND identity_value = ?
+       ORDER BY created_at DESC, id DESC LIMIT 1`
+    ).bind(PHONE, DOB).first();
+    assert.equal(exact.patientId, PID);
 
+    const before = await db.prepare(
+      "SELECT COUNT(*) AS n FROM patient_otp_challenges WHERE organization_id = 1 AND phone_normalized = ?"
+    ).bind(PHONE).first("n");
     await seedBooking(db, { code:"RD-LEGACY01", patientId:"", time:"11:00" });
+
+    const mixedResponse = await requestOtp(db);
+    assert.equal(mixedResponse.status, 202);
+    const after = await db.prepare(
+      "SELECT COUNT(*) AS n FROM patient_otp_challenges WHERE organization_id = 1 AND phone_normalized = ?"
+    ).bind(PHONE).first("n");
     assert.equal(
-      await provePatientIdentity(db, PHONE, { dob:DOB }),
-      null,
-      "mixed linked/unlinked DOB scope must fail closed instead of guessing identity",
+      after,
+      before,
+      "mixed linked/unlinked DOB scope must fail closed instead of issuing a real challenge",
     );
   });
 });
@@ -70,11 +117,18 @@ test("DOB proof upgrades to patient_id only when every matching booking resolves
 test("fully legacy DOB proof remains compatible without inventing a patient link", async () => {
   await withD1(async (db) => {
     await seedBooking(db, { code:"RD-LEGACY02" });
-    assert.deepEqual(await provePatientIdentity(db, PHONE, { dob:DOB }), {
-      organizationId:1,
-      identity:IDENTITY,
-      patientId:"",
-    });
+    await setSmsGateway(db);
+
+    const response = await requestOtp(db);
+    assert.equal(response.status, 202);
+    const patientId = await db.prepare(
+      `SELECT patient_id AS patientId
+       FROM patient_otp_challenges
+       WHERE organization_id = 1 AND phone_normalized = ?
+         AND identity_kind = 'dob' AND identity_value = ?
+       ORDER BY created_at DESC, id DESC LIMIT 1`
+    ).bind(PHONE, DOB).first("patientId");
+    assert.equal(patientId, "");
   });
 });
 
