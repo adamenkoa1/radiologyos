@@ -3,15 +3,17 @@
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
-  PROTOCOL_STATUS_LABELS,
   PROTOCOL_TEMPLATES,
   type ProtocolDocument,
-  type ProtocolStatus,
   normalDocument,
   protocolTemplateByKey,
   renderProtocolText,
   suggestTemplateKey,
 } from "../../../lib/protocols";
+import {
+  PROTOCOL_LIFECYCLE_STATUS_LABELS,
+  type ProtocolLifecycleStatus,
+} from "../../../lib/protocol-lifecycle";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -22,6 +24,7 @@ type QueueItem = {
   equipmentId:string; desiredDate:string; desiredTime:string; performedAt:string; status:string;
   protocolNumber:string; protocolStatus:string; protocolReadyAt:string; protocolIssuedAt:string;
   assignedRadiologistEmail:string; documentStatus:string; documentVersion:number;
+  signedBy:string; signedAt:string; signedVersion:number;
 };
 type BookingDetail = {
   id:number; code:string; name:string; service:string; serviceCode:string; equipmentId:string;
@@ -29,7 +32,10 @@ type BookingDetail = {
   anatomicalRegionsCount:number; protocolNumber:string; protocolStatus:string;
   protocolReadyAt:string; protocolIssuedAt:string; assignedRadiologistEmail:string;
 };
-type EditorDoc = ProtocolDocument & { version:number; updatedBy:string; updatedAt:string };
+type EditorDoc = Omit<ProtocolDocument,"status"> & {
+  status:ProtocolLifecycleStatus; version:number; updatedBy:string; updatedAt:string;
+  signedBy:string; signedAt:string; signedVersion:number;
+};
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
@@ -40,6 +46,12 @@ const bookingProtocolLabels: Record<string,string> = {
 };
 const categoryLabels: Record<string,string> = { civilian:"Цивільний маршрут", military:"Військовий маршрут" };
 
+function lifecycleLabel(status:string) {
+  return PROTOCOL_LIFECYCLE_STATUS_LABELS[status as ProtocolLifecycleStatus]
+    || bookingProtocolLabels[status]
+    || status;
+}
+
 function formatDateTime(value:string) {
   if (!value) return "—";
   const parsed = new Date(value.includes("T") || value.includes(" ") ? value : `${value}T00:00:00`);
@@ -47,7 +59,10 @@ function formatDateTime(value:string) {
 }
 
 function emptyDoc(serviceCode:string):EditorDoc {
-  return { ...normalDocument(suggestTemplateKey(serviceCode)), version:0, updatedBy:"", updatedAt:"" };
+  return {
+    ...normalDocument(suggestTemplateKey(serviceCode)),
+    version:0, updatedBy:"", updatedAt:"", signedBy:"", signedAt:"", signedVersion:0,
+  };
 }
 
 export default function ProtocolsPage() {
@@ -62,7 +77,7 @@ export default function ProtocolsPage() {
   const [saving,setSaving] = useState(false);
   const [aiDraft,setAiDraft] = useState<ProtocolDraft | null>(null);
   const [aiLoading,setAiLoading] = useState(false);
-  const [filter,setFilter] = useState<"awaiting"|"ready"|"issued"|"all">("awaiting");
+  const [filter,setFilter] = useState<"awaiting"|"ready"|"signed"|"issued"|"all">("awaiting");
   const [query,setQuery] = useState("");
   const [bookingLoading,setBookingLoading] = useState(false);
   const [dirty,setDirty] = useState(false);
@@ -111,6 +126,8 @@ export default function ProtocolsPage() {
             conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
             number:data.protocol.number, status:data.protocol.status,
             version:data.protocol.version, updatedBy:data.protocol.updatedBy, updatedAt:data.protocol.updatedAt,
+            signedBy:data.protocol.signedBy || "", signedAt:data.protocol.signedAt || "",
+            signedVersion:data.protocol.signedVersion || 0,
           }
         : emptyDoc(data.booking.serviceCode));
     } catch {
@@ -165,13 +182,13 @@ export default function ProtocolsPage() {
     setActionSuccess("Поля заповнено типовими формулюваннями норми. Відредагуйте виявлені зміни.");
   }
 
-  async function save(status:ProtocolStatus) {
+  async function save(status:ProtocolLifecycleStatus) {
     if (!doc || !booking) return;
     setActionError(""); setActionSuccess("");
-    if ((status === "ready" || status === "issued") && !doc.number.trim()) {
-      setActionError("Для готового або виданого протоколу вкажіть його номер."); return;
+    if ((status === "ready" || status === "signed" || status === "issued") && !doc.number.trim()) {
+      setActionError("Для готового, підписаного або виданого протоколу вкажіть його номер."); return;
     }
-    if ((status === "ready" || status === "issued") && !doc.conclusion.trim()) {
+    if ((status === "ready" || status === "signed" || status === "issued") && !doc.conclusion.trim()) {
       setActionError("Готовий протокол повинен містити висновок."); return;
     }
     setSaving(true);
@@ -181,12 +198,22 @@ export default function ProtocolsPage() {
     });
     const data = await response.json() as {
       ok?:boolean; version?:number; protocolStatus?:string; protocolNumber?:string;
+      documentStatus?:ProtocolLifecycleStatus; signedBy?:string; signedAt?:string; signedVersion?:number;
       protocolReadyAt?:string; protocolIssuedAt?:string; error?:string;
     };
     setSaving(false);
     if (!response.ok || !data.ok) { setActionError(data.error || "Не вдалося зберегти протокол"); return; }
+    const resolvedStatus = data.documentStatus || status;
     setDirty(false);
-    setDoc((current) => current && ({ ...current, status, version:data.version || current.version, updatedBy:staff?.email || current.updatedBy }));
+    setDoc((current) => current && ({
+      ...current,
+      status:resolvedStatus,
+      version:data.version ?? current.version,
+      updatedBy:staff?.email || current.updatedBy,
+      signedBy:data.signedBy ?? current.signedBy,
+      signedAt:data.signedAt ?? current.signedAt,
+      signedVersion:data.signedVersion ?? current.signedVersion,
+    }));
     setBooking((current) => current && ({
       ...current,
       protocolNumber:data.protocolNumber ?? current.protocolNumber,
@@ -200,15 +227,34 @@ export default function ProtocolsPage() {
       protocolStatus:data.protocolStatus ?? item.protocolStatus,
       protocolReadyAt:data.protocolReadyAt ?? item.protocolReadyAt,
       protocolIssuedAt:data.protocolIssuedAt ?? item.protocolIssuedAt,
-      documentStatus:status, documentVersion:data.version || item.documentVersion,
+      documentStatus:resolvedStatus,
+      documentVersion:data.version ?? item.documentVersion,
+      signedBy:data.signedBy ?? item.signedBy,
+      signedAt:data.signedAt ?? item.signedAt,
+      signedVersion:data.signedVersion ?? item.signedVersion,
     } : item));
-    setActionSuccess(status === "issued" ? "Протокол видано." : status === "ready" ? "Протокол позначено готовим." : "Чернетку протоколу збережено.");
+    setActionSuccess(
+      resolvedStatus === "issued" ? "Протокол видано пацієнту."
+        : resolvedStatus === "signed" ? "Протокол підписано. Клінічний зміст тепер незмінний."
+          : resolvedStatus === "ready" ? "Протокол готовий до підпису."
+            : "Чернетку протоколу збережено.",
+    );
   }
 
   async function copyText() {
     if (!doc) return;
     try {
-      await navigator.clipboard.writeText(renderProtocolText(doc));
+      const renderable:ProtocolDocument = {
+        templateKey:doc.templateKey,
+        method:doc.method,
+        sections:doc.sections,
+        findings:doc.findings,
+        conclusion:doc.conclusion,
+        recommendations:doc.recommendations,
+        number:doc.number,
+        status:doc.status === "signed" ? "ready" : doc.status,
+      };
+      await navigator.clipboard.writeText(renderProtocolText(renderable));
       setActionSuccess("Текст протоколу скопійовано.");
     } catch {
       setActionError("Не вдалося скопіювати текст.");
@@ -234,26 +280,32 @@ export default function ProtocolsPage() {
       conclusion:part === "recommendations" ? doc.conclusion : aiDraft.conclusion,
       recommendations:part === "conclusion" ? doc.recommendations : aiDraft.recommendations,
     });
-    setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед видачею.");
+    setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед підписом.");
   }
 
-  const canEdit = staff?.role === "admin" || staff?.role === "radiologist";
+  const canManage = staff?.role === "admin" || staff?.role === "radiologist";
+  const clinicalLocked = doc?.status === "signed" || doc?.status === "issued";
+  const canEdit = Boolean(canManage && !clinicalLocked);
+  const canSign = staff?.role === "radiologist" && doc?.status === "ready";
+  const canIssue = Boolean(canManage && doc?.status === "signed");
   const template = doc ? protocolTemplateByKey(doc.templateKey) : null;
 
   const visible = useMemo(() => queue
     .filter((item) => {
-      if (filter === "awaiting") return item.protocolStatus !== "ready" && item.protocolStatus !== "issued";
-      if (filter === "ready") return item.protocolStatus === "ready";
-      if (filter === "issued") return item.protocolStatus === "issued";
+      if (filter === "awaiting") return !["ready","signed","issued"].includes(item.documentStatus);
+      if (filter === "ready") return item.documentStatus === "ready";
+      if (filter === "signed") return item.documentStatus === "signed";
+      if (filter === "issued") return item.documentStatus === "issued";
       return true;
     })
     .filter((item) => !query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase())),
   [queue,filter,query]);
 
   const counts = useMemo(() => ({
-    awaiting:queue.filter((item) => item.protocolStatus !== "ready" && item.protocolStatus !== "issued").length,
-    ready:queue.filter((item) => item.protocolStatus === "ready").length,
-    issued:queue.filter((item) => item.protocolStatus === "issued").length,
+    awaiting:queue.filter((item) => !["ready","signed","issued"].includes(item.documentStatus)).length,
+    ready:queue.filter((item) => item.documentStatus === "ready").length,
+    signed:queue.filter((item) => item.documentStatus === "signed").length,
+    issued:queue.filter((item) => item.documentStatus === "issued").length,
   }), [queue]);
 
   // Заповненість структурованих полів — для змісту й підказки готовності.
@@ -271,7 +323,7 @@ export default function ProtocolsPage() {
   return <StaffWorkspaceShell
     active="protocols"
     title="Конструктор протоколів"
-    description="Структуровані протоколи досліджень за модальностями: заповнення полів, висновок, видача та друк."
+    description="Структуровані протоколи досліджень за модальностями: заповнення, клінічний підпис, видача та друк."
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
@@ -281,7 +333,8 @@ export default function ProtocolsPage() {
         <div className="protocolQueueTools">
           <div className="protocolFilterTabs" role="tablist">
             <button role="tab" aria-selected={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>setFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
-            <button role="tab" aria-selected={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>Готові <b>{counts.ready}</b></button>
+            <button role="tab" aria-selected={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>До підпису <b>{counts.ready}</b></button>
+            <button role="tab" aria-selected={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>setFilter("signed")}>Підписані <b>{counts.signed}</b></button>
             <button role="tab" aria-selected={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
             <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
@@ -293,7 +346,7 @@ export default function ProtocolsPage() {
             className={`protocolQueueItem${selectedId === item.id ? " active":""}`}
             onClick={()=>selectBooking(item.id)}
           >
-            <span className={`protocolTag ${item.protocolStatus}`}>{bookingProtocolLabels[item.protocolStatus] || item.protocolStatus}</span>
+            <span className={`protocolTag ${item.documentStatus || item.protocolStatus}`}>{lifecycleLabel(item.documentStatus || item.protocolStatus)}</span>
             <b>{item.serviceTitle}</b>
             <small>{item.code} · {item.name}</small>
             <small>{item.performedAt ? `Виконано ${formatDateTime(item.performedAt)}` : `Заплановано ${item.desiredDate} ${item.desiredTime}`}</small>
@@ -321,14 +374,17 @@ export default function ProtocolsPage() {
               <p>{booking.code} · {booking.name} · {categoryLabels[booking.patientCategory] || booking.patientCategory}</p>
               <p className="protocolMeta">
                 {booking.performedAt ? `Виконано: ${formatDateTime(booking.performedAt)}` : "Дослідження ще не виконано"}
-                {" · "}Статус: {PROTOCOL_STATUS_LABELS[doc.status]}
+                {" · "}Статус: {PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}
                 {doc.updatedBy && ` · Автор: ${doc.updatedBy}`}
+                {doc.signedAt && ` · Підписано: ${formatDateTime(doc.signedAt)}`}
               </p>
             </div>
-            <span className={`protocolTag ${booking.protocolStatus}`}>{bookingProtocolLabels[booking.protocolStatus] || booking.protocolStatus}</span>
+            <span className={`protocolTag ${doc.status}`}>{PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
           </header>
 
-          {!canEdit && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
+          {clinicalLocked
+            ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
+            : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
 
           <nav className="protocolToc" aria-label="Зміст протоколу">
             <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
@@ -427,11 +483,15 @@ export default function ProtocolsPage() {
           </section>}
 
           <div className="protocolActions">
-            {canEdit && <>
+            {canEdit && doc.status === "draft" && <>
               <button type="button" onClick={()=>void save("draft")} disabled={saving}>Зберегти чернетку</button>
-              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Позначити готовим</button>
-              <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати протокол</button>
+              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Готовий до підпису</button>
             </>}
+            {canEdit && doc.status === "ready" &&
+              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Зберегти зміни</button>}
+            {canSign && <button type="button" className="primary" onClick={()=>void save("signed")} disabled={saving}>Підписати протокол</button>}
+            {doc.status === "ready" && staff?.role === "admin" && <span className="protocolReadonlyHint">Підпис доступний лише лікарю-рентгенологу.</span>}
+            {canIssue && <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати пацієнту</button>}
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
           </div>
@@ -463,8 +523,10 @@ export default function ProtocolsPage() {
             {doc.conclusion.trim() && <section><h2>Висновок</h2><p>{doc.conclusion}</p></section>}
             {doc.recommendations.trim() && <section><h2>Рекомендації</h2><p>{doc.recommendations}</p></section>}
             <footer>
-              <span>Лікар-рентгенолог: ________________________ <small>(підпис, ПІБ)</small></span>
-              <span>Статус: {PROTOCOL_STATUS_LABELS[doc.status]}</span>
+              <span>{doc.signedBy
+                ? `Лікар-рентгенолог: ${doc.signedBy === "system:legacy-issued" ? "історичний протокол до введення workflow-підпису" : doc.signedBy}${doc.signedAt ? ` · ${formatDateTime(doc.signedAt)}` : ""}`
+                : <>Лікар-рентгенолог: ________________________ <small>(підпис, ПІБ)</small></>}</span>
+              <span>Статус: {PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
             </footer>
           </article>
         </>}
