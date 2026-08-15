@@ -5,23 +5,31 @@ import { requireOrgContext } from "../../../../../lib/tenant";
 
 const ADDENDUM_ID_RE = /^[0-9a-f]{32}$/;
 const STATUSES = new Set(["draft", "ready", "signed", "issued"]);
+const REASON_MAX = 500;
+const CORRECTION_MAX = 12000;
 
 type AddendumRow = {
   id:string; bookingId:number; baseProtocolVersion:number; reason:string; correctionText:string;
   status:string; version:number; authorEmail:string; updatedBy:string; updatedAt:string;
   signedBy:string; signedAt:string; signedVersion:number; createdAt:string;
 };
+type AddendumRevisionRow = {
+  id:number; addendumId:string; baseProtocolVersion:number; version:number;
+  reason:string; correctionText:string; status:string; savedBy:string; createdAt:string;
+};
 
-function cleanText(value:unknown, max:number):string {
-  return String(value ?? "").replace(/\r\n?/g, "\n").trim().slice(0, max);
+function normalizedText(value:unknown):string {
+  return String(value ?? "").replace(/\r\n?/g, "\n").trim();
 }
 
 function parseDocument(body:Record<string, unknown>) {
-  const reason = cleanText(body.reason, 500);
-  const correctionText = cleanText(body.correctionText, 12000);
+  const reason = normalizedText(body.reason);
+  const correctionText = normalizedText(body.correctionText);
   const status = String(body.status || "draft");
   if (!reason) return { ok:false as const, error:"Вкажіть причину виправлення або доповнення" };
+  if (reason.length > REASON_MAX) return { ok:false as const, error:`Причина виправлення не може перевищувати ${REASON_MAX} символів` };
   if (!correctionText) return { ok:false as const, error:"Вкажіть текст виправлення або доповнення" };
+  if (correctionText.length > CORRECTION_MAX) return { ok:false as const, error:`Текст виправлення не може перевищувати ${CORRECTION_MAX} символів` };
   if (!STATUSES.has(status)) return { ok:false as const, error:"Некоректний статус виправлення" };
   return { ok:true as const, reason, correctionText, status };
 }
@@ -52,7 +60,7 @@ export async function GET(request:Request) {
     return Response.json({ error:"Заявку не знайдено або її не призначено вам" }, { status:404 });
   }
 
-  const [base, rows] = await Promise.all([
+  const [base, rows, revisions] = await Promise.all([
     db.prepare(
       `SELECT version, number, status FROM protocols
        WHERE organization_id = ? AND booking_id = ? LIMIT 1`,
@@ -61,12 +69,24 @@ export async function GET(request:Request) {
       `SELECT ${SELECT_COLUMNS} FROM protocol_addenda
        WHERE organization_id = ? AND booking_id = ? ORDER BY created_at, id`,
     ).bind(ctx.organizationId, bookingId).all<AddendumRow>(),
+    db.prepare(
+      `SELECT id, addendum_id AS addendumId, base_protocol_version AS baseProtocolVersion,
+              version, reason, correction_text AS correctionText, status,
+              saved_by AS savedBy, created_at AS createdAt
+       FROM protocol_addendum_revisions
+       WHERE organization_id = ? AND booking_id = ?
+       ORDER BY addendum_id, version`,
+    ).bind(ctx.organizationId, bookingId).all<AddendumRevisionRow>(),
   ]);
   await audit(db, {
     organizationId:ctx.organizationId, actorEmail:member.email,
     action:"protocol_addenda_viewed", resource:"protocol_addendum", targetId:bookingId,
   });
-  return Response.json({ baseProtocol:base || null, addenda:rows.results || [] }, { headers:{ "cache-control":"no-store" } });
+  return Response.json({
+    baseProtocol:base || null,
+    addenda:rows.results || [],
+    revisions:revisions.results || [],
+  }, { headers:{ "cache-control":"no-store" } });
 }
 
 export async function POST(request:Request) {
