@@ -1,6 +1,7 @@
 import {
   clearedPatientSessionCookie,
   destroyPatientSession,
+  patientSessionScopeIsUnambiguous,
   requirePatientSession,
 } from "../../../lib/patient-auth";
 import { isRateLimited } from "../../../lib/rate-limit";
@@ -17,6 +18,12 @@ export async function POST(request: Request) {
   const session = await requirePatientSession(request, db);
   if (!session) {
     return Response.json({ error: "Сесію не підтверджено. Отримайте одноразовий код ще раз." }, { status: 401 });
+  }
+  if (!await patientSessionScopeIsUnambiguous(db, session)) {
+    return Response.json(
+      { error: "За цим номером і датою народження знайдено кілька записів. Увійдіть за кодом конкретної заявки." },
+      { status: 409, headers: { "cache-control": "no-store" } },
+    );
   }
 
   const identityClause = session.identityKind === "dob"

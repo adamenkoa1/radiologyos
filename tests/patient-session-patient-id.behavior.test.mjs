@@ -153,7 +153,7 @@ test("OTP challenge and session carry an immutable exact patient id", async () =
   });
 });
 
-test("exact patient session returns every explicitly linked booking and excludes same-phone legacy rows", async () => {
+test("exact patient session returns linked bookings while ambiguous legacy DOB scope fails closed", async () => {
   await withD1(async (db) => {
     await seedProfile(db);
     await seedBooking(db, { code:"RD-EXACT004", patientId:PID, time:"10:00" });
@@ -177,13 +177,8 @@ test("exact patient session returns every explicitly linked booking and excludes
       requestWithCookie("/api/my-bookings", `rid_patient=${legacyRaw}`),
       db,
     );
-    assert.equal(legacy.status, 200);
-    const legacyBody = await legacy.json();
-    assert.deepEqual(
-      legacyBody.bookings.map((b) => b.code).sort(),
-      ["RD-EXACT004", "RD-LEGACY03"],
-      "patient_id='' keeps the pre-existing phone+DOB portal behavior",
-    );
+    assert.equal(legacy.status, 409);
+    assert.doesNotMatch(await legacy.text(), /RD-EXACT004|RD-LEGACY03/);
   });
 });
 

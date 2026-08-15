@@ -1,5 +1,9 @@
 import { audit } from "../../../lib/audit";
-import { normalizeBookingCode, requirePatientSession } from "../../../lib/patient-auth";
+import {
+  normalizeBookingCode,
+  patientSessionScopeIsUnambiguous,
+  requirePatientSession,
+} from "../../../lib/patient-auth";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { dbBinding } from "../../../lib/db";
 
@@ -11,6 +15,12 @@ export async function POST(request: Request) {
   }
   const session = await requirePatientSession(request, db);
   if (!session) return Response.json({ error: "Сесію завершено. Увійдіть до кабінету повторно." }, { status: 401 });
+  if (!await patientSessionScopeIsUnambiguous(db, session)) {
+    return Response.json(
+      { error: "За цим номером і датою народження знайдено кілька записів. Увійдіть за кодом конкретної заявки." },
+      { status: 409, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const body = await request.json().catch(() => ({})) as { code?: string };
   const code = normalizeBookingCode(body.code);
