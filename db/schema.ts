@@ -251,7 +251,7 @@ export const patientProfiles = sqliteTable("patient_profiles", {
   updatedBy: text("updated_by").notNull(),
   updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 }, table => [
-  uniqueIndex("patient_profiles_org_phone_idx").on(table.organizationId, table.phoneNormalized),
+  index("patient_profiles_org_phone_idx").on(table.organizationId, table.phoneNormalized),
   index("patient_profiles_phone_idx").on(table.phoneNormalized),
   index("patient_profiles_org_updated_idx").on(table.organizationId, table.updatedAt),
 ]);

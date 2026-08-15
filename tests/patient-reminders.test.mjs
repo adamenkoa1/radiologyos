@@ -49,14 +49,26 @@ test("confirm-in-one-move validates the slot and reminds the patient", async () 
 });
 
 // Рушій нагадувань: канали, повага до «не турбувати», журнал відправлень.
-test("notify engine records an outbox row and respects do-not-contact", async () => {
+test("notify engine records an outbox row and respects exact patient contact boundaries", async () => {
   const src = await readFile(new URL("../lib/notify.ts", import.meta.url), "utf8");
   assert.match(src, /patient_notifications/);
   assert.match(src, /do_not_contact/);
+  assert.match(src, /AS stale/);
+  assert.match(src, /p\.patient_id = b\.patient_id/);
+  assert.match(src, /p\.phone_normalized = b\.phone_normalized/);
+  assert.match(src, /profile\?\.stale/);
   assert.match(src, /sms_gateway_url/);
   assert.match(src, /email_gateway_url/);
   // Найкраще-зусильно: успіх/пропуск/помилка не кидають виняток нагору.
   assert.match(src, /catch/);
+});
+
+test("scheduled reminders fail closed when an exact profile contact changed", async () => {
+  const src = await readFile(new URL("../lib/reminders.ts", import.meta.url), "utf8");
+  assert.match(src, /staleLinkedContact/);
+  assert.match(src, /p\.patient_id = b\.patient_id/);
+  assert.match(src, /p\.phone_normalized = b\.phone_normalized/);
+  assert.match(src, /b\.staleLinkedContact/);
 });
 
 // Email-канал живиться адресою пацієнта, зібраною у формах запису.

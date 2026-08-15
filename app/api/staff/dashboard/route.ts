@@ -58,8 +58,34 @@ export async function GET(request: Request) {
     one("SELECT enabled FROM pacs_settings WHERE organization_id = ?", orgId),
     one("SELECT COUNT(*) AS c, COALESCE(SUM(payment_amount),0) AS s FROM bookings WHERE organization_id = ? AND patient_category = 'civilian' AND status != 'cancelled' AND payment_status NOT IN ('paid','not_required')", orgId),
     one("SELECT COUNT(*) AS c FROM bookings WHERE organization_id = ? AND nszu_status = 'pending' AND status != 'cancelled'", orgId),
-    one("SELECT COUNT(DISTINCT phone_normalized) AS c FROM bookings WHERE organization_id = ? AND phone_normalized != ''", orgId),
-    one("SELECT COUNT(*) AS c FROM (SELECT phone_normalized FROM bookings WHERE organization_id = ? AND phone_normalized != '' GROUP BY phone_normalized HAVING COUNT(*) > 1)", orgId),
+    one(
+      `SELECT
+         (SELECT COUNT(*) FROM patient_profiles p WHERE p.organization_id = ?)
+         +
+         (SELECT COUNT(*) FROM (
+           SELECT b.phone_normalized
+           FROM bookings b
+           WHERE b.organization_id = ? AND b.patient_id = '' AND b.phone_normalized != ''
+           GROUP BY b.phone_normalized
+         )) AS c`,
+      orgId, orgId,
+    ),
+    one(
+      `SELECT COUNT(*) AS c FROM (
+         SELECT p.patient_id AS identityKey
+         FROM patient_profiles p
+         JOIN bookings b
+           ON b.organization_id = p.organization_id AND b.patient_id = p.patient_id
+         WHERE p.organization_id = ?
+         GROUP BY p.patient_id HAVING COUNT(b.id) > 1
+         UNION ALL
+         SELECT 'legacy:' || b.phone_normalized AS identityKey
+         FROM bookings b
+         WHERE b.organization_id = ? AND b.patient_id = '' AND b.phone_normalized != ''
+         GROUP BY b.phone_normalized HAVING COUNT(*) > 1
+       )`,
+      orgId, orgId,
+    ),
     one("SELECT COUNT(*) AS c FROM patient_profiles WHERE organization_id = ? AND do_not_contact = 1", orgId),
     many("SELECT equipment_id AS id, COUNT(*) AS c FROM bookings WHERE organization_id = ? AND desired_date = ? AND status != 'cancelled' GROUP BY equipment_id", orgId, today),
     many("SELECT id, code, name, service_code AS serviceCode, performed_at AS performedAt FROM bookings WHERE organization_id = ? AND performed_at != '' AND protocol_status NOT IN ('ready','issued') AND status != 'cancelled' ORDER BY performed_at DESC LIMIT 6", orgId),

@@ -22,7 +22,10 @@ function groupOf(status: string): string {
 const isContrast = (svc: string) => /контраст|ангіограф/i.test(svc || "");
 const digits = (p: string) => (p || "").replace(/[^\d]/g, "");
 
-export default function BookingDrawer({ booking, all, doctorName = "", onClose, onOpen, onConfirm, confirming = false, onReschedule, rescheduling = false }: {
+export default function BookingDrawer({
+  booking, all, doctorName = "", onClose, onOpen, onConfirm, confirming = false,
+  onReschedule, rescheduling = false, patientHref = "", historyScoped = false,
+}: {
   booking: CalBooking;
   all: CalBooking[];
   doctorName?: string;
@@ -32,24 +35,26 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
   confirming?: boolean;
   onReschedule?: (id: number, date: string, time: string) => void;
   rescheduling?: boolean;
+  // Only an already-resolved CRM identity may supply these. General calendar
+  // surfaces must not infer patient history or a patient-card link from phone.
+  patientHref?: string;
+  historyScoped?: boolean;
 }) {
   const b = booking;
   const ph = digits(b.phone);
-  const history = ph
-    ? all.filter(x => x.id !== b.id && digits(x.phone) === ph)
+  const history = historyScoped
+    ? all.filter(x => x.id !== b.id)
         .sort((a, c) => (c.desiredDate + c.desiredTime).localeCompare(a.desiredDate + a.desiredTime))
     : [];
   const canConfirm = !!onConfirm && (b.status === "new" || b.status === "rescheduled");
   const canReschedule = !!onReschedule && b.status !== "cancelled" && b.status !== "completed" && b.status !== "issued";
 
-  // Перенесення прямо з панелі: дата + вільний слот (перевірка доступності).
   const [reschedOpen, setReschedOpen] = useState(false);
   const [rDate, setRDate] = useState(b.desiredDate);
   const [rTime, setRTime] = useState(b.desiredTime);
   const [rTimes, setRTimes] = useState<string[]>([]);
   const [rLoading, setRLoading] = useState(false);
 
-  // Разове повідомлення пацієнту (результат готовий, затримка, жива черга).
   const NOTIFY_PRESETS = [
     "Ваш результат готовий — можна забрати опис у відділенні.",
     "Невелика затримка за розкладом, дякуємо за очікування.",
@@ -72,7 +77,7 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
       const s = data.summary || { sent: 0, skipped: 0, failed: 0 };
       if (s.sent > 0) { setNotifyResult("✓ Надіслано пацієнту"); setMsg(""); }
       else if (s.failed > 0) setNotifyResult("⚠ Не доставлено — перевірте канал або номер");
-      else setNotifyResult("Пропущено: канал вимкнено або пацієнт у «не турбувати»");
+      else setNotifyResult("Пропущено: канал вимкнено, запис неоднозначний або пацієнт у «не турбувати»");
     } catch { setNotifyResult("Помилка мережі — спробуйте ще раз"); }
     finally { setSending(false); }
   }
@@ -83,7 +88,6 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  // Вільні слоти на обрану дату для послуги запису.
   useEffect(() => {
     const ctrl = new AbortController();
     const t = window.setTimeout(() => {
@@ -103,7 +107,7 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
     <aside className="apptDrawerPanel">
       <div className="apptDrawerHead">
         <div>
-          <h3>{ph ? <a className="patLink" href={`/staff/patients?phone=${ph}`}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</h3>
+          <h3>{patientHref ? <a className="patLink" href={patientHref}>{b.name || "Без імені"}</a> : (b.name || "Без імені")}</h3>
           <small><span className="codeTag">{b.code}</span> · {b.desiredDate} · {b.desiredTime || "—"}{doctorName ? ` · 👨‍⚕️ ${doctorName}` : ""}</small>
         </div>
         <button type="button" className="apptDrawerClose" onClick={onClose} aria-label="Закрити">✕</button>
@@ -126,17 +130,19 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
       {isContrast(b.service) && <p className="apptDrawerNote">Дослідження з контрастуванням — попередьте про підготовку (креатинін, алергоанамнез, натще).</p>}
 
       <div className="apptDrawerHistory">
-        <div className="apptDrawerHistoryHead"><b>Попередні дослідження</b><span>{history.length}</span></div>
-        {history.length === 0
-          ? <p className="apptDrawerHistoryEmpty">Перше звернення (за номером телефону).</p>
-          : <ul>{history.slice(0, 8).map(h => <li key={h.id}>
-              <button type="button" onClick={() => onOpen(h.id)}>
-                <span className="ihDate">{h.desiredDate}</span>
-                <span className="ihSvc">{h.service}{h.equipmentId ? ` · ${EQUIP[h.equipmentId] || h.equipmentId}` : ""}</span>
-                <span className="ihStatus">{stateLabel(h.status)}</span>
-              </button></li>)}
-            {history.length > 8 && <li className="ihMore">…і ще {history.length - 8}</li>}
-          </ul>}
+        <div className="apptDrawerHistoryHead"><b>Попередні дослідження</b><span>{historyScoped ? history.length : "—"}</span></div>
+        {!historyScoped
+          ? <p className="apptDrawerHistoryEmpty">Історія доступна з конкретної CRM-картки пацієнта.</p>
+          : history.length === 0
+            ? <p className="apptDrawerHistoryEmpty">Попередніх досліджень у цій картці немає.</p>
+            : <ul>{history.slice(0, 8).map(h => <li key={h.id}>
+                <button type="button" onClick={() => onOpen(h.id)}>
+                  <span className="ihDate">{h.desiredDate}</span>
+                  <span className="ihSvc">{h.service}{h.equipmentId ? ` · ${EQUIP[h.equipmentId] || h.equipmentId}` : ""}</span>
+                  <span className="ihStatus">{stateLabel(h.status)}</span>
+                </button></li>)}
+              {history.length > 8 && <li className="ihMore">…і ще {history.length - 8}</li>}
+            </ul>}
       </div>
 
       {canReschedule && reschedOpen && <div className="apptDrawerResched">
@@ -170,9 +176,7 @@ export default function BookingDrawer({ booking, all, doctorName = "", onClose, 
         {canConfirm && <button type="button" className="apptDrawerBtn confirm" disabled={confirming} onClick={() => onConfirm!(b.id)}>{confirming ? "…" : "✓ Підтвердити"}</button>}
         {canReschedule && !reschedOpen && <button type="button" className="apptDrawerBtn" onClick={()=>setReschedOpen(true)}>↻ Перенести</button>}
         {ph && <button type="button" className="apptDrawerBtn" onClick={()=>setNotifyOpen(v=>!v)}>✉ Повідомити</button>}
-        {ph && <a className="apptDrawerBtn" href={`tel:${b.phone}`}>📞 Подзвонити</a>}
-        {ph && <a className="apptDrawerBtn wa" href={`https://wa.me/${ph}`} target="_blank" rel="noreferrer">WhatsApp</a>}
-        {ph && <a className="apptDrawerBtn" href={`/staff/patients?phone=${ph}`}>Картка пацієнта →</a>}
+        {patientHref && <a className="apptDrawerBtn" href={patientHref}>Картка пацієнта →</a>}
         <a className="apptDrawerBtn primary" href={`/staff?open=${b.id}#bookings`}>Відкрити повну заявку →</a>
       </div>
     </aside>

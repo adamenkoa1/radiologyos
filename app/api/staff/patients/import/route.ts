@@ -1,6 +1,7 @@
 // Пакетний імпорт пацієнтів у CRM. Клієнт розбирає CSV і надсилає рядки;
-// сервер валідує кожен через sanitizeProfile і робить upsert у
-// patient_profiles. Лише реєстратор/адмін.
+// сервер валідує кожен через sanitizeProfile. patient_id, якщо він наданий,
+// означає точне оновлення існуючої картки. Рядок без patient_id створює нову
+// картку і НІКОЛИ не робить upsert за телефоном: спільний номер не є identity.
 
 import { canManageBookings } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
@@ -9,6 +10,7 @@ import { logSecurityEvent } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
 
 const MAX_ROWS = 5000;
+const PATIENT_ID_RE = /^[0-9a-f]{32}$/;
 
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -31,23 +33,48 @@ export async function POST(request: Request) {
     const parsed = sanitizeProfile(raw);
     if (!parsed.ok) { errors.push({ row: index + 1, error: parsed.error }); return; }
     const p = parsed.profile;
+    const patientId = raw && typeof raw === "object"
+      ? String((raw as Record<string,unknown>).patientId || "").trim().toLowerCase()
+      : "";
+    if (patientId && !PATIENT_ID_RE.test(patientId)) {
+      errors.push({ row: index + 1, error: "Некоректний patient_id" });
+      return;
+    }
+
+    if (patientId) {
+      statements.push(db.prepare(
+        `UPDATE patient_profiles SET
+           phone_normalized = ?,
+           display_name = CASE WHEN ? != '' THEN ? ELSE display_name END,
+           birth_year = CASE WHEN ? != 0 THEN ? ELSE birth_year END,
+           birth_date = CASE WHEN ? != '' THEN ? ELSE birth_date END,
+           email = CASE WHEN ? != '' THEN ? ELSE email END,
+           address = CASE WHEN ? != '' THEN ? ELSE address END,
+           notes = CASE WHEN ? != '' THEN ? ELSE notes END,
+           tags = ?, do_not_contact = ?, updated_by = ?, updated_at = CURRENT_TIMESTAMP
+         WHERE organization_id = ? AND patient_id = ?`
+      ).bind(
+        p.phoneNormalized,
+        p.displayName, p.displayName,
+        p.birthYear, p.birthYear,
+        p.birthDate, p.birthDate,
+        p.email, p.email,
+        p.address, p.address,
+        p.notes, p.notes,
+        p.tags, p.doNotContact, member.email,
+        ctx.organizationId, patientId,
+      ));
+      return;
+    }
+
+    const newPatientId = crypto.randomUUID().replace(/-/g, "").toLowerCase();
     statements.push(db.prepare(
       `INSERT INTO patient_profiles
-         (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-       ON CONFLICT(organization_id, phone_normalized) DO UPDATE SET
-         display_name = CASE WHEN excluded.display_name != '' THEN excluded.display_name ELSE patient_profiles.display_name END,
-         birth_year = CASE WHEN excluded.birth_year != 0 THEN excluded.birth_year ELSE patient_profiles.birth_year END,
-         birth_date = CASE WHEN excluded.birth_date != '' THEN excluded.birth_date ELSE patient_profiles.birth_date END,
-         email = CASE WHEN excluded.email != '' THEN excluded.email ELSE patient_profiles.email END,
-         address = CASE WHEN excluded.address != '' THEN excluded.address ELSE patient_profiles.address END,
-         notes = CASE WHEN excluded.notes != '' THEN excluded.notes ELSE patient_profiles.notes END,
-         tags = excluded.tags,
-         do_not_contact = excluded.do_not_contact,
-         updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
+         (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
     ).bind(
-      ctx.organizationId, p.phoneNormalized, p.displayName, p.birthYear, p.birthDate, p.email, p.address,
-      p.tags, p.notes, p.doNotContact, member.email,
+      newPatientId, ctx.organizationId, p.phoneNormalized, p.displayName, p.birthYear,
+      p.birthDate, p.email, p.address, p.tags, p.notes, p.doNotContact, member.email,
     ));
   });
 

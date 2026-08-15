@@ -4,8 +4,8 @@ import { useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
 import { mapRows, parseCsv, type ImportRecord } from "../../../../lib/patient-import";
 
-const TEMPLATE = "Прізвище,Імʼя,По батькові,Телефон,Дата народження,Email,Адреса,Нотатки\n"
-  + "Іваненко,Іван,Іванович,+380 97 000 00 00,1990-05-21,ivan@example.com,\"м. Чернігів, вул. Миру 1\",Алергія на йод\n";
+const TEMPLATE = "patient_id,Прізвище,Імʼя,По батькові,Телефон,Дата народження,Email,Адреса,Нотатки\n"
+  + ",Іваненко,Іван,Іванович,+380 97 000 00 00,1990-05-21,ivan@example.com,\"м. Чернігів, вул. Миру 1\",Алергія на йод\n";
 
 export default function PatientsImportPage() {
   const [fileName, setFileName] = useState("");
@@ -49,6 +49,8 @@ export default function PatientsImportPage() {
   }
 
   const templateHref = "data:text/csv;charset=utf-8,%EF%BB%BF" + encodeURIComponent(TEMPLATE);
+  const updateCount = records.filter((record) => !!record.patientId).length;
+  const createCount = records.length - updateCount;
 
   return (
     <StaffWorkspaceShell active="patients" title="Імпорт пацієнтів" description="Завантаження списку пацієнтів із CSV.">
@@ -56,6 +58,7 @@ export default function PatientsImportPage() {
         <section className="settingsBlock">
           <h3>Формат файлу</h3>
           <p className="settingsHint">Завантажте <b>CSV</b>. Excel: «Файл → Зберегти як → CSV (розділювач — кома)». Перший рядок — заголовки (у будь-якому порядку). Обовʼязкові: <b>Прізвище/Імʼя</b> (або ПІБ) і <b>Телефон</b>. Дата народження: <code>РРРР-ММ-ДД</code> або <code>ДД.ММ.РРРР</code>.</p>
+          <p className="notice warn"><b>Важливо:</b> телефон не є ідентифікатором пацієнта. Рядок із <code>patient_id</code> оновлює саме цю картку. Якщо <code>patient_id</code> порожній або колонки немає — буде створена <b>нова</b> картка, навіть якщо такий телефон уже існує.</p>
           <a className="button secondary" href={templateHref} download="patients-template.csv">↧ Завантажити шаблон CSV</a>
         </section>
 
@@ -63,6 +66,7 @@ export default function PatientsImportPage() {
           <h3>Файл</h3>
           <label className="settingsField"><span>CSV-файл</span><input type="file" accept=".csv,text/csv" onChange={e => void onFile(e.target.files?.[0] || null)} /></label>
           {fileName && <p className="settingsHint">{fileName}: розпізнано <b>{records.length}</b> записів{parseErrors.length ? `, пропущено ${parseErrors.length}` : ""}.</p>}
+          {records.length > 0 && <p className="settingsHint">Точне оновлення за patient_id: <b>{updateCount}</b> · нові картки: <b>{createCount}</b>.</p>}
           {parseErrors.length > 0 && <ul className="importErrors">{parseErrors.slice(0, 10).map((e, i) => <li key={i}>Рядок {e.line}: {e.error}</li>)}</ul>}
         </section>
 

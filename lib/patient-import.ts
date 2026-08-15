@@ -1,15 +1,18 @@
 // Розбір CSV зі списком пацієнтів для імпорту в CRM. Чистий модуль без
 // залежностей (тестований). Нормалізацію телефону й фінальну валідацію
 // робить сервер через sanitizeProfile — тут лише розбір і зіставлення колонок.
+// patient_id є необов'язковим: якщо вказаний — сервер оновить саме цю картку;
+// якщо порожній — буде створена нова immutable identity.
 
 export type ImportRecord = {
-  displayName: string; phone: string; birthDate: string;
+  patientId: string; displayName: string; phone: string; birthDate: string;
   email: string; address: string; notes: string;
 };
 export type ImportParse = { records: ImportRecord[]; errors: { line: number; error: string }[] };
 
 // Гнучке зіставлення заголовків (укр / рос / англ).
 const ALIASES: Record<string, string[]> = {
+  patientId: ["patient_id", "patient id", "patientid", "ід пацієнта", "id пацієнта"],
   surname: ["прізвище", "фамилия", "surname", "last name", "lastname"],
   name: ["імʼя", "ім'я", "имя", "first name", "firstname", "name"],
   patronymic: ["по батькові", "отчество", "patronymic", "middle name"],
@@ -98,6 +101,7 @@ export function mapRows(rows: string[][]): ImportParse {
     if (!phone) { out.errors.push({ line: i + 1, error: "Порожній телефон" }); continue; }
     if (!displayName) { out.errors.push({ line: i + 1, error: "Порожнє імʼя" }); continue; }
     out.records.push({
+      patientId: at(r, "patientId").toLowerCase().slice(0, 64),
       displayName,
       phone,
       birthDate: normalizeImportDate(at(r, "dob")),

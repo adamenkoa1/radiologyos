@@ -30,18 +30,20 @@ export async function POST(request: Request) {
 
   let priorStudies = 0;
   const booking = await db.prepare(
-    `SELECT phone_normalized AS phone, date_of_birth AS dob
+    `SELECT patient_id AS patientId
      FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
-  ).bind(bookingId, ctx.organizationId).first<{ phone: string; dob: string }>();
-  // A phone number can be shared by family members. Only use prior studies as
-  // AI context when the tenant-local booking identity also matches DOB. If DOB
-  // is absent, fail closed instead of treating the phone as a patient id.
-  if (booking?.phone && booking.dob) {
+  ).bind(bookingId, ctx.organizationId).first<{ patientId: string }>();
+
+  // Clinical prior-study context is identity-sensitive medical data. Once
+  // immutable patient_id exists, mutable/shared contact fields (phone, DOB,
+  // name) are never acceptable membership evidence. Unlinked legacy bookings
+  // deliberately receive no prior-study context until a registrar links them.
+  if (booking?.patientId) {
     const prior = await db.prepare(
       `SELECT COUNT(*) AS count FROM bookings
-       WHERE phone_normalized = ? AND date_of_birth = ?
-         AND performed_at != '' AND id != ? AND organization_id = ?`
-    ).bind(booking.phone, booking.dob, bookingId, ctx.organizationId).first<{ count: number }>();
+       WHERE organization_id = ? AND patient_id = ?
+         AND performed_at != '' AND id != ?`
+    ).bind(ctx.organizationId, booking.patientId, bookingId).first<{ count: number }>();
     priorStudies = Number(prior?.count || 0);
   }
 

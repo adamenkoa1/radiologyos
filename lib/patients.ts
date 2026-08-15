@@ -2,11 +2,13 @@ import { serviceByCode } from "./catalog";
 import { normalizeUkrainianPhone } from "./phone";
 import { normalizeDob } from "./dob";
 
-// CRM aggregation has two modes during the patient-id migration:
-// - the legacy list/card remains phone-grouped for backwards compatibility;
-// - exact patient-id reads aggregate only bookings explicitly linked to one
-//   immutable patient profile. Unlinked historical bookings are never inferred
-//   to belong to a profile from phone/DOB similarity.
+// CRM identity is patient_id. Phone is contact data only.
+//
+// Registry aggregation therefore has two deliberately separate populations:
+// - exact profiles are grouped only by immutable patient_id and receive only
+//   bookings explicitly linked to that patient_id;
+// - historical bookings with patient_id='' remain phone-grouped legacy rows.
+//   They are never inferred into a profile, even when the phone/DOB/name match.
 
 export type PatientBookingRow = {
   id:number; code:string; name:string; phoneNormalized:string; patientId:string;
@@ -99,32 +101,46 @@ function summarizePatientRows(
   };
 }
 
-// Legacy list mode: keep grouping by normalized phone until the UI is migrated
-// to exact profile selection. Profiles carry patientId so the client can move
-// to the exact path without making phone the future identity key.
+// Exact-first registry mode. `profiles` is keyed by immutable patient_id.
+// Linked bookings are never grouped by phone. Unlinked historical rows stay in
+// separate phone-scoped legacy groups so no migration guesses patient identity.
 export function buildPatientSummaries(
   bookings:PatientBookingRow[],
   profiles:Map<string,PatientProfile>,
 ):PatientSummary[] {
-  const groups = new Map<string,PatientBookingRow[]>();
+  const exactGroups = new Map<string,PatientBookingRow[]>();
+  const legacyGroups = new Map<string,PatientBookingRow[]>();
+
   for (const row of bookings) {
-    const key = row.phoneNormalized;
-    if (!key) continue;
-    (groups.get(key) || groups.set(key, []).get(key)!).push(row);
+    if (row.patientId) {
+      const rows = exactGroups.get(row.patientId) || [];
+      rows.push(row);
+      exactGroups.set(row.patientId, rows);
+      continue;
+    }
+    if (!row.phoneNormalized) continue;
+    const rows = legacyGroups.get(row.phoneNormalized) || [];
+    rows.push(row);
+    legacyGroups.set(row.phoneNormalized, rows);
   }
 
   const summaries:PatientSummary[] = [];
-  for (const [phone, rows] of groups) {
-    summaries.push(summarizePatientRows(rows, profiles.get(phone), phone));
+  for (const [patientId, profile] of profiles) {
+    const exactProfile = profile.patientId ? profile : { ...profile, patientId };
+    summaries.push(summarizePatientRows(exactGroups.get(patientId) || [], exactProfile, profile.phoneNormalized));
   }
 
-  // Пацієнти, додані вручну (профіль без жодної заявки) — теж у списку.
-  for (const [phone, profile] of profiles) {
-    if (groups.has(phone)) continue;
-    summaries.push(summarizePatientRows([], profile, phone));
+  // Do not surface a linked group without its profile: D1 guards make that
+  // state invalid, and inventing a profile would weaken the identity boundary.
+  for (const [phone, rows] of legacyGroups) {
+    summaries.push(summarizePatientRows(rows, undefined, phone));
   }
 
-  return summaries.sort((a, b) => (b.lastVisit || "").localeCompare(a.lastVisit || "") || a.name.localeCompare(b.name));
+  return summaries.sort((a, b) =>
+    (b.lastVisit || "").localeCompare(a.lastVisit || "")
+    || a.name.localeCompare(b.name)
+    || a.patientId.localeCompare(b.patientId)
+  );
 }
 
 // Exact identity mode: callers must already have selected a patient profile by
@@ -173,7 +189,6 @@ export function sanitizeProfile(input:unknown):ProfileValidation {
     return { ok:false, error:"Некоректний email пацієнта" };
   }
   const doNotContact = raw.doNotContact === true || raw.doNotContact === 1 || raw.doNotContact === "true" ? 1 : 0;
-  // Повна дата народження (необовʼязково); рік для сумісності похідний від неї.
   const birthDate = normalizeDob(raw.birthDate);
   if (raw.birthDate && !birthDate) return { ok:false, error:"Некоректна дата народження" };
   let birthYear = birthDate ? Number(birthDate.slice(0, 4)) : (Number(raw.birthYear) || 0);

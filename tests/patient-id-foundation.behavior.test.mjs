@@ -84,6 +84,8 @@ test("0050 backfills opaque immutable patient ids without changing legacy profil
     assert.match(String(otherId), /^[0-9a-f]{32}$/);
     assert.notEqual(otherId, row.patientId);
 
+    // At the 0050 migration boundary phone uniqueness is intentionally still present.
+    // Migration 0054 removes that constraint after patient_id becomes the identity key.
     assert.throws(
       () => db.prepare(
         `INSERT INTO patient_profiles (organization_id, phone_normalized, display_name, updated_by)
@@ -118,8 +120,11 @@ test("patient registry returns a stable patient id and never audits the phone as
     assert.match(String(created.profile?.patientId || ""), /^[0-9a-f]{32}$/);
     const patientId = created.profile.patientId;
 
+    // Exact updates must carry immutable identity explicitly. Phone is contact data
+    // and may be shared by multiple patient profiles after migration 0054.
     const update = await callWorker(
       jsonRequest("/api/staff/patients", {
+        patientId,
         phone: "+380 50 111 22 33",
         displayName: "Patient One Updated",
         birthDate: "1980-01-10",
@@ -129,7 +134,7 @@ test("patient registry returns a stable patient id and never audits the phone as
     );
     assert.equal(update.status, 200);
     const updated = await update.json();
-    assert.equal(updated.profile.patientId, patientId, "profile updates must preserve immutable identity");
+    assert.equal(updated.profile.patientId, patientId, "exact profile updates must preserve immutable identity");
 
     const get = await callWorker(
       jsonRequest("/api/staff/patients?phone=380501112233", undefined, {

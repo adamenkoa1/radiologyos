@@ -67,17 +67,25 @@ test("exact patient-id reads include only explicitly linked bookings and exclude
     assert.deepEqual(exact.communications, []);
     assert.equal(exact.legacyCommunicationsExcluded, true);
 
-    const legacyResponse = await patientGet(db, cookie, "phone=380501112233");
-    assert.equal(legacyResponse.status, 200);
-    const legacy = await legacyResponse.json();
-    assert.equal(legacy.bookings.length, 2, "legacy phone path remains compatible until CRM cutover");
-    assert.equal(legacy.communications.length, 1);
+    // With exactly one profile, the compatibility phone link resolves to that
+    // exact patient and must NOT absorb same-phone legacy history.
+    const phoneResponse = await patientGet(db, cookie, "phone=380501112233");
+    assert.equal(phoneResponse.status, 200);
+    const phoneCard = await phoneResponse.json();
+    assert.equal(phoneCard.patientId, patientId);
+    assert.deepEqual(phoneCard.bookings.map((row) => row.code), ["RD-EXACT-LINKED"]);
+    assert.deepEqual(phoneCard.communications, []);
 
     const listResponse = await patientGet(db, cookie, "");
     assert.equal(listResponse.status, 200);
     const list = await listResponse.json();
-    const summary = list.patients.find((item) => item.phoneNormalized === "380501112233");
-    assert.equal(summary.patientId, patientId, "legacy list exposes opaque id for future exact selection");
+    const samePhone = list.patients.filter((item) => item.phoneNormalized === "380501112233");
+    assert.equal(samePhone.length, 2, "exact profile and unlinked legacy history stay separate");
+    const exactSummary = samePhone.find((item) => item.patientId === patientId);
+    const legacySummary = samePhone.find((item) => item.patientId === "");
+    assert.equal(exactSummary.visits, 1);
+    assert.equal(legacySummary.visits, 1);
+    assert.equal(legacySummary.name, "Same Phone Legacy");
 
     const audit = raw.prepare(
       `SELECT target_id AS targetId FROM security_audit_log

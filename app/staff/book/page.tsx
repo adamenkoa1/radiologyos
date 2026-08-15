@@ -42,6 +42,7 @@ export default function StaffBookPage() {
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
+  const [patientId, setPatientId] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
@@ -93,6 +94,8 @@ export default function StaffBookPage() {
       if (/^\d{2}:\d{2}$/.test(requestedSlot)) setRequestedTime(requestedSlot);
       const firstService = Object.values(serviceGroups).flat().find(service => service.equipmentId === equipment);
       if (firstService) setServiceCode(firstService.code);
+      const pPatientId = (params.get("patientId") || "").trim().toLowerCase();
+      if (/^[0-9a-f]{32}$/.test(pPatientId)) setPatientId(pPatientId);
       const pName = params.get("name"); if (pName) setName(pName.slice(0, 120));
       const pPhone = params.get("phone"); if (pPhone) setPhone(pPhone.slice(0, 20));
       const pDob = params.get("dob"); if (pDob && /^\d{4}-\d{2}-\d{2}$/.test(pDob)) setDob(pDob);
@@ -118,9 +121,10 @@ export default function StaffBookPage() {
     event.preventDefault();
     setStatus("saving"); setError(""); setCode("");
     const data = new FormData(event.currentTarget);
-    const res = await fetch("/api/staff/bookings", {
+    const res = await fetch(patientId ? "/api/staff/bookings/exact" : "/api/staff/bookings", {
       method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({
+        ...(patientId ? { patientId } : {}),
         name: String(data.get("name") || ""),
         phone: String(data.get("phone") || ""),
         dob: String(data.get("dob") || ""),
@@ -138,7 +142,7 @@ export default function StaffBookPage() {
     setCode(result.code || "");
     (event.target as HTMLFormElement).reset();
     setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
-    setName(""); setPhone(""); setDob(""); setCategory("civilian");
+    setPatientId(""); setName(""); setPhone(""); setDob(""); setCategory("civilian");
   }
 
   const price = availableServices.find((service) => service.code === serviceCode)?.price;
@@ -148,6 +152,7 @@ export default function StaffBookPage() {
     : <form className="settingsCard" onSubmit={submit}>
         {code && <p className="notice success" role="status">Пацієнта записано, час підтверджено. <a className="textLink" href="/staff/appointments">Переглянути в календарі →</a></p>}
         <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
+        {patientId && <p className="settingsHint">Запис буде додано до вибраної CRM-картки пацієнта.</p>}
         <section className="settingsBlock">
           <h3>Дані пацієнта</h3>
           <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><NameSuggestInput name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" value={name} onChange={setName} /></label>
