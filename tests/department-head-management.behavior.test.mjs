@@ -99,12 +99,12 @@ test("department_head receives tenant aggregate operations without patient or fi
     }
 
     const audit = await db.prepare(
-      `SELECT details FROM security_audit_log
+      `SELECT details_json AS detailsJson FROM security_audit_log
        WHERE organization_id = 1 AND actor_email = ? AND action = 'management_summary_viewed'
        ORDER BY id DESC LIMIT 1`
     ).bind(email).first();
     assert.ok(audit, "management read should be security-audited");
-    const auditText = String(audit.details || "");
+    const auditText = String(audit.detailsJson || "");
     assert.ok(!auditText.includes("SECRET") && !auditText.includes("380501112233") && !auditText.includes("98765"));
 
     const denied = [
