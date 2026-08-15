@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const booking = await db.prepare(
     `SELECT id, name, service, protocol_status AS protocolStatus, protocol_issued_at AS issuedAt
      FROM bookings
-     WHERE ${whereClause} LIMIT 1`
+     WHERE ${whereClause} LIMIT 1`,
   ).bind(...bindings).first<{
     id: number; name: string; service: string; protocolStatus: string; issuedAt: string;
   }>();
@@ -47,11 +47,36 @@ export async function POST(request: Request) {
 
   const proto = await db.prepare(
     `SELECT number, method, findings, conclusion, recommendations
-     FROM protocols WHERE organization_id = ? AND booking_id = ? AND status = 'issued' LIMIT 1`
+     FROM protocols WHERE organization_id = ? AND booking_id = ? AND status = 'issued' LIMIT 1`,
   ).bind(session.organizationId, booking.id).first<{
     number: string; method: string; findings: string; conclusion: string; recommendations: string;
   }>();
   if (!proto) return Response.json({ error: "Протокол ще не готовий" }, { status: 409 });
+
+  const addenda = await db.prepare(
+    `SELECT id,
+            base_protocol_version AS baseProtocolVersion,
+            reason,
+            correction_text AS correctionText,
+            version,
+            signed_by AS signedBy,
+            signed_at AS signedAt,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+     FROM protocol_addenda
+     WHERE organization_id = ? AND booking_id = ? AND status = 'issued'
+     ORDER BY created_at ASC, id ASC`,
+  ).bind(session.organizationId, booking.id).all<{
+    id: string;
+    baseProtocolVersion: number;
+    reason: string;
+    correctionText: string;
+    version: number;
+    signedBy: string;
+    signedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  }>();
 
   await audit(db, {
     organizationId: session.organizationId,
@@ -59,7 +84,11 @@ export async function POST(request: Request) {
     action: "patient_protocol_viewed",
     resource: "protocol",
     targetId: booking.id,
-    details: { channel: "patient_cabinet", identityKind:session.patientId ? "patient_id" : session.identityKind },
+    details: {
+      channel: "patient_cabinet",
+      identityKind: session.patientId ? "patient_id" : session.identityKind,
+      issuedAddenda: addenda.results.length,
+    },
   });
 
   return Response.json({
@@ -72,6 +101,7 @@ export async function POST(request: Request) {
       findings: proto.findings,
       conclusion: proto.conclusion,
       recommendations: proto.recommendations,
+      addenda: addenda.results,
     },
   }, { headers: { "cache-control": "no-store" } });
 }
