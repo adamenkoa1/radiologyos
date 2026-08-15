@@ -2,8 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
-import BookingDrawer from "../booking-drawer";
-import { type CalBooking } from "../week-calendar";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
 
@@ -59,9 +57,9 @@ export default function IntakePage() {
   const [form, setForm] = useState<Form>(emptyForm);
   const [times, setTimes] = useState<string[]>([]);
   const [filter, setFilter] = useState<"attention"|"all">("attention");
-  const [query, setQuery] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState("");
+  const [query,setQuery] = useState("");
+  const [busy,setBusy] = useState(false);
+  const [toast,setToast] = useState("");
 
   function flash(msg:string) { setToast(msg); window.setTimeout(()=>setToast(""), 2600); }
 
@@ -91,26 +89,9 @@ export default function IntakePage() {
 
   const selected = data?.bookings.find(b => b.id === selectedId) || null;
 
-  // Drawer у Дошці: швидкий контекст попередніх досліджень пацієнта.
-  const [drawerId,setDrawerId] = useState<number | null>(null);
-  const drawerBookings = useMemo<CalBooking[]>(() => (data?.bookings || []).map((b) => ({
-    id:b.id, code:b.code, name:b.name, phone:b.phone, service:b.service, serviceCode:b.serviceCode,
-    equipmentId:b.equipmentId, durationMinutes:b.durationMinutes, desiredDate:b.desiredDate,
-    desiredTime:b.desiredTime, status:b.status, patientCategory:b.patientCategory,
-    paymentStatus:b.paymentStatus, paymentAmount:b.paymentAmount,
-  })), [data]);
-  const drawerBooking = drawerBookings.find((b) => b.id === drawerId) || null;
-
-  // Попередні дослідження цього пацієнта — за номером телефону (без окремого
-  // бекенду: беремо з уже завантаженого списку заявок). Пацієнт як центр.
-  const history = useMemo(() => {
-    if (!selected) return [] as Booking[];
-    const ph = digits(selected.phone);
-    if (!ph) return [];
-    return (data?.bookings ?? [])
-      .filter(b => b.id !== selected.id && digits(b.phone) === ph)
-      .sort((a,b) => (b.desiredDate+b.desiredTime).localeCompare(a.desiredDate+a.desiredTime));
-  }, [data, selected]);
+  // Не виводимо «попередні дослідження» з телефонного збігу. Телефон є
+  // контактним реквізитом і може належати кільком людям. Історію відкриваємо
+  // через CRM, де shared-phone вимагає вибрати конкретний immutable patient_id.
 
   // Чи форма розходиться зі збереженою заявкою (лише поля корекції).
   function formMatchesSelected() {
@@ -264,17 +245,8 @@ export default function IntakePage() {
               {selected.comment && <div className="intakeCtxComment"><b>Коментар</b><p>{selected.comment}</p></div>}
 
               <div className="intakeHistory">
-                <div className="intakeHistoryHead"><b>Попередні дослідження</b>{digits(selected.phone) ? <a className="intakeHistoryAll" href={`/staff/patients?phone=${digits(selected.phone)}`}>уся картка →</a> : <span>{history.length}</span>}</div>
-                {history.length === 0
-                  ? <p className="intakeHistoryEmpty">Перше звернення цього пацієнта (за номером телефону).</p>
-                  : <ul>{history.slice(0,8).map(h => <li key={h.id}>
-                      <button type="button" onClick={()=>setDrawerId(h.id)}>
-                        <span className="ihDate">{h.desiredDate}</span>
-                        <span className="ihSvc">{h.service}{h.equipmentId?` · ${EQUIP_UK[h.equipmentId]||h.equipmentId}`:""}</span>
-                        <span className={`ihStatus st-${h.status}`}>{STATUS_LABELS[h.status]||h.status}</span>
-                      </button></li>)}
-                    {history.length>8 && <li className="ihMore">…і ще {history.length-8}</li>}
-                  </ul>}
+                <div className="intakeHistoryHead"><b>Попередні дослідження</b>{digits(selected.phone) ? <a className="intakeHistoryAll" href={`/staff/patients?phone=${digits(selected.phone)}`}>відкрити CRM →</a> : <span>—</span>}</div>
+                <p className="intakeHistoryEmpty">Історію не визначаємо за номером телефону. Відкрийте конкретну CRM-картку пацієнта.</p>
               </div>
             </div>
 
@@ -294,13 +266,6 @@ export default function IntakePage() {
 
   return <StaffWorkspaceShell active="intake" title="Дошка прийому" description="Заявки з сайту й ручні — перегляд, корекція та обробка в одному місці." staffName={data?.staff.displayName} staffRole={data?.staff.role}>
     {body}
-    {drawerBooking && <BookingDrawer
-      key={drawerBooking.id}
-      booking={drawerBooking}
-      all={drawerBookings}
-      onClose={()=>setDrawerId(null)}
-      onOpen={setDrawerId}
-    />}
   </StaffWorkspaceShell>;
 }
 
