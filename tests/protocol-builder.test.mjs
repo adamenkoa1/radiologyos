@@ -19,6 +19,9 @@ test("protocol migration creates the document table and backfills existing proto
 
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const protocols = sqliteTable\("protocols"/);
+  for (const column of ["signed_by", "signed_at", "signed_version"]) {
+    assert.match(schema, new RegExp(column));
+  }
 });
 
 test("protocol library ships structured templates for every modality", async () => {
@@ -30,36 +33,41 @@ test("protocol library ships structured templates for every modality", async () 
     "protocolTemplateByKey", "suggestTemplateKey", "normalDocument",
     "renderProtocolText", "sanitizeDocument", "bookingProtocolStatus",
   ]) assert.match(source, new RegExp(`export function ${fn}`));
-  // Ready/issued protocols must carry a number and a conclusion.
   assert.match(source, /вкажіть його номер/);
   assert.match(source, /повинен містити висновок/);
+
+  const lifecycle = await read("lib/protocol-lifecycle.ts");
+  assert.match(lifecycle, /signed: "Підписаний"/);
+  assert.match(lifecycle, /sanitizeLifecycleDocument/);
+  assert.match(lifecycle, /status === "signed" \? "ready"/);
 });
 
 test("template pool covers the department's high-volume studies", async () => {
   const source = await read("lib/protocols.ts");
-  // New high-volume templates present.
   for (const k of ["ct_sinuses", "ct_spine", "ct_urography", "xray_abdomen", "xray_spine", "xray_sinuses"]) {
     assert.match(source, new RegExp(`key: "${k}"`), `template ${k} present`);
   }
-  // generic must remain the LAST template (protocolTemplateByKey falls back to it).
   const genericAt = source.indexOf('key: "generic"');
   for (const k of ["ct_chest", "ct_brain", "ct_abdomen", "xray_chest", "xray_bone", "fluoro_chest",
     "ct_sinuses", "ct_spine", "ct_urography", "xray_abdomen", "xray_spine", "xray_sinuses"]) {
     const at = source.indexOf(`key: "${k}"`);
     assert.ok(at >= 0 && at < genericAt, `${k} declared before generic`);
   }
-  // Auto-suggest routes the new modalities.
   for (const r of ['return "ct_sinuses"', 'return "ct_spine"', 'return "ct_urography"', 'return "xray_abdomen"', 'return "xray_spine"', 'return "xray_sinuses"']) {
     assert.ok(source.includes(r), `routing ${r} present`);
   }
 });
 
-test("protocol API guards writes and never defines schema at runtime", async () => {
+test("protocol API guards writes, signing and delivery without runtime DDL", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /canManageProtocols\(member\.role\)/);
-  assert.match(route, /sanitizeDocument\(body\)/);
-  assert.match(route, /INSERT INTO booking_events/);
+  assert.match(route, /canSignProtocols\(member\.role\)/);
+  assert.match(route, /sanitizeLifecycleDocument\(body\)/);
+  assert.match(route, /existing\.status !== "signed"/);
+  assert.match(route, /protocol_signed/);
+  assert.match(route, /protocol_issued/);
+  assert.match(route, /INSERT INTO protocol_revisions/);
   assert.match(route, /protocol_document_saved/);
   assert.doesNotMatch(route, /CREATE\s+TABLE/i);
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
@@ -84,22 +92,20 @@ test("protocol builder page renders inside the staff workspace", async () => {
   assert.match(html, /Оберіть дослідження зі списку/);
 });
 
-test("protocol editor guards unsaved work, shows a table of contents and loading state", async () => {
-  const { readFile } = await import("node:fs/promises");
-  const page = await readFile(new URL("../app/staff/protocols/page.tsx", import.meta.url), "utf8");
-  // Захист незбережених змін при перемиканні протоколу.
+test("protocol editor guards unsaved work and exposes sign-then-issue actions", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
   assert.match(page, /function selectBooking/);
   assert.match(page, /незбережені зміни/);
   assert.match(page, /setDirty/);
-  // Стан завантаження картки, а не оманливий плейсхолдер.
   assert.match(page, /bookingLoading/);
   assert.match(page, /Завантаження протоколу…/);
-  // Зміст протоколу з переходами по секціях + заповненість.
   assert.match(page, /protocolToc/);
   assert.match(page, /заповнено \$\{completeness\.filled\}\/\$\{completeness\.total\}/);
   assert.match(page, /#protocol-conclusion/);
-  // Друк: підпис лікаря — рядок для підпису, а не email.
+  assert.match(page, /Підписати протокол/);
+  assert.match(page, /Видати пацієнту/);
+  assert.match(page, /clinicalLocked/);
+  assert.match(page, /staff\?\.role === "radiologist" && doc\?\.status === "ready"/);
   assert.doesNotMatch(page, /Лікар-рентгенолог: \{booking\.assignedRadiologistEmail/);
-  // Єдиний патч документа замість повторюваного setDoc.
   assert.match(page, /function patchDoc/);
 });
