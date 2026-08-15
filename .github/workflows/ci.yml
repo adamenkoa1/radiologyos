@@ -44,6 +44,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Focused booking-task access diagnostic
+        run: node --experimental-strip-types --test tests/staff-tasks-medical-scope.behavior.test.mjs
+
       - name: Tests
         run: node --experimental-strip-types --test tests/*.test.mjs
 
