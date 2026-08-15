@@ -28,9 +28,10 @@ test("clinic business model exposes canonical references and documents", () => {
   for (const required of ["patient", "service", "employee", "equipment", "inventory_item", "counterparty"]) {
     assert.ok(REFERENCE_TYPES.includes(required), required);
   }
-  for (const required of ["patient_order", "service_delivery", "payment", "refund", "inventory_writeoff", "imaging_study", "result_delivery"]) {
+  for (const required of ["patient_order", "service_delivery", "payment", "refund", "inventory_writeoff", "study_performance", "result_delivery"]) {
     assert.ok(DOCUMENT_TYPES.includes(required), required);
   }
+  assert.equal(DOCUMENT_TYPES.includes("imaging_study"), false, "DICOM ImagingStudy must not be reused as a business document type");
 });
 
 test("posted documents cannot be silently edited or cancelled", () => {
@@ -51,6 +52,7 @@ test("posting maps business documents to registers", () => {
   assert.ok(registersForDocument("service_delivery").includes("revenue"));
   assert.ok(registersForDocument("service_delivery").includes("equipment_load"));
   assert.ok(registersForDocument("inventory_writeoff").includes("inventory_balance"));
+  assert.ok(registersForDocument("study_performance").includes("studies_performed"));
   for (const registers of Object.values(DOCUMENT_REGISTER_MAP)) {
     for (const register of registers || []) assert.ok(REGISTER_TYPES.includes(register), register);
   }
