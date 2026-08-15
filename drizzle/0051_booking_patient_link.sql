@@ -6,8 +6,7 @@
 ALTER TABLE `bookings` ADD COLUMN `patient_id` text NOT NULL DEFAULT '';
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `bookings_org_patient_idx`
-ON `bookings` (`organization_id`, `patient_id`, `desired_date`)
-WHERE `patient_id` != '';
+ON `bookings` (`organization_id`, `patient_id`, `desired_date`);
 --> statement-breakpoint
 -- A booking may only point at a patient profile owned by the same tenant.
 CREATE TRIGGER IF NOT EXISTS `bookings_patient_link_insert`
