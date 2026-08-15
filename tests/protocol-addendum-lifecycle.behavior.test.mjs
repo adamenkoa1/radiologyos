@@ -3,9 +3,13 @@ import test from "node:test";
 import { callWorker, jsonRequest, seedPatientSession, withD1 } from "./helpers/d1.mjs";
 
 const PHONE = "380971112233";
-const CODE = "RD-ADD001";
+const CODE = "RD-260920-1";
 const ADDENDUM = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const ADDENDUM_HIDDEN = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+
+function plainRows(rows) {
+  return rows.map((row) => ({ ...row }));
+}
 
 function seedBooking(raw, { code = CODE, protocolStatus = "issued" } = {}) {
   const result = raw.prepare(
@@ -51,7 +55,7 @@ function insertDraftAddendum(raw, bookingId, id = ADDENDUM, text = "Початк
 
 test("D1 enforces addendum base, lifecycle, immutable identity and append-only revision history", async () => {
   await withD1(async (_db, raw) => {
-    const draftBooking = seedBooking(raw, { code: "RD-ADD-DRAFT", protocolStatus: "draft" });
+    const draftBooking = seedBooking(raw, { code: "RD-260920-2", protocolStatus: "draft" });
     seedProtocol(raw, draftBooking, "draft");
 
     assert.throws(() => {
@@ -84,7 +88,7 @@ test("D1 enforces addendum base, lifecycle, immutable identity and append-only r
       `SELECT version, status, correction_text AS correctionText
        FROM protocol_addendum_revisions WHERE addendum_id = ? ORDER BY version`,
     ).all(ADDENDUM);
-    assert.deepEqual(revisions, [{ version: 1, status: "draft", correctionText: "Початкове виправлення" }]);
+    assert.deepEqual(plainRows(revisions), [{ version: 1, status: "draft", correctionText: "Початкове виправлення" }]);
 
     assert.throws(() => {
       raw.prepare(`UPDATE protocol_addendum_revisions SET correction_text = 'tamper' WHERE addendum_id = ?`).run(ADDENDUM);
@@ -132,7 +136,7 @@ test("D1 enforces addendum base, lifecycle, immutable identity and append-only r
       `SELECT version, status, correction_text AS correctionText
        FROM protocol_addendum_revisions WHERE addendum_id = ? ORDER BY version`,
     ).all(ADDENDUM);
-    assert.deepEqual(revisions, [
+    assert.deepEqual(plainRows(revisions), [
       { version: 1, status: "draft", correctionText: "Початкове виправлення" },
       { version: 2, status: "ready", correctionText: "Уточнений текст" },
       { version: 3, status: "signed", correctionText: "Уточнений текст" },
@@ -158,7 +162,7 @@ test("D1 enforces addendum base, lifecycle, immutable identity and append-only r
       `SELECT action, actor FROM booking_events
        WHERE booking_id = ? AND action = 'protocol_addendum_issued'`,
     ).all(bookingId);
-    assert.deepEqual(issueEvents, [{ action: "protocol_addendum_issued", actor: "registrar@example.com" }]);
+    assert.deepEqual(plainRows(issueEvents), [{ action: "protocol_addendum_issued", actor: "registrar@example.com" }]);
 
     raw.prepare(
       `UPDATE protocol_addenda SET status = 'issued', updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
