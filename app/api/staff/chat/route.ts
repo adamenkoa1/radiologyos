@@ -101,6 +101,13 @@ export async function GET(request: Request) {
          WHERE organization_id = ? AND patient_id = ? LIMIT 1`
       ).bind(orgId, patientId).first<{ name:string; phone:string; doNotContact:number }>();
 
+      // Exact patient identity is tenant-scoped and authoritative. If the
+      // patient does not exist in this organization, fail closed immediately;
+      // never consult communication rows or phone compatibility fallback.
+      if (!profile) {
+        return Response.json({ error:"Діалог пацієнта не знайдено" }, { status:404, headers:{ "cache-control":"no-store" } });
+      }
+
       const rows = channel
         ? await db.prepare(
             `SELECT id, patient_id AS patientId, channel, direction, summary AS text, actor,
@@ -117,10 +124,6 @@ export async function GET(request: Request) {
              ORDER BY created_at ASC, id ASC LIMIT 400`
           ).bind(orgId, patientId).all();
 
-      if (!profile && rows.results.length === 0) {
-        return Response.json({ error:"Діалог пацієнта не знайдено" }, { status:404, headers:{ "cache-control":"no-store" } });
-      }
-
       const issues = await db.prepare(
         `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
          FROM patient_notifications n
@@ -134,7 +137,7 @@ export async function GET(request: Request) {
          WHERE organization_id = ? AND patient_id = ? AND telegram_chat_id != '' LIMIT 1`
       ).bind(orgId, patientId).first<{ linked:number }>();
 
-      const shared = profile?.phone
+      const shared = profile.phone
         ? await db.prepare(
             `SELECT COUNT(*) AS count FROM patient_profiles
              WHERE organization_id = ? AND phone_normalized = ?`
@@ -154,13 +157,13 @@ export async function GET(request: Request) {
         conversationKey:`patient:${patientId}`,
         identityKind:"patient",
         patientId,
-        phone:profile?.phone || String((rows.results.at(-1) as { phone?:string } | undefined)?.phone || ""),
-        name:profile?.name || "",
+        phone:profile.phone,
+        name:profile.name || "",
         sharedPhone:Number(shared?.count || 0) > 1,
         messages:rows.results,
         issues:issues.results,
         availableReplyChannels:
-          orgId === PRIMARY_ORGANIZATION_ID && !!profile?.phone && Number(profile?.doNotContact || 0) !== 1
+          orgId === PRIMARY_ORGANIZATION_ID && !!profile.phone && Number(profile.doNotContact || 0) !== 1
             ? ["whatsapp"] : [],
         linkedTelegram:Number(telegram?.linked || 0) === 1,
         staff:member,
@@ -188,14 +191,16 @@ export async function GET(request: Request) {
     }
 
     const identity = await db.prepare(
-      `SELECT
+      `WITH input(org_id, phone) AS (VALUES (?, ?))
+       SELECT
          (SELECT COUNT(*) FROM patient_profiles p
-          WHERE p.organization_id = ?1 AND p.phone_normalized = ?2) AS exactProfileCount,
+          WHERE p.organization_id = i.org_id AND p.phone_normalized = i.phone) AS exactProfileCount,
          (SELECT COUNT(*) FROM bookings b
-          WHERE b.organization_id = ?1 AND b.phone_normalized = ?2 AND b.patient_id = '') AS legacyBookingCount,
+          WHERE b.organization_id = i.org_id AND b.phone_normalized = i.phone AND b.patient_id = '') AS legacyBookingCount,
          COALESCE((SELECT MAX(name) FROM bookings b
-          WHERE b.organization_id = ?1 AND b.phone_normalized = ?2 AND b.patient_id = ''
-          HAVING COUNT(*) = 1), '') AS name`
+          WHERE b.organization_id = i.org_id AND b.phone_normalized = i.phone AND b.patient_id = ''
+          HAVING COUNT(*) = 1), '') AS name
+       FROM input i`
     ).bind(orgId, legacyPhone).first<{ exactProfileCount:number; legacyBookingCount:number; name:string }>();
 
     const issues = await db.prepare(
@@ -238,11 +243,13 @@ export async function GET(request: Request) {
 
   const conversations = channel
     ? await db.prepare(
-        `WITH latest AS (
-           SELECT CASE WHEN patient_id != '' THEN 'patient:' || patient_id ELSE 'legacy:' || phone_normalized END AS conversationKey,
-                  MAX(id) AS maxId
-           FROM patient_communications
-           WHERE organization_id = ?1 AND channel = ?2
+        `WITH input(org_id, channel) AS (VALUES (?, ?)),
+         latest AS (
+           SELECT CASE WHEN pc.patient_id != '' THEN 'patient:' || pc.patient_id ELSE 'legacy:' || pc.phone_normalized END AS conversationKey,
+                  MAX(pc.id) AS maxId
+           FROM patient_communications pc
+           CROSS JOIN input i
+           WHERE pc.organization_id = i.org_id AND pc.channel = i.channel
            GROUP BY conversationKey
          )
          SELECT latest.conversationKey,
@@ -250,48 +257,51 @@ export async function GET(request: Request) {
                 c.patient_id AS patientId,
                 CASE WHEN c.patient_id != '' THEN COALESCE((
                   SELECT p.phone_normalized FROM patient_profiles p
-                  WHERE p.organization_id = ?1 AND p.patient_id = c.patient_id LIMIT 1
+                  WHERE p.organization_id = i.org_id AND p.patient_id = c.patient_id LIMIT 1
                 ), c.phone_normalized) ELSE c.phone_normalized END AS phone,
                 c.summary AS lastText, c.direction AS lastDirection, c.channel AS lastChannel,
                 c.created_at AS lastAt,
                 CASE WHEN c.patient_id != '' THEN COALESCE((
                   SELECT p.display_name FROM patient_profiles p
-                  WHERE p.organization_id = ?1 AND p.patient_id = c.patient_id LIMIT 1
+                  WHERE p.organization_id = i.org_id AND p.patient_id = c.patient_id LIMIT 1
                 ), '')
                 WHEN (SELECT COUNT(*) FROM bookings b
-                      WHERE b.organization_id = ?1 AND b.patient_id = '' AND b.phone_normalized = c.phone_normalized) = 1
+                      WHERE b.organization_id = i.org_id AND b.patient_id = '' AND b.phone_normalized = c.phone_normalized) = 1
                 THEN COALESCE((SELECT MAX(b2.name) FROM bookings b2
-                               WHERE b2.organization_id = ?1 AND b2.patient_id = '' AND b2.phone_normalized = c.phone_normalized), '')
+                               WHERE b2.organization_id = i.org_id AND b2.patient_id = '' AND b2.phone_normalized = c.phone_normalized), '')
                 ELSE '' END AS name,
                 CASE WHEN c.patient_id != '' THEN (
                   SELECT COUNT(*) FROM patient_profiles p3
-                  WHERE p3.organization_id = ?1 AND p3.phone_normalized = COALESCE((
+                  WHERE p3.organization_id = i.org_id AND p3.phone_normalized = COALESCE((
                     SELECT p4.phone_normalized FROM patient_profiles p4
-                    WHERE p4.organization_id = ?1 AND p4.patient_id = c.patient_id LIMIT 1
+                    WHERE p4.organization_id = i.org_id AND p4.patient_id = c.patient_id LIMIT 1
                   ), c.phone_normalized)
                 ) ELSE (
                   SELECT COUNT(*) FROM patient_profiles p5
-                  WHERE p5.organization_id = ?1 AND p5.phone_normalized = c.phone_normalized
+                  WHERE p5.organization_id = i.org_id AND p5.phone_normalized = c.phone_normalized
                 ) END AS exactProfileCount,
                 CASE WHEN c.patient_id != '' THEN (
                   SELECT COUNT(*) FROM patient_notifications n
                   JOIN bookings b3 ON b3.id = n.booking_id AND b3.organization_id = n.organization_id
-                  WHERE n.organization_id = ?1 AND b3.patient_id = c.patient_id AND n.status = 'failed'
+                  WHERE n.organization_id = i.org_id AND b3.patient_id = c.patient_id AND n.status = 'failed'
                 ) ELSE (
                   SELECT COUNT(*) FROM patient_notifications n
                   JOIN bookings b4 ON b4.id = n.booking_id AND b4.organization_id = n.organization_id
-                  WHERE n.organization_id = ?1 AND b4.patient_id = '' AND b4.phone_normalized = c.phone_normalized AND n.status = 'failed'
+                  WHERE n.organization_id = i.org_id AND b4.patient_id = '' AND b4.phone_normalized = c.phone_normalized AND n.status = 'failed'
                 ) END AS issueCount
          FROM latest
-         JOIN patient_communications c ON c.id = latest.maxId AND c.organization_id = ?1
+         CROSS JOIN input i
+         JOIN patient_communications c ON c.id = latest.maxId AND c.organization_id = i.org_id
          ORDER BY c.created_at DESC, c.id DESC LIMIT 150`
       ).bind(orgId, channel).all()
     : await db.prepare(
-        `WITH latest AS (
-           SELECT CASE WHEN patient_id != '' THEN 'patient:' || patient_id ELSE 'legacy:' || phone_normalized END AS conversationKey,
-                  MAX(id) AS maxId
-           FROM patient_communications
-           WHERE organization_id = ?1
+        `WITH input(org_id) AS (VALUES (?)),
+         latest AS (
+           SELECT CASE WHEN pc.patient_id != '' THEN 'patient:' || pc.patient_id ELSE 'legacy:' || pc.phone_normalized END AS conversationKey,
+                  MAX(pc.id) AS maxId
+           FROM patient_communications pc
+           CROSS JOIN input i
+           WHERE pc.organization_id = i.org_id
            GROUP BY conversationKey
          )
          SELECT latest.conversationKey,
@@ -299,40 +309,41 @@ export async function GET(request: Request) {
                 c.patient_id AS patientId,
                 CASE WHEN c.patient_id != '' THEN COALESCE((
                   SELECT p.phone_normalized FROM patient_profiles p
-                  WHERE p.organization_id = ?1 AND p.patient_id = c.patient_id LIMIT 1
+                  WHERE p.organization_id = i.org_id AND p.patient_id = c.patient_id LIMIT 1
                 ), c.phone_normalized) ELSE c.phone_normalized END AS phone,
                 c.summary AS lastText, c.direction AS lastDirection, c.channel AS lastChannel,
                 c.created_at AS lastAt,
                 CASE WHEN c.patient_id != '' THEN COALESCE((
                   SELECT p.display_name FROM patient_profiles p
-                  WHERE p.organization_id = ?1 AND p.patient_id = c.patient_id LIMIT 1
+                  WHERE p.organization_id = i.org_id AND p.patient_id = c.patient_id LIMIT 1
                 ), '')
                 WHEN (SELECT COUNT(*) FROM bookings b
-                      WHERE b.organization_id = ?1 AND b.patient_id = '' AND b.phone_normalized = c.phone_normalized) = 1
+                      WHERE b.organization_id = i.org_id AND b.patient_id = '' AND b.phone_normalized = c.phone_normalized) = 1
                 THEN COALESCE((SELECT MAX(b2.name) FROM bookings b2
-                               WHERE b2.organization_id = ?1 AND b2.patient_id = '' AND b2.phone_normalized = c.phone_normalized), '')
+                               WHERE b2.organization_id = i.org_id AND b2.patient_id = '' AND b2.phone_normalized = c.phone_normalized), '')
                 ELSE '' END AS name,
                 CASE WHEN c.patient_id != '' THEN (
                   SELECT COUNT(*) FROM patient_profiles p3
-                  WHERE p3.organization_id = ?1 AND p3.phone_normalized = COALESCE((
+                  WHERE p3.organization_id = i.org_id AND p3.phone_normalized = COALESCE((
                     SELECT p4.phone_normalized FROM patient_profiles p4
-                    WHERE p4.organization_id = ?1 AND p4.patient_id = c.patient_id LIMIT 1
+                    WHERE p4.organization_id = i.org_id AND p4.patient_id = c.patient_id LIMIT 1
                   ), c.phone_normalized)
                 ) ELSE (
                   SELECT COUNT(*) FROM patient_profiles p5
-                  WHERE p5.organization_id = ?1 AND p5.phone_normalized = c.phone_normalized
+                  WHERE p5.organization_id = i.org_id AND p5.phone_normalized = c.phone_normalized
                 ) END AS exactProfileCount,
                 CASE WHEN c.patient_id != '' THEN (
                   SELECT COUNT(*) FROM patient_notifications n
                   JOIN bookings b3 ON b3.id = n.booking_id AND b3.organization_id = n.organization_id
-                  WHERE n.organization_id = ?1 AND b3.patient_id = c.patient_id AND n.status = 'failed'
+                  WHERE n.organization_id = i.org_id AND b3.patient_id = c.patient_id AND n.status = 'failed'
                 ) ELSE (
                   SELECT COUNT(*) FROM patient_notifications n
                   JOIN bookings b4 ON b4.id = n.booking_id AND b4.organization_id = n.organization_id
-                  WHERE n.organization_id = ?1 AND b4.patient_id = '' AND b4.phone_normalized = c.phone_normalized AND n.status = 'failed'
+                  WHERE n.organization_id = i.org_id AND b4.patient_id = '' AND b4.phone_normalized = c.phone_normalized AND n.status = 'failed'
                 ) END AS issueCount
          FROM latest
-         JOIN patient_communications c ON c.id = latest.maxId AND c.organization_id = ?1
+         CROSS JOIN input i
+         JOIN patient_communications c ON c.id = latest.maxId AND c.organization_id = i.org_id
          ORDER BY c.created_at DESC, c.id DESC LIMIT 150`
       ).bind(orgId).all();
 
@@ -405,11 +416,13 @@ export async function POST(request: Request) {
   } else {
     if (!phone) return Response.json({ error:"Вкажіть номер отримувача" }, { status:400 });
     const identity = await db.prepare(
-      `SELECT
+      `WITH input(org_id, phone) AS (VALUES (?, ?))
+       SELECT
          (SELECT COUNT(*) FROM patient_profiles p
-          WHERE p.organization_id = ?1 AND p.phone_normalized = ?2) AS exactProfileCount,
+          WHERE p.organization_id = i.org_id AND p.phone_normalized = i.phone) AS exactProfileCount,
          (SELECT COUNT(*) FROM bookings b
-          WHERE b.organization_id = ?1 AND b.phone_normalized = ?2 AND b.patient_id = '') AS legacyBookingCount`
+          WHERE b.organization_id = i.org_id AND b.phone_normalized = i.phone AND b.patient_id = '') AS legacyBookingCount
+       FROM input i`
     ).bind(ctx.organizationId, phone).first<{ exactProfileCount:number; legacyBookingCount:number }>();
     const exactProfileCount = Number(identity?.exactProfileCount || 0);
     const legacyBookingCount = Number(identity?.legacyBookingCount || 0);
