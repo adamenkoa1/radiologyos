@@ -121,7 +121,11 @@ test("exact reply rejects a stale client phone before transport and exact lookup
     }), db);
     assert.equal(stale.status, 409);
 
-    const crossTenant = await callWorker(staffGet(`/api/staff/chat?patientId=${PATIENT_OTHER_TENANT}`, cookie), db);
+    // Supplying a same-tenant compatibility phone must never rescue a foreign exact patient ID.
+    const crossTenant = await callWorker(
+      staffGet(`/api/staff/chat?patientId=${PATIENT_OTHER_TENANT}&phone=${PHONE}`, cookie),
+      db,
+    );
     assert.equal(crossTenant.status, 404);
     assert.doesNotMatch(await crossTenant.text(), /OTHER_TENANT_SECRET/);
   });
