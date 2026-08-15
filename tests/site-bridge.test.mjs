@@ -47,22 +47,25 @@ test("patient cabinet lists verified-session bookings and reads protocols from D
   assert.doesNotMatch(cabinet, /radiologyos_applications_v1/);
 });
 
-test("my-bookings lists only the verified phone inside the verified tenant", async () => {
+test("my-bookings prefers immutable patient_id and preserves the verified legacy fallback", async () => {
   const route = await read("app/api/my-bookings/route.ts");
   assert.match(route, /requirePatientSession\(/);
   assert.doesNotMatch(route, /normalizeUkrainianPhone\(/);
   assert.doesNotMatch(route, /createPatientSession\(/);
-  assert.match(route, /WHERE b\.organization_id = \? AND b\.phone_normalized = \?/);
-  assert.match(route, /session\.organizationId, session\.phoneNormalized/);
+  assert.match(route, /session\.patientId[\s\S]*b\.organization_id = \? AND b\.patient_id = \?/);
+  assert.match(route, /b\.organization_id = \? AND b\.phone_normalized = \? AND \$\{identityClause\}/);
+  assert.match(route, /\[session\.organizationId, session\.patientId\]/);
+  assert.match(route, /\[session\.organizationId, session\.phoneNormalized, session\.identityValue\]/);
   assert.match(route, /protocol_status = 'issued'/);
   assert.match(route, /isRateLimited\(/);
 });
 
-test("my-protocol only returns an issued protocol behind the same tenant-scoped patient session", async () => {
+test("my-protocol returns issued protocol through immutable patient_id or the exact verified legacy scope", async () => {
   const route = await read("app/api/my-protocol/route.ts");
   assert.match(route, /normalizeBookingCode\(/);
   assert.match(route, /requirePatientSession\(/);
-  assert.match(route, /WHERE organization_id = \? AND code = \? AND phone_normalized = \?/);
+  assert.match(route, /session\.patientId[\s\S]*organization_id = \? AND code = \? AND patient_id = \?/);
+  assert.match(route, /organization_id = \? AND code = \? AND phone_normalized = \? AND \$\{identityClause\}/);
   assert.match(route, /protocolStatus !== "issued"/);
   assert.match(route, /FROM protocols WHERE organization_id = \? AND booking_id = \?/);
 });
