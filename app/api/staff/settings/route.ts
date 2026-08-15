@@ -3,6 +3,7 @@
 // These settings are still legacy-global in app_settings, so until they are
 // tenantized only the primary/public organization may administer them.
 
+import { canManageSystem } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { getSettings, setSetting } from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
@@ -46,8 +47,8 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
-    return Response.json({ error: "Налаштування доступні лише адміністратору основної організації" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
+    return Response.json({ error: "Налаштування доступні лише системному адміністратору основної організації" }, { status: 403 });
   }
 
   const values = await getSettings(db, SETTING_KEYS);
@@ -62,8 +63,8 @@ export async function PUT(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
-    return Response.json({ error: "Змінювати налаштування може лише адміністратор основної організації" }, { status: 403 });
+  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
+    return Response.json({ error: "Змінювати налаштування може лише системний адміністратор основної організації" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({})) as {
