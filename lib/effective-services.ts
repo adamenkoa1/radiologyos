@@ -15,6 +15,8 @@ export type EffectiveService = ConfiguredService & {
   customPrice: boolean;
 };
 
+const PRIMARY_ORGANIZATION_ID = 1;
+
 /**
  * Canonical server-side service resolver.
  *
@@ -24,11 +26,11 @@ export type EffectiveService = ConfiguredService & {
  */
 export async function effectiveServices(
   db: D1Database,
-  organizationId = 1,
+  organizationId = PRIMARY_ORGANIZATION_ID,
 ): Promise<EffectiveService[]> {
   const [tenantConfig, legacyConfig, overrides] = await Promise.all([
     getSetting(db, serviceConfigKey(organizationId)),
-    getSetting(db, SERVICE_CONFIG_KEY),
+    organizationId === PRIMARY_ORGANIZATION_ID ? getSetting(db, SERVICE_CONFIG_KEY) : Promise.resolve(""),
     priceOverrides(db, organizationId),
   ]);
   const config = parseServiceConfig(tenantConfig || legacyConfig);
@@ -48,7 +50,7 @@ export async function effectiveServices(
 export async function effectiveServiceByCode(
   db: D1Database,
   code: string,
-  organizationId = 1,
+  organizationId = PRIMARY_ORGANIZATION_ID,
 ): Promise<EffectiveService | undefined> {
   const services = await effectiveServices(db, organizationId);
   return services.find((service) => service.code === code);
