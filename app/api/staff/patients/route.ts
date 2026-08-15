@@ -28,7 +28,39 @@ const PROFILE_COLUMNS = `patient_id AS patientId, phone_normalized AS phoneNorma
 const COMMUNICATION_COLUMNS = `id, patient_id AS patientId, phone_normalized AS phoneNormalized,
   channel, direction, summary, actor, created_at AS createdAt`;
 
+const PATIENT_ID_RE = /^[0-9a-f]{32}$/;
 type PatientProfileRow = PatientProfile & { patientId:string };
+
+async function exactPatientData(db:D1Database, organizationId:number, patientId:string) {
+  const profileRow = await db.prepare(
+    `SELECT ${PROFILE_COLUMNS} FROM patient_profiles
+     WHERE organization_id = ? AND patient_id = ? LIMIT 1`
+  ).bind(organizationId, patientId).first<PatientProfileRow>();
+  if (!profileRow) return null;
+
+  const [bookings, communications] = await Promise.all([
+    db.prepare(
+      `SELECT ${BOOKING_COLUMNS} FROM bookings
+       WHERE organization_id = ? AND patient_id = ?
+       ORDER BY desired_date DESC, desired_time DESC`
+    ).bind(organizationId, patientId).all(),
+    db.prepare(
+      `SELECT ${COMMUNICATION_COLUMNS} FROM patient_communications
+       WHERE organization_id = ? AND patient_id = ?
+       ORDER BY created_at DESC LIMIT 200`
+    ).bind(organizationId, patientId).all(),
+  ]);
+  const rows = bookings.results as unknown as PatientBookingRow[];
+  return {
+    patient: buildExactPatientSummary(rows, profileRow),
+    patientId,
+    phone: profileRow.phoneNormalized,
+    profile: profileRow,
+    bookings: bookings.results,
+    communications: communications.results,
+    legacyCommunicationsExcluded: true,
+  };
+}
 
 export async function GET(request: Request) {
   const db = dbBinding();
@@ -44,29 +76,11 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const rawPatientId = (url.searchParams.get("patientId") || "").trim().toLowerCase();
   if (rawPatientId) {
-    if (!/^[0-9a-f]{32}$/.test(rawPatientId)) {
+    if (!PATIENT_ID_RE.test(rawPatientId)) {
       return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
     }
-    const profileRow = await db.prepare(
-      `SELECT ${PROFILE_COLUMNS} FROM patient_profiles
-       WHERE organization_id = ? AND patient_id = ? LIMIT 1`
-    ).bind(orgId, rawPatientId).first<PatientProfileRow>();
-    if (!profileRow) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
-
-    const [bookings, communications] = await Promise.all([
-      db.prepare(
-        `SELECT ${BOOKING_COLUMNS} FROM bookings
-         WHERE organization_id = ? AND patient_id = ?
-         ORDER BY desired_date DESC, desired_time DESC`
-      ).bind(orgId, rawPatientId).all(),
-      db.prepare(
-        `SELECT ${COMMUNICATION_COLUMNS} FROM patient_communications
-         WHERE organization_id = ? AND patient_id = ?
-         ORDER BY created_at DESC LIMIT 200`
-      ).bind(orgId, rawPatientId).all(),
-    ]);
-    const rows = bookings.results as unknown as PatientBookingRow[];
-    const summary = buildExactPatientSummary(rows, profileRow);
+    const exact = await exactPatientData(db, orgId, rawPatientId);
+    if (!exact) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
     await logSecurityEvent(db, {
       organizationId: orgId,
       actorEmail: member.email,
@@ -74,34 +88,77 @@ export async function GET(request: Request) {
       resource: "patient",
       targetId: rawPatientId,
     });
-    return Response.json({
-      patient: summary,
-      patientId: rawPatientId,
-      phone: profileRow.phoneNormalized,
-      profile: profileRow,
-      bookings: bookings.results,
-      communications: communications.results,
-      legacyCommunicationsExcluded: true,
-      staff: member,
-    }, { headers: { "cache-control": "no-store" } });
+    return Response.json({ ...exact, staff: member }, { headers: { "cache-control": "no-store" } });
   }
 
+  // Legacy phone deep links remain usable only when the phone resolves safely.
+  // Multiple profiles with one phone are deliberately ambiguous and must be
+  // selected by immutable patient_id; never merge their clinical histories.
   const phone = normalizeUkrainianPhone(url.searchParams.get("phone") || "");
   if (phone) {
-    const [bookings, profileRow, communications] = await Promise.all([
-      db.prepare(`SELECT ${BOOKING_COLUMNS} FROM bookings WHERE phone_normalized = ? AND organization_id = ? ORDER BY desired_date DESC, desired_time DESC`).bind(phone, orgId).all(),
-      db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE phone_normalized = ? AND organization_id = ? LIMIT 1`).bind(phone, orgId).first<PatientProfileRow>(),
-      db.prepare(`SELECT ${COMMUNICATION_COLUMNS}
-         FROM patient_communications WHERE phone_normalized = ? AND organization_id = ? ORDER BY created_at DESC LIMIT 200`).bind(phone, orgId).all(),
+    const profileRows = await db.prepare(
+      `SELECT ${PROFILE_COLUMNS} FROM patient_profiles
+       WHERE organization_id = ? AND phone_normalized = ?
+       ORDER BY updated_at DESC LIMIT 25`
+    ).bind(orgId, phone).all();
+    const profiles = profileRows.results as unknown as PatientProfileRow[];
+    if (profiles.length > 1) {
+      return Response.json({
+        error: "Цей номер телефону використовується кількома пацієнтами. Оберіть конкретну картку.",
+        ambiguous: true,
+        matches: profiles.map((profile) => ({
+          patientId: profile.patientId,
+          displayName: profile.displayName,
+          birthDate: profile.birthDate,
+          phoneNormalized: profile.phoneNormalized,
+        })),
+      }, { status: 409, headers: { "cache-control": "no-store" } });
+    }
+    if (profiles.length === 1) {
+      const exact = await exactPatientData(db, orgId, profiles[0].patientId);
+      if (!exact) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
+      await logSecurityEvent(db, {
+        organizationId: orgId,
+        actorEmail: member.email,
+        action: "patient_record_viewed",
+        resource: "patient",
+        targetId: profiles[0].patientId,
+      });
+      return Response.json({ ...exact, staff: member }, { headers: { "cache-control": "no-store" } });
+    }
+
+    const [bookings, communications] = await Promise.all([
+      db.prepare(
+        `SELECT ${BOOKING_COLUMNS} FROM bookings
+         WHERE organization_id = ? AND phone_normalized = ? AND patient_id = ''
+         ORDER BY desired_date DESC, desired_time DESC`
+      ).bind(orgId, phone).all(),
+      db.prepare(
+        `SELECT ${COMMUNICATION_COLUMNS} FROM patient_communications
+         WHERE organization_id = ? AND phone_normalized = ? AND patient_id = ''
+         ORDER BY created_at DESC LIMIT 200`
+      ).bind(orgId, phone).all(),
     ]);
     const rows = bookings.results as unknown as PatientBookingRow[];
-    if (!rows.length && !profileRow) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
-    const profiles = new Map<string, PatientProfile>();
-    if (profileRow) profiles.set(phone, profileRow);
-    const [summary] = buildPatientSummaries(rows, profiles);
-    const auditTarget = profileRow?.patientId || (rows[0]?.id ? `booking:${rows[0].id}` : "unlinked");
-    await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_record_viewed", resource: "patient", targetId: auditTarget });
-    return Response.json({ patient: summary || null, phone, profile: profileRow || null, bookings: bookings.results, communications: communications.results, staff: member }, { headers: { "cache-control": "no-store" } });
+    if (!rows.length) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
+    const [summary] = buildPatientSummaries(rows, new Map());
+    const auditTarget = rows[0]?.id ? `booking:${rows[0].id}` : "unlinked";
+    await logSecurityEvent(db, {
+      organizationId: orgId,
+      actorEmail: member.email,
+      action: "patient_record_viewed",
+      resource: "patient",
+      targetId: auditTarget,
+    });
+    return Response.json({
+      patient: summary || null,
+      patientId: "",
+      phone,
+      profile: null,
+      bookings: bookings.results,
+      communications: communications.results,
+      staff: member,
+    }, { headers: { "cache-control": "no-store" } });
   }
 
   const [bookings, profileRows] = await Promise.all([
@@ -109,9 +166,15 @@ export async function GET(request: Request) {
     db.prepare(`SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? ORDER BY updated_at DESC LIMIT 5000`).bind(orgId).all(),
   ]);
   const profiles = new Map<string, PatientProfile>();
-  for (const row of profileRows.results as unknown as PatientProfileRow[]) profiles.set(row.phoneNormalized, row);
+  for (const row of profileRows.results as unknown as PatientProfileRow[]) profiles.set(row.patientId, row);
   const patients = buildPatientSummaries(bookings.results as unknown as PatientBookingRow[], profiles);
-  await logSecurityEvent(db, { organizationId: orgId, actorEmail: member.email, action: "patient_registry_viewed", resource: "patient_registry", details: { rows: patients.length } });
+  await logSecurityEvent(db, {
+    organizationId: orgId,
+    actorEmail: member.email,
+    action: "patient_registry_viewed",
+    resource: "patient_registry",
+    details: { rows: patients.length },
+  });
   return Response.json({ patients, staff: member }, { headers: { "cache-control": "no-store" } });
 }
 
@@ -130,7 +193,7 @@ export async function PUT(request: Request) {
   const patientId = String(body.patientId || "").trim().toLowerCase();
 
   if (patientId) {
-    if (!/^[0-9a-f]{32}$/.test(patientId)) {
+    if (!PATIENT_ID_RE.test(patientId)) {
       return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
     }
     const updated = await db.prepare(
@@ -149,24 +212,41 @@ export async function PUT(request: Request) {
       `SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? AND patient_id = ? LIMIT 1`
     ).bind(ctx.organizationId, patientId).first<PatientProfileRow>();
     if (!saved) return Response.json({ error: "Не вдалося зберегти картку пацієнта" }, { status: 500 });
+    await logSecurityEvent(db, {
+      organizationId: ctx.organizationId,
+      actorEmail: member.email,
+      action: "patient_profile_updated",
+      resource: "patient",
+      targetId: patientId,
+    });
     return Response.json({ ok: true, profile: saved });
   }
 
+  // Create is insert-only. Phone is intentionally not a conflict target: two
+  // distinct patients may share it, and a mutable contact value must never
+  // silently select an existing identity for overwrite.
+  const newPatientId = crypto.randomUUID().replace(/-/g, "").toLowerCase();
   await db.prepare(
     `INSERT INTO patient_profiles
-       (organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-     ON CONFLICT(organization_id, phone_normalized) DO UPDATE SET
-       display_name = excluded.display_name, birth_year = excluded.birth_year,
-       birth_date = excluded.birth_date, email = excluded.email, address = excluded.address,
-       tags = excluded.tags, notes = excluded.notes, do_not_contact = excluded.do_not_contact,
-       updated_by = excluded.updated_by, updated_at = CURRENT_TIMESTAMP`
-  ).bind(ctx.organizationId, profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate, profile.email, profile.address, profile.tags, profile.notes, profile.doNotContact, member.email).run();
+       (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+  ).bind(
+    newPatientId, ctx.organizationId, profile.phoneNormalized, profile.displayName,
+    profile.birthYear, profile.birthDate, profile.email, profile.address,
+    profile.tags, profile.notes, profile.doNotContact, member.email,
+  ).run();
 
   const saved = await db.prepare(
-    `SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(ctx.organizationId, profile.phoneNormalized).first<PatientProfileRow>();
+    `SELECT ${PROFILE_COLUMNS} FROM patient_profiles WHERE organization_id = ? AND patient_id = ? LIMIT 1`
+  ).bind(ctx.organizationId, newPatientId).first<PatientProfileRow>();
   if (!saved) return Response.json({ error: "Не вдалося зберегти картку пацієнта" }, { status: 500 });
+  await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: member.email,
+    action: "patient_profile_created",
+    resource: "patient",
+    targetId: newPatientId,
+  });
   return Response.json({ ok: true, profile: saved });
 }
 
@@ -182,7 +262,7 @@ export async function POST(request: Request) {
   const patientId = String(body.patientId || "").trim().toLowerCase();
   let exactPhone = "";
   if (patientId) {
-    if (!/^[0-9a-f]{32}$/.test(patientId)) {
+    if (!PATIENT_ID_RE.test(patientId)) {
       return Response.json({ error: "Некоректний ідентифікатор пацієнта" }, { status: 400 });
     }
     const profile = await db.prepare(
