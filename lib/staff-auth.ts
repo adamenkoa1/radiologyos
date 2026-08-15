@@ -5,7 +5,8 @@ import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_CO
 // `memberships.role` and may use a narrower organization-only role.
 export type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 export type SystemRole = "admin" | "organization_admin";
-export type AccessRole = StaffRole | SystemRole;
+export type ManagementRole = "admin" | "department_head";
+export type AccessRole = StaffRole | SystemRole | ManagementRole;
 
 // Resolve the signed-in staff member from the session cookie. Returns null for
 // anonymous or expired sessions.
@@ -47,6 +48,13 @@ export async function destroySession(db: D1Database, rawToken: string): Promise<
 // administrator and does not inherit medical-data access from this helper.
 export function canManageSystem(role: AccessRole) {
   return role === "admin" || role === "organization_admin";
+}
+
+// Read-only management authority. `department_head` is intentionally separate
+// from clinical and system-administration capabilities: it may inspect aggregate
+// operational state without inheriting access to patient-level records.
+export function canViewManagementSummary(role: AccessRole) {
+  return role === "admin" || role === "department_head";
 }
 
 export function canManageBookings(role: AccessRole) {
