@@ -16,6 +16,6 @@ test("patient registry scopes exact identity by organization and never upserts b
   // 0035 records the historical phone-composite model; 0054 deliberately removes
   // current phone uniqueness after immutable patient_id becomes the identity key.
   assert.match(legacyMigration, /PRIMARY KEY \(`organization_id`, `phone_normalized`\)/);
-  assert.match(sharedPhoneMigration, /CREATE INDEX `patient_profiles_org_phone_idx`/);
-  assert.doesNotMatch(sharedPhoneMigration, /CREATE UNIQUE INDEX `patient_profiles_org_phone_idx`/);
+  assert.match(sharedPhoneMigration, /CREATE INDEX IF NOT EXISTS `patient_profiles_org_phone_idx`/);
+  assert.doesNotMatch(sharedPhoneMigration, /CREATE UNIQUE INDEX(?: IF NOT EXISTS)? `patient_profiles_org_phone_idx`/);
 });
