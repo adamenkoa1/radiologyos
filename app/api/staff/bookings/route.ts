@@ -15,6 +15,7 @@ import {
   canWriteNotes,
   type StaffRole,
 } from "../../../../lib/staff-auth";
+import { projectBookingForStaff, staffBookingCapabilities } from "../../../../lib/staff-booking-projection";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { nextBookingCode } from "../../../../lib/booking-code";
 import { dbBinding } from "../../../../lib/db";
@@ -150,7 +151,8 @@ export async function GET(request: Request) {
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
   const member = ctx.member;
   const scope = bookingScope(member, ctx.organizationId);
-  const includeFinancialDetails = canManageFinance(member.role);
+  const capabilities = staffBookingCapabilities(member.role);
+  const includeFinancialDetails = capabilities.canManageFinance;
   const financeEventScope = includeFinancialDetails
     ? ""
     : " AND action NOT IN ('finance_updated','payment_confirmed','payment_refunded')";
@@ -202,17 +204,15 @@ export async function GET(request: Request) {
        ORDER BY created_at DESC LIMIT 1000`
     ).bind(ctx.organizationId, ...scope.values).all(),
   ]);
-  const bookings = (result.results as Array<Record<string, unknown>>).map((booking) => ({
-    ...booking,
-    // Existing bookings keep the price snapshot captured when they were created.
-    listedPrice: Number(booking.paymentAmount) || 0,
-  }));
+  const bookings = (result.results as Array<Record<string, unknown>>)
+    .map((booking) => projectBookingForStaff(booking, capabilities));
   return Response.json({
     bookings,
     events: events.results,
     notes: notes.results,
     staffOptions: staffOptions.results,
     notifications: notifications.results,
+    capabilities,
     staff: member,
   });
 }
