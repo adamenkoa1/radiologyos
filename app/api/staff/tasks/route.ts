@@ -1,5 +1,6 @@
 import { audit } from "../../../../lib/audit";
 import { dbBinding } from "../../../../lib/db";
+import { canAccessBooking, type AccessRole } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 
 type TaskRow = {
@@ -22,25 +23,45 @@ type TaskRow = {
   sourceEntityId:string;
 };
 
+type ActiveMember = { email:string; role:AccessRole };
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const PRIORITIES = new Set(["low","normal","high"]);
 
-async function activeMember(db:D1Database, organizationId:number, email:string) {
-  if (!email) return true;
-  const row = await db.prepare(
-    `SELECT 1 AS ok FROM memberships m
+async function activeMember(db:D1Database, organizationId:number, email:string):Promise<ActiveMember|null> {
+  if (!email) return null;
+  return db.prepare(
+    `SELECT m.member_email AS email, m.role AS role FROM memberships m
      JOIN staff_members s ON s.email = m.member_email
      WHERE m.organization_id = ? AND m.member_email = ? AND m.active = 1 AND s.active = 1
      LIMIT 1`
-  ).bind(organizationId,email).first<{ok:number}>();
-  return !!row?.ok;
+  ).bind(organizationId,email).first<ActiveMember>();
 }
 
-async function bookingBelongsToOrg(db:D1Database, organizationId:number, bookingId:number|null) {
-  if (!bookingId) return true;
-  const row = await db.prepare("SELECT 1 AS ok FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1")
-    .bind(organizationId,bookingId).first<{ok:number}>();
-  return !!row?.ok;
+function addBookingVisibility(
+  where:string[],
+  binds:(string|number)[],
+  member:{email:string;role:AccessRole},
+) {
+  if (member.role === "admin" || member.role === "registrar") return;
+  const column = member.role === "radiologist"
+    ? "assigned_radiologist_email"
+    : member.role === "radiographer"
+      ? "assigned_radiographer_email"
+      : "";
+  if (!column) {
+    where.push("t.booking_id IS NULL");
+    return;
+  }
+  where.push(`(
+    t.booking_id IS NULL OR EXISTS (
+      SELECT 1 FROM bookings b
+      WHERE b.organization_id = t.organization_id
+        AND b.id = t.booking_id
+        AND b.${column} = ?
+    )
+  )`);
+  binds.push(member.email);
 }
 
 export async function GET(request:Request) {
@@ -52,24 +73,25 @@ export async function GET(request:Request) {
   const url = new URL(request.url);
   const status = url.searchParams.get("status");
   const mine = url.searchParams.get("mine") === "1";
-  const where = ["organization_id = ?"];
+  const where = ["t.organization_id = ?"];
   const binds:(string|number)[] = [ctx.organizationId];
-  if (status === "open" || status === "done") { where.push("status = ?"); binds.push(status); }
-  if (mine) { where.push("assigned_email = ?"); binds.push(ctx.member.email); }
+  if (status === "open" || status === "done") { where.push("t.status = ?"); binds.push(status); }
+  if (mine) { where.push("t.assigned_email = ?"); binds.push(ctx.member.email); }
+  addBookingVisibility(where,binds,ctx.member);
 
   const rows = await db.prepare(
-    `SELECT id, title, details, status, priority,
-            due_date AS dueDate, booking_id AS bookingId,
-            assigned_email AS assignedEmail, created_by AS createdBy,
-            completed_by AS completedBy, completed_at AS completedAt,
-            created_at AS createdAt, updated_at AS updatedAt,
-            source, automation_key AS automationKey,
-            source_entity_type AS sourceEntityType, source_entity_id AS sourceEntityId
-     FROM staff_tasks
+    `SELECT t.id, t.title, t.details, t.status, t.priority,
+            t.due_date AS dueDate, t.booking_id AS bookingId,
+            t.assigned_email AS assignedEmail, t.created_by AS createdBy,
+            t.completed_by AS completedBy, t.completed_at AS completedAt,
+            t.created_at AS createdAt, t.updated_at AS updatedAt,
+            t.source, t.automation_key AS automationKey,
+            t.source_entity_type AS sourceEntityType, t.source_entity_id AS sourceEntityId
+     FROM staff_tasks t
      WHERE ${where.join(" AND ")}
-     ORDER BY CASE status WHEN 'open' THEN 0 ELSE 1 END,
-              CASE priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
-              CASE WHEN due_date = '' THEN 1 ELSE 0 END, due_date, id DESC
+     ORDER BY CASE t.status WHEN 'open' THEN 0 ELSE 1 END,
+              CASE t.priority WHEN 'high' THEN 0 WHEN 'normal' THEN 1 ELSE 2 END,
+              CASE WHEN t.due_date = '' THEN 1 ELSE 0 END, t.due_date, t.id DESC
      LIMIT 500`
   ).bind(...binds).all<TaskRow>();
 
@@ -101,8 +123,17 @@ export async function POST(request:Request) {
 
   if (!title) return Response.json({ error:"Вкажіть назву завдання" }, { status:400 });
   if (dueDate && !DATE_RE.test(dueDate)) return Response.json({ error:"Некоректна дата виконання" }, { status:400 });
-  if (!(await activeMember(db,ctx.organizationId,assignedEmail))) return Response.json({ error:"Виконавець не належить до цієї організації" }, { status:400 });
-  if (!(await bookingBelongsToOrg(db,ctx.organizationId,bookingId))) return Response.json({ error:"Дослідження не належить до цієї організації" }, { status:400 });
+  const assignee = assignedEmail ? await activeMember(db,ctx.organizationId,assignedEmail) : null;
+  if (assignedEmail && !assignee) return Response.json({ error:"Виконавець не належить до цієї організації" }, { status:400 });
+
+  if (bookingId) {
+    if (!(await canAccessBooking(db,ctx.member,bookingId,ctx.organizationId))) {
+      return Response.json({ error:"Дослідження не знайдено або воно вам не призначене" }, { status:404 });
+    }
+    if (assignee && !(await canAccessBooking(db,assignee,bookingId,ctx.organizationId))) {
+      return Response.json({ error:"Виконавець не має доступу до цього дослідження" }, { status:400 });
+    }
+  }
 
   const result = await db.prepare(
     `INSERT INTO staff_tasks
@@ -125,10 +156,14 @@ export async function PATCH(request:Request) {
   if (!Number.isInteger(id) || id < 1) return Response.json({ error:"Некоректне завдання" }, { status:400 });
 
   const existing = await db.prepare(
-    `SELECT id, status, assigned_email AS assignedEmail, created_by AS createdBy, source
+    `SELECT id, status, booking_id AS bookingId, assigned_email AS assignedEmail, created_by AS createdBy, source
      FROM staff_tasks WHERE organization_id = ? AND id = ? LIMIT 1`
-  ).bind(ctx.organizationId,id).first<{id:number;status:string;assignedEmail:string;createdBy:string;source:string}>();
+  ).bind(ctx.organizationId,id).first<{id:number;status:string;bookingId:number|null;assignedEmail:string;createdBy:string;source:string}>();
   if (!existing) return Response.json({ error:"Завдання не знайдено" }, { status:404 });
+  if (existing.bookingId && !(await canAccessBooking(db,ctx.member,existing.bookingId,ctx.organizationId))) {
+    return Response.json({ error:"Завдання не знайдено" }, { status:404 });
+  }
+
   const canEdit = ctx.member.role === "admin" || existing.assignedEmail === ctx.member.email || existing.createdBy === ctx.member.email;
   if (!canEdit) return Response.json({ error:"Немає прав змінювати це завдання" }, { status:403 });
   if (existing.source === "automation" && existing.status === "done" && body.status === "open") {
@@ -141,7 +176,13 @@ export async function PATCH(request:Request) {
   const dueDate = body.dueDate === undefined ? null : String(body.dueDate || "").trim();
   if (body.priority !== undefined && !priority) return Response.json({ error:"Некоректний пріоритет" }, { status:400 });
   if (dueDate !== null && dueDate && !DATE_RE.test(dueDate)) return Response.json({ error:"Некоректна дата" }, { status:400 });
-  if (!(await activeMember(db,ctx.organizationId,assignedEmail))) return Response.json({ error:"Виконавець не належить до цієї організації" }, { status:400 });
+
+  const assignee = assignedEmail ? await activeMember(db,ctx.organizationId,assignedEmail) : null;
+  if (assignedEmail && !assignee) return Response.json({ error:"Виконавець не належить до цієї організації" }, { status:400 });
+  if (existing.bookingId && body.assignedEmail !== undefined && assignee
+    && !(await canAccessBooking(db,assignee,existing.bookingId,ctx.organizationId))) {
+    return Response.json({ error:"Виконавець не має доступу до цього дослідження" }, { status:400 });
+  }
 
   await db.prepare(
     `UPDATE staff_tasks SET
