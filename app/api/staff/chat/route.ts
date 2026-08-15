@@ -54,14 +54,14 @@ export async function GET(request: Request) {
     const patient = await db.prepare(
       `SELECT
          (SELECT COUNT(*) FROM patient_profiles p
-          WHERE p.phone_normalized = ? AND p.organization_id = ?) AS profileCount,
+          WHERE p.phone_normalized = ?1 AND p.organization_id = ?2) AS profileCount,
          COALESCE((
            SELECT MAX(display_name) FROM patient_profiles p
-           WHERE p.phone_normalized = ? AND p.organization_id = ?
+           WHERE p.phone_normalized = ?1 AND p.organization_id = ?2
            HAVING COUNT(*) = 1
          ), (
            SELECT name FROM bookings b
-           WHERE b.phone_normalized = ? AND b.organization_id = ?
+           WHERE b.phone_normalized = ?1 AND b.organization_id = ?2
              AND NOT EXISTS (
                SELECT 1 FROM patient_profiles p2
                WHERE p2.phone_normalized = b.phone_normalized AND p2.organization_id = b.organization_id
@@ -70,10 +70,22 @@ export async function GET(request: Request) {
          ), '') AS name,
          CASE WHEN EXISTS (
            SELECT 1 FROM patient_telegram_identities ti
-           WHERE ti.phone_normalized = ? AND ti.organization_id = ? AND ti.telegram_chat_id != ''
-         ) THEN 1 ELSE 0 END AS telegramLinked`
-    ).bind(phone, orgId, phone, orgId, phone, orgId, phone, orgId).first<{
-      profileCount:number; name:string; telegramLinked:number;
+           WHERE ti.phone_normalized = ?1 AND ti.organization_id = ?2 AND ti.telegram_chat_id != ''
+         ) THEN 1 ELSE 0 END AS telegramLinked,
+         CASE WHEN EXISTS (
+           SELECT 1 FROM bookings b
+           WHERE b.organization_id = ?2
+             AND b.phone_normalized = ?1
+             AND b.patient_id != ''
+             AND NOT EXISTS (
+               SELECT 1 FROM patient_profiles p3
+               WHERE p3.organization_id = b.organization_id
+                 AND p3.patient_id = b.patient_id
+                 AND p3.phone_normalized = b.phone_normalized
+             )
+         ) THEN 1 ELSE 0 END AS staleLinkedContact`
+    ).bind(phone, orgId).first<{
+      profileCount:number; name:string; telegramLinked:number; staleLinkedContact:number;
     }>();
 
     const issues = await db.prepare(
@@ -90,16 +102,26 @@ export async function GET(request: Request) {
       action: "contact_center_thread_viewed",
       resource: "patient_communication",
       targetId: phone,
-      details: { channel: channel || "all", sharedPhone:Number(patient?.profileCount || 0) > 1 },
+      details: {
+        channel: channel || "all",
+        sharedPhone:Number(patient?.profileCount || 0) > 1,
+        staleLinkedContact:Number(patient?.staleLinkedContact || 0) === 1,
+      },
     });
 
     return Response.json({
       phone,
       name: patient?.name || "",
       sharedPhone: Number(patient?.profileCount || 0) > 1,
+      staleLinkedContact: Number(patient?.staleLinkedContact || 0) === 1,
       messages: rows.results,
       issues: issues.results,
-      availableReplyChannels: orgId === PRIMARY_ORGANIZATION_ID && Number(patient?.profileCount || 0) <= 1 ? ["whatsapp"] : [],
+      availableReplyChannels:
+        orgId === PRIMARY_ORGANIZATION_ID
+        && Number(patient?.profileCount || 0) <= 1
+        && Number(patient?.staleLinkedContact || 0) !== 1
+          ? ["whatsapp"]
+          : [],
       linkedTelegram: Number(patient?.telegramLinked || 0) === 1,
       staff: member,
     }, { headers: { "cache-control": "no-store" } });
@@ -200,9 +222,28 @@ export async function POST(request: Request) {
         WHERE p.organization_id = ?1 AND p.phone_normalized = ?2 HAVING COUNT(*) = 1), '') AS patientId,
        CASE WHEN EXISTS (
          SELECT 1 FROM bookings b WHERE b.organization_id = ?1 AND b.phone_normalized = ?2
-       ) THEN 1 ELSE 0 END AS hasBooking`
-  ).bind(ctx.organizationId, phone).first<{ profileCount:number; patientId:string; hasBooking:number }>();
+       ) THEN 1 ELSE 0 END AS hasBooking,
+       CASE WHEN EXISTS (
+         SELECT 1 FROM bookings b
+         WHERE b.organization_id = ?1
+           AND b.phone_normalized = ?2
+           AND b.patient_id != ''
+           AND NOT EXISTS (
+             SELECT 1 FROM patient_profiles p
+             WHERE p.organization_id = b.organization_id
+               AND p.patient_id = b.patient_id
+               AND p.phone_normalized = b.phone_normalized
+           )
+       ) THEN 1 ELSE 0 END AS staleLinkedContact`
+  ).bind(ctx.organizationId, phone).first<{
+    profileCount:number; patientId:string; hasBooking:number; staleLinkedContact:number;
+  }>();
   const profileCount = Number(identity?.profileCount || 0);
+  if (Number(identity?.staleLinkedContact || 0) === 1) {
+    return Response.json({
+      error: "Контакт exact-пацієнта змінено після створення запису. Відкрийте актуальну CRM-картку перед відправленням.",
+    }, { status: 409 });
+  }
   if (profileCount > 1) {
     return Response.json({
       error: "Цей номер використовується кількома пацієнтами. Надішліть повідомлення з конкретної картки або заявки.",
