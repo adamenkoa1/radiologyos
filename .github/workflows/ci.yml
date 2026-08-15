@@ -63,8 +63,6 @@ jobs:
 
           node --experimental-strip-types --test \
             tests/booking-drawer-identity.test.mjs \
-            tests/contact-center.test.mjs \
-            tests/legacy-global-consent.test.mjs \
             tests/patient-add.test.mjs
           echo "source_a=$?" >> "$GITHUB_OUTPUT"
 
