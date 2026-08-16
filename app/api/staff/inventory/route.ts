@@ -15,13 +15,15 @@ type ItemRow = {
   stock:number; expiringStock:number; nextExpiry:string;
 };
 type LotRow = {
-  id:number; itemId:number; itemName:string; lotNumber:string; expiresOn:string; supplier:string; stock:number;
+  id:number; itemId:number; itemName:string; lotNumber:string; expiresOn:string; supplier:string;
+  supplierCounterpartyId:number|null; stock:number;
 };
 type MovementRow = {
   id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; movementType:string;
   quantityDelta:number; unit:string; reason:string; bookingId:number|null; actorEmail:string; createdAt:string;
   documentId:number|null;
 };
+type SupplierRow={id:number;code:string;name:string};
 
 function cleanText(value:unknown,max:number) { return String(value || "").trim().slice(0,max); }
 function positiveNumber(value:unknown) {
@@ -43,6 +45,7 @@ function inventoryDocumentError(error:unknown) {
   const code = String(error instanceof Error ? error.message : error);
   if (code.includes("invalid_expiry")) return Response.json({ error:"Некоректний термін придатності" },{status:400});
   if (code.includes("item_not_found")) return Response.json({ error:"Матеріал не знайдено або він неактивний" },{status:404});
+  if (code.includes("supplier_not_found")) return Response.json({ error:"Постачальника не знайдено, він неактивний або не є постачальником" },{status:404});
   if (code.includes("lot_not_found")) return Response.json({ error:"Партію не знайдено" },{status:404});
   if (code.includes("booking_not_found")) return Response.json({ error:"Дослідження не належить до цієї організації" },{status:400});
   if (code.includes("reason_required")) return Response.json({ error:"Вкажіть причину списання" },{status:400});
@@ -70,7 +73,7 @@ export async function GET(request:Request) {
 
   const lots = await db.prepare(
     `SELECT l.id, l.item_id AS itemId, i.name AS itemName, l.lot_number AS lotNumber,
-            l.expires_on AS expiresOn, l.supplier,
+            l.expires_on AS expiresOn, l.supplier,l.supplier_counterparty_id AS supplierCounterpartyId,
             COALESCE(SUM(m.quantity_delta),0) AS stock
      FROM inventory_lots l
      JOIN inventory_items i ON i.id = l.item_id AND i.organization_id = l.organization_id
@@ -93,7 +96,12 @@ export async function GET(request:Request) {
      ORDER BY m.id DESC LIMIT 150`
   ).bind(ctx.organizationId).all<MovementRow>();
 
-  return Response.json({ items:items.results, lots:lots.results, movements:movements.results, staff:ctx.member, canManage:canManage(ctx.role) });
+  const counterparties = await db.prepare(
+    `SELECT id,code,name FROM counterparties
+     WHERE organization_id=? AND active=1 AND kind IN ('supplier','both') ORDER BY name,id LIMIT 500`
+  ).bind(ctx.organizationId).all<SupplierRow>();
+
+  return Response.json({ items:items.results, lots:lots.results, movements:movements.results, counterparties:counterparties.results, staff:ctx.member, canManage:canManage(ctx.role) });
 }
 
 export async function POST(request:Request) {
@@ -128,7 +136,7 @@ export async function POST(request:Request) {
   }
 
   // Compatibility actions: old callers still work, but every NEW movement is now registered by
-  // a BAS-style document and posting engine. The UI moves to explicit draft/post forms separately.
+  // a BAS-style document and posting engine. Legacy free-text supplier remains accepted here.
   if (action === "receive") {
     const itemId = Number(body.itemId);
     const quantity = positiveNumber(body.quantity);
@@ -143,6 +151,7 @@ export async function POST(request:Request) {
           lotNumber:cleanText(body.lotNumber,100),
           expiresOn:cleanText(body.expiresOn,10),
           supplier:cleanText(body.supplier,180),
+          supplierCounterpartyId:Number.isInteger(Number(body.supplierCounterpartyId))&&Number(body.supplierCounterpartyId)>0?Number(body.supplierCounterpartyId):null,
           reason:cleanText(body.reason,500) || "Надходження",
         }],
       });

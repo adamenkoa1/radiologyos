@@ -28,6 +28,7 @@ function mapCreateError(error:unknown) {
   if (code.includes("item_required")) return [400,"Для надходження вкажіть матеріал"] as const;
   if (code.includes("item_not_found")) return [404,"Матеріал не знайдено або він неактивний"] as const;
   if (code.includes("invalid_expiry")) return [400,"Некоректний термін придатності"] as const;
+  if (code.includes("supplier_not_found")) return [404,"Постачальника не знайдено, він неактивний або не є постачальником"] as const;
   if (code.includes("lot_required")) return [400,"Для списання вкажіть партію"] as const;
   if (code.includes("lot_not_found")) return [404,"Партію не знайдено або матеріал неактивний"] as const;
   if (code.includes("booking_not_found")) return [400,"Дослідження не належить до цієї організації"] as const;
