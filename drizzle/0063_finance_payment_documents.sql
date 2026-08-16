@@ -227,9 +227,9 @@ CREATE TRIGGER IF NOT EXISTS `payment_transaction_document_integrity_update`
 BEFORE UPDATE OF `payment_document_id`,`refund_document_id`,`organization_id`,`booking_id`,`amount`,`currency`,`provider`,`provider_reference`
 ON `payment_transactions`
 BEGIN
-  SELECT CASE WHEN OLD.payment_document_id IS NOT NULL AND NEW.payment_document_id <> OLD.payment_document_id
+  SELECT CASE WHEN OLD.payment_document_id IS NOT NULL AND NEW.payment_document_id IS NOT OLD.payment_document_id
     THEN RAISE(ABORT,'payment_document_link_immutable') END;
-  SELECT CASE WHEN OLD.refund_document_id IS NOT NULL AND NEW.refund_document_id <> OLD.refund_document_id
+  SELECT CASE WHEN OLD.refund_document_id IS NOT NULL AND NEW.refund_document_id IS NOT OLD.refund_document_id
     THEN RAISE(ABORT,'refund_document_link_immutable') END;
   SELECT CASE WHEN NEW.payment_document_id IS NOT NULL AND NOT EXISTS (
     SELECT 1 FROM `business_documents` d
