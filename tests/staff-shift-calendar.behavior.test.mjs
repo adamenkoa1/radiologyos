@@ -22,7 +22,7 @@ async function addOrgTwo(db) {
 test("Calendar6 port keeps the eight source schedule types and exact matrix concepts", async () => {
   const source = await read("lib/shift-calendar.ts");
   for (let index = 1; index <= 8; index += 1) {
-    assert.match(source, new RegExp(`code:\"calendar6-${index}\\"`));
+    assert.match(source, new RegExp(`code:"calendar6-${index}"`));
   }
   assert.match(source, /День — ніч — троє вдома/);
   assert.match(source, /Два дні через два/);
