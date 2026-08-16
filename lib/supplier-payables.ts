@@ -58,6 +58,23 @@ export async function valueInventoryReceipt(
   return {ok:true as const};
 }
 
+export async function listDraftSupplierReceipts(db:D1Database,organizationId:number) {
+  const rows=await db.prepare(
+    `SELECT d.id AS documentId,d.number,d.occurred_at AS occurredAt,d.comment,
+            l.id AS lineId,l.line_no AS lineNo,l.item_id AS itemId,i.name AS itemName,i.unit,
+            l.quantity,l.supplier_counterparty_id AS supplierId,l.supplier AS supplierName,
+            l.unit_cost AS unitCost,l.line_amount AS lineAmount,
+            l.warehouse_name AS warehouseName,l.lot_number AS lotNumber
+     FROM business_documents d
+     JOIN inventory_document_lines l ON l.document_id=d.id AND l.organization_id=d.organization_id
+     JOIN inventory_items i ON i.id=l.item_id AND i.organization_id=l.organization_id
+     WHERE d.organization_id=? AND d.document_type='inventory_receipt' AND d.state='draft'
+       AND l.supplier_counterparty_id IS NOT NULL
+     ORDER BY d.occurred_at,d.id,l.line_no,l.id`
+  ).bind(organizationId).all();
+  return rows.results;
+}
+
 export async function listSupplierPayables(db:D1Database,organizationId:number,input:{supplierId?:number;openOnly?:boolean}={}) {
   const where=["b.organization_id=?"];const args:Array<number|string>=[organizationId];
   if(input.supplierId){where.push("b.supplier_counterparty_id=?");args.push(input.supplierId);}
@@ -187,7 +204,8 @@ export async function postSupplierPayment(db:D1Database,input:{organizationId:nu
     const code=String(error instanceof Error?error.message:error);
     if(code.includes("allocation_total_mismatch"))return {ok:false as const,status:409,error:"Розподіл оплати не дорівнює сумі документа"};
     if(code.includes("overpay"))return {ok:false as const,status:409,error:"Оплата перевищує актуальний борг за одним із надходжень"};
-    if(code.includes("cash_account_inactive"))return {ok:false as const,status:409,error:"Рахунок/каса вже неактивні — виберіть активний рахунок"};
+    if(code.includes("cash_account_inactive")||code.includes("cash_account_invalid"))return {ok:false as const,status:409,error:"Рахунок/каса вже неактивні або їх реквізити змінилися — створіть нову чернетку"};
+    if(code.includes("supplier_payment_supplier_invalid"))return {ok:false as const,status:409,error:"Реквізити постачальника змінилися — створіть нову чернетку оплати"};
     throw error;
   }
   return {ok:true as const,idempotent:false,document:await getSupplierPayment(db,input.organizationId,input.documentId)};
