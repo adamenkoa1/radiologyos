@@ -122,7 +122,7 @@ export async function postServiceDelivery(
     ).run();
 
     const postedAt=new Date().toISOString();
-    const statements:unknown[]=[
+    const statements:D1PreparedStatement[]=[
       db.prepare(
         `UPDATE business_documents SET state='posted',posted_by=?,posted_at=?
          WHERE organization_id=? AND id=? AND state='draft'`
