@@ -60,6 +60,7 @@ async function renderPayload(db:D1Database,organizationId:number,documentId:numb
       postedBy:detail.document.postedBy,
       postedAt:detail.document.postedAt,
     },
+    transfer:detail.transfer,
     lines:lines.results,
   };
 }
