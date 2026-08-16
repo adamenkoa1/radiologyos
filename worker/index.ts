@@ -5,6 +5,9 @@ import { getSetting } from "../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
 import { runDueReminders } from "../lib/reminders";
 import { runOperationalTasks } from "../lib/operational-tasks";
+import { patientOrderCancellationBlocker, type PatientOrderCancellationBlocker } from "../lib/patient-orders";
+import { canAccessBooking, canManageBookings } from "../lib/staff-auth";
+import { requireOrgContext } from "../lib/tenant";
 
 interface Env {
   ASSETS: Fetcher;
@@ -104,18 +107,40 @@ function unsafeCrossSiteRequest(request: Request): boolean {
   }
 }
 
+function patientOrderBlockerMessage(blocker: PatientOrderCancellationBlocker): string {
+  if (blocker === "payment_refund_required") return "Спочатку оформіть повернення оплати.";
+  if (blocker === "service_storno_required") return "Послуга вже проведена — спочатку оформіть сторно.";
+  return "Є незавершений пов’язаний документ. Спочатку скасуйте або завершіть його.";
+}
+
 function patientOrderLifecycleConflict(error: unknown): string | null {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("booking_cancel_payment_refund_required")) {
-    return "Спочатку оформіть повернення оплати.";
+    return patientOrderBlockerMessage("payment_refund_required");
   }
   if (message.includes("booking_cancel_service_storno_required")) {
-    return "Послуга вже проведена — спочатку оформіть сторно.";
+    return patientOrderBlockerMessage("service_storno_required");
   }
   if (message.includes("booking_cancel_downstream_draft_exists")) {
-    return "Є незавершений пов’язаний документ. Спочатку скасуйте або завершіть його.";
+    return patientOrderBlockerMessage("downstream_draft_exists");
   }
   return null;
+}
+
+async function recoverStaffCancellationConflict(
+  request: Request | null,
+  env: Env,
+  response: Response,
+): Promise<Response | null> {
+  if (!request || response.status !== 500) return null;
+  const body = await request.json().catch(() => ({})) as { id?: unknown; status?: unknown };
+  if (body.status !== "cancelled" || !Number.isInteger(body.id)) return null;
+  const org = await requireOrgContext(request, env.DB);
+  if (!org || !canManageBookings(org.member.role)) return null;
+  const bookingId = Number(body.id);
+  if (!(await canAccessBooking(env.DB, org.member, bookingId, org.organizationId))) return null;
+  const blocker = await patientOrderCancellationBlocker(env.DB, org.organizationId, bookingId);
+  return blocker ? Response.json({ error: patientOrderBlockerMessage(blocker) }, { status: 409 }) : null;
 }
 
 const worker = {
@@ -170,8 +195,13 @@ const worker = {
       }, allowedWidths), request);
     }
 
+    const staffCancellationProbe = request.method === "PATCH" && url.pathname === "/api/staff/bookings"
+      ? request.clone()
+      : null;
     try {
-      return secure(await handler.fetch(request, env, ctx), request);
+      const response = await handler.fetch(request, env, ctx);
+      const recovered = await recoverStaffCancellationConflict(staffCancellationProbe, env, response);
+      return secure(recovered || response, request);
     } catch (error) {
       const conflict = url.pathname.startsWith("/api/") ? patientOrderLifecycleConflict(error) : null;
       if (conflict) return secure(Response.json({ error: conflict }, { status: 409 }), request);
