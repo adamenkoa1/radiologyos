@@ -3,7 +3,7 @@ import { dbBinding } from "../../../../../../lib/db";
 import { getInventoryDocument } from "../../../../../../lib/inventory-documents";
 import { requireOrgContext } from "../../../../../../lib/tenant";
 
-const TEMPLATE_VERSION = 1;
+const TEMPLATE_VERSION = 2;
 
 type SnapshotRow={
   id:number;documentId:number;formType:string;templateVersion:number;documentState:string;
@@ -34,14 +34,15 @@ async function renderPayload(db:D1Database,organizationId:number,documentId:numb
     .bind(organizationId).first<{name:string}>();
   const lines=await db.prepare(
     `SELECT l.line_no AS lineNo,l.item_id AS itemId,i.name AS itemName,i.unit,
+            l.warehouse_id AS warehouseId,l.warehouse_code AS warehouseCode,l.warehouse_name AS warehouseName,
             l.lot_number AS lotNumber,l.expires_on AS expiresOn,l.supplier,l.quantity,l.reason,
             l.booking_id AS bookingId
      FROM inventory_document_lines l
      JOIN inventory_items i ON i.id=l.item_id AND i.organization_id=l.organization_id
      WHERE l.organization_id=? AND l.document_id=? ORDER BY l.line_no,l.id`
   ).bind(organizationId,documentId).all<{
-    lineNo:number;itemId:number;itemName:string;unit:string;lotNumber:string;expiresOn:string;
-    supplier:string;quantity:number;reason:string;bookingId:number|null;
+    lineNo:number;itemId:number;itemName:string;unit:string;warehouseId:number;warehouseCode:string;warehouseName:string;
+    lotNumber:string;expiresOn:string;supplier:string;quantity:number;reason:string;bookingId:number|null;
   }>();
   return {
     templateVersion:TEMPLATE_VERSION,
@@ -95,9 +96,8 @@ export async function POST(request:Request) {
   const formType=detail.document.documentType;
   const documentState=detail.document.state;
 
-  // Once a document leaves draft, its first generated form for that immutable state becomes the
-  // canonical reprint. Later master-data edits (for example a renamed inventory item) must not
-  // silently rewrite what was printed for the posted document.
+  // Once a document leaves draft, its first generated form for this template/state becomes the
+  // canonical reprint. Warehouse/item master-data edits never rewrite the frozen payload.
   if(documentState!=="draft") {
     const existing=await db.prepare(
       `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
