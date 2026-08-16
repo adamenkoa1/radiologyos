@@ -115,7 +115,7 @@ export async function listStaffOutput(db:D1Database,organizationId:number,limit=
 }
 
 export async function serviceDeliveryTotals(db:D1Database,organizationId:number) {
-  const [documents,revenue,workload,staff]=await Promise.all([
+  const [documents,revenue,workload,staff,unposted]=await Promise.all([
     db.prepare(
       `SELECT COUNT(*) AS acts,
               SUM(CASE WHEN s.patient_category='civilian' THEN 1 ELSE 0 END) AS civilianActs,
@@ -136,6 +136,15 @@ export async function serviceDeliveryTotals(db:D1Database,organizationId:number)
     db.prepare(
       `SELECT COALESCE(SUM(study_count),0) AS assignments FROM staff_output_movements WHERE organization_id=?`
     ).bind(organizationId).first<{assignments:number}>(),
+    db.prepare(
+      `SELECT COUNT(*) AS count
+       FROM bookings b
+       WHERE b.organization_id=? AND b.performed_at<>''
+         AND NOT EXISTS (
+           SELECT 1 FROM service_delivery_details s
+           WHERE s.organization_id=b.organization_id AND s.booking_id=b.id
+         )`
+    ).bind(organizationId).first<{count:number}>(),
   ]);
   return {
     acts:Number(documents?.acts || 0),
@@ -146,5 +155,6 @@ export async function serviceDeliveryTotals(db:D1Database,organizationId:number)
     minutes:Number(workload?.minutes || 0),
     regions:Number(workload?.regions || 0),
     staffAssignments:Number(staff?.assignments || 0),
+    unpostedPerformedCount:Number(unposted?.count || 0),
   };
 }
