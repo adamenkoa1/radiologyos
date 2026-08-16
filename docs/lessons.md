@@ -150,3 +150,9 @@ RadiologyOS = BAS-подібне ядро + медичні модулі.
 Якщо runner вважає свій candidate-set повним і автоматично закриває відкриті automation-task, яких більше немає серед кандидатів, нові автоматичні джерела не можна реалізовувати паралельним trigger/cron-процесом.
 
 Клінічні handoff-задачі тому додаються до того самого authoritative candidate engine. Вони є похідним read-model від канонічного стану дослідження, використовують стабільний `automation_key`, оновлюють існуючу open task при зміні виконавця/строку і не копіюють ПІБ, діагноз або клінічний текст у title/details чи security audit.
+
+## 18. Remote D1 migrations мають окремий parser-compatibility ризик
+
+Міграція може успішно виконуватися стандартним SQLite/local test і все одно впасти під час `wrangler d1 migrations apply --remote`, якщо клієнтський SQL splitter некоректно розбирає line comments у багатостейтментному файлі.
+
+Для migration, яка вже продемонструвала такий збій, не додавати звичайні `--` prose-коментарі всередину SQL-файлу; залишати лише технічні `--> statement-breakpoint`, а пояснення переносити в документацію/PR. Production gate має окремо перевіряти цю parser-sensitive умову до звернення до remote D1. Не послаблювати database guards і не позначати migration застосованою вручну для обходу помилки parser-а.
