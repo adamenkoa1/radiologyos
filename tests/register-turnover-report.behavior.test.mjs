@@ -62,6 +62,10 @@ async function seedInventory(db,organizationId=1) {
      VALUES (?,?,'TURN-LOT','2027-12-31','Test Supplier')`
   ).bind(organizationId,itemId).run();
   const lotId=Number(lotResult.meta.last_row_id);
+  const warehouse=await db.prepare(
+    `SELECT id,code,name FROM warehouses WHERE organization_id=? AND is_default=1 LIMIT 1`
+  ).bind(organizationId).first();
+  assert.ok(warehouse?.id,"default warehouse must exist");
   for(const movement of [
     {date:"2026-07-31 09:00:00",delta:10,type:"receipt"},
     {date:"2026-08-05 09:00:00",delta:5,type:"receipt"},
@@ -69,11 +73,11 @@ async function seedInventory(db,organizationId=1) {
   ]){
     await db.prepare(
       `INSERT INTO inventory_movements
-       (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,actor_email,created_at)
-       VALUES (?,?,?,?,?,'turnover test','turnover@example.com',?)`
-    ).bind(organizationId,itemId,lotId,movement.type,movement.delta,movement.date).run();
+       (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email,created_at)
+       VALUES (?,?,?,?,?,?,?,?,'turnover test','turnover@example.com',?)`
+    ).bind(organizationId,itemId,lotId,warehouse.id,warehouse.code,warehouse.name,movement.type,movement.delta,movement.date).run();
   }
-  return itemId;
+  return {itemId,warehouse};
 }
 
 test("register report derives opening, period turnovers and closing balances from immutable movements",async()=>{
@@ -95,7 +99,7 @@ test("register report derives opening, period turnovers and closing balances fro
 
     // Military service has operational movements but no revenue/settlement charge.
     await seedCompleted(db,{code:"RD-TURN-MIL",amount:5000,category:"military",performedAt:"2026-08-12T12:00:00",duration:20,regions:1});
-    const itemId=await seedInventory(db);
+    const {itemId,warehouse}=await seedInventory(db);
 
     const response=await report(db,admin);
     assert.equal(response.status,200);
@@ -143,6 +147,15 @@ test("register report derives opening, period turnovers and closing balances fro
     assert.equal(stock.incoming,5);
     assert.equal(stock.outgoing,3);
     assert.equal(stock.closing,12);
+
+    const warehouseStock=body.breakdowns.inventoryByWarehouse.find(row=>row.itemId===itemId&&row.warehouseId===warehouse.id);
+    assert.ok(warehouseStock);
+    assert.equal(warehouseStock.warehouseCode,"MAIN");
+    assert.equal(warehouseStock.warehouseName,"Основний склад");
+    assert.equal(warehouseStock.opening,10);
+    assert.equal(warehouseStock.incoming,5);
+    assert.equal(warehouseStock.outgoing,3);
+    assert.equal(warehouseStock.closing,12);
   });
 });
 
