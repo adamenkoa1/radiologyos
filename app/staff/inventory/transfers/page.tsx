@@ -51,15 +51,15 @@ export default function InventoryTransfersPage(){
     const rows=(inventory?.warehouseBalances||[]).filter(row=>row.warehouseId===sourceWarehouseId&&Number(row.stock)>0.000001);
     return rows.sort((a,b)=>`${a.itemName} ${a.lotNumber}`.localeCompare(`${b.itemName} ${b.lotNumber}`,"uk"));
   },[inventory,sourceWarehouseId]);
-  const selectedBalance=sourceBalances.find(row=>row.lotId===lotId)||null;
+  const effectiveLotId=sourceBalances.some(row=>row.lotId===lotId)?lotId:(sourceBalances[0]?.lotId||0);
+  const effectiveDestinationWarehouseId=destinationWarehouseId===sourceWarehouseId?0:destinationWarehouseId;
+  const selectedBalance=sourceBalances.find(row=>row.lotId===effectiveLotId)||null;
 
-  useEffect(()=>{
-    if(sourceBalances.length===0){setLotId(0);return;}
-    if(!sourceBalances.some(row=>row.lotId===lotId))setLotId(sourceBalances[0].lotId);
-  },[sourceBalances,lotId]);
-  useEffect(()=>{
-    if(destinationWarehouseId===sourceWarehouseId)setDestinationWarehouseId(0);
-  },[sourceWarehouseId,destinationWarehouseId]);
+  function changeSource(next:number){
+    setSourceWarehouseId(next);
+    setLotId(0);
+    if(destinationWarehouseId===next)setDestinationWarehouseId(0);
+  }
 
   async function openDocument(id:number){
     const response=await fetch(`/api/staff/inventory/transfers?id=${id}`,{cache:"no-store"});
@@ -69,12 +69,15 @@ export default function InventoryTransfersPage(){
   }
 
   async function create(event:React.FormEvent){
-    event.preventDefault();if(!inventory?.canManage||!lotId||!sourceWarehouseId||!destinationWarehouseId)return;
+    event.preventDefault();
+    if(!inventory?.canManage||!effectiveLotId||!sourceWarehouseId||!effectiveDestinationWarehouseId)return;
     setBusy(true);setNotice("");
     try{
       const response=await fetch("/api/staff/inventory/transfers",{
         method:"POST",headers:{"content-type":"application/json"},
-        body:JSON.stringify({action:"create",comment,lines:[{lotId,sourceWarehouseId,destinationWarehouseId,quantity,reason}]}),
+        body:JSON.stringify({action:"create",comment,lines:[{
+          lotId:effectiveLotId,sourceWarehouseId,destinationWarehouseId:effectiveDestinationWarehouseId,quantity,reason,
+        }]}),
       });
       const payload=await response.json().catch(()=>({})) as Detail&{error?:string};
       if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося створити переміщення"}`);return;}
@@ -112,13 +115,13 @@ export default function InventoryTransfersPage(){
         <header><div><small>Новий документ</small><h2>Переміщення запасів</h2><p>Залишок перевіряється тільки на складі-відправнику. Склад-одержувач не створює нову партію — переноситься той самий lot.</p></div></header>
         {notice&&<p className={notice.startsWith("⚠")?"financeError":"notice"}>{notice}</p>}
         <form className="inventoryOperations" onSubmit={create}><div>
-          <label>Склад-відправник<select value={sourceWarehouseId} onChange={e=>setSourceWarehouseId(Number(e.target.value))}>{activeWarehouses.map(w=><option key={w.id} value={w.id}>{w.name} {w.code?`(${w.code})`:""}</option>)}</select></label>
-          <label>Партія<select value={lotId} onChange={e=>setLotId(Number(e.target.value))}><option value={0}>Оберіть партію…</option>{sourceBalances.map(row=><option key={`${row.warehouseId}-${row.lotId}`} value={row.lotId}>{row.itemName} · {row.lotNumber||`lot #${row.lotId}`} · залишок {row.stock}</option>)}</select></label>
-          <label>Склад-одержувач<select value={destinationWarehouseId} onChange={e=>setDestinationWarehouseId(Number(e.target.value))}><option value={0}>Оберіть склад…</option>{activeWarehouses.filter(w=>w.id!==sourceWarehouseId).map(w=><option key={w.id} value={w.id}>{w.name} {w.code?`(${w.code})`:""}</option>)}</select></label>
+          <label>Склад-відправник<select value={sourceWarehouseId} onChange={e=>changeSource(Number(e.target.value))}>{activeWarehouses.map(w=><option key={w.id} value={w.id}>{w.name} {w.code?`(${w.code})`:""}</option>)}</select></label>
+          <label>Партія<select value={effectiveLotId} onChange={e=>setLotId(Number(e.target.value))}><option value={0}>Оберіть партію…</option>{sourceBalances.map(row=><option key={`${row.warehouseId}-${row.lotId}`} value={row.lotId}>{row.itemName} · {row.lotNumber||`lot #${row.lotId}`} · залишок {row.stock}</option>)}</select></label>
+          <label>Склад-одержувач<select value={effectiveDestinationWarehouseId} onChange={e=>setDestinationWarehouseId(Number(e.target.value))}><option value={0}>Оберіть склад…</option>{activeWarehouses.filter(w=>w.id!==sourceWarehouseId).map(w=><option key={w.id} value={w.id}>{w.name} {w.code?`(${w.code})`:""}</option>)}</select></label>
           <label>Кількість<input type="number" min="0.000001" step="any" required value={quantity} onChange={e=>setQuantity(Number(e.target.value))}/>{selectedBalance&&<small>Доступно: {selectedBalance.stock}</small>}</label>
           <label>Підстава<input value={reason} onChange={e=>setReason(e.target.value)} maxLength={500}/></label>
           <label>Коментар<input value={comment} onChange={e=>setComment(e.target.value)} maxLength={500}/></label>
-          {inventory.canManage&&<button className="primary" disabled={busy||!lotId||!destinationWarehouseId||quantity<=0}>Створити чернетку</button>}
+          {inventory.canManage&&<button className="primary" disabled={busy||!effectiveLotId||!effectiveDestinationWarehouseId||quantity<=0}>Створити чернетку</button>}
         </div></form>
 
         {selected&&<div className="inventoryOperations"><h3>{selected.document.number} · {stateLabel(selected.document.state)}</h3>
