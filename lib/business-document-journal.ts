@@ -1,6 +1,6 @@
 export type BusinessJournalDocument={
   id:number;documentType:string;journalType:string;number:string;occurredAt:string;state:string;comment:string;
-  createdBy:string;createdAt:string;postedBy:string;postedAt:string;reversedDocumentId:number|null;
+  createdBy:string;createdAt:string;postedBy:string;postedAt:string;reversedDocumentId:number|null;basisDocumentId:number|null;
   bookingId:number|null;bookingCode:string;patientName:string;patientId:string;subject:string;
   amount:number;currency:string;sourceDocumentId:number|null;relationType:string;lineCount:number;totalQuantity:number;
 };
@@ -15,22 +15,26 @@ const SUMMARY_SELECT=`
          CASE WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
          d.number,d.occurred_at AS occurredAt,d.state,d.comment,d.created_by AS createdBy,
          d.created_at AS createdAt,d.posted_by AS postedBy,d.posted_at AS postedAt,
-         d.reversed_document_id AS reversedDocumentId,
-         COALESCE(s.booking_id,c.booking_id,f.booking_id) AS bookingId,
+         d.reversed_document_id AS reversedDocumentId,d.basis_document_id AS basisDocumentId,
+         COALESCE(o.booking_id,s.booking_id,c.booking_id,f.booking_id) AS bookingId,
          COALESCE(b.code,'') AS bookingCode,COALESCE(b.name,'') AS patientName,
-         COALESCE(s.patient_id,c.patient_id,f.patient_id,'') AS patientId,
-         COALESCE(s.service_title,c.service_title,b.service,'') AS subject,
-         COALESCE(s.charge_amount,c.charge_amount,f.amount,0) AS amount,
-         COALESCE(s.currency,c.currency,f.currency,'UAH') AS currency,
-         CASE
-           WHEN c.document_id IS NOT NULL THEN c.source_document_id
-           WHEN f.source_document_id IS NOT NULL THEN f.source_document_id
-           WHEN d.reversed_document_id IS NOT NULL THEN d.reversed_document_id
-           ELSE NULL
-         END AS sourceDocumentId,
+         COALESCE(o.patient_id,s.patient_id,c.patient_id,f.patient_id,'') AS patientId,
+         COALESCE(o.service_title,s.service_title,c.service_title,b.service,'') AS subject,
+         COALESCE(o.charge_amount,s.charge_amount,c.charge_amount,f.amount,0) AS amount,
+         COALESCE(o.currency,s.currency,c.currency,f.currency,'UAH') AS currency,
+         COALESCE(
+           d.basis_document_id,
+           CASE
+             WHEN c.document_id IS NOT NULL THEN c.source_document_id
+             WHEN f.source_document_id IS NOT NULL THEN f.source_document_id
+             WHEN d.reversed_document_id IS NOT NULL THEN d.reversed_document_id
+             ELSE NULL
+           END
+         ) AS sourceDocumentId,
          CASE
            WHEN c.document_id IS NOT NULL THEN 'storno_of'
            WHEN d.document_type='refund' AND f.source_document_id IS NOT NULL THEN 'refund_of'
+           WHEN d.basis_document_id IS NOT NULL THEN 'based_on'
            WHEN d.reversed_document_id IS NOT NULL THEN 'reversal_of'
            ELSE ''
          END AS relationType,
@@ -39,6 +43,8 @@ const SUMMARY_SELECT=`
          COALESCE((SELECT SUM(il.quantity) FROM inventory_document_lines il
           WHERE il.organization_id=d.organization_id AND il.document_id=d.id),0) AS totalQuantity
   FROM business_documents d
+  LEFT JOIN patient_order_details o
+    ON o.document_id=d.id AND o.organization_id=d.organization_id
   LEFT JOIN service_delivery_details s
     ON s.document_id=d.id AND s.organization_id=d.organization_id
   LEFT JOIN service_correction_details c
@@ -47,7 +53,7 @@ const SUMMARY_SELECT=`
     ON f.document_id=d.id AND f.organization_id=d.organization_id
   LEFT JOIN bookings b
     ON b.organization_id=d.organization_id
-   AND b.id=COALESCE(s.booking_id,c.booking_id,f.booking_id)`;
+   AND b.id=COALESCE(o.booking_id,s.booking_id,c.booking_id,f.booking_id)`;
 
 export async function listBusinessDocuments(db:D1Database,organizationId:number,limit=250) {
   const rows=await db.prepare(
@@ -95,6 +101,7 @@ export async function getBusinessDocumentRelations(db:D1Database,organizationId:
             CASE
               WHEN c.source_document_id=? THEN 'storno'
               WHEN d.document_type='refund' AND f.source_document_id=? THEN 'refund'
+              WHEN d.basis_document_id=? THEN 'based_on'
               WHEN d.reversed_document_id=? THEN 'reversal'
               ELSE 'related'
             END AS relationType
@@ -103,12 +110,12 @@ export async function getBusinessDocumentRelations(db:D1Database,organizationId:
        ON c.document_id=d.id AND c.organization_id=d.organization_id
      LEFT JOIN finance_document_details f
        ON f.document_id=d.id AND f.organization_id=d.organization_id
-     WHERE d.organization_id=?
-       AND (c.source_document_id=? OR f.source_document_id=? OR d.reversed_document_id=?)
+     WHERE d.organization_id=? AND d.id<>?
+       AND (d.basis_document_id=? OR c.source_document_id=? OR f.source_document_id=? OR d.reversed_document_id=?)
      ORDER BY d.occurred_at,d.id`
   ).bind(
-    document.id,document.id,document.id,
-    organizationId,document.id,document.id,document.id,
+    document.id,document.id,document.id,document.id,
+    organizationId,document.id,document.id,document.id,document.id,document.id,
   ).all<RelatedDocument>();
   return {parent,children:children.results};
 }
