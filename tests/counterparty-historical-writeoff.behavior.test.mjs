@@ -56,10 +56,11 @@ test("historical lot remains writable after its supplier master data changes",as
       "INSERT INTO business_documents (organization_id,document_type,number,state,created_by) VALUES (1,'inventory_writeoff','СП-FORGED-SUP','draft','test@example.com')"
     ).run();
     const other=raw.prepare("INSERT INTO counterparties (organization_id,name,kind) VALUES (1,'Other Supplier','supplier')").run();
+    const warehouse=raw.prepare("SELECT id,code,name FROM warehouses WHERE organization_id=1 AND is_default=1 LIMIT 1").get();
     assert.throws(()=>raw.prepare(
       `INSERT INTO inventory_document_lines
-       (organization_id,document_id,line_no,item_id,lot_id,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason)
-       VALUES (1,?,1,?,?,'HIST-LOT','','Other Supplier',?,1,'forged')`
-    ).run(Number(forgedDoc.lastInsertRowid),itemId,receiptLine.lotId,Number(other.lastInsertRowid)),/inventory_writeoff_supplier_trace_mismatch/);
+       (organization_id,document_id,line_no,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason)
+       VALUES (1,?,1,?,?,?,?,?,'HIST-LOT','','Other Supplier',?,1,'forged')`
+    ).run(Number(forgedDoc.lastInsertRowid),itemId,receiptLine.lotId,warehouse.id,warehouse.code,warehouse.name,Number(other.lastInsertRowid)),/inventory_writeoff_supplier_trace_mismatch/);
   });
 });

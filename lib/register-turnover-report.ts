@@ -88,6 +88,26 @@ async function inventoryBalances(db:D1Database,organizationId:number,period:Regi
   return rows.results;
 }
 
+async function inventoryBalancesByWarehouse(db:D1Database,organizationId:number,period:RegisterPeriod) {
+  const rows=await db.prepare(
+    `SELECT m.warehouse_id AS warehouseId,m.warehouse_code AS warehouseCode,m.warehouse_name AS warehouseName,
+       i.id AS itemId,i.sku,i.name,i.unit,
+       COALESCE(SUM(CASE WHEN substr(m.created_at,1,10)<? THEN m.quantity_delta ELSE 0 END),0) AS opening,
+       COALESCE(SUM(CASE WHEN substr(m.created_at,1,10) BETWEEN ? AND ? AND m.quantity_delta>0 THEN m.quantity_delta ELSE 0 END),0) AS incoming,
+       COALESCE(SUM(CASE WHEN substr(m.created_at,1,10) BETWEEN ? AND ? AND m.quantity_delta<0 THEN -m.quantity_delta ELSE 0 END),0) AS outgoing,
+       COALESCE(SUM(CASE WHEN substr(m.created_at,1,10)<=? THEN m.quantity_delta ELSE 0 END),0) AS closing
+     FROM inventory_movements m
+     JOIN inventory_items i ON i.organization_id=m.organization_id AND i.id=m.item_id
+     WHERE m.organization_id=? AND m.warehouse_id IS NOT NULL AND substr(m.created_at,1,10)<=?
+     GROUP BY m.warehouse_id,m.warehouse_code,m.warehouse_name,i.id,i.sku,i.name,i.unit
+     HAVING opening<>0 OR incoming<>0 OR outgoing<>0 OR closing<>0
+     ORDER BY m.warehouse_name,i.name,m.warehouse_id,i.id LIMIT 500`
+  ).bind(
+    period.from,period.from,period.to,period.from,period.to,period.to,organizationId,period.to,
+  ).all();
+  return rows.results;
+}
+
 async function revenueByService(db:D1Database,organizationId:number,period:RegisterPeriod) {
   const rows=await db.prepare(
     `SELECT service_code AS serviceCode,
@@ -141,7 +161,7 @@ async function staffByMember(db:D1Database,organizationId:number,period:Register
 }
 
 export async function buildRegisterTurnoverReport(db:D1Database,organizationId:number,period:RegisterPeriod) {
-  const [revenue,cash,settlements,services,equipment,staff,inventory,revenueServices,cashMethods,equipmentRows,staffRows]=await Promise.all([
+  const [revenue,cash,settlements,services,equipment,staff,inventory,inventoryByWarehouse,revenueServices,cashMethods,equipmentRows,staffRows]=await Promise.all([
     deltaTurnover(db,"revenue_movements","amount_delta",organizationId,period),
     deltaTurnover(db,"cash_movements","amount_delta",organizationId,period),
     settlementTurnover(db,organizationId,period),
@@ -149,6 +169,7 @@ export async function buildRegisterTurnoverReport(db:D1Database,organizationId:n
     deltaTurnover(db,"equipment_load_movements","minutes_delta",organizationId,period),
     deltaTurnover(db,"staff_output_movements","units_delta",organizationId,period),
     inventoryBalances(db,organizationId,period),
+    inventoryBalancesByWarehouse(db,organizationId,period),
     revenueByService(db,organizationId,period),
     cashByMethod(db,organizationId,period),
     equipmentByUnit(db,organizationId,period),
@@ -158,6 +179,6 @@ export async function buildRegisterTurnoverReport(db:D1Database,organizationId:n
     period,
     generatedAt:new Date().toISOString(),
     registers:{revenue,cash,settlements,services,equipment,staff},
-    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,equipment:equipmentRows,staff:staffRows,inventory},
+    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},
   };
 }

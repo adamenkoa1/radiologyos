@@ -17,6 +17,7 @@ type Report={
     equipment:Array<{equipmentId:string;loadedMinutes:number;reversedMinutes:number;netMinutes:number}>;
     staff:Array<{memberEmail:string;staffRole:string;performed:number;reversed:number;net:number}>;
     inventory:Array<{itemId:number;sku:string;name:string;unit:string;opening:number;incoming:number;outgoing:number;closing:number}>;
+    inventoryByWarehouse:Array<{warehouseId:number;warehouseCode:string;warehouseName:string;itemId:number;sku:string;name:string;unit:string;opening:number;incoming:number;outgoing:number;closing:number}>;
   };
   error?:string;
 };
@@ -115,10 +116,18 @@ export default function RegisterTurnoverPage(){
       </section>
 
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>Склад: обороти і залишки</b><small>Залишок рахується з `inventory_movements`, а не з поля “поточна кількість”.</small></div></header>
+        <header className="financeToolbar"><div><b>Склад: обороти і залишки</b><small>Загальний баланс організації з `inventory_movements`, незалежно від місця зберігання.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал</th><th>Од.</th><th className="num">На початок</th><th className="num">Надійшло</th><th className="num">Вибуло</th><th className="num">На кінець</th></tr></thead><tbody>
           {data.breakdowns.inventory.map(row=><tr key={row.itemId}><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.opening)}</td><td className="num positive">{number(row.incoming)}</td><td className="num negative">{number(row.outgoing)}</td><td className="num"><b>{number(row.closing)}</b></td></tr>)}
           {data.breakdowns.inventory.length===0&&<tr><td colSpan={6}>Складських рухів і залишків немає.</td></tr>}
+        </tbody></table></div>
+      </section>
+
+      <section className="financeJournal">
+        <header className="financeToolbar"><div><b>Склад: по місцях зберігання</b><small>Історичний розріз використовує snapshot складу з кожного immutable руху.</small></div></header>
+        <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Склад</th><th>Матеріал</th><th>Од.</th><th className="num">На початок</th><th className="num">Надійшло</th><th className="num">Вибуло</th><th className="num">На кінець</th></tr></thead><tbody>
+          {data.breakdowns.inventoryByWarehouse.map(row=><tr key={`${row.warehouseId}-${row.warehouseCode}-${row.itemId}`}><td><b>{row.warehouseName}</b><small>{row.warehouseCode||`#${row.warehouseId}`}</small></td><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.opening)}</td><td className="num positive">{number(row.incoming)}</td><td className="num negative">{number(row.outgoing)}</td><td className="num"><b>{number(row.closing)}</b></td></tr>)}
+          {data.breakdowns.inventoryByWarehouse.length===0&&<tr><td colSpan={7}>Складських рухів із прив’язкою до місця зберігання немає.</td></tr>}
         </tbody></table></div>
       </section>
     </>}

@@ -3,7 +3,7 @@ import { dbBinding } from "../../../../../../lib/db";
 import { getInventoryDocument } from "../../../../../../lib/inventory-documents";
 import { requireOrgContext } from "../../../../../../lib/tenant";
 
-const TEMPLATE_VERSION = 1;
+const TEMPLATE_VERSION = 2;
 
 type SnapshotRow={
   id:number;documentId:number;formType:string;templateVersion:number;documentState:string;
@@ -34,14 +34,15 @@ async function renderPayload(db:D1Database,organizationId:number,documentId:numb
     .bind(organizationId).first<{name:string}>();
   const lines=await db.prepare(
     `SELECT l.line_no AS lineNo,l.item_id AS itemId,i.name AS itemName,i.unit,
+            l.warehouse_id AS warehouseId,l.warehouse_code AS warehouseCode,l.warehouse_name AS warehouseName,
             l.lot_number AS lotNumber,l.expires_on AS expiresOn,l.supplier,l.quantity,l.reason,
             l.booking_id AS bookingId
      FROM inventory_document_lines l
      JOIN inventory_items i ON i.id=l.item_id AND i.organization_id=l.organization_id
      WHERE l.organization_id=? AND l.document_id=? ORDER BY l.line_no,l.id`
   ).bind(organizationId,documentId).all<{
-    lineNo:number;itemId:number;itemName:string;unit:string;lotNumber:string;expiresOn:string;
-    supplier:string;quantity:number;reason:string;bookingId:number|null;
+    lineNo:number;itemId:number;itemName:string;unit:string;warehouseId:number;warehouseCode:string;warehouseName:string;
+    lotNumber:string;expiresOn:string;supplier:string;quantity:number;reason:string;bookingId:number|null;
   }>();
   return {
     templateVersion:TEMPLATE_VERSION,
@@ -95,23 +96,23 @@ export async function POST(request:Request) {
   const formType=detail.document.documentType;
   const documentState=detail.document.state;
 
-  // Once a document leaves draft, its first generated form for that immutable state becomes the
-  // canonical reprint. Later master-data edits (for example a renamed inventory item) must not
-  // silently rewrite what was printed for the posted document.
+  // Once a document leaves draft, its earliest snapshot for that document/type/state is the
+  // canonical reprint across template upgrades. A later template may enrich first-time prints,
+  // but it must never silently replace what was already printed for the posted document.
   if(documentState!=="draft") {
     const existing=await db.prepare(
       `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
               document_state AS documentState,payload_json AS payloadJson,generated_by AS generatedBy,
               generated_at AS generatedAt,storage_key AS storageKey,sha256
        FROM printed_form_snapshots
-       WHERE organization_id=? AND document_id=? AND form_type=? AND template_version=? AND document_state=?
+       WHERE organization_id=? AND document_id=? AND form_type=? AND document_state=?
        ORDER BY id ASC LIMIT 1`
-    ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,documentState).first<SnapshotRow>();
+    ).bind(ctx.organizationId,documentId,formType,documentState).first<SnapshotRow>();
     if(existing) {
       await audit(db,{
         organizationId:ctx.organizationId,actorEmail:ctx.member.email,
         action:"printed_form_reprinted",resource:"business_document",targetId:documentId,
-        details:{formType,templateVersion:TEMPLATE_VERSION,snapshotId:existing.id},
+        details:{formType,templateVersion:existing.templateVersion,snapshotId:existing.id},
       });
       return Response.json({snapshot:publicSnapshot(existing),payload:JSON.parse(existing.payloadJson)});
     }

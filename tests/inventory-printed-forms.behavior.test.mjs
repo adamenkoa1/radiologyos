@@ -20,12 +20,15 @@ test("posted inventory form is snapshotted and exact reprint survives master-dat
     const first=await printDocument(db,cookie,documentId);
     assert.equal(first.status,201);
     const form1=await first.json();
-    assert.equal(form1.snapshot.templateVersion,1);
+    assert.equal(form1.snapshot.templateVersion,2);
     assert.equal(form1.snapshot.documentState,"posted");
     assert.equal(form1.snapshot.sha256.length,64);
     assert.equal(form1.payload.lines[0].itemName,"Контраст оригінальний");
+    assert.equal(form1.payload.lines[0].warehouseCode,"MAIN");
+    assert.equal(form1.payload.lines[0].warehouseName,"Основний склад");
 
     await db.prepare("UPDATE inventory_items SET name='Контраст перейменований' WHERE organization_id=1 AND id=?").bind(itemId).run();
+    await db.prepare("UPDATE warehouses SET name='Головний склад',code='MAIN-RENAMED' WHERE organization_id=1 AND is_default=1").run();
 
     const again=await printDocument(db,cookie,documentId);
     assert.equal(again.status,200);
@@ -33,9 +36,35 @@ test("posted inventory form is snapshotted and exact reprint survives master-dat
     assert.equal(form2.snapshot.id,form1.snapshot.id,"posted reprint must reuse canonical snapshot");
     assert.equal(form2.snapshot.sha256,form1.snapshot.sha256);
     assert.equal(form2.payload.lines[0].itemName,"Контраст оригінальний","historical print must not silently use renamed master data");
+    assert.equal(form2.payload.lines[0].warehouseCode,"MAIN");
+    assert.equal(form2.payload.lines[0].warehouseName,"Основний склад","historical print must keep warehouse snapshot");
 
     assert.throws(()=>raw.prepare("UPDATE printed_form_snapshots SET generated_by='tamper@example.com' WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
     assert.throws(()=>raw.prepare("DELETE FROM printed_form_snapshots WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
+  });
+});
+
+test("posted reprint preserves an older canonical snapshot across template upgrades",async()=>{
+  await withD1(async(db)=>{
+    const cookie=await seedStaffSession(db,{email:"printer-upgrade@example.com",role:"admin",organizationId:1});
+    const itemRes=await postInventory(db,cookie,{action:"create_item",name:"Legacy print item",sku:"PRINT-V1",category:"other",unit:"шт",minStock:0});
+    const {id:itemId}=await itemRes.json();
+    const receipt=await postInventory(db,cookie,{action:"receive",itemId,quantity:1,lotNumber:"V1"});
+    const {documentId}=await receipt.json();
+    const legacyPayload={templateVersion:1,formType:"inventory_receipt",organization:{name:"Legacy Org"},document:{id:documentId,state:"posted"},lines:[{lineNo:1,itemName:"Назва з форми v1"}]};
+    const legacy=await db.prepare(
+      `INSERT INTO printed_form_snapshots
+       (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,sha256)
+       VALUES (1,?,'inventory_receipt',1,'posted',?,'legacy-printer','legacy-v1-hash')`
+    ).bind(documentId,JSON.stringify(legacyPayload)).run();
+
+    const reprint=await printDocument(db,cookie,documentId);
+    assert.equal(reprint.status,200);
+    const body=await reprint.json();
+    assert.equal(body.snapshot.id,Number(legacy.meta.last_row_id));
+    assert.equal(body.snapshot.templateVersion,1);
+    assert.equal(body.snapshot.sha256,"legacy-v1-hash");
+    assert.equal(body.payload.lines[0].itemName,"Назва з форми v1");
   });
 });
 
