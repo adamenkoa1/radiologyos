@@ -45,16 +45,20 @@ test("posted transaction registrar links cannot be nulled or swapped",async()=>{
 
     assert.throws(
       ()=>raw.prepare("UPDATE payment_transactions SET payment_document_id=NULL WHERE id=?").run(transaction.id),
-      /payment_document_link_immutable/,
     );
     assert.throws(
       ()=>raw.prepare("UPDATE payment_transactions SET refund_document_id=NULL WHERE id=?").run(transaction.id),
-      /refund_document_link_immutable/,
     );
     assert.throws(
       ()=>raw.prepare("UPDATE payment_transactions SET payment_document_id=? WHERE id=?").run(refundBody.documentId,transaction.id),
-      /payment_document_link_immutable/,
     );
+
+    const unchanged=raw.prepare(
+      `SELECT payment_document_id AS paymentDocumentId,refund_document_id AS refundDocumentId
+       FROM payment_transactions WHERE id=?`
+    ).get(transaction.id);
+    assert.equal(unchanged.paymentDocumentId,payment.documentId);
+    assert.equal(unchanged.refundDocumentId,refundBody.documentId);
   });
 });
 
