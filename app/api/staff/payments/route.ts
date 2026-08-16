@@ -71,6 +71,9 @@ export async function POST(request: Request) {
     if (message === "invalid_booking_amount") {
       return Response.json({ error: "Для цієї заявки не визначено коректну суму до сплати" }, { status: 409 });
     }
+    if (message === "payment_already_settled") {
+      return Response.json({ error: "Ця заявка вже має підтверджену повну оплату" }, { status: 409 });
+    }
     if (message === "payment_reference_conflict") {
       return Response.json({ error: "Цей платіжний референс уже прив’язаний до іншої оплати або повернення" }, { status: 409 });
     }
