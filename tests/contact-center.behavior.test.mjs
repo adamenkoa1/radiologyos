@@ -41,17 +41,18 @@ test("contact-center communication history stays tenant scoped across channels",
   assert.deepEqual(telegramOnly.map((row) => row.summary), ["Org1 Telegram"]);
 });
 
-test("contact-center route derives tenant, preserves exact ids, and fails closed on ambiguous or stale replies", async () => {
+test("contact-center route derives tenant, preserves exact ids, and fails closed on ambiguous compatibility reads", async () => {
   const route = await read("app/api/staff/chat/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /patient_communications[\s\S]*organization_id = \?/);
   assert.match(route, /patient_id AS patientId/);
-  assert.match(route, /profileCount/);
-  assert.match(route, /if \(profileCount > 1\)/);
-  assert.match(route, /staleLinkedContact/);
-  assert.match(route, /p\.patient_id = b\.patient_id/);
-  assert.match(route, /p\.phone_normalized = b\.phone_normalized/);
-  assert.match(route, /Number\(identity\?\.staleLinkedContact \|\| 0\) === 1/);
+  assert.match(route, /resolvePhoneCompatibilityScope/);
+  assert.match(route, /if \(scope\.ambiguous\)/);
+  assert.match(route, /WHERE organization_id = \? AND patient_id = \? LIMIT 1/);
+  assert.match(route, /if \(!profile\)[\s\S]*status:404/);
+  assert.match(route, /exactProfileCount/);
+  assert.match(route, /legacyBookingCount/);
+  assert.match(route, /requestedPhone && requestedPhone !== phone/);
   assert.match(route, /availableReplyChannels/);
   assert.match(route, /contact_center_thread_viewed/);
   assert.match(route, /contact_center_message_sent/);
@@ -59,7 +60,7 @@ test("contact-center route derives tenant, preserves exact ids, and fails closed
   assert.match(route, /\(organization_id, patient_id, phone_normalized, channel/);
 });
 
-test("contact-center UI exposes channels, delivery issues, and shared-phone ambiguity", async () => {
+test("contact-center UI exposes identity scopes, channels, delivery issues, and reply ambiguity", async () => {
   const [page, globals, styles] = await Promise.all([
     read("app/staff/chat/page.tsx"),
     read("app/globals.css"),
@@ -68,10 +69,13 @@ test("contact-center UI exposes channels, delivery issues, and shared-phone ambi
   assert.match(page, /title="Контакт-центр"/);
   for (const channel of ["whatsapp", "telegram", "sms", "email"]) assert.match(page, new RegExp(`"${channel}"`));
   assert.match(page, /Помилки доставки/);
+  assert.match(page, /conversationKey/);
+  assert.match(page, /identityKind/);
   assert.match(page, /sharedPhone/);
-  assert.match(page, /Відповідь заблокована: неоднозначна особа/);
+  assert.match(page, /Відповідь заблокована: потрібна ідентифікація/);
   assert.match(page, /replyChannels\.includes\("whatsapp"\)/);
-  assert.match(page, /Один номер використовують кілька пацієнтів/);
+  assert.match(page, /Legacy-історія не є карткою пацієнта/);
+  assert.match(page, /спільний контакт/);
   assert.match(globals, /18-contact-center\.css/);
   assert.match(styles, /\.contactKpis/);
   assert.match(styles, /\.deliveryIssues/);
