@@ -51,14 +51,18 @@ jobs:
           node --experimental-strip-types --test tests/*.test.mjs 2>&1 | tee test-output.log
           status=${PIPESTATUS[0]}
           if [ "$status" -ne 0 ]; then
+            failure_context=$(grep -n -B 20 -A 45 "not ok " test-output.log || true)
+            if [ -z "$failure_context" ]; then
+              failure_context=$(tail -n 160 test-output.log)
+            fi
             {
               echo "### Behavioral test failure"
               echo
               echo '```text'
-              tail -n 160 test-output.log
+              printf '%s\n' "$failure_context"
               echo '```'
             } >> "$GITHUB_STEP_SUMMARY"
-            details=$(tail -n 120 test-output.log | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g')
+            details=$(printf '%s\n' "$failure_context" | tail -n 260 | tr '\n' ' ' | sed 's/%/%25/g; s/\r/%0D/g')
             echo "::error title=Behavioral tests failed::$details"
             exit "$status"
           fi
