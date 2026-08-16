@@ -6,6 +6,7 @@ import {
   postInventoryDocument,
 } from "../../../../lib/inventory-documents";
 import { requireOrgContext } from "../../../../lib/tenant";
+import { listWarehouses } from "../../../../lib/warehouses";
 
 const CATEGORIES = new Set(["contrast","catheter","syringe","infusion","ppe","film","paper","disinfectant","other"]);
 const MANAGER_ROLES = new Set(["admin","radiographer"]);
@@ -19,10 +20,11 @@ type LotRow = {
   supplierCounterpartyId:number|null; stock:number;
 };
 type MovementRow = {
-  id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; movementType:string;
-  quantityDelta:number; unit:string; reason:string; bookingId:number|null; actorEmail:string; createdAt:string;
-  documentId:number|null;
+  id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; warehouseId:number|null;
+  warehouseCode:string;warehouseName:string;movementType:string;quantityDelta:number;unit:string;reason:string;
+  bookingId:number|null;actorEmail:string;createdAt:string;documentId:number|null;
 };
+type WarehouseBalanceRow={warehouseId:number;warehouseCode:string;warehouseName:string;lotId:number;itemId:number;itemName:string;lotNumber:string;stock:number};
 type SupplierRow={id:number;code:string;name:string};
 
 function cleanText(value:unknown,max:number) { return String(value || "").trim().slice(0,max); }
@@ -34,6 +36,7 @@ function nonNegativeNumber(value:unknown) {
   const n = Number(value);
   return Number.isFinite(n) && n >= 0 ? n : null;
 }
+function positiveInt(value:unknown){const n=Number(value);return Number.isInteger(n)&&n>0?n:null;}
 function canManage(role:string) { return MANAGER_ROLES.has(role); }
 
 async function itemForOrg(db:D1Database,organizationId:number,itemId:number) {
@@ -44,6 +47,7 @@ async function itemForOrg(db:D1Database,organizationId:number,itemId:number) {
 function inventoryDocumentError(error:unknown) {
   const code = String(error instanceof Error ? error.message : error);
   if (code.includes("invalid_expiry")) return Response.json({ error:"Некоректний термін придатності" },{status:400});
+  if (code.includes("warehouse_not_found")) return Response.json({ error:"Склад не знайдено або він неактивний" },{status:404});
   if (code.includes("item_not_found")) return Response.json({ error:"Матеріал не знайдено або він неактивний" },{status:404});
   if (code.includes("supplier_not_found")) return Response.json({ error:"Постачальника не знайдено, він неактивний або не є постачальником" },{status:404});
   if (code.includes("lot_not_found")) return Response.json({ error:"Партію не знайдено" },{status:404});
@@ -84,9 +88,23 @@ export async function GET(request:Request) {
      ORDER BY CASE WHEN l.expires_on = '' THEN 1 ELSE 0 END, l.expires_on, i.name`
   ).bind(ctx.organizationId).all<LotRow>();
 
+  const warehouseBalances=await db.prepare(
+    `SELECT m.warehouse_id AS warehouseId,m.warehouse_code AS warehouseCode,m.warehouse_name AS warehouseName,
+            m.lot_id AS lotId,m.item_id AS itemId,i.name AS itemName,l.lot_number AS lotNumber,
+            COALESCE(SUM(m.quantity_delta),0) AS stock
+     FROM inventory_movements m
+     JOIN inventory_items i ON i.id=m.item_id AND i.organization_id=m.organization_id
+     JOIN inventory_lots l ON l.id=m.lot_id AND l.organization_id=m.organization_id
+     WHERE m.organization_id=? AND m.warehouse_id IS NOT NULL
+     GROUP BY m.warehouse_id,m.lot_id,m.item_id
+     HAVING stock>0.000001
+     ORDER BY m.warehouse_name,i.name,l.lot_number,m.warehouse_id,m.lot_id`
+  ).bind(ctx.organizationId).all<WarehouseBalanceRow>();
+
   const movements = await db.prepare(
     `SELECT m.id, m.item_id AS itemId, i.name AS itemName, m.lot_id AS lotId,
-            l.lot_number AS lotNumber, m.movement_type AS movementType,
+            l.lot_number AS lotNumber,m.warehouse_id AS warehouseId,m.warehouse_code AS warehouseCode,
+            m.warehouse_name AS warehouseName,m.movement_type AS movementType,
             m.quantity_delta AS quantityDelta, i.unit, m.reason, m.booking_id AS bookingId,
             m.actor_email AS actorEmail, m.created_at AS createdAt,m.document_id AS documentId
      FROM inventory_movements m
@@ -100,8 +118,9 @@ export async function GET(request:Request) {
     `SELECT id,code,name FROM counterparties
      WHERE organization_id=? AND active=1 AND kind IN ('supplier','both') ORDER BY name,id LIMIT 500`
   ).bind(ctx.organizationId).all<SupplierRow>();
+  const warehouses=await listWarehouses(db,ctx.organizationId);
 
-  return Response.json({ items:items.results, lots:lots.results, movements:movements.results, counterparties:counterparties.results, staff:ctx.member, canManage:canManage(ctx.role) });
+  return Response.json({ items:items.results, lots:lots.results, warehouseBalances:warehouseBalances.results, warehouses, movements:movements.results, counterparties:counterparties.results, staff:ctx.member, canManage:canManage(ctx.role) });
 }
 
 export async function POST(request:Request) {
@@ -135,8 +154,8 @@ export async function POST(request:Request) {
     }
   }
 
-  // Compatibility actions: old callers still work, but every NEW movement is now registered by
-  // a BAS-style document and posting engine. Legacy free-text supplier remains accepted here.
+  // Compatibility actions: old callers still work. warehouseId is optional and resolves to the
+  // active default warehouse; new callers may select an explicit warehouse.
   if (action === "receive") {
     const itemId = Number(body.itemId);
     const quantity = positiveNumber(body.quantity);
@@ -147,7 +166,7 @@ export async function POST(request:Request) {
         actorEmail:ctx.member.email,
         type:"inventory_receipt",
         lines:[{
-          itemId,quantity,
+          itemId,warehouseId:positiveInt(body.warehouseId),quantity,
           lotNumber:cleanText(body.lotNumber,100),
           expiresOn:cleanText(body.expiresOn,10),
           supplier:cleanText(body.supplier,180),
@@ -162,7 +181,7 @@ export async function POST(request:Request) {
         return Response.json({error:posted.error},{status:posted.status});
       }
       const lotId = posted.document?.lines[0]?.lotId || 0;
-      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_received", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, hasExpiry:!!cleanText(body.expiresOn,10) } });
+      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_received", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, warehouseId:posted.document?.lines[0]?.warehouseId || null, hasExpiry:!!cleanText(body.expiresOn,10) } });
       return Response.json({ ok:true,lotId,documentId:created.document.id }, { status:201 });
     } catch (error) {
       const mapped = inventoryDocumentError(error);
@@ -183,7 +202,7 @@ export async function POST(request:Request) {
         organizationId:ctx.organizationId,
         actorEmail:ctx.member.email,
         type:"inventory_writeoff",
-        lines:[{lotId,quantity,reason,bookingId}],
+        lines:[{lotId,warehouseId:positiveInt(body.warehouseId),quantity,reason,bookingId}],
       });
       if (!created) return Response.json({ error:"Не вдалося створити документ списання" },{status:500});
       const posted = await postInventoryDocument(db,{organizationId:ctx.organizationId,documentId:created.document.id,actorEmail:ctx.member.email});
@@ -192,7 +211,7 @@ export async function POST(request:Request) {
         return Response.json({error:posted.error},{status:posted.status});
       }
       const itemId = posted.document?.lines[0]?.itemId || 0;
-      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_written_off", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, linkedBooking:!!bookingId } });
+      await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"inventory_written_off", resource:"inventory", targetId:itemId, details:{ documentId:created.document.id, lotId, quantity, warehouseId:posted.document?.lines[0]?.warehouseId || null, linkedBooking:!!bookingId } });
       return Response.json({ ok:true,documentId:created.document.id });
     } catch (error) {
       const mapped = inventoryDocumentError(error);
