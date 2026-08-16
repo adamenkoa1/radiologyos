@@ -102,6 +102,12 @@ export default function FinancePage() {
       <article><span>Документів</span><b>{data?.documents.length || 0}</b><small>оплата / повернення</small></article>
     </section>
 
+    <aside className="financeLegacyNotice">
+      <b>Надання послуг</b>
+      <span>Виконані дослідження проводяться окремими BAS-Актами з доходом, взаєморозрахунками, навантаженням обладнання та виробітком персоналу.</span>
+      <a href="/staff/service-delivery">Відкрити журнал наданих послуг →</a>
+    </aside>
+
     {!!data?.legacyTransactionCount && <aside className="financeLegacyNotice">
       <b>Legacy: {data.legacyTransactionCount}</b>
       <span>Історичні підтверджені транзакції, створені до BAS-реєстратора, не перетворюються на документи заднім числом і не входять у підсумки нового регістру.</span>
