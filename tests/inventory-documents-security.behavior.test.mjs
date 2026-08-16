@@ -58,21 +58,26 @@ test("D1 rejects movement quantity/type mismatches and atomically prevents negat
       action:"create",documentType:"inventory_writeoff",lines:[{lotId,quantity:2,reason:"Race protected"}],
     });
     const writeoff=await writeoffRes.json();
+    const line=writeoff.lines[0];
     raw.prepare(
       "UPDATE business_documents SET state='posted',posted_by='test',posted_at=CURRENT_TIMESTAMP WHERE id=? AND organization_id=1"
     ).run(writeoff.document.id);
 
+    // Supply the exact warehouse identity/snapshot so this assertion reaches the intended
+    // movement-type registrar check rather than failing earlier on the warehouse dimension.
     assert.throws(()=>raw.prepare(
       `INSERT INTO inventory_movements
-       (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
-       VALUES (1,?,?,'receipt',2,'Race protected','test',?,?)`
-    ).run(itemId,lotId,writeoff.document.id,writeoff.lines[0].id),/inventory_document_link_invalid/);
+       (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
+       VALUES (1,?,?,?,?,?,'receipt',2,'Race protected','test',?,?)`
+    ).run(itemId,lotId,line.warehouseId,line.warehouseCode,line.warehouseName,writeoff.document.id,line.id),/inventory_document_link_invalid/);
 
+    // With every registrar field valid, an oversized write-off must reach the atomic
+    // warehouse+lot non-negative stock guard and be rejected there.
     assert.throws(()=>raw.prepare(
       `INSERT INTO inventory_movements
-       (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
-       VALUES (1,?,?,'writeoff',-2,'Race protected','test',?,?)`
-    ).run(itemId,lotId,writeoff.document.id,writeoff.lines[0].id),/inventory_negative_stock/);
+       (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
+       VALUES (1,?,?,?,?,?,'writeoff',-2,'Race protected','test',?,?)`
+    ).run(itemId,lotId,line.warehouseId,line.warehouseCode,line.warehouseName,writeoff.document.id,line.id),/inventory_negative_stock/);
 
     const balance=raw.prepare("SELECT SUM(quantity_delta) AS stock FROM inventory_movements WHERE organization_id=1 AND lot_id=?").get(lotId);
     assert.equal(balance.stock,1);
