@@ -9,6 +9,8 @@ export type ServiceCorrectionDocument={
   reason:string;chargeAmount:number;currency:string;created:false|true;
 };
 
+type ExistingCorrection=Omit<ServiceCorrectionDocument,"created">;
+
 function clean(value:unknown,max:number) {
   return typeof value==="string"?value.trim().slice(0,max):"";
 }
@@ -41,7 +43,7 @@ export async function existingServiceCorrection(
   db:D1Database,
   organizationId:number,
   sourceDocumentId:number,
-) {
+):Promise<ExistingCorrection|null> {
   const row=await db.prepare(
     `SELECT d.id,d.number,d.state,c.source_document_id AS sourceDocumentId,src.number AS sourceDocumentNumber,
             c.booking_id AS bookingId,c.reason,c.charge_amount AS chargeAmount,c.currency
@@ -50,10 +52,7 @@ export async function existingServiceCorrection(
      JOIN business_documents src ON src.id=c.source_document_id AND src.organization_id=c.organization_id
      WHERE c.organization_id=? AND c.source_document_id=?
      ORDER BY d.id DESC LIMIT 1`
-  ).bind(organizationId,sourceDocumentId).first<{
-    id:number;number:string;state:string;sourceDocumentId:number;sourceDocumentNumber:string;
-    bookingId:number;reason:string;chargeAmount:number;currency:string;
-  }>();
+  ).bind(organizationId,sourceDocumentId).first<ExistingCorrection>();
   return row || null;
 }
 
@@ -68,6 +67,35 @@ async function cleanupDraft(db:D1Database,organizationId:number,documentId:numbe
     .bind(organizationId,documentId).run().catch(()=>{});
 }
 
+async function postExistingDraftCorrection(
+  db:D1Database,
+  organizationId:number,
+  sourceDocumentId:number,
+  existing:ExistingCorrection,
+) {
+  const source=await serviceCorrectionSource(db,organizationId,sourceDocumentId);
+  if(!source) throw new Error("service_delivery_not_found");
+  if(source.documentState!=="posted") {
+    const current=await existingServiceCorrection(db,organizationId,sourceDocumentId);
+    if(source.documentState==="reversed" && current?.state==="posted") return {...current,created:false as const};
+    throw new Error(source.documentState==="reversed"?"service_delivery_already_reversed":"service_delivery_not_posted");
+  }
+
+  const reversed=await db.prepare(
+    `UPDATE business_documents SET state='reversed'
+     WHERE organization_id=? AND id=? AND state='posted' AND document_type='service_delivery'`
+  ).bind(organizationId,sourceDocumentId).run();
+  if(!Number(reversed.meta.changes || 0)) {
+    const raced=await existingServiceCorrection(db,organizationId,sourceDocumentId);
+    if(raced?.state==="posted") return {...raced,created:false as const};
+    throw new Error("service_correction_in_progress");
+  }
+
+  const posted=await existingServiceCorrection(db,organizationId,sourceDocumentId);
+  if(!posted || posted.state!=="posted" || posted.id!==existing.id) throw new Error("service_correction_post_failed");
+  return {...posted,created:false as const};
+}
+
 export async function postServiceStorno(
   db:D1Database,
   input:{organizationId:number;sourceDocumentId:number;reason:string;actorEmail:string},
@@ -79,6 +107,9 @@ export async function postServiceStorno(
 
   const existing=await existingServiceCorrection(db,input.organizationId,input.sourceDocumentId);
   if(existing?.state==="posted") return {...existing,created:false};
+  if(existing?.state==="draft") return postExistingDraftCorrection(
+    db,input.organizationId,input.sourceDocumentId,existing,
+  );
   if(existing) throw new Error("service_correction_in_progress");
 
   const source=await serviceCorrectionSource(db,input.organizationId,input.sourceDocumentId);
@@ -136,6 +167,9 @@ export async function postServiceStorno(
     if(text.includes("unique constraint") || text.includes("service_correction_source_unique")) {
       const race=await existingServiceCorrection(db,input.organizationId,input.sourceDocumentId);
       if(race?.state==="posted") return {...race,created:false};
+      if(race?.state==="draft") return postExistingDraftCorrection(
+        db,input.organizationId,input.sourceDocumentId,race,
+      );
       throw new Error("service_correction_in_progress");
     }
     throw error;
