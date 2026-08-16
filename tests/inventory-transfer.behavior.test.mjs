@@ -12,7 +12,7 @@ async function setupStock(db,raw,cookie,quantity=10){
   const {id:itemId}=await itemRes.json();
   const main=raw.prepare("SELECT id,code,name FROM warehouses WHERE organization_id=1 AND is_default=1").get();
   const receipt=await inventory(db,cookie,{action:"receive",itemId,warehouseId:main.id,quantity,lotNumber:"TR-LOT"});
-  assert.equal(receipt.status,200);
+  assert.equal(receipt.status,201);
   const {lotId}=await receipt.json();
   return {itemId,lotId,main};
 }
