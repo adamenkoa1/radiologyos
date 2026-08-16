@@ -2,7 +2,7 @@ import {
   cleanupFinanceDocumentDraft,
   createFinanceDocumentDraft,
   financePostingStatements,
-} from "./finance-documents";
+} from "./finance-documents.ts";
 
 export type PaymentTransactionStatus = "pending" | "paid" | "failed" | "refunded" | "cancelled";
 
