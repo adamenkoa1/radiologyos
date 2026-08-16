@@ -104,6 +104,9 @@ test("manual confirmation creates one paid ledger entry and updates booking aggr
 
 test("the same provider reference may exist independently in another tenant", async () => {
   await withD1(async (db) => {
+    await db.prepare(
+      "INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Payment Org 2','payment-org-2',1)",
+    ).run();
     const one = await seedBooking(db, { organizationId: 1, code: "PAY-D1", amount: 1200 });
     const two = await seedBooking(db, { organizationId: 2, code: "PAY-D2", amount: 1300 });
     await createPendingPayment(db, {
