@@ -1,11 +1,13 @@
 import type { DocumentState } from "./business-core";
 import { getActiveSupplierCounterparty } from "./counterparties";
+import { resolveWarehouse } from "./warehouses";
 
 export type InventoryDocumentType = "inventory_receipt" | "inventory_writeoff";
 
 export type InventoryDocumentLineInput = {
   itemId?: number;
   lotId?: number;
+  warehouseId?: number | null;
   quantity: number;
   lotNumber?: string;
   expiresOn?: string;
@@ -36,6 +38,9 @@ export type InventoryDocumentLineRow = {
   lineNo:number;
   itemId:number;
   lotId:number|null;
+  warehouseId:number;
+  warehouseCode:string;
+  warehouseName:string;
   lotNumber:string;
   expiresOn:string;
   supplier:string;
@@ -108,7 +113,9 @@ export async function getInventoryDocument(db:D1Database,organizationId:number,d
   if (!document) return null;
   const lines = await db.prepare(
     `SELECT id,organization_id AS organizationId,document_id AS documentId,line_no AS lineNo,
-            item_id AS itemId,lot_id AS lotId,lot_number AS lotNumber,expires_on AS expiresOn,
+            item_id AS itemId,lot_id AS lotId,warehouse_id AS warehouseId,
+            warehouse_code AS warehouseCode,warehouse_name AS warehouseName,
+            lot_number AS lotNumber,expires_on AS expiresOn,
             supplier,supplier_counterparty_id AS supplierCounterpartyId,quantity,reason,booking_id AS bookingId
      FROM inventory_document_lines
      WHERE organization_id=? AND document_id=? ORDER BY line_no,id`
@@ -144,13 +151,18 @@ export async function createInventoryDocument(
   }
 
   const normalized:Array<Required<Pick<InventoryDocumentLineInput,"quantity">> & {
-    itemId:number;lotId:number|null;lotNumber:string;expiresOn:string;supplier:string;supplierCounterpartyId:number|null;
+    itemId:number;lotId:number|null;warehouseId:number;warehouseCode:string;warehouseName:string;
+    lotNumber:string;expiresOn:string;supplier:string;supplierCounterpartyId:number|null;
     reason:string;bookingId:number|null;
   }> = [];
 
   for (const source of input.lines) {
     const qty = quantity(source.quantity);
     if (!qty) throw new Error("inventory_document_invalid_quantity");
+    const warehouse=await resolveWarehouse(db,{
+      organizationId:input.organizationId,
+      warehouseId:intOrNull(source.warehouseId),
+    });
     if (input.type === "inventory_receipt") {
       const itemId = intOrNull(source.itemId);
       if (!itemId) throw new Error("inventory_document_item_required");
@@ -166,7 +178,8 @@ export async function createInventoryDocument(
         supplier=counterparty.name;
       }
       normalized.push({
-        itemId,lotId:null,quantity:qty,lotNumber:text(source.lotNumber,100),expiresOn,supplier,supplierCounterpartyId,
+        itemId,lotId:null,warehouseId:warehouse.id,warehouseCode:warehouse.code,warehouseName:warehouse.name,
+        quantity:qty,lotNumber:text(source.lotNumber,100),expiresOn,supplier,supplierCounterpartyId,
         reason:text(source.reason,500) || "Надходження",bookingId:null,
       });
     } else {
@@ -179,7 +192,8 @@ export async function createInventoryDocument(
       const reason = text(source.reason,500);
       if (!reason) throw new Error("inventory_document_reason_required");
       normalized.push({
-        itemId:found.itemId,lotId,quantity:qty,lotNumber:found.lotNumber,expiresOn:found.expiresOn,
+        itemId:found.itemId,lotId,warehouseId:warehouse.id,warehouseCode:warehouse.code,warehouseName:warehouse.name,
+        quantity:qty,lotNumber:found.lotNumber,expiresOn:found.expiresOn,
         supplier:found.supplier,supplierCounterpartyId:found.supplierCounterpartyId,reason,bookingId,
       });
     }
@@ -200,11 +214,12 @@ export async function createInventoryDocument(
   try {
     await db.batch(normalized.map((line,index)=>db.prepare(
       `INSERT INTO inventory_document_lines
-        (organization_id,document_id,line_no,item_id,lot_id,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
+        (organization_id,document_id,line_no,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,
+         lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
-      input.organizationId,documentId,index+1,line.itemId,line.lotId,line.lotNumber,line.expiresOn,
-      line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,
+      input.organizationId,documentId,index+1,line.itemId,line.lotId,line.warehouseId,line.warehouseCode,line.warehouseName,
+      line.lotNumber,line.expiresOn,line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,
     )));
   } catch (error) {
     await db.prepare("DELETE FROM business_documents WHERE organization_id=? AND id=? AND state='draft'")
@@ -275,18 +290,20 @@ export async function postInventoryDocument(
   if (current.lines.length < 1) return { ok:false as const,status:409,error:"У документі немає рядків" };
 
   if (current.document.documentType === "inventory_writeoff") {
-    const requiredByLot = new Map<number,number>();
+    const required = new Map<string,{warehouseId:number;lotId:number;quantity:number}>();
     for (const line of current.lines) {
       if (!line.lotId) return { ok:false as const,status:409,error:"У списанні не вказана партія" };
-      requiredByLot.set(line.lotId,(requiredByLot.get(line.lotId) || 0) + Number(line.quantity));
+      const key=`${line.warehouseId}:${line.lotId}`;
+      const prior=required.get(key);
+      required.set(key,{warehouseId:line.warehouseId,lotId:line.lotId,quantity:(prior?.quantity||0)+Number(line.quantity)});
     }
-    for (const [lotId,required] of requiredByLot) {
+    for (const value of required.values()) {
       const balance = await db.prepare(
         `SELECT COALESCE(SUM(quantity_delta),0) AS stock
-         FROM inventory_movements WHERE organization_id=? AND lot_id=?`
-      ).bind(input.organizationId,lotId).first<{stock:number}>();
-      if (Number(balance?.stock || 0) + 0.000001 < required) {
-        return { ok:false as const,status:409,error:"Недостатній залишок у партії для проведення документа" };
+         FROM inventory_movements WHERE organization_id=? AND warehouse_id=? AND lot_id=?`
+      ).bind(input.organizationId,value.warehouseId,value.lotId).first<{stock:number}>();
+      if (Number(balance?.stock || 0) + 0.000001 < value.quantity) {
+        return { ok:false as const,status:409,error:"Недостатній залишок у партії на вибраному складі" };
       }
     }
   }
@@ -322,10 +339,11 @@ export async function postInventoryDocument(
     ).bind(input.actorEmail,postedAt,input.organizationId,input.documentId),
     ...lines.map((line)=>db.prepare(
       `INSERT INTO inventory_movements
-        (organization_id,item_id,lot_id,movement_type,quantity_delta,reason,booking_id,actor_email,document_id,document_line_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`
+        (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,
+         movement_type,quantity_delta,reason,booking_id,actor_email,document_id,document_line_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
-      input.organizationId,line.itemId,line.lotId,
+      input.organizationId,line.itemId,line.lotId,line.warehouseId,line.warehouseCode,line.warehouseName,
       current.document.documentType === "inventory_receipt" ? "receipt" : "writeoff",
       current.document.documentType === "inventory_receipt" ? Number(line.quantity) : -Number(line.quantity),
       line.reason,line.bookingId,input.actorEmail,input.documentId,line.id,
@@ -342,7 +360,7 @@ export async function postInventoryDocument(
     }
     await cleanupUnpostedReceiptLots(db,input.organizationId,input.documentId,createdReceiptLots);
     if (message.includes("inventory_negative_stock")) {
-      return { ok:false as const,status:409,error:"Недостатній залишок у партії для проведення документа" };
+      return { ok:false as const,status:409,error:"Недостатній залишок у партії на вибраному складі" };
     }
     throw error;
   }
