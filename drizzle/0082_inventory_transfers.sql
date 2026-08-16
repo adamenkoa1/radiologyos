@@ -12,6 +12,23 @@ CREATE INDEX IF NOT EXISTS `inventory_lines_destination_warehouse_idx`
   WHERE `destination_warehouse_id` IS NOT NULL;
 --> statement-breakpoint
 
+-- Extend the warehouse reference guard from 0081: a destination warehouse used by a transfer draft
+-- is already business data and cannot disappear before the document is posted/cancelled.
+DROP TRIGGER IF EXISTS `warehouse_referenced_no_delete`;
+--> statement-breakpoint
+CREATE TRIGGER `warehouse_referenced_no_delete`
+BEFORE DELETE ON `warehouses`
+WHEN EXISTS (
+  SELECT 1 FROM inventory_document_lines l
+  WHERE l.organization_id=OLD.organization_id
+    AND (l.warehouse_id=OLD.id OR l.destination_warehouse_id=OLD.id)
+) OR EXISTS (
+  SELECT 1 FROM inventory_movements m
+  WHERE m.organization_id=OLD.organization_id AND m.warehouse_id=OLD.id
+)
+BEGIN SELECT RAISE(ABORT,'warehouse_in_use'); END;
+--> statement-breakpoint
+
 -- A transfer line must have a second active warehouse in the same tenant, distinct from the source.
 CREATE TRIGGER `inventory_transfer_destination_insert`
 BEFORE INSERT ON `inventory_document_lines`
