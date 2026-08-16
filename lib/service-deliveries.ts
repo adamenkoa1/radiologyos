@@ -193,6 +193,7 @@ export async function postServiceDelivery(
       const race=await existingServiceDelivery(db,input.organizationId,input.bookingId);
       if(race?.state === "posted") return {document:race,created:false};
     }
+    if(message.includes("service_delivery_reversed")) throw new Error("service_delivery_reversed");
     throw error;
   }
 
