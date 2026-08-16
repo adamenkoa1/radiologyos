@@ -80,6 +80,44 @@ test("D1 rejects forged finance register movements that do not match the posted 
   });
 });
 
+test("one payment transaction can be claimed by only one refund document",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{code:"RD-FIN-REFUND-CLAIM",amount:2300});
+    const cookie=await seedStaffSession(db,{email:"refund-claim@example.com",role:"registrar",organizationId:1});
+    const paid=await pay(db,cookie,bookingId,"REFUND-CLAIM-PAY");
+    assert.equal(paid.status,200);
+    const paidBody=await paid.json();
+    const transaction=raw.prepare(
+      `SELECT id,amount,currency,provider,provider_reference AS providerReference
+       FROM payment_transactions WHERE organization_id=1 AND booking_id=? AND status='paid'`
+    ).get(bookingId);
+
+    const first=raw.prepare(
+      `INSERT INTO business_documents
+       (organization_id,document_type,number,state,created_by)
+       VALUES (1,'refund','CLAIM-R1','draft','refund-claim@example.com')`
+    ).run();
+    const firstId=Number(first.lastInsertRowid);
+    raw.prepare(
+      `INSERT INTO finance_document_details
+       (organization_id,document_id,booking_id,amount,currency,method,provider,provider_reference,source_document_id,source_transaction_id)
+       VALUES (1,?,?,?,'UAH','bank_transfer','manual','REFUND-CLAIM-PAY',?,?)`
+    ).run(firstId,bookingId,transaction.amount,paidBody.documentId,transaction.id);
+
+    const second=raw.prepare(
+      `INSERT INTO business_documents
+       (organization_id,document_type,number,state,created_by)
+       VALUES (1,'refund','CLAIM-R2','draft','refund-claim@example.com')`
+    ).run();
+    const secondId=Number(second.lastInsertRowid);
+    assert.throws(()=>raw.prepare(
+      `INSERT INTO finance_document_details
+       (organization_id,document_id,booking_id,amount,currency,method,provider,provider_reference,source_document_id,source_transaction_id)
+       VALUES (1,?,?,?,'UAH','bank_transfer','manual','REFUND-CLAIM-PAY',?,?)`
+    ).run(secondId,bookingId,transaction.amount,paidBody.documentId,transaction.id),/UNIQUE constraint failed/);
+  });
+});
+
 test("finance document details cannot cross tenant boundaries",async()=>{
   await withD1(async(db,raw)=>{
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Finance Org 2','finance-org-2',1)");
