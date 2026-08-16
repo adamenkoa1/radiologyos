@@ -92,23 +92,15 @@ export async function POST(request:Request) {
   if (!documentId) return Response.json({ error:"Некоректний документ" },{status:400});
 
   if (action === "post") {
-    try {
-      const result = await postInventoryDocument(db,{organizationId:ctx.organizationId,documentId,actorEmail:ctx.member.email});
-      if (!result.ok) return Response.json({error:result.error},{status:result.status});
-      await audit(db,{
-        organizationId:ctx.organizationId,actorEmail:ctx.member.email,
-        action:result.idempotent ? "inventory_document_post_replayed" : "inventory_document_posted",
-        resource:"business_document",targetId:documentId,
-        details:{ idempotent:result.idempotent },
-      });
-      return Response.json(result.document);
-    } catch (error) {
-      const code=String(error instanceof Error ? error.message : error);
-      if (code.includes("inventory_receipt_purchase_value_required")) {
-        return Response.json({error:"Для надходження від постачальника спочатку вкажіть закупівельну вартість"},{status:409});
-      }
-      throw error;
-    }
+    const result = await postInventoryDocument(db,{organizationId:ctx.organizationId,documentId,actorEmail:ctx.member.email});
+    if (!result.ok) return Response.json({error:result.error},{status:result.status});
+    await audit(db,{
+      organizationId:ctx.organizationId,actorEmail:ctx.member.email,
+      action:result.idempotent ? "inventory_document_post_replayed" : "inventory_document_posted",
+      resource:"business_document",targetId:documentId,
+      details:{ idempotent:result.idempotent },
+    });
+    return Response.json(result.document);
   }
 
   if (action === "cancel") {
