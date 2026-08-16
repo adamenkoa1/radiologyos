@@ -1,3 +1,27 @@
+export const SYSTEM_LAYERS = ["business_core", "medical", "public_site"] as const;
+export type SystemLayer = typeof SYSTEM_LAYERS[number];
+
+// Canonical product boundary:
+// BAS Small Company = business_core.
+// RadiologyOS = business_core + medical.
+// Public site = external storefront/intake channel and never the owner of posted economic facts.
+export const RADIologyOS_ARCHITECTURE = {
+  businessCore: {
+    layer: "business_core" as const,
+    owns: ["references", "documents", "posting", "registers", "reports", "printed_forms"] as const,
+  },
+  medical: {
+    layer: "medical" as const,
+    dependsOn: "business_core" as const,
+    owns: ["clinical_workflow", "dicom_pacs", "protocols", "results", "medical_access_control"] as const,
+  },
+  publicSite: {
+    layer: "public_site" as const,
+    exposes: ["storefront", "catalog", "booking_intake", "payment_initiation", "patient_entry"] as const,
+    economicFactOwner: false as const,
+  },
+} as const;
+
 export const BUSINESS_CORE_LAYERS = [
   "reference",
   "document",
@@ -148,7 +172,9 @@ export function requiresCorrectionDocument(state: DocumentState): boolean {
 export const DOCUMENT_REGISTER_MAP: Readonly<Partial<Record<DocumentType, readonly RegisterType[]>>> = {
   service_delivery: ["services_delivered", "revenue", "patient_settlements", "equipment_load", "staff_output", "studies_performed"],
   payment: ["cash", "patient_settlements"],
-  refund: ["cash", "patient_settlements", "revenue"],
+  // A money refund reverses cash/settlement only. Revenue is corrected by a service correction/storno,
+  // not merely because money was returned.
+  refund: ["cash", "patient_settlements"],
   inventory_receipt: ["inventory_balance"],
   inventory_writeoff: ["inventory_balance", "expenses"],
   inventory_transfer: ["inventory_balance"],
