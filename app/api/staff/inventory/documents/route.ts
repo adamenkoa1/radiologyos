@@ -25,6 +25,7 @@ function mapCreateError(error:unknown) {
   const code = String(error instanceof Error ? error.message : error);
   if (code.includes("lines_required")) return [400,"Додайте хоча б один рядок документа"] as const;
   if (code.includes("invalid_quantity")) return [400,"Кількість має бути більшою за нуль"] as const;
+  if (code.includes("warehouse_not_found")) return [404,"Склад не знайдено або він неактивний"] as const;
   if (code.includes("item_required")) return [400,"Для надходження вкажіть матеріал"] as const;
   if (code.includes("item_not_found")) return [404,"Матеріал не знайдено або він неактивний"] as const;
   if (code.includes("invalid_expiry")) return [400,"Некоректний термін придатності"] as const;
