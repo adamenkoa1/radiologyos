@@ -89,16 +89,17 @@ export async function GET(request:Request) {
   ).bind(ctx.organizationId).all<LotRow>();
 
   const warehouseBalances=await db.prepare(
-    `SELECT m.warehouse_id AS warehouseId,m.warehouse_code AS warehouseCode,m.warehouse_name AS warehouseName,
+    `SELECT w.id AS warehouseId,w.code AS warehouseCode,w.name AS warehouseName,
             m.lot_id AS lotId,m.item_id AS itemId,i.name AS itemName,l.lot_number AS lotNumber,
             COALESCE(SUM(m.quantity_delta),0) AS stock
      FROM inventory_movements m
+     JOIN warehouses w ON w.id=m.warehouse_id AND w.organization_id=m.organization_id
      JOIN inventory_items i ON i.id=m.item_id AND i.organization_id=m.organization_id
      JOIN inventory_lots l ON l.id=m.lot_id AND l.organization_id=m.organization_id
      WHERE m.organization_id=? AND m.warehouse_id IS NOT NULL
-     GROUP BY m.warehouse_id,m.lot_id,m.item_id
+     GROUP BY w.id,w.code,w.name,m.lot_id,m.item_id
      HAVING stock>0.000001
-     ORDER BY m.warehouse_name,i.name,l.lot_number,m.warehouse_id,m.lot_id`
+     ORDER BY w.name,i.name,l.lot_number,w.id,m.lot_id`
   ).bind(ctx.organizationId).all<WarehouseBalanceRow>();
 
   const movements = await db.prepare(
