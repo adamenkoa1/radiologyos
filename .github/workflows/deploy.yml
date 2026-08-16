@@ -1,8 +1,5 @@
 name: Deploy to Cloudflare
 
-# Manual trigger remains the normal deployment path. The temporary push trigger
-# below runs only for an explicitly approved main merge whose commit message
-# contains [deploy-approved]; it will be removed immediately after this rollout.
 on:
   workflow_dispatch:
     inputs:
@@ -14,9 +11,6 @@ on:
         options:
           - CANCEL
           - DEPLOY
-  push:
-    branches:
-      - main
 
 permissions:
   contents: read
@@ -28,7 +22,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy
-    if: ${{ (github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY') || (github.event_name == 'push' && github.ref == 'refs/heads/main' && contains(github.event.head_commit.message, '[deploy-approved]')) }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
