@@ -1,5 +1,15 @@
 # RadiologyOS Domain Model
 
+## Architectural layers
+
+```text
+BAS Small Company = business_core
+RadiologyOS = business_core + medical
+Public site = public_site adapter / storefront / intake
+```
+
+`public_site` не володіє проведеними господарськими фактами. `medical` залежить від business-core там, де клінічна подія породжує господарський факт, але DICOM/PACS, протоколи й результати залишаються окремими medical-domain сутностями.
+
 ## Patient
 
 ```ts
@@ -196,7 +206,7 @@ ImagingStudy {
 
 `ImagingStudy` — виключно DICOM/PACS-сутність. Господарський документ, який фіксує факт виконання дослідження для облікових рухів, має окремий тип `study_performance`.
 
-## Payment
+## Payment compatibility model
 
 ```ts
 Payment {
@@ -210,7 +220,90 @@ Payment {
 }
 ```
 
-`Payment` залишається сумісною медичною/read-model сутністю на перехідному етапі. Господарським джерелом істини цільової моделі є бізнес-документ `payment` та його рухи в `cash` і `patient_settlements`.
+Поля оплати в booking та `payment_transactions` залишаються compatibility/technical read-model. Після BAS-переходу проведеним господарським джерелом істини є `BusinessDocument(type=payment|refund)` і його рухи.
+
+`payment_transactions` — технічний gateway ledger:
+
+```ts
+PaymentTransaction {
+  id
+  organizationId
+  bookingId
+  amount
+  currency
+  provider
+  providerReference
+  status: pending | paid | failed | refunded | cancelled
+  paymentDocumentId?
+  refundDocumentId?
+  paidAt?
+  refundedAt?
+}
+```
+
+`pending` може бути створений зовнішнім сайтом/платіжним сценарієм і не є господарським фактом. Після trusted confirmation встановлюється `paymentDocumentId`; після проведеного повернення — `refundDocumentId`. Встановлені document links є незмінними. Старі paid/refunded транзакції без links залишаються explicit legacy і не backfill-яться евристично.
+
+## FinanceDocumentDetail
+
+Таблично-реквізитна частина `payment/refund` registrar:
+
+```ts
+FinanceDocumentDetail {
+  organizationId
+  documentId
+  bookingId
+  patientId
+  amount
+  currency
+  method
+  provider
+  providerReference
+  sourceDocumentId?
+  createdAt
+}
+```
+
+Для `refund` `sourceDocumentId` посилається на первинний проведений payment document, якщо він існує. D1 перевіряє tenant booking/patient/source document і дозволяє редагування реквізитів лише доки document у `draft`.
+
+## CashMovement
+
+```ts
+CashMovement {
+  id
+  organizationId
+  documentId
+  bookingId
+  movementType: payment | refund
+  amountDelta
+  currency
+  method
+  provider
+  providerReference
+  actorEmail
+  occurredAt
+}
+```
+
+Знак: `payment = +amount`, `refund = -amount`. Регістр append-only. D1 звіряє exact posted registrar, booking, currency, payment metadata та знак/суму.
+
+## PatientSettlementMovement
+
+```ts
+PatientSettlementMovement {
+  id
+  organizationId
+  documentId
+  bookingId
+  patientId
+  movementType: charge | payment | refund | adjustment
+  amountDelta
+  currency
+  actorEmail
+  occurredAt
+}
+```
+
+Конвенція сальдо: позитивне — пацієнт винен організації, від'ємне — кредит пацієнта. Тому `payment = -amount`, `refund = +amount`; майбутній `service_delivery` створює `charge = +amount`. Регістр append-only.
 
 ## ContrastChecklist
 
@@ -290,7 +383,7 @@ InventoryMovement {
 }
 ```
 
-`documentId/documentLineId = null` допустимі лише для історичних legacy-рухів, створених до введення документного ядра. Новий linked movement має фізично посилатися на проведений документ того самого tenant і на точний рядок документа. Унікальність `(organizationId, documentLineId)` робить повторне проведення ідемпотентним на рівні руху.
+`documentId/documentLineId = null` допустимі лише для історичних legacy-рухів, створених до введення документного ядра. Новий linked movement має фізично посилатися на проведений документ того самого tenant і на точний рядок документа. Унікальність `(organizationId, documentLineId)` робить повторне проведення ідемпотентним на рівні руху. Сам ledger append-only; D1 також фізично не дозволяє списання, яке зробить залишок партії від'ємним.
 
 ## EquipmentEvent
 
@@ -308,7 +401,7 @@ EquipmentEvent {
 
 ## BusinessDocument
 
-Усі господарські події клініки у BAS-подібному ядрі мають спільний документний lifecycle.
+Усі господарські події клініки у BAS-подібному ядрі мають спільний document lifecycle.
 
 ```ts
 BusinessDocument {
@@ -333,14 +426,27 @@ BusinessDocument {
 
 ### Реалізовано для складу
 
-`inventory_receipt` і `inventory_writeoff` вже використовують `business_documents` як registrar:
+`inventory_receipt` і `inventory_writeoff` використовують `business_documents` як registrar:
 
 - `draft` не змінює залишок;
 - `posted` створює `inventory_movements`;
 - повторне `post` не дублює рух;
-- недостатній залишок блокує списання до створення нового руху;
-- cross-tenant document/item/lot/booking references відхиляються;
-- compatibility API `receive/writeoff` теж проходить через створення + проведення документа.
+- недостатній залишок блокує списання;
+- cross-tenant references відхиляються;
+- compatibility API `receive/writeoff` теж проходить через документ.
+
+### Реалізовано для фінансів
+
+`payment` і `refund` використовують той самий registrar:
+
+- trusted confirmed payment створює `payment` document і рухи `cash + patient_settlements`;
+- refund є окремим документом, а не UPDATE первинної оплати;
+- повторне підтвердження/повернення ідемпотентне;
+- `payment_transactions` зв'язується з точними document ids;
+- публічний pending payment не створює registrar/register movement;
+- legacy transactions лишаються без штучного документа.
+
+Грошовий `refund` не є автоматичним reversal `revenue`: дохід коригується тільки через корекцію/сторно факту наданої послуги.
 
 ## RegisterMovement
 
@@ -388,7 +494,7 @@ PrintedFormDefinition {
 
 Типові форми: рахунок, квитанція, акт наданих послуг, направлення, протокол, результат, складські форми та службові форми.
 
-На першому практичному етапі складські шаблони є code-defined (`templateVersion = 1`). Окремий persistent каталог `PrintedFormDefinition` буде потрібен, коли шаблони стануть конфігурованими tenant-ами; це не блокує immutable snapshots уже сформованих форм.
+Перші практичні шаблони є code-defined (`templateVersion = 1`). Окремий persistent каталог `PrintedFormDefinition` буде потрібен, коли шаблони стануть конфігурованими tenant-ами; це не блокує immutable snapshots уже сформованих форм.
 
 ## PrintedFormSnapshot
 
@@ -408,9 +514,11 @@ PrintedFormSnapshot {
 }
 ```
 
-Конкретна D1-реалізація зберігає canonical render payload, версію шаблону, стан документа та SHA-256. Snapshot є append-only: UPDATE/DELETE заборонені trigger-ами. Для non-draft складського документа перша сформована форма конкретного `documentState + templateVersion` стає канонічною для повторного друку; подальше перейменування номенклатури чи інша зміна master data не переписує історичну форму.
+D1-реалізація зберігає canonical render payload, версію шаблону, стан документа та SHA-256. Snapshot є append-only: UPDATE/DELETE заборонені trigger-ами. Для non-draft документа перша сформована форма конкретного `documentState + templateVersion` стає канонічною для повторного друку; подальша зміна master data не переписує історичну форму.
 
-`storageKey` зарезервований для persisted binary PDF/object storage. Поточна v1 форма вже має A4 print layout і підтримує browser print / Save as PDF; канонічні дані та hash зберігаються в D1.
+Для складу formType відповідає inventory document type. Для payment/refund використовується `payment_receipt`; payload snapshot-ить номер документа, booking, ПІБ, послугу, суму, метод, provider/reference та source document для повернення.
+
+`storageKey` зарезервований для persisted binary PDF/object storage. Поточні v1 форми мають A4 print layout і підтримують browser print / Save as PDF; канонічні дані та hash зберігаються в D1.
 
 ## AuditEvent
 
