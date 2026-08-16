@@ -2,7 +2,7 @@ import {
   cleanupFinanceDocumentDraft,
   createFinanceDocumentDraft,
   financePostingStatements,
-} from "./finance-documents";
+} from "./finance-documents.ts";
 import { paymentBookingSnapshot, type PaymentLedgerDb } from "./payments.ts";
 
 type ProviderPaymentRow = {
