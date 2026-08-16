@@ -27,23 +27,23 @@ async function storno(db,cookie,sourceDocumentId,reason="Корекція для
   return callWorker(jsonRequest("/api/staff/service-deliveries/corrections",{sourceDocumentId,reason},{headers:{cookie}}),db);
 }
 
-function createExactDraftCorrection(raw,sourceDocumentId) {
+function createExactDraftCorrection(raw,sourceDocumentId,{number="СТ-FORGE",createdBy="attacker@example.com",reason="Шахрайська корекція"}={}) {
   const created=raw.prepare(
     `INSERT INTO business_documents
       (organization_id,document_type,number,occurred_at,state,comment,created_by,reversed_document_id)
-     VALUES (1,'service_delivery','СТ-FORGE',CURRENT_TIMESTAMP,'draft','forged draft','attacker@example.com',?)`
-  ).run(sourceDocumentId);
+     VALUES (1,'service_delivery',?,CURRENT_TIMESTAMP,'draft','prepared correction',?,?)`
+  ).run(number,createdBy,sourceDocumentId);
   const documentId=Number(created.lastInsertRowid);
   raw.prepare(
     `INSERT INTO service_correction_details
       (organization_id,document_id,source_document_id,booking_id,correction_kind,reason,patient_id,patient_category,
        service_code,service_title,equipment_id,duration_minutes,anatomical_regions_count,performed_at,
        radiologist_email,radiographer_email,charge_amount,currency)
-     SELECT 1,?,?,s.booking_id,'storno','Шахрайська корекція',s.patient_id,s.patient_category,
+     SELECT 1,?,?,s.booking_id,'storno',?,s.patient_id,s.patient_category,
             s.service_code,s.service_title,s.equipment_id,s.duration_minutes,s.anatomical_regions_count,s.performed_at,
             s.radiologist_email,s.radiographer_email,s.charge_amount,s.currency
      FROM service_delivery_details s WHERE s.organization_id=1 AND s.document_id=?`
-  ).run(documentId,sourceDocumentId,sourceDocumentId);
+  ).run(documentId,sourceDocumentId,reason,sourceDocumentId);
   return documentId;
 }
 
@@ -64,9 +64,47 @@ test("a correction document cannot be manually posted while its source is still 
     const correctionId=createExactDraftCorrection(raw,seeded.sourceDocumentId);
     assert.throws(()=>raw.prepare(
       "UPDATE business_documents SET state='posted' WHERE organization_id=1 AND id=?"
-    ).run(correctionId),/service_correction_requires_reversed_source/);
+    ).run(correctionId),/service_correction_document_frozen|service_correction_requires_reversed_source/);
     assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(correctionId).state,"draft");
     assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(seeded.sourceDocumentId).state,"posted");
+  });
+});
+
+test("prepared correction identity is frozen before posting",async()=>{
+  await withD1(async(db,raw)=>{
+    const seeded=await seedCompleted(db,raw,{code:"RD-STORNO-DRAFT-FREEZE"});
+    const correctionId=createExactDraftCorrection(raw,seeded.sourceDocumentId,{number:"СТ-FROZEN"});
+    assert.throws(()=>raw.prepare(
+      "UPDATE business_documents SET created_by='changed@example.com' WHERE organization_id=1 AND id=?"
+    ).run(correctionId),/service_correction_document_frozen/);
+    assert.throws(()=>raw.prepare(
+      "UPDATE business_documents SET number='СТ-CHANGED' WHERE organization_id=1 AND id=?"
+    ).run(correctionId),/service_correction_document_frozen/);
+    const correction=raw.prepare("SELECT number,created_by AS createdBy,state FROM business_documents WHERE id=?").get(correctionId);
+    assert.equal(correction.number,"СТ-FROZEN");
+    assert.equal(correction.createdBy,"attacker@example.com");
+    assert.equal(correction.state,"draft");
+  });
+});
+
+test("an interrupted exact draft storno is safely resumed on the next API call",async()=>{
+  await withD1(async(db,raw)=>{
+    const seeded=await seedCompleted(db,raw,{code:"RD-STORNO-RESUME",amount:2400});
+    const correctionId=createExactDraftCorrection(raw,seeded.sourceDocumentId,{
+      number:"СТ-RESUME",createdBy:"interrupted@example.com",reason:"Перерване сторно для відновлення",
+    });
+    const cookie=await seedStaffSession(db,{email:"resume-registrar@example.com",role:"registrar",organizationId:1});
+
+    const response=await storno(db,cookie,seeded.sourceDocumentId,"Новий текст не переписує вже підготовлений snapshot");
+    assert.equal(response.status,200);
+    const body=await response.json();
+    assert.equal(body.document.created,false);
+    assert.equal(body.document.id,correctionId);
+    assert.equal(body.document.reason,"Перерване сторно для відновлення");
+    assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(seeded.sourceDocumentId).state,"reversed");
+    assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(correctionId).state,"posted");
+    assert.equal(raw.prepare("SELECT SUM(amount_delta) AS total FROM revenue_movements WHERE booking_id=?").get(seeded.bookingId).total,0);
+    assert.equal(raw.prepare("SELECT SUM(minutes_delta) AS total FROM equipment_load_movements WHERE booking_id=?").get(seeded.bookingId).total,0);
   });
 });
 
