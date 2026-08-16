@@ -97,6 +97,15 @@ CREATE UNIQUE INDEX `inventory_movements_document_line_type_idx`
   WHERE `document_line_id` IS NOT NULL;
 --> statement-breakpoint
 
+-- Transfers did not exist before 0082, so there is no legacy compatibility reason to allow an
+-- unregistered transfer movement. Every transfer fact must belong to an exact BAS document line.
+CREATE TRIGGER `inventory_transfer_movement_requires_registrar`
+BEFORE INSERT ON `inventory_movements`
+WHEN NEW.movement_type IN ('transfer_out','transfer_in')
+  AND (NEW.document_id IS NULL OR NEW.document_line_id IS NULL)
+BEGIN SELECT RAISE(ABORT,'inventory_transfer_registrar_required'); END;
+--> statement-breakpoint
+
 -- The source bucket may never go negative for either an ordinary write-off or a transfer-out.
 DROP TRIGGER IF EXISTS `inventory_writeoff_nonnegative_stock`;
 --> statement-breakpoint
