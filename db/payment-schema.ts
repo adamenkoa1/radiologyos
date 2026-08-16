@@ -27,4 +27,7 @@ export const paymentTransactions = sqliteTable("payment_transactions", {
   uniqueIndex("payment_transactions_refund_document_idx")
     .on(table.organizationId, table.refundDocumentId)
     .where(sql`refund_document_id IS NOT NULL`),
+  uniqueIndex("payment_transactions_one_linked_paid_booking_idx")
+    .on(table.organizationId, table.bookingId)
+    .where(sql`status = 'paid' AND payment_document_id IS NOT NULL`),
 ]);
