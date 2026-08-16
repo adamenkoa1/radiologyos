@@ -32,7 +32,22 @@ test("db:generate fails closed while Drizzle metadata trails committed SQL migra
 });
 
 test("production deploy applies committed SQL migrations directly instead of generating schema", async () => {
-  const deploy = await read("scripts/deploy-cloudflare.sh");
-  assert.match(deploy, /wrangler d1 migrations apply radiologyos --remote/);
-  assert.doesNotMatch(deploy, /db:generate|drizzle-kit generate/);
+  const [deploy, migrationExecutor] = await Promise.all([
+    read("scripts/deploy-cloudflare.sh"),
+    read("scripts/apply-d1-migrations-remote.sh"),
+  ]);
+  assert.match(
+    deploy,
+    /bash scripts\/apply-d1-migrations-remote\.sh radiologyos \"\$\{CONFIG\}\" drizzle/,
+  );
+  assert.match(
+    migrationExecutor,
+    /cat \"\$\{MIGRATIONS_DIR\}\/\$\{name\}\" > \"\$\{IMPORT_FILE\}\"/,
+    "the executor must import committed migration SQL files directly",
+  );
+  assert.match(
+    migrationExecutor,
+    /wrangler d1 execute \"\$\{DATABASE\}\" --remote --config \"\$\{CONFIG\}\" --file \"\$\{IMPORT_FILE\}\"/,
+  );
+  assert.doesNotMatch(`${deploy}\n${migrationExecutor}`, /db:generate|drizzle-kit generate/);
 });
