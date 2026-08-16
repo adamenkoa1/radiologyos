@@ -68,7 +68,7 @@ export default function StaffShiftsPage() {
   const [overrideEnd, setOverrideEnd] = useState("");
   const [overrideNote, setOverrideNote] = useState("");
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preferredEmail?:string) => {
     setLoaded(false); setError("");
     try {
       const res = await fetch(`/api/staff/shifts?month=${encodeURIComponent(month)}`, { cache:"no-store" });
@@ -77,9 +77,15 @@ export default function StaffShiftsPage() {
       if (!res.ok) throw new Error(body.error || "Не вдалося завантажити графік");
       setData(body);
       setForbidden(false);
-      setSelectedEmail((current) => current && body.people.some((person) => person.email === current)
-        ? current
-        : body.people[0]?.email || "");
+      const nextEmail = preferredEmail && body.people.some((person) => person.email === preferredEmail)
+        ? preferredEmail
+        : body.people[0]?.email || "";
+      const assignment = body.assignments.find((row) => row.staffEmail === nextEmail);
+      setSelectedEmail(nextEmail);
+      setPresetCode(assignment?.presetCode || CALENDAR6_PRESETS[0].code);
+      setTeamIndex(assignment?.teamIndex || 1);
+      setAnchorDate(assignment?.anchorDate || `${month}-01`);
+      setSelectedDate("");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Не вдалося завантажити графік");
     } finally {
@@ -99,28 +105,17 @@ export default function StaffShiftsPage() {
   const selectedPreset = shiftPreset(presetCode);
   const selectedPerson = data?.people.find((person) => person.email === selectedEmail) || null;
 
-  useEffect(() => {
-    if (!selectedEmail) return;
-    const assignment = assignments.get(selectedEmail);
-    if (assignment) {
-      setPresetCode(assignment.presetCode);
-      setTeamIndex(assignment.teamIndex);
-      setAnchorDate(assignment.anchorDate);
-    } else {
-      setPresetCode(CALENDAR6_PRESETS[0].code);
-      setTeamIndex(1);
-      setAnchorDate(`${month}-01`);
-    }
+  function choosePerson(email:string) {
+    const assignment = assignments.get(email);
+    setSelectedEmail(email);
+    setPresetCode(assignment?.presetCode || CALENDAR6_PRESETS[0].code);
+    setTeamIndex(assignment?.teamIndex || 1);
+    setAnchorDate(assignment?.anchorDate || `${month}-01`);
     setSelectedDate("");
-  }, [selectedEmail, assignments, month]);
-
-  useEffect(() => {
-    if (!selectedPreset) return;
-    if (teamIndex > selectedPreset.teams.length) setTeamIndex(1);
-  }, [selectedPreset, teamIndex]);
+  }
 
   function selectDay(person:Person, date:string) {
-    setSelectedEmail(person.email);
+    choosePerson(person.email);
     setSelectedDate(date);
     const existing = overrides.get(`${person.email}:${date}`);
     const assignment = assignments.get(person.email);
@@ -145,7 +140,7 @@ export default function StaffShiftsPage() {
       });
       const body = await res.json().catch(() => ({})) as { ok?:boolean; error?:string };
       if (!res.ok || !body.ok) throw new Error(body.error || "Не вдалося зберегти");
-      await load();
+      await load(selectedEmail);
       setNotice("Графік збережено.");
       return true;
     } catch (e) {
@@ -215,7 +210,7 @@ export default function StaffShiftsPage() {
             <form className="shiftAssignmentForm" onSubmit={saveAssignment}>
               <div className="shiftEditorHead"><div><h3>Циклічний графік працівника</h3><p>Пресети відтворені з Calendar6. Опорна дата відповідає першому стовпцю матриці обраної бригади.</p></div></div>
               <div className="shiftEditorGrid">
-                <label><span>Працівник</span><select value={selectedEmail} onChange={(e) => setSelectedEmail(e.target.value)}>{(data?.people || []).map((person) => <option key={person.email} value={person.email}>{person.displayName || person.email}</option>)}</select></label>
+                <label><span>Працівник</span><select value={selectedEmail} onChange={(e) => choosePerson(e.target.value)}>{(data?.people || []).map((person) => <option key={person.email} value={person.email}>{person.displayName || person.email}</option>)}</select></label>
                 <label><span>Тип графіка</span><select value={presetCode} onChange={(e) => { setPresetCode(e.target.value); setTeamIndex(1); }}>{CALENDAR6_PRESETS.map((preset) => <option key={preset.code} value={preset.code}>{preset.name}</option>)}</select></label>
                 <label><span>Бригада / фаза</span><select value={teamIndex} onChange={(e) => setTeamIndex(Number(e.target.value))}>{Array.from({ length:selectedPreset?.teams.length || 0 }, (_, index) => <option key={index + 1} value={index + 1}>Бригада {index + 1}</option>)}</select></label>
                 <label><span>Опорна дата</span><input type="date" value={anchorDate} onChange={(e) => setAnchorDate(e.target.value)} required /></label>
