@@ -131,7 +131,7 @@ export async function postServiceDelivery(
         `INSERT INTO services_delivered_movements
          (organization_id,document_id,booking_id,patient_id,service_code,equipment_id,quantity,
           anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,1,?,?,?,?,?)`
+         VALUES (?,?,?,?,?,?,1,?,?,?,?)`
       ).bind(
         input.organizationId,documentId,booking.id,booking.patientId || "",booking.serviceCode,
         booking.equipmentId,booking.anatomicalRegionsCount,booking.performedAt,createdBy,booking.performedAt,
