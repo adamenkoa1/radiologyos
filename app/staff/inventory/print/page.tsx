@@ -2,7 +2,7 @@
 
 import { useEffect,useState } from "react";
 
-type PrintLine={lineNo:number;itemId:number;itemName:string;unit:string;lotNumber:string;expiresOn:string;supplier:string;quantity:number;reason:string;bookingId:number|null};
+type PrintLine={lineNo:number;itemId:number;itemName:string;unit:string;warehouseId:number;warehouseCode:string;warehouseName:string;lotNumber:string;expiresOn:string;supplier:string;quantity:number;reason:string;bookingId:number|null};
 type PrintPayload={templateVersion:number;formType:"inventory_receipt"|"inventory_writeoff";organization:{name:string};document:{id:number;number:string;documentType:string;occurredAt:string;state:string;comment:string;createdBy:string;createdAt:string;postedBy:string;postedAt:string};lines:PrintLine[]};
 type Snapshot={id:number;documentId:number;formType:string;templateVersion:number;generatedBy:string;generatedAt:string;storageKey:string;sha256:string};
 type ResponsePayload={snapshot:Snapshot;payload:PrintPayload;error?:string};
@@ -45,8 +45,8 @@ export default function InventoryPrintPage(){
         {payload.document.postedBy&&<><div><span>Провів</span><b>{payload.document.postedBy}</b></div><div><span>Проведено</span><b>{fmtDate(payload.document.postedAt)}</b></div></>}
       </section>
       {payload.document.comment&&<p><b>Примітка:</b> {payload.document.comment}</p>}
-      <table><thead><tr><th>№</th><th>Матеріал</th><th>Партія / термін</th><th>Постачальник</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>
-        {payload.lines.map(l=><tr key={l.lineNo}><td>{l.lineNo}</td><td><b>{l.itemName}</b></td><td>{l.lotNumber||"—"}{l.expiresOn?<><br/><small>до {l.expiresOn}</small></>:null}</td><td>{l.supplier||"—"}</td><td className="num">{fmt(l.quantity)} {l.unit}</td><td>{l.reason||"—"}{l.bookingId?<><br/><small>дослідження #{l.bookingId}</small></>:null}</td></tr>)}
+      <table><thead><tr><th>№</th><th>Склад</th><th>Матеріал</th><th>Партія / термін</th><th>Постачальник</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>
+        {payload.lines.map(l=><tr key={l.lineNo}><td>{l.lineNo}</td><td><b>{l.warehouseName}</b>{l.warehouseCode?<><br/><small>{l.warehouseCode}</small></>:null}</td><td><b>{l.itemName}</b></td><td>{l.lotNumber||"—"}{l.expiresOn?<><br/><small>до {l.expiresOn}</small></>:null}</td><td>{l.supplier||"—"}</td><td className="num">{fmt(l.quantity)} {l.unit}</td><td>{l.reason||"—"}{l.bookingId?<><br/><small>дослідження #{l.bookingId}</small></>:null}</td></tr>)}
       </tbody></table>
       <section className="inventoryPrintFooter"><div><span>Відповідальний</span><div className="inventoryPrintSignature"/></div><div><span>Підпис</span><div className="inventoryPrintSignature"/></div></section>
       <p className="inventoryPrintVersion">Форма v{snapshot.templateVersion} · snapshot #{snapshot.id} · SHA-256 {snapshot.sha256.slice(0,12)}…</p>
