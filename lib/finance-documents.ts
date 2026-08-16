@@ -25,19 +25,22 @@ export type FinanceDocumentDetail = {
   provider:string;
   providerReference:string;
   sourceDocumentId:number|null;
+  sourceTransactionId:number|null;
+};
+
+type FinanceTransactionRow = {
+  id:number;
+  status:string;
+  provider:string;
+  providerReference:string;
+  paidAt:string;
+  refundedAt:string;
 };
 
 export type FinanceDocument = {
   document:FinanceDocumentRow;
   detail:FinanceDocumentDetail;
-  transaction:null|{
-    id:number;
-    status:string;
-    provider:string;
-    providerReference:string;
-    paidAt:string;
-    refundedAt:string;
-  };
+  transaction:FinanceTransactionRow|null;
 };
 
 function clean(value:unknown,max:number) {
@@ -50,6 +53,11 @@ function currency(value:unknown) {
 }
 
 function amount(value:unknown) {
+  const result=Number(value);
+  return Number.isInteger(result) && result>0 ? result : null;
+}
+
+function positiveInt(value:unknown) {
   const result=Number(value);
   return Number.isInteger(result) && result>0 ? result : null;
 }
@@ -72,7 +80,8 @@ export async function getFinanceDocument(
             d.occurred_at AS occurredAt,d.state,d.comment,d.created_by AS createdBy,d.created_at AS createdAt,
             d.posted_by AS postedBy,d.posted_at AS postedAt,
             f.booking_id AS bookingId,f.patient_id AS patientId,f.amount,f.currency,f.method,f.provider,
-            f.provider_reference AS providerReference,f.source_document_id AS sourceDocumentId
+            f.provider_reference AS providerReference,f.source_document_id AS sourceDocumentId,
+            f.source_transaction_id AS sourceTransactionId
      FROM business_documents d
      JOIN finance_document_details f ON f.document_id=d.id AND f.organization_id=d.organization_id
      WHERE d.organization_id=? AND d.id=? AND d.document_type IN ('payment','refund') LIMIT 1`
@@ -83,7 +92,7 @@ export async function getFinanceDocument(
      FROM payment_transactions
      WHERE organization_id=? AND (payment_document_id=? OR refund_document_id=?)
      ORDER BY id DESC LIMIT 1`
-  ).bind(organizationId,documentId,documentId).first<FinanceDocument["transaction"] extends infer T ? Exclude<T,null> : never>();
+  ).bind(organizationId,documentId,documentId).first<FinanceTransactionRow>();
   return {
     document:{
       id:row.id,organizationId:row.organizationId,documentType:row.documentType,number:row.number,
@@ -93,7 +102,9 @@ export async function getFinanceDocument(
     detail:{
       organizationId:row.organizationId,documentId:row.id,bookingId:row.bookingId,patientId:row.patientId,
       amount:Number(row.amount),currency:row.currency,method:row.method,provider:row.provider,
-      providerReference:row.providerReference,sourceDocumentId:row.sourceDocumentId == null ? null:Number(row.sourceDocumentId),
+      providerReference:row.providerReference,
+      sourceDocumentId:row.sourceDocumentId == null ? null:Number(row.sourceDocumentId),
+      sourceTransactionId:row.sourceTransactionId == null ? null:Number(row.sourceTransactionId),
     },
     transaction:transaction || null,
   };
@@ -106,6 +117,7 @@ export async function listFinanceDocuments(db:D1Database,organizationId:number,l
             d.created_by AS createdBy,d.posted_by AS postedBy,d.posted_at AS postedAt,
             f.booking_id AS bookingId,f.patient_id AS patientId,f.amount,f.currency,f.method,f.provider,
             f.provider_reference AS providerReference,f.source_document_id AS sourceDocumentId,
+            f.source_transaction_id AS sourceTransactionId,
             b.code AS bookingCode,b.name AS patientName,b.service
      FROM business_documents d
      JOIN finance_document_details f ON f.document_id=d.id AND f.organization_id=d.organization_id
@@ -159,6 +171,7 @@ export async function createFinanceDocumentDraft(
     provider?:string;
     providerReference?:string;
     sourceDocumentId?:number|null;
+    sourceTransactionId?:number|null;
     comment?:string;
     occurredAt?:string;
   },
@@ -176,9 +189,15 @@ export async function createFinanceDocumentDraft(
   const method=clean(input.method,40);
   const docCurrency=currency(input.currency || "UAH");
   const comment=clean(input.comment,500);
-  const sourceDocumentId=Number.isInteger(input.sourceDocumentId) && Number(input.sourceDocumentId)>0
-    ? Number(input.sourceDocumentId)
-    : null;
+  const sourceDocumentId=positiveInt(input.sourceDocumentId);
+  const sourceTransactionId=positiveInt(input.sourceTransactionId);
+
+  if(input.type === "payment" && (sourceDocumentId || sourceTransactionId)) {
+    throw new Error("finance_payment_cannot_have_source");
+  }
+  if(input.type === "refund" && !sourceTransactionId) {
+    throw new Error("finance_refund_source_transaction_required");
+  }
 
   const created=await db.prepare(
     `INSERT INTO business_documents
@@ -194,11 +213,11 @@ export async function createFinanceDocumentDraft(
     ).bind(number,input.organizationId,documentId).run();
     await db.prepare(
       `INSERT INTO finance_document_details
-        (organization_id,document_id,booking_id,patient_id,amount,currency,method,provider,provider_reference,source_document_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?)`
+        (organization_id,document_id,booking_id,patient_id,amount,currency,method,provider,provider_reference,source_document_id,source_transaction_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       input.organizationId,documentId,input.bookingId,booking.patientId || "",validAmount,docCurrency,
-      method,provider,providerReference,sourceDocumentId,
+      method,provider,providerReference,sourceDocumentId,sourceTransactionId,
     ).run();
   } catch(error) {
     await db.prepare("DELETE FROM finance_document_details WHERE organization_id=? AND document_id=?")
