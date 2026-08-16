@@ -39,17 +39,16 @@ async function valueReceipt(db,cookie,draft,unitCost) {
   return postPayables(db,cookie,{action:"value_receipt",documentId:draft.document.id,lines:[{lineId:draft.lines[0].id,unitCost}]});
 }
 
-test("supplier receipt cannot post before purchase valuation", async()=>{
+test("legacy supplier trace can post without valuation and creates no payable", async()=>{
   await withD1(async(db,raw)=>{
-    const cookie=await seedStaffSession(db,{email:"purchase-guard@example.com",role:"admin",organizationId:1});
+    const cookie=await seedStaffSession(db,{email:"purchase-compatible@example.com",role:"admin",organizationId:1});
     const supplierId=seedSupplier(raw);
     const {itemId,draft}=await createSupplierReceipt(db,raw,cookie,{supplierId});
     const response=await postDocument(db,cookie,{action:"post",documentId:draft.document.id});
-    assert.equal(response.status,409);
-    assert.match((await response.json()).error,/закупівельну вартість/i);
-    assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(draft.document.id).state,"draft");
-    assert.equal(raw.prepare("SELECT COALESCE(SUM(quantity_delta),0) AS n FROM inventory_movements WHERE organization_id=1 AND item_id=?").get(itemId).n,0);
-    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM supplier_payable_movements WHERE organization_id=1").get().n,0);
+    assert.equal(response.status,200);
+    assert.equal(raw.prepare("SELECT state FROM business_documents WHERE id=?").get(draft.document.id).state,"posted");
+    assert.equal(raw.prepare("SELECT COALESCE(SUM(quantity_delta),0) AS n FROM inventory_movements WHERE organization_id=1 AND item_id=?").get(itemId).n,5);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM supplier_payable_movements WHERE organization_id=1 AND receipt_document_id=?").get(draft.document.id).n,0);
   });
 });
 
