@@ -89,6 +89,38 @@ test("confirmed manual payment posts one BAS document and exact cash/settlement 
   });
 });
 
+test("a second reference cannot create a second full payment for the same booking",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{code:"RD-FIN-DUPLICATE",amount:2600});
+    const cookie=await seedStaffSession(db,{email:"finance-duplicate@example.com",role:"registrar",organizationId:1});
+
+    const first=await pay(db,cookie,bookingId,"FULL-PAY-A");
+    assert.equal(first.status,200);
+    const firstBody=await first.json();
+
+    const duplicate=await pay(db,cookie,bookingId,"FULL-PAY-B");
+    assert.equal(duplicate.status,409);
+    const duplicateBody=await duplicate.json();
+    assert.match(duplicateBody.error,/вже має підтверджену повну оплату/i);
+
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM business_documents WHERE organization_id=1 AND document_type='payment'"
+    ).get().n,1);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM cash_movements WHERE organization_id=1 AND booking_id=?"
+    ).get(bookingId).n,1);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE organization_id=1 AND booking_id=?"
+    ).get(bookingId).n,1);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM payment_transactions WHERE organization_id=1 AND booking_id=? AND status='paid'"
+    ).get(bookingId).n,1);
+    assert.equal(raw.prepare(
+      "SELECT payment_document_id AS documentId FROM payment_transactions WHERE organization_id=1 AND booking_id=? AND status='paid'"
+    ).get(bookingId).documentId,firstBody.documentId);
+  });
+});
+
 test("refund is a separate posted document linked to the original payment and reverses money movement",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-FIN-REFUND",amount:3100});
@@ -105,7 +137,8 @@ test("refund is a separate posted document linked to the original payment and re
     assert.ok(returnedBody.documentId>0);
 
     const refundDocument=raw.prepare(
-      `SELECT d.document_type,d.state,f.amount,f.source_document_id AS sourceDocumentId
+      `SELECT d.document_type,d.state,f.amount,f.source_document_id AS sourceDocumentId,
+              f.source_transaction_id AS sourceTransactionId
        FROM business_documents d JOIN finance_document_details f ON f.document_id=d.id AND f.organization_id=d.organization_id
        WHERE d.organization_id=1 AND d.id=?`
     ).get(returnedBody.documentId);
@@ -113,6 +146,7 @@ test("refund is a separate posted document linked to the original payment and re
     assert.equal(refundDocument.state,"posted");
     assert.equal(refundDocument.amount,3100);
     assert.equal(refundDocument.sourceDocumentId,paidBody.documentId);
+    assert.ok(refundDocument.sourceTransactionId>0);
 
     const cash=raw.prepare("SELECT amount_delta FROM cash_movements WHERE organization_id=1 AND document_id=?").get(returnedBody.documentId);
     const settlement=raw.prepare("SELECT amount_delta FROM patient_settlement_movements WHERE organization_id=1 AND document_id=?").get(returnedBody.documentId);
@@ -157,6 +191,28 @@ test("public payment initiation stays technical pending state and does not post 
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM business_documents WHERE organization_id=1 AND document_type IN ('payment','refund')").get().n,0);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM cash_movements WHERE organization_id=1").get().n,0);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE organization_id=1").get().n,0);
+  });
+});
+
+test("public payment initiation cannot reopen a fully paid booking",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{code:"RD-FIN-PAID-PUBLIC",amount:1700});
+    await db.prepare(
+      `INSERT INTO app_settings (key,value) VALUES ('pay_link','https://pay.example/test')
+       ON CONFLICT(key) DO UPDATE SET value=excluded.value`
+    ).run();
+    const staff=await seedStaffSession(db,{email:"finance-public@example.com",role:"registrar",organizationId:1});
+    const paid=await pay(db,staff,bookingId,"PUBLIC-ALREADY-PAID");
+    assert.equal(paid.status,200);
+    const before=raw.prepare("SELECT COUNT(*) AS n FROM payment_transactions WHERE organization_id=1 AND booking_id=?").get(bookingId).n;
+
+    const patient=await seedPatientSession(db,"380501112233",1);
+    const response=await callWorker(jsonRequest("/api/pay-link",{code:"RD-FIN-PAID-PUBLIC"},{headers:{cookie:patient}}),db);
+    assert.equal(response.status,409);
+    const body=await response.json();
+    assert.match(body.error,/вже повністю оплачена/i);
+    const after=raw.prepare("SELECT COUNT(*) AS n FROM payment_transactions WHERE organization_id=1 AND booking_id=?").get(bookingId).n;
+    assert.equal(after,before);
   });
 });
 
