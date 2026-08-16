@@ -5,6 +5,8 @@
 ## [Unreleased]
 
 ### Changed
+- Клінічний workflow тепер проєктується в автоматичні `staff_tasks` через чотири стабільні handoff-етапи: verification, acquisition, reporting та issuance; перехід між етапами закриває попередню задачу, а повторний запуск не створює дублікатів.
+- Booking-linked automation-task оновлює поточного призначеного виконавця та `due_date` на тому самому open record, зберігає tenant/medical scope через `booking_id` і не копіює ПІБ, телефон, діагноз або клінічний текст у task/audit payload.
 - Канонічну межу продукту зафіксовано явно: `BAS Small Company = бізнесове ядро`, `RadiologyOS = BAS-подібне ядро + медичні модулі`, `Публічний сайт = зовнішня вітрина і канал запису`; public layer не є власником проведених господарських фактів.
 - Платежі переведено на BAS registrar: trusted підтверджена оплата створює і проводить `business_documents(type=payment)`, після чого атомарно створюються `cash_movements(+amount)` і `patient_settlement_movements(-amount)`; публічний `pending payment_transaction` не створює бізнес-документів або регістрових рухів.
 - Повернення стало окремим `business_documents(type=refund)` із посиланням на первинний payment document, рухами `cash(-amount)` і `patient_settlements(+amount)` та ідемпотентним повторним викликом. Грошовий refund більше не моделюється як автоматичне сторно `revenue` — дохід коригується тільки через корекцію/сторно факту наданої послуги.
