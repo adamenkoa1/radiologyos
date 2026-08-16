@@ -44,6 +44,30 @@ test("posted inventory form is snapshotted and exact reprint survives master-dat
   });
 });
 
+test("posted reprint preserves an older canonical snapshot across template upgrades",async()=>{
+  await withD1(async(db)=>{
+    const cookie=await seedStaffSession(db,{email:"printer-upgrade@example.com",role:"admin",organizationId:1});
+    const itemRes=await postInventory(db,cookie,{action:"create_item",name:"Legacy print item",sku:"PRINT-V1",category:"other",unit:"шт",minStock:0});
+    const {id:itemId}=await itemRes.json();
+    const receipt=await postInventory(db,cookie,{action:"receive",itemId,quantity:1,lotNumber:"V1"});
+    const {documentId}=await receipt.json();
+    const legacyPayload={templateVersion:1,formType:"inventory_receipt",organization:{name:"Legacy Org"},document:{id:documentId,state:"posted"},lines:[{lineNo:1,itemName:"Назва з форми v1"}]};
+    const legacy=await db.prepare(
+      `INSERT INTO printed_form_snapshots
+       (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,sha256)
+       VALUES (1,?,'inventory_receipt',1,'posted',?,'legacy-printer','legacy-v1-hash')`
+    ).bind(documentId,JSON.stringify(legacyPayload)).run();
+
+    const reprint=await printDocument(db,cookie,documentId);
+    assert.equal(reprint.status,200);
+    const body=await reprint.json();
+    assert.equal(body.snapshot.id,Number(legacy.meta.last_row_id));
+    assert.equal(body.snapshot.templateVersion,1);
+    assert.equal(body.snapshot.sha256,"legacy-v1-hash");
+    assert.equal(body.payload.lines[0].itemName,"Назва з форми v1");
+  });
+});
+
 test("printed form snapshots are tenant scoped",async()=>{
   await withD1(async(db,raw)=>{
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Org 2','org-2',1)");
