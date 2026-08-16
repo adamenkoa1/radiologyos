@@ -21,6 +21,7 @@ async function freshDb() {
 }
 
 function seedTwoOrgs(db) {
+  db.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'CRM Org 2','crm-org-2',1)");
   const ins = db.prepare(
     `INSERT INTO bookings (organization_id, code, name, phone, phone_normalized, service, desired_date, desired_time, status)
      VALUES (?,?,?,?,?,?,?,?,?)`
