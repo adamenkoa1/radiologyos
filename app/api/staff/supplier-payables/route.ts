@@ -6,6 +6,7 @@ import {
   createSupplierPayment,
   getSupplierPayment,
   listCashAccountBalances,
+  listDraftSupplierReceipts,
   listSupplierPayables,
   listSupplierPayments,
   postSupplierPayment,
@@ -52,12 +53,13 @@ export async function GET(request:Request) {
     return Response.json({payment,staff:ctx.member,canManage:true});
   }
   const supplierId=int(url.searchParams.get("supplierId"))||undefined;
-  const [payables,payments,cashBalances]=await Promise.all([
+  const [draftPurchases,payables,payments,cashBalances]=await Promise.all([
+    listDraftSupplierReceipts(db,ctx.organizationId),
     listSupplierPayables(db,ctx.organizationId,{supplierId,openOnly:url.searchParams.get("all")!=="1"}),
     listSupplierPayments(db,ctx.organizationId),
     listCashAccountBalances(db,ctx.organizationId),
   ]);
-  return Response.json({payables,payments,cashBalances,staff:ctx.member,canManage:true});
+  return Response.json({draftPurchases,payables,payments,cashBalances,staff:ctx.member,canManage:true});
 }
 
 export async function POST(request:Request) {
