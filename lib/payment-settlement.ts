@@ -69,6 +69,9 @@ export async function settleVerifiedProviderPayment(
     };
   }
   if (existing?.paymentDocumentId) throw new Error("payment_reference_conflict");
+  if (booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
+    throw new Error("payment_already_settled");
+  }
 
   const actor = (input.actor || `provider:${provider}`).slice(0, 254);
   const financeDb=db as unknown as D1Database;
@@ -132,6 +135,9 @@ export async function settleVerifiedProviderPayment(
           documentId:race.paymentDocumentId || null,legacy:!race.paymentDocumentId,
         };
       }
+      if(refreshed?.paymentStatus === "paid" && refreshed.paidAmount === refreshed.paymentAmount) {
+        throw new Error("payment_already_settled");
+      }
     }
     throw error;
   }
@@ -188,6 +194,7 @@ export async function refundLatestPayment(
     provider:payment.provider,
     providerReference:payment.providerReference,
     sourceDocumentId:payment.paymentDocumentId || null,
+    sourceTransactionId:payment.id,
     comment:`Повернення за заявкою ${booking.code}`,
   });
 
