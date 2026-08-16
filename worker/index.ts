@@ -104,6 +104,20 @@ function unsafeCrossSiteRequest(request: Request): boolean {
   }
 }
 
+function patientOrderLifecycleConflict(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("booking_cancel_payment_refund_required")) {
+    return "Спочатку оформіть повернення оплати.";
+  }
+  if (message.includes("booking_cancel_service_storno_required")) {
+    return "Послуга вже проведена — спочатку оформіть сторно.";
+  }
+  if (message.includes("booking_cancel_downstream_draft_exists")) {
+    return "Є незавершений пов’язаний документ. Спочатку скасуйте або завершіть його.";
+  }
+  return null;
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
@@ -156,7 +170,13 @@ const worker = {
       }, allowedWidths), request);
     }
 
-    return secure(await handler.fetch(request, env, ctx), request);
+    try {
+      return secure(await handler.fetch(request, env, ctx), request);
+    } catch (error) {
+      const conflict = url.pathname.startsWith("/api/") ? patientOrderLifecycleConflict(error) : null;
+      if (conflict) return secure(Response.json({ error: conflict }, { status: 409 }), request);
+      throw error;
+    }
   },
 
   async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
