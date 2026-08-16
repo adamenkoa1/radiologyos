@@ -90,6 +90,14 @@ test("transfer enforces tenant ownership and exact destination snapshot in D1",a
 
     const destinationRes=await warehouse(db,cookie,{code:"SAFE",name:"Безпечний склад",active:true});
     const {warehouse:destination}=await destinationRes.json();
+
+    // New transfer movement types cannot exist outside an exact BAS document registrar.
+    assert.throws(()=>raw.prepare(
+      `INSERT INTO inventory_movements
+       (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email)
+       VALUES (1,?,?,?,?,?,'transfer_in',1,'unregistered','tamper')`
+    ).run(itemId,lotId,destination.id,destination.code,destination.name),/inventory_transfer_registrar_required/);
+
     const created=await transfer(db,cookie,{action:"create",lines:[{lotId,sourceWarehouseId:main.id,destinationWarehouseId:destination.id,quantity:1}]});
     const body=await created.json();const line=body.lines[0];
 
