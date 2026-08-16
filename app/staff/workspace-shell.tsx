@@ -50,7 +50,7 @@ const businessModules:BusinessModule[]=[
     {label:"Картки пацієнтів",href:"/staff/patients"},
     {label:"Чат із пацієнтами",href:"/staff/chat"},
   ]},
-  { key:"registry",label:"Реєстатура",shortLabel:"Реєстратура",items:[
+  { key:"registry",label:"Реєстратура",shortLabel:"Реєстратура",items:[
     {label:"Календар і записи",href:"/staff/appointments"},
     {label:"Прийом пацієнтів",href:"/staff/intake"},
     {label:"Дошка досліджень",href:"/staff/board"},
@@ -159,7 +159,7 @@ export default function StaffWorkspaceShell({
   function toggleTheme() {
     setDark((value)=>{
       const next = !value;
-      window.localStorage.setItem("ws-theme", next ? "dark" : "light");
+      window.localStorage.setItem("ws-theme", next ? "dark":"light");
       return next;
     });
   }
