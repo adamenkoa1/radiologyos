@@ -1,4 +1,5 @@
 import type { DocumentState } from "./business-core";
+import { getActiveSupplierCounterparty } from "./counterparties";
 
 export type InventoryDocumentType = "inventory_receipt" | "inventory_writeoff";
 
@@ -9,6 +10,7 @@ export type InventoryDocumentLineInput = {
   lotNumber?: string;
   expiresOn?: string;
   supplier?: string;
+  supplierCounterpartyId?: number | null;
   reason?: string;
   bookingId?: number | null;
 };
@@ -37,6 +39,7 @@ export type InventoryDocumentLineRow = {
   lotNumber:string;
   expiresOn:string;
   supplier:string;
+  supplierCounterpartyId:number|null;
   quantity:number;
   reason:string;
   bookingId:number|null;
@@ -75,12 +78,13 @@ async function item(db:D1Database,organizationId:number,itemId:number) {
 async function lot(db:D1Database,organizationId:number,lotId:number) {
   return db.prepare(
     `SELECT l.id,l.item_id AS itemId,l.lot_number AS lotNumber,l.expires_on AS expiresOn,l.supplier,
-            i.name,i.unit,i.active
+            l.supplier_counterparty_id AS supplierCounterpartyId,i.name,i.unit,i.active
      FROM inventory_lots l
      JOIN inventory_items i ON i.id=l.item_id AND i.organization_id=l.organization_id
      WHERE l.organization_id=? AND l.id=? LIMIT 1`
   ).bind(organizationId,lotId).first<{
-    id:number;itemId:number;lotNumber:string;expiresOn:string;supplier:string;name:string;unit:string;active:number;
+    id:number;itemId:number;lotNumber:string;expiresOn:string;supplier:string;supplierCounterpartyId:number|null;
+    name:string;unit:string;active:number;
   }>();
 }
 
@@ -105,7 +109,7 @@ export async function getInventoryDocument(db:D1Database,organizationId:number,d
   const lines = await db.prepare(
     `SELECT id,organization_id AS organizationId,document_id AS documentId,line_no AS lineNo,
             item_id AS itemId,lot_id AS lotId,lot_number AS lotNumber,expires_on AS expiresOn,
-            supplier,quantity,reason,booking_id AS bookingId
+            supplier,supplier_counterparty_id AS supplierCounterpartyId,quantity,reason,booking_id AS bookingId
      FROM inventory_document_lines
      WHERE organization_id=? AND document_id=? ORDER BY line_no,id`
   ).bind(organizationId,documentId).all<InventoryDocumentLineRow>();
@@ -140,7 +144,8 @@ export async function createInventoryDocument(
   }
 
   const normalized:Array<Required<Pick<InventoryDocumentLineInput,"quantity">> & {
-    itemId:number;lotId:number|null;lotNumber:string;expiresOn:string;supplier:string;reason:string;bookingId:number|null;
+    itemId:number;lotId:number|null;lotNumber:string;expiresOn:string;supplier:string;supplierCounterpartyId:number|null;
+    reason:string;bookingId:number|null;
   }> = [];
 
   for (const source of input.lines) {
@@ -153,9 +158,16 @@ export async function createInventoryDocument(
       if (!found || !found.active) throw new Error("inventory_document_item_not_found");
       const expiresOn = text(source.expiresOn,10);
       if (expiresOn && !DATE_RE.test(expiresOn)) throw new Error("inventory_document_invalid_expiry");
+      const supplierCounterpartyId=intOrNull(source.supplierCounterpartyId);
+      let supplier=text(source.supplier,180);
+      if (supplierCounterpartyId) {
+        const counterparty=await getActiveSupplierCounterparty(db,input.organizationId,supplierCounterpartyId);
+        if (!counterparty) throw new Error("inventory_document_supplier_not_found");
+        supplier=counterparty.name;
+      }
       normalized.push({
-        itemId,lotId:null,quantity:qty,lotNumber:text(source.lotNumber,100),expiresOn,
-        supplier:text(source.supplier,180),reason:text(source.reason,500) || "Надходження",bookingId:null,
+        itemId,lotId:null,quantity:qty,lotNumber:text(source.lotNumber,100),expiresOn,supplier,supplierCounterpartyId,
+        reason:text(source.reason,500) || "Надходження",bookingId:null,
       });
     } else {
       const lotId = intOrNull(source.lotId);
@@ -168,7 +180,7 @@ export async function createInventoryDocument(
       if (!reason) throw new Error("inventory_document_reason_required");
       normalized.push({
         itemId:found.itemId,lotId,quantity:qty,lotNumber:found.lotNumber,expiresOn:found.expiresOn,
-        supplier:found.supplier,reason,bookingId,
+        supplier:found.supplier,supplierCounterpartyId:found.supplierCounterpartyId,reason,bookingId,
       });
     }
   }
@@ -188,11 +200,11 @@ export async function createInventoryDocument(
   try {
     await db.batch(normalized.map((line,index)=>db.prepare(
       `INSERT INTO inventory_document_lines
-        (organization_id,document_id,line_no,item_id,lot_id,lot_number,expires_on,supplier,quantity,reason,booking_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?)`
+        (organization_id,document_id,line_no,item_id,lot_id,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       input.organizationId,documentId,index+1,line.itemId,line.lotId,line.lotNumber,line.expiresOn,
-      line.supplier,line.quantity,line.reason,line.bookingId,
+      line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,
     )));
   } catch (error) {
     await db.prepare("DELETE FROM business_documents WHERE organization_id=? AND id=? AND state='draft'")
@@ -285,9 +297,9 @@ export async function postInventoryDocument(
     for (const line of lines) {
       if (line.lotId) continue;
       const lotResult = await db.prepare(
-        `INSERT INTO inventory_lots (organization_id,item_id,lot_number,expires_on,supplier)
-         VALUES (?,?,?,?,?)`
-      ).bind(input.organizationId,line.itemId,line.lotNumber,line.expiresOn,line.supplier).run();
+        `INSERT INTO inventory_lots (organization_id,item_id,lot_number,expires_on,supplier,supplier_counterparty_id)
+         VALUES (?,?,?,?,?,?)`
+      ).bind(input.organizationId,line.itemId,line.lotNumber,line.expiresOn,line.supplier,line.supplierCounterpartyId).run();
       const lotId = Number(lotResult.meta.last_row_id || 0);
       if (!lotId) {
         await cleanupUnpostedReceiptLots(db,input.organizationId,input.documentId,createdReceiptLots);

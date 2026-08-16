@@ -5,13 +5,14 @@ import StaffWorkspaceShell from "../workspace-shell";
 
 type Staff = { email:string; displayName:string; role:string };
 type Item = { id:number; sku:string; name:string; category:string; unit:string; minStock:number; active:number; stock:number; expiringStock:number; nextExpiry:string };
-type Lot = { id:number; itemId:number; itemName:string; lotNumber:string; expiresOn:string; supplier:string; stock:number };
+type Supplier = { id:number; code:string; name:string };
+type Lot = { id:number; itemId:number; itemName:string; lotNumber:string; expiresOn:string; supplier:string; supplierCounterpartyId:number|null; stock:number };
 type Movement = { id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; movementType:string; quantityDelta:number; unit:string; reason:string; bookingId:number|null; actorEmail:string; createdAt:string; documentId:number|null };
-type Payload = { items:Item[]; lots:Lot[]; movements:Movement[]; staff:Staff; canManage:boolean; error?:string };
+type Payload = { items:Item[]; lots:Lot[]; movements:Movement[]; counterparties:Supplier[]; staff:Staff; canManage:boolean; error?:string };
 type DocumentState = "draft"|"posted"|"reversed"|"cancelled";
 type DocumentType = "inventory_receipt"|"inventory_writeoff";
 type DocumentSummary = { id:number; documentType:DocumentType; number:string; occurredAt:string; state:DocumentState; comment:string; createdBy:string; createdAt:string; postedBy:string; postedAt:string; lineCount:number; totalQuantity:number };
-type DocumentLine = { id:number; lineNo:number; itemId:number; lotId:number|null; lotNumber:string; expiresOn:string; supplier:string; quantity:number; reason:string; bookingId:number|null };
+type DocumentLine = { id:number; lineNo:number; itemId:number; lotId:number|null; lotNumber:string; expiresOn:string; supplier:string; supplierCounterpartyId:number|null; quantity:number; reason:string; bookingId:number|null };
 type DocumentDetail = { document:DocumentSummary; lines:DocumentLine[] };
 type DocumentsPayload = { documents:DocumentSummary[]; staff:Staff; canManage:boolean; error?:string };
 type Mode = "stock"|"documents"|"movements";
@@ -39,7 +40,7 @@ export default function InventoryPage() {
   const [showOnlyAlert,setShowOnlyAlert] = useState(false);
   const [busy,setBusy] = useState(false);
   const [itemForm,setItemForm] = useState({ name:"", sku:"", category:"contrast", unit:"шт", minStock:"0" });
-  const [receive,setReceive] = useState({ itemId:"", quantity:"", lotNumber:"", expiresOn:"", supplier:"", reason:"Надходження" });
+  const [receive,setReceive] = useState({ itemId:"", quantity:"", lotNumber:"", expiresOn:"", supplierCounterpartyId:"", reason:"Надходження" });
   const [writeoff,setWriteoff] = useState({ lotId:"", quantity:"", reason:"Використано під час дослідження", bookingId:"" });
 
   async function loadInventory() {
@@ -118,9 +119,9 @@ export default function InventoryPage() {
     e.preventDefault();
     const created=await documentAction({
       action:"create",documentType:"inventory_receipt",
-      lines:[{itemId:Number(receive.itemId),quantity:Number(receive.quantity),lotNumber:receive.lotNumber,expiresOn:receive.expiresOn,supplier:receive.supplier,reason:receive.reason}],
+      lines:[{itemId:Number(receive.itemId),quantity:Number(receive.quantity),lotNumber:receive.lotNumber,expiresOn:receive.expiresOn,supplierCounterpartyId:receive.supplierCounterpartyId?Number(receive.supplierCounterpartyId):null,reason:receive.reason}],
     },"Чернетку надходження створено");
-    if(created){setReceive({itemId:receive.itemId,quantity:"",lotNumber:"",expiresOn:"",supplier:"",reason:"Надходження"});setMode("documents");}
+    if(created){setReceive({itemId:receive.itemId,quantity:"",lotNumber:"",expiresOn:"",supplierCounterpartyId:"",reason:"Надходження"});setMode("documents");}
   }
   async function createWriteoffDraft(e:React.FormEvent) {
     e.preventDefault();
@@ -153,7 +154,7 @@ export default function InventoryPage() {
 
         {data.canManage && <section className="inventoryOperations">
           <form onSubmit={createItem}><h3>Нова номенклатура</h3><p className="inventoryFormHint">Довідник матеріалів</p><input required placeholder="Назва матеріалу" value={itemForm.name} onChange={e=>setItemForm({...itemForm,name:e.target.value})}/><input placeholder="Код / SKU" value={itemForm.sku} onChange={e=>setItemForm({...itemForm,sku:e.target.value})}/><select value={itemForm.category} onChange={e=>setItemForm({...itemForm,category:e.target.value})}>{CATEGORY_OPTIONS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><div className="inventoryFormRow"><input required placeholder="Одиниця" value={itemForm.unit} onChange={e=>setItemForm({...itemForm,unit:e.target.value})}/><input required type="number" min="0" step="0.01" placeholder="Мін. запас" value={itemForm.minStock} onChange={e=>setItemForm({...itemForm,minStock:e.target.value})}/></div><button disabled={busy}>Записати</button></form>
-          <form onSubmit={createReceiptDraft}><h3>Надходження матеріалів</h3><p className="inventoryFormHint">Створює документ-чернетку. Залишок зміниться лише після «Провести».</p><select required value={receive.itemId} onChange={e=>setReceive({...receive,itemId:e.target.value})}><option value="">Оберіть матеріал</option>{data.items.filter(i=>i.active).map(i=><option key={i.id} value={i.id}>{i.name} · {i.unit}</option>)}</select><div className="inventoryFormRow"><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={receive.quantity} onChange={e=>setReceive({...receive,quantity:e.target.value})}/><input placeholder="№ партії" value={receive.lotNumber} onChange={e=>setReceive({...receive,lotNumber:e.target.value})}/></div><input type="date" value={receive.expiresOn} onChange={e=>setReceive({...receive,expiresOn:e.target.value})}/><input placeholder="Постачальник" value={receive.supplier} onChange={e=>setReceive({...receive,supplier:e.target.value})}/><input placeholder="Примітка" value={receive.reason} onChange={e=>setReceive({...receive,reason:e.target.value})}/><button disabled={busy}>Створити чернетку</button></form>
+          <form onSubmit={createReceiptDraft}><h3>Надходження матеріалів</h3><p className="inventoryFormHint">Створює документ-чернетку. Залишок зміниться лише після «Провести».</p><select required value={receive.itemId} onChange={e=>setReceive({...receive,itemId:e.target.value})}><option value="">Оберіть матеріал</option>{data.items.filter(i=>i.active).map(i=><option key={i.id} value={i.id}>{i.name} · {i.unit}</option>)}</select><div className="inventoryFormRow"><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={receive.quantity} onChange={e=>setReceive({...receive,quantity:e.target.value})}/><input placeholder="№ партії" value={receive.lotNumber} onChange={e=>setReceive({...receive,lotNumber:e.target.value})}/></div><input type="date" value={receive.expiresOn} onChange={e=>setReceive({...receive,expiresOn:e.target.value})}/><select value={receive.supplierCounterpartyId} onChange={e=>setReceive({...receive,supplierCounterpartyId:e.target.value})}><option value="">Без постачальника</option>{data.counterparties.map(c=><option key={c.id} value={c.id}>{c.name}{c.code?` · ${c.code}`:""}</option>)}</select><button type="button" className="inventorySmallBtn" onClick={()=>window.location.assign("/staff/counterparties")}>Контрагенти ↗</button><input placeholder="Примітка" value={receive.reason} onChange={e=>setReceive({...receive,reason:e.target.value})}/><button disabled={busy}>Створити чернетку</button></form>
           <form onSubmit={createWriteoffDraft}><h3>Списання матеріалів</h3><p className="inventoryFormHint">Документ можна перевірити перед проведенням.</p><select required value={writeoff.lotId} onChange={e=>setWriteoff({...writeoff,lotId:e.target.value})}><option value="">Оберіть партію</option>{data.lots.map(l=><option key={l.id} value={l.id}>{l.itemName} · {l.lotNumber || "без №"} · залишок {fmt(l.stock)}</option>)}</select><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={writeoff.quantity} onChange={e=>setWriteoff({...writeoff,quantity:e.target.value})}/><input required placeholder="Причина списання" value={writeoff.reason} onChange={e=>setWriteoff({...writeoff,reason:e.target.value})}/><input type="number" min="1" placeholder="ID дослідження (необов'язково)" value={writeoff.bookingId} onChange={e=>setWriteoff({...writeoff,bookingId:e.target.value})}/><button className="danger" disabled={busy}>Створити чернетку</button></form>
         </section>}
       </>}
@@ -167,7 +168,7 @@ export default function InventoryPage() {
         {selected&&<section className="inventoryDocumentCard">
           <header><div><small>{TYPE_UK[selected.document.documentType]}</small><h2>{selected.document.number}</h2><p>{fmtDate(selected.document.occurredAt)} · {selected.document.createdBy}</p></div><span className={`inventoryDocState ${selected.document.state}`}>{STATE_UK[selected.document.state]}</span></header>
           {selected.document.comment&&<p className="inventoryDocComment">{selected.document.comment}</p>}
-          <div className="inventoryDocLines"><table><thead><tr><th>№</th><th>Матеріал</th><th>Партія</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>{selected.lines.map(line=>{const i=itemMap.get(line.itemId);return <tr key={line.id}><td>{line.lineNo}</td><td><b>{i?.name||`Матеріал #${line.itemId}`}</b><small>{i?.unit||""}</small></td><td>{line.lotNumber||"—"}{line.expiresOn?<small>до {line.expiresOn}</small>:null}</td><td className="num">{fmt(line.quantity)} {i?.unit||""}</td><td>{line.reason}{line.bookingId?<small>дослідження #{line.bookingId}</small>:null}</td></tr>;})}</tbody></table></div>
+          <div className="inventoryDocLines"><table><thead><tr><th>№</th><th>Матеріал</th><th>Партія</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>{selected.lines.map(line=>{const i=itemMap.get(line.itemId);return <tr key={line.id}><td>{line.lineNo}</td><td><b>{i?.name||`Матеріал #${line.itemId}`}</b><small>{i?.unit||""}</small></td><td>{line.lotNumber||"—"}{line.expiresOn?<small>до {line.expiresOn}</small>:null}{line.supplier?<small>постачальник: {line.supplier}</small>:null}</td><td className="num">{fmt(line.quantity)} {i?.unit||""}</td><td>{line.reason}{line.bookingId?<small>дослідження #{line.bookingId}</small>:null}</td></tr>;})}</tbody></table></div>
           <footer>
             {selected.document.state==="draft"&&data.canManage&&<><button className="primary" disabled={busy} onClick={()=>void documentAction({action:"post",documentId:selected.document.id},"Документ проведено")}>Провести</button><button disabled={busy} onClick={()=>void documentAction({action:"cancel",documentId:selected.document.id},"Чернетку скасовано")}>Скасувати</button></>}
             <button onClick={()=>window.open(`/staff/inventory/print?id=${selected.document.id}`,"_blank","noopener,noreferrer")}>Друк</button>
