@@ -1,12 +1,16 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("local deploy uses valid remote D1 command contracts", async () => {
-  const script = await read("scripts/deploy-cloudflare.sh");
+  const [script, migrationScript] = await Promise.all([
+    read("scripts/deploy-cloudflare.sh"),
+    read("scripts/apply-d1-migrations-remote.sh"),
+  ]);
 
   assert.match(
     script,
@@ -20,9 +24,41 @@ test("local deploy uses valid remote D1 command contracts", async () => {
   );
   assert.match(
     script,
-    /wrangler d1 migrations apply radiologyos --remote --config \"\$\{CONFIG\}\"/,
-    "Migration application must remain explicitly remote",
+    /bash scripts\/apply-d1-migrations-remote\.sh radiologyos \"\$\{CONFIG\}\" drizzle/,
+    "Local deploy must use the shared remote D1 migration executor",
   );
+  assert.match(
+    migrationScript,
+    /wrangler d1 execute \"\$\{DATABASE\}\" --remote --config \"\$\{CONFIG\}\" --file \"\$\{IMPORT_FILE\}\"/,
+    "Remote migrations must use Wrangler's file-import execution path",
+  );
+  assert.doesNotMatch(
+    `${script}\n${migrationScript}`,
+    /wrangler d1 migrations apply/,
+    "Deployment must not return to the remote /query migration path that fails on valid trigger bodies",
+  );
+});
+
+test("remote D1 migration executor keeps migration tracking in the imported SQL file", async () => {
+  const script = await read("scripts/apply-d1-migrations-remote.sh");
+  const copySql = script.indexOf('cat "${MIGRATIONS_DIR}/${name}" > "${IMPORT_FILE}"');
+  const tracking = script.indexOf("INSERT INTO d1_migrations (name) VALUES ('%s');");
+  const executeFile = script.indexOf('--file "${IMPORT_FILE}"');
+  const verifyRegistry = script.indexOf("SELECT COUNT(*) AS applied FROM d1_migrations WHERE name='${name}';");
+
+  assert.notEqual(copySql, -1, "migration SQL must be copied unchanged into the import file");
+  assert.notEqual(tracking, -1, "migration registry insert must be appended to the import file");
+  assert.notEqual(executeFile, -1, "the combined SQL file must be sent through --file");
+  assert.notEqual(verifyRegistry, -1, "the registry must be verified after each imported migration");
+  assert.ok(copySql < tracking && tracking < executeFile && executeFile < verifyRegistry);
+  assert.match(script, /Unsafe D1 migration filename/);
+  assert.match(script, /still unapplied/);
+});
+
+test("remote D1 migration executor has valid bash syntax", () => {
+  const path = fileURLToPath(new URL("../scripts/apply-d1-migrations-remote.sh", import.meta.url));
+  const result = spawnSync("bash", ["-n", path], { encoding: "utf8" });
+  assert.equal(result.status, 0, result.stderr);
 });
 
 test("deployment paths preserve runtime Worker vars", async () => {
@@ -65,6 +101,10 @@ test("GitHub production workflow uses the same Time Travel command contract", as
   const workflow = await read(".github/workflows/deploy.yml");
   assert.match(workflow, /wrangler d1 time-travel info radiologyos --config wrangler\.cloudflare\.toml/);
   assert.doesNotMatch(workflow, /wrangler d1 time-travel info[^\n]*--remote/);
+  assert.match(
+    workflow,
+    /bash scripts\/apply-d1-migrations-remote\.sh radiologyos wrangler\.cloudflare\.toml drizzle/,
+  );
 });
 
 test("production deploy paths reject placeholder or malformed administrator hashes", async () => {
