@@ -118,81 +118,25 @@ export async function postServiceStorno(
       source.performedAt,source.radiologistEmail,source.radiographerEmail,source.chargeAmount,source.currency,
     ).run();
 
-    const statements:D1PreparedStatement[]=[
-      db.prepare(
-        `UPDATE business_documents SET state='posted',posted_by=?,posted_at=?
-         WHERE organization_id=? AND id=? AND state='draft'`
-      ).bind(createdBy,occurredAt,input.organizationId,documentId),
-      db.prepare(
-        `UPDATE business_documents SET state='reversed'
-         WHERE organization_id=? AND id=? AND state='posted' AND document_type='service_delivery'`
-      ).bind(input.organizationId,source.documentId),
-      db.prepare(
-        `INSERT INTO service_correction_movements
-         (organization_id,document_id,source_document_id,booking_id,patient_id,service_code,equipment_id,
-          quantity_delta,anatomical_regions_delta,reason,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,?,-1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,source.documentId,source.bookingId,source.patientId,source.serviceCode,
-        source.equipmentId,-source.anatomicalRegionsCount,reason,createdBy,occurredAt,
-      ),
-      db.prepare(
-        `INSERT INTO equipment_load_movements
-         (organization_id,document_id,booking_id,equipment_id,minutes_delta,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,source.bookingId,source.equipmentId,-source.durationMinutes,
-        source.performedAt,createdBy,occurredAt,
-      ),
-    ];
+    // This one state transition is the D1 posting boundary. Migration 0071 requires the exact
+    // draft correction, posts it, and writes all negative registers atomically inside the trigger.
+    const reversed=await db.prepare(
+      `UPDATE business_documents SET state='reversed'
+       WHERE organization_id=? AND id=? AND state='posted' AND document_type='service_delivery'`
+    ).bind(input.organizationId,source.documentId).run();
+    if(!Number(reversed.meta.changes || 0)) throw new Error("service_delivery_not_posted");
 
-    if(source.chargeAmount>0) {
-      statements.push(
-        db.prepare(
-          `INSERT INTO revenue_movements
-           (organization_id,document_id,booking_id,patient_id,service_code,movement_type,amount_delta,currency,actor_email,occurred_at)
-           VALUES (?,?,?,?,?,'service_correction',?,?,?,?)`
-        ).bind(
-          input.organizationId,documentId,source.bookingId,source.patientId,source.serviceCode,-source.chargeAmount,
-          source.currency,createdBy,occurredAt,
-        ),
-        db.prepare(
-          `INSERT INTO patient_settlement_movements
-           (organization_id,document_id,booking_id,patient_id,movement_type,amount_delta,currency,actor_email,occurred_at)
-           VALUES (?,?,?,?,'adjustment',?,?,?,?)`
-        ).bind(
-          input.organizationId,documentId,source.bookingId,source.patientId,-source.chargeAmount,
-          source.currency,createdBy,occurredAt,
-        ),
-      );
+    const posted=await existingServiceCorrection(db,input.organizationId,input.sourceDocumentId);
+    if(!posted || posted.state!=="posted" || posted.id!==documentId) {
+      throw new Error("service_correction_post_failed");
     }
-    if(source.radiologistEmail) {
-      statements.push(db.prepare(
-        `INSERT INTO staff_output_movements
-         (organization_id,document_id,booking_id,member_email,staff_role,units_delta,anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,'radiologist',-1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,source.bookingId,source.radiologistEmail,
-        source.anatomicalRegionsCount,source.performedAt,createdBy,occurredAt,
-      ));
-    }
-    if(source.radiographerEmail) {
-      statements.push(db.prepare(
-        `INSERT INTO staff_output_movements
-         (organization_id,document_id,booking_id,member_email,staff_role,units_delta,anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,'radiographer',-1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,source.bookingId,source.radiographerEmail,
-        source.anatomicalRegionsCount,source.performedAt,createdBy,occurredAt,
-      ));
-    }
-    await db.batch(statements);
   } catch(error) {
     await cleanupDraft(db,input.organizationId,documentId);
     const text=String(error).toLowerCase();
-    if(text.includes("service_correction_source_unique") || text.includes("unique constraint")) {
+    if(text.includes("unique constraint") || text.includes("service_correction_source_unique")) {
       const race=await existingServiceCorrection(db,input.organizationId,input.sourceDocumentId);
       if(race?.state==="posted") return {...race,created:false};
+      throw new Error("service_correction_in_progress");
     }
     throw error;
   }
