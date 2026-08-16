@@ -32,6 +32,13 @@ test("a patient cancels their own active booking; status and event are written",
     assert.equal(res.status, 200);
     const row = await db.prepare("SELECT status FROM bookings WHERE code = ?").bind("RD-OWN0000001").first("status");
     assert.equal(row, "cancelled");
+    const order = await db.prepare(
+      `SELECT d.state FROM patient_order_details o
+       JOIN business_documents d ON d.id=o.document_id AND d.organization_id=o.organization_id
+       JOIN bookings b ON b.id=o.booking_id AND b.organization_id=o.organization_id
+       WHERE b.code=? AND o.organization_id=1`
+    ).bind("RD-OWN0000001").first("state");
+    assert.equal(order, "cancelled");
     const ev = await db.prepare("SELECT COUNT(*) AS n FROM booking_events WHERE action = 'cancelled'").first("n");
     assert.equal(ev, 1);
   });
@@ -62,6 +69,31 @@ test("a patient cannot cancel someone else's booking", async () => {
     assert.equal(res.status, 404);
     const row = await db.prepare("SELECT status FROM bookings WHERE code = ?").bind("RD-OTHER00001").first("status");
     assert.equal(row, "new");
+  });
+});
+
+test("a paid booking returns 409 until finance is refunded", async () => {
+  await withD1(async (db) => {
+    await seed(db, { code: "RD-PAIDCANCEL1", phoneNormalized: "380971112233" });
+    const booking = await db.prepare(
+      "SELECT id FROM bookings WHERE organization_id=1 AND code='RD-PAIDCANCEL1'"
+    ).first();
+    await db.prepare(
+      `INSERT INTO payment_transactions
+       (organization_id,booking_id,amount,currency,provider,provider_reference,status,paid_at)
+       VALUES (1,?,1500,'UAH','legacy','cancel-paid','paid',CURRENT_TIMESTAMP)`
+    ).bind(booking.id).run();
+    const cookie = await seedPatientSession(db, "380971112233");
+    const res = await cancel(db, cookie, "RD-PAIDCANCEL1");
+    assert.equal(res.status, 409);
+    const body = await res.json();
+    assert.match(body.error,/оплата|повернення/i);
+    assert.equal(await db.prepare("SELECT status FROM bookings WHERE id=?").bind(booking.id).first("status"),"new");
+    assert.equal(await db.prepare(
+      `SELECT d.state FROM patient_order_details o
+       JOIN business_documents d ON d.id=o.document_id AND d.organization_id=o.organization_id
+       WHERE o.organization_id=1 AND o.booking_id=?`
+    ).bind(booking.id).first("state"),"draft");
   });
 });
 
