@@ -67,28 +67,40 @@ test("execution_recorded posts exactly one service act and business registers",a
       `SELECT amount_delta AS amountDelta,movement_type AS movementType FROM revenue_movements
        WHERE organization_id=1 AND document_id=?`
     ).get(act.id);
-    assert.deepEqual(revenue,{amountDelta:2500,movementType:"service_charge"});
+    assert.ok(revenue);
+    assert.equal(revenue.amountDelta,2500);
+    assert.equal(revenue.movementType,"service_charge");
 
     const settlement=raw.prepare(
       `SELECT amount_delta AS amountDelta,movement_type AS movementType FROM patient_settlement_movements
        WHERE organization_id=1 AND document_id=?`
     ).get(act.id);
-    assert.deepEqual(settlement,{amountDelta:2500,movementType:"charge"});
+    assert.ok(settlement);
+    assert.equal(settlement.amountDelta,2500);
+    assert.equal(settlement.movementType,"charge");
 
     const workload=raw.prepare(
       `SELECT study_count AS studyCount,duration_minutes AS durationMinutes,anatomical_regions_count AS regions
        FROM equipment_workload_movements WHERE organization_id=1 AND document_id=?`
     ).get(act.id);
-    assert.deepEqual(workload,{studyCount:1,durationMinutes:30,regions:2});
+    assert.ok(workload);
+    assert.equal(workload.studyCount,1);
+    assert.equal(workload.durationMinutes,30);
+    assert.equal(workload.regions,2);
 
     const staff=raw.prepare(
       `SELECT staff_email AS email,staff_role AS role,study_count AS studyCount,anatomical_regions_count AS regions
        FROM staff_output_movements WHERE organization_id=1 AND document_id=? ORDER BY staff_role`
     ).all(act.id);
-    assert.deepEqual(staff,[
-      {email:"rad-act@example.com",role:"radiologist",studyCount:1,regions:2},
-      {email:"tech-act@example.com",role:"radiographer",studyCount:1,regions:2},
-    ]);
+    assert.equal(staff.length,2);
+    assert.equal(staff[0].email,"rad-act@example.com");
+    assert.equal(staff[0].role,"radiologist");
+    assert.equal(staff[0].studyCount,1);
+    assert.equal(staff[0].regions,2);
+    assert.equal(staff[1].email,"tech-act@example.com");
+    assert.equal(staff[1].role,"radiographer");
+    assert.equal(staff[1].studyCount,1);
+    assert.equal(staff[1].regions,2);
 
     await db.prepare(
       `INSERT INTO booking_events (organization_id,booking_id,action,details,actor)
