@@ -140,7 +140,7 @@ BEGIN
          NEW.anatomical_regions_count,NEW.performed_at,'system:execution',NEW.performed_at
   FROM `business_documents` d
   JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
-  WHERE d.organization_id=NEW.organizationId AND d.document_type='service_delivery'
+  WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
     AND s.booking_id=NEW.id AND d.state='posted'
     AND NEW.assigned_radiographer_email<>'';
 END;
