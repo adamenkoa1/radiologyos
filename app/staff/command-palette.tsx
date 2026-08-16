@@ -21,6 +21,7 @@ const COMMANDS: { label: string; hint: string; href: string }[] = [
   { label: "Протоколи", hint: "опис досліджень", href: "/staff/protocols" },
   { label: "DICOM", hint: "знімки та PACS", href: "/staff/imaging" },
   { label: "Склад", hint: "витратні матеріали", href: "/staff/inventory" },
+  { label: "Фінанси", hint: "оплати / повернення / взаєморозрахунки", href: "/staff/finance" },
   { label: "ТО та несправності", hint: "обладнання / сервіс", href: "/staff/maintenance" },
   { label: "Звіти", hint: "аналітика", href: "/staff/reports" },
   { label: "Стан системи", hint: "health / production", href: "/staff/system/health" },
