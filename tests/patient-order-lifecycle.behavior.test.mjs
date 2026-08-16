@@ -108,6 +108,28 @@ test("a paid fact blocks cancellation until refund; posted Patient Order remains
   });
 });
 
+test("staff gets a readable 409 instead of a D1 error when paid booking cancellation is blocked",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{code:"RD-LIFECYCLE-STAFF",amount:2800});
+    await settleVerifiedProviderPayment(db,{
+      organizationId:1,
+      bookingId,
+      provider:"liqpay",
+      providerReference:"lifecycle-staff",
+      amount:2800,
+    });
+    const cookie=await seedStaffSession(db,{email:"lifecycle-registrar@example.com",role:"registrar",organizationId:1});
+    const response=await callWorker(jsonRequest("/api/staff/bookings",{
+      id:bookingId,status:"cancelled",
+    },{method:"PATCH",headers:{cookie}}),db);
+    assert.equal(response.status,409);
+    const body=await response.json();
+    assert.match(body.error,/повернення оплати/i);
+    assert.equal(raw.prepare("SELECT status FROM bookings WHERE id=?").get(bookingId).status,"confirmed");
+    assert.equal(orderFor(raw,1,bookingId).state,"posted");
+  });
+});
+
 test("a posted service blocks cancellation until storno, then completed -> cancelled is allowed",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-LIFECYCLE-SERVICE",amount:3100});
