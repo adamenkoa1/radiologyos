@@ -131,7 +131,7 @@ export async function postServiceStorno(
         `INSERT INTO service_correction_movements
          (organization_id,document_id,source_document_id,booking_id,patient_id,service_code,equipment_id,
           quantity_delta,anatomical_regions_delta,reason,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,?,-1,?,?,?,?,?)`
+         VALUES (?,?,?,?,?,?,?,-1,?,?,?,?)`
       ).bind(
         input.organizationId,documentId,source.documentId,source.bookingId,source.patientId,source.serviceCode,
         source.equipmentId,-source.anatomicalRegionsCount,reason,createdBy,occurredAt,
