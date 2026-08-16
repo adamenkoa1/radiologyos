@@ -29,7 +29,7 @@ echo "[2/5] Recording the current D1 recovery bookmark…"
 npx wrangler d1 time-travel info radiologyos --config "${CONFIG}"
 
 echo "[3/5] Applying D1 migrations to the remote database…"
-npx wrangler d1 migrations apply radiologyos --remote --config "${CONFIG}"
+bash scripts/apply-d1-migrations-remote.sh radiologyos "${CONFIG}" drizzle
 
 echo "[4/5] Verifying a secure active administrator credential…"
 ADMIN_GUARD_SQL=$(cat <<'SQL'
