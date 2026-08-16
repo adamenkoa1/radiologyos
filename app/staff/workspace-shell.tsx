@@ -50,7 +50,7 @@ const businessModules:BusinessModule[]=[
     {label:"Картки пацієнтів",href:"/staff/patients"},
     {label:"Чат із пацієнтами",href:"/staff/chat"},
   ]},
-  { key:"registry",label:"Реєстратура",shortLabel:"Реєстратура",items:[
+  { key:"registry",label:"Реєстатура",shortLabel:"Реєстратура",items:[
     {label:"Календар і записи",href:"/staff/appointments"},
     {label:"Прийом пацієнтів",href:"/staff/intake"},
     {label:"Дошка досліджень",href:"/staff/board"},
@@ -92,6 +92,7 @@ const businessModules:BusinessModule[]=[
     {label:"Склади",href:"/staff/warehouses"},
     {label:"Контрагенти",href:"/staff/counterparties"},
     {label:"Графік кабінетів",href:"/staff/schedule"},
+    {label:"Графік змін персоналу",href:"/staff/shifts",hint:"Циклічні зміни, бригади та персональні корекції"},
   ]},
   { key:"admin",label:"Адміністрування",shortLabel:"Адмін",items:[
     {label:"Налаштування",href:"/staff/settings"},
