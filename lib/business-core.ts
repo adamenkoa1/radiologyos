@@ -5,7 +5,7 @@ export type SystemLayer = typeof SYSTEM_LAYERS[number];
 // BAS Small Company = business_core.
 // RadiologyOS = business_core + medical.
 // Public site = external storefront/intake channel and never the owner of posted economic facts.
-export const RADIologyOS_ARCHITECTURE = {
+export const RADIOLOGYOS_ARCHITECTURE = {
   businessCore: {
     layer: "business_core" as const,
     owns: ["references", "documents", "posting", "registers", "reports", "printed_forms"] as const,
