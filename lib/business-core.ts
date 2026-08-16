@@ -170,7 +170,9 @@ export function requiresCorrectionDocument(state: DocumentState): boolean {
 }
 
 export const DOCUMENT_REGISTER_MAP: Readonly<Partial<Record<DocumentType, readonly RegisterType[]>>> = {
-  service_delivery: ["services_delivered", "revenue", "patient_settlements", "equipment_load", "staff_output", "studies_performed"],
+  // The medical execution event is the source fact; the posted service act owns only economic/operational
+  // business movements. We deliberately do not create a second "performed study" truth in this posting.
+  service_delivery: ["revenue", "patient_settlements", "equipment_load", "staff_output"],
   payment: ["cash", "patient_settlements"],
   // A money refund reverses cash/settlement only. Revenue is corrected by a service correction/storno,
   // not merely because money was returned.
