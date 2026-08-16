@@ -1,4 +1,4 @@
-import { stateLabel } from "./study-state";
+import { stateLabel } from "./study-state.ts";
 
 type Candidate = {
   organizationId:number;
