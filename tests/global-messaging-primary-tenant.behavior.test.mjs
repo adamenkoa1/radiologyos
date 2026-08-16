@@ -83,6 +83,11 @@ test("secondary tenant contact-center cannot reply through primary WhatsApp", as
     await addOrganizationTwo(db);
     const phone = "380502223344";
     await addBooking(db, { id:202, organizationId:2, code:"CHAT-ORG2", phone });
+    await db.prepare(
+      `INSERT INTO patient_communications
+        (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
+       VALUES (2, '', ?, 'whatsapp', 'inbound', 'Org2 legacy thread', 'system')`
+    ).bind(phone).run();
     await setGlobal(db, "whatsapp_id_instance", "org1-instance");
     await setGlobal(db, "whatsapp_api_token_instance", "org1-token");
     await setGlobal(db, "whatsapp_enabled", "1");

@@ -7,8 +7,10 @@ import { roleLabelUk } from "../../../lib/labels";
 type StaffInfo = { email: string; displayName: string; role: string };
 type Channel = "whatsapp" | "telegram" | "sms" | "email";
 type Conversation = {
+  conversationKey: string; identityKind: "patient" | "legacy"; patientId: string;
   phone: string; name: string; lastText: string; lastDirection: string;
   lastChannel: Channel; lastAt: string; issueCount: number; sharedPhone?: number | boolean;
+  legacyAmbiguous?: boolean;
 };
 type Message = { id?: number; patientId?: string; channel: Channel; direction: string; text: string; actor: string; createdAt: string };
 type DeliveryIssue = { id: number; channel: Channel; kind: string; status: string; error: string; createdAt: string; bookingId: number };
@@ -35,9 +37,10 @@ export default function StaffChatPage() {
   const [failedDeliveries, setFailedDeliveries] = useState(0);
   const [channel, setChannel] = useState("all");
   const [query, setQuery] = useState("");
-  const [active, setActive] = useState<string | null>(null);
+  const [active, setActive] = useState<Conversation | null>(null);
   const [activeName, setActiveName] = useState("");
   const [activeSharedPhone, setActiveSharedPhone] = useState(false);
+  const [activeLegacyAmbiguous, setActiveLegacyAmbiguous] = useState(false);
   const [replyChannels, setReplyChannels] = useState<string[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [issues, setIssues] = useState<DeliveryIssue[]>([]);
@@ -67,25 +70,36 @@ export default function StaffChatPage() {
 
   async function changeChannel(next: string) {
     setChannel(next); setActive(null); setMessages([]); setIssues([]); setLoaded(false);
-    setActiveSharedPhone(false); setReplyChannels([]);
+    setActiveSharedPhone(false); setActiveLegacyAmbiguous(false); setReplyChannels([]);
     await loadConversations(next);
   }
 
-  async function openConversation(phone: string) {
-    setActive(phone); setError(""); setMessages([]); setIssues([]); setDraft(""); setThreadLoading(true);
-    setActiveSharedPhone(false); setReplyChannels([]);
+  async function openConversation(conversation: Conversation) {
+    setActive(conversation); setError(""); setMessages([]); setIssues([]); setDraft(""); setThreadLoading(true);
+    setActiveSharedPhone(false); setActiveLegacyAmbiguous(false); setReplyChannels([]);
     try {
+      const identity = conversation.identityKind === "patient"
+        ? `patientId=${encodeURIComponent(conversation.patientId)}`
+        : `legacyPhone=${encodeURIComponent(conversation.phone)}`;
       const filter = channel === "all" ? "" : `&channel=${encodeURIComponent(channel)}`;
-      const res = await fetch(`/api/staff/chat?phone=${encodeURIComponent(phone)}${filter}`, { cache: "no-store" });
+      const res = await fetch(`/api/staff/chat?${identity}${filter}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({})) as {
-        messages?: Message[]; name?: string; issues?: DeliveryIssue[];
-        sharedPhone?: boolean; availableReplyChannels?: string[];
+        messages?: Message[]; name?: string; phone?: string; issues?: DeliveryIssue[];
+        sharedPhone?: boolean; legacyAmbiguous?: boolean; availableReplyChannels?: string[]; error?: string;
       };
+      if (!res.ok) {
+        setError(data.error || "Не вдалося завантажити діалог");
+        return;
+      }
       setMessages(data.messages || []);
       setIssues(data.issues || []);
       setActiveName(data.name || "");
       setActiveSharedPhone(!!data.sharedPhone);
+      setActiveLegacyAmbiguous(!!data.legacyAmbiguous);
       setReplyChannels(Array.isArray(data.availableReplyChannels) ? data.availableReplyChannels : []);
+      if (data.phone && data.phone !== conversation.phone) {
+        setActive(current => current ? { ...current, phone:data.phone as string } : current);
+      }
     } catch {
       setError("Не вдалося завантажити діалог — перевірте зʼєднання");
     } finally {
@@ -100,7 +114,13 @@ export default function StaffChatPage() {
     const text = draft.trim();
     const res = await fetch("/api/staff/chat", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phone: active, text, channel: "whatsapp" }),
+      body: JSON.stringify({
+        patientId:active.identityKind === "patient" ? active.patientId : "",
+        identityKind:active.identityKind,
+        phone:active.phone,
+        text,
+        channel:"whatsapp",
+      }),
     });
     const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: Message; error?: string };
     setSending(false);
@@ -117,13 +137,13 @@ export default function StaffChatPage() {
   }, [conversations, query]);
 
   const stat = (name: string) => Number(channelStats.find(s => s.channel === name)?.count || 0);
-  const canReplyWhatsApp = !!active && replyChannels.includes("whatsapp") && !activeSharedPhone;
+  const canReplyWhatsApp = !!active && replyChannels.includes("whatsapp") && !activeSharedPhone && !activeLegacyAmbiguous;
 
   const body = forbidden
     ? <p className="notice error" role="alert">Контакт-центр доступний реєстратору або адміністратору.</p>
     : <div className="contactCenter">
         <section className="contactKpis" aria-label="Комунікації за каналами">
-          <article><small>Діалоги</small><b>{conversations.length}</b><span>у поточному фільтрі</span></article>
+          <article><small>Діалоги</small><b>{conversations.length}</b><span>окремі identity-scopes</span></article>
           <article><small>WhatsApp</small><b>{stat("whatsapp")}</b><span>подій у журналі</span></article>
           <article><small>Telegram</small><b>{stat("telegram")}</b><span>подій у журналі</span></article>
           <article className={failedDeliveries ? "warn" : ""}><small>Помилки доставки</small><b>{failedDeliveries}</b><span>потребують уваги</span></article>
@@ -145,10 +165,12 @@ export default function StaffChatPage() {
             {!loaded ? <p className="empty">Завантаження…</p>
               : filtered.length === 0 ? <p className="empty">Немає комунікацій у цьому фільтрі.</p>
                 : filtered.map(c => (
-                  <button key={c.phone} className={`chatListItem${active === c.phone ? " active" : ""}`} onClick={() => void openConversation(c.phone)}>
+                  <button key={c.conversationKey} className={`chatListItem${active?.conversationKey === c.conversationKey ? " active" : ""}`} onClick={() => void openConversation(c)}>
                     <span className={`channelDot ${c.lastChannel}`} aria-hidden="true" />
                     <b>{c.name || displayPhone(c.phone)}</b>
-                    {c.sharedPhone ? <small>Спільний номер · виберіть конкретну картку для відповіді</small> : <small>{c.lastDirection === "inbound" ? "" : "Вихідне · "}{c.lastText}</small>}
+                    {c.identityKind === "legacy"
+                      ? <small>Непривʼязана legacy-історія · {c.lastText}</small>
+                      : <small>{c.lastDirection === "inbound" ? "" : "Вихідне · "}{c.lastText}</small>}
                     <span className="chatListMeta">{CHANNEL_LABEL[c.lastChannel] || c.lastChannel} · {shortTime(c.lastAt)}</span>
                     {Number(c.issueCount || 0) > 0 && <span className="issueBadge">{c.issueCount}</span>}
                   </button>
@@ -156,15 +178,22 @@ export default function StaffChatPage() {
           </aside>
 
           <section className="chatThread">
-            {!active ? <div className="chatEmpty"><span className="contactEmptyIcon" aria-hidden="true" /><p>Оберіть діалог зліва</p><small>Історія WhatsApp, Telegram, SMS та e-mail в одному місці.</small></div>
+            {!active ? <div className="chatEmpty"><span className="contactEmptyIcon" aria-hidden="true" /><p>Оберіть діалог зліва</p><small>Exact-пацієнти розділені за patient_id; legacy-події не домішуються автоматично.</small></div>
               : <>
                   <header className="chatThreadHead">
-                    <div><b>{activeName || displayPhone(active)}</b><small>{displayPhone(active)}{activeSharedPhone ? " · спільний номер" : ""}</small></div>
-                    <span className="contactReplyHint">{canReplyWhatsApp ? "Відповідь: WhatsApp" : activeSharedPhone ? "Відповідь заблокована: неоднозначна особа" : "Вихідний канал недоступний"}</span>
+                    <div>
+                      <b>{activeName || displayPhone(active.phone)}</b>
+                      <small>{displayPhone(active.phone)}{active.identityKind === "legacy" ? " · legacy / неідентифіковано" : activeSharedPhone ? " · спільний контакт" : ""}</small>
+                    </div>
+                    <span className="contactReplyHint">{canReplyWhatsApp ? "Відповідь: WhatsApp" : activeLegacyAmbiguous ? "Відповідь заблокована: потрібна ідентифікація" : activeSharedPhone ? "Відповідь заблокована: спільний контакт" : "Вихідний канал недоступний"}</span>
                   </header>
-                  {activeSharedPhone && <div className="deliveryIssues" role="status">
-                    <b>Один номер використовують кілька пацієнтів</b>
-                    <span>Щоб не надіслати медичну інформацію не тій особі, відкрийте конкретну CRM-картку або заявку.</span>
+                  {active.identityKind === "legacy" && <div className="deliveryIssues" role="status">
+                    <b>Legacy-історія не є карткою пацієнта</b>
+                    <span>Повідомлення без patient_id зберігаються окремо й не приєднуються до exact-профілю за номером телефону.</span>
+                  </div>}
+                  {activeLegacyAmbiguous && <div className="deliveryIssues" role="status">
+                    <b>Відповідь заблокована</b>
+                    <span>Спочатку ідентифікуйте пацієнта в CRM, щоб не надіслати медичну інформацію не тій особі.</span>
                   </div>}
                   {issues.length > 0 && <div className="deliveryIssues" role="status">
                     <b>Не доставлено: {issues.length}</b>
@@ -182,7 +211,7 @@ export default function StaffChatPage() {
                   </div>
                   {error && <p className="notice error" role="alert">{error}</p>}
                   <form className="chatReply" onSubmit={reply}>
-                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} placeholder={activeSharedPhone ? "Оберіть конкретну картку пацієнта для відповіді" : "Відповідь пацієнту у WhatsApp…"} />
+                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} placeholder={activeLegacyAmbiguous ? "Спочатку ідентифікуйте пацієнта" : activeSharedPhone ? "Спільний контакт: ручна відповідь заблокована" : "Відповідь пацієнту у WhatsApp…"} />
                     <button type="submit" disabled={sending || !draft.trim() || !canReplyWhatsApp}>{sending ? "…" : "Надіслати"}</button>
                   </form>
                 </>}
