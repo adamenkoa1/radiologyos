@@ -2,19 +2,19 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
-async function seedBooking(db,{organizationId=1,code="RD-ORDER-001",amount=2600,category="civilian",status="confirmed"}={}){
+async function seedBooking(db,{organizationId=1,code="RD-ORDER-001",amount=2600,category="civilian",status="confirmed",desiredTime="10:00"}={}){
   const result=await db.prepare(
     `INSERT INTO bookings (
       organization_id,code,name,phone,phone_normalized,service,service_code,equipment_id,
       duration_minutes,desired_date,desired_time,patient_category,payment_status,payment_amount,paid_amount,
       status,anatomical_regions_count,assigned_radiologist_email,assigned_radiographer_email
      ) VALUES (?,?,'Order Patient','+380501112233','380501112233','КТ ОГК','ct-chest','ct',30,
-       '2026-08-25','10:00',?,'pending',?,0,?,2,'order-doctor@example.com','order-tech@example.com')`
-  ).bind(organizationId,code,category,amount,status).run();
+       '2026-08-25',?,?,'pending',?,0,?,2,'order-doctor@example.com','order-tech@example.com')`
+  ).bind(organizationId,code,desiredTime,category,amount,status).run();
   return Number(result.meta.last_row_id);
 }
 
-async function orderFor(raw,organizationId,bookingId){
+function orderFor(raw,organizationId,bookingId){
   return raw.prepare(
     `SELECT d.id,d.number,d.state,d.basis_document_id AS basisDocumentId,
             o.booking_id AS bookingId,o.patient_category AS patientCategory,
@@ -213,8 +213,8 @@ test("unified document structure exposes Patient Order -> payment/service -> ref
 
 test("D1 rejects a document that points at another booking's Patient Order",async()=>{
   await withD1(async(db,raw)=>{
-    const first=await seedBooking(db,{code:"RD-ORDER-BASIS-1",amount:1500});
-    const second=await seedBooking(db,{code:"RD-ORDER-BASIS-2",amount:1700});
+    const first=await seedBooking(db,{code:"RD-ORDER-BASIS-1",amount:1500,desiredTime:"10:00"});
+    const second=await seedBooking(db,{code:"RD-ORDER-BASIS-2",amount:1700,desiredTime:"10:30"});
     const wrongOrder=orderFor(raw,1,second);
     const created=raw.prepare(
       `INSERT INTO business_documents
