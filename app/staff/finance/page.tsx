@@ -57,7 +57,10 @@ export default function FinancePage() {
     }
   },[]);
 
-  useEffect(()=>{void load();},[load]);
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>{void load();},0);
+    return()=>window.clearTimeout(timer);
+  },[load]);
 
   const q=query.trim().toLowerCase();
   const documents=useMemo(()=>{
