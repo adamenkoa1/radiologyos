@@ -1,5 +1,15 @@
 # RadiologyOS Pages Map
 
+## Архітектурна межа
+
+```text
+BAS Small Company = бізнесове ядро.
+RadiologyOS = BAS-подібне ядро + медичні модулі.
+Публічний сайт = зовнішня вітрина і канал запису.
+```
+
+Публічні маршрути не є фінансовим registrar-рівнем: вони можуть створити intake/booking і технічну `pending` платіжну транзакцію, але проведена оплата/повернення виникає лише у business-core після trusted confirmation.
+
 ## 1. Поточна публічна частина
 
 ### `/site/` або `index.html`
@@ -42,6 +52,15 @@
 - на Web MVP не є захищеним медичним кабінетом;
 - не зберігати реальні дані.
 
+### `/api/pay-link`
+Публічний/patient-facing канал ініціації оплати.
+
+- сервер сам визначає booking/суму в tenant + patient identity scope;
+- може створити/повернути технічний `payment_transactions.status = pending`;
+- **не** створює `business_documents(payment)`;
+- **не** створює `cash_movements` або `patient_settlement_movements`;
+- господарський факт виникає лише після trusted provider/staff settlement.
+
 ## 2. Поточна внутрішня частина
 
 ### `staff.html`
@@ -78,6 +97,26 @@
 - підтримує браузерний друк / Save as PDF;
 - для проведеного документа повторний друк відтворює канонічний snapshot, а не поточні змінені дані довідників.
 
+### `/staff/finance`
+Внутрішній BAS-подібний фінансовий workspace для реєстратора/адміністратора.
+
+Вкладки:
+- **Документи** — `Оплата` / `Повернення`, номер, booking, пацієнт, послуга, метод, сума, стан, друк;
+- **Рухи грошей** — read-only `cash_movements` з документом-реєстратором;
+- **Взаєморозрахунки** — агрегація `patient_settlement_movements` по booking/patient.
+
+Підсумки сторінки рахуються з нового cash register. Історичні paid/refunded `payment_transactions` без document links показуються окремим Legacy count і не домішуються в нові регістрові підсумки.
+
+### `/staff/finance/print?id=<documentId>`
+Захищена A4 квитанція `payment_receipt` для `payment` або `refund`.
+
+- tenant/RBAC guarded;
+- template v1;
+- immutable `printed_form_snapshots` + SHA-256;
+- snapshot містить document/booking/patient/service/payment metadata;
+- refund snapshot містить первинний payment document як підставу, якщо він існує;
+- повторний друк проведеного документа відтворює перший canonical snapshot конкретного state/version.
+
 ## 3. Цільова внутрішня маршрутизація
 
 ```text
@@ -89,6 +128,7 @@
 ├── patients
 ├── studies
 ├── protocols
+├── finance
 ├── reports
 ├── staff
 ├── rooms
@@ -96,7 +136,6 @@
 ├── services
 ├── inventory
 ├── tasks
-├── payments
 ├── exports
 └── settings
 ```
@@ -110,6 +149,7 @@
 - Protocols: лікар-рентгенолог, лікар УЗД.
 - Equipment: старший рентгенлаборант, інженер, адміністратор.
 - Inventory: читання — авторизований staff; створення/проведення складських документів — адміністратор або рентгенолаборант згідно з runtime RBAC поточного модуля.
+- Finance: фінансовий журнал, ручне підтвердження оплати, повернення й друк фінансових форм — ролі, для яких `canManageFinance` повертає true (поточний staff contract: реєстратор/адміністратор).
 - Reports: завідувач, адміністратор.
 - Settings: системний адміністратор.
 

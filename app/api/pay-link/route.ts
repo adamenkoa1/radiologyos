@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const booking = await db.prepare(
     `SELECT id, code, service, service_code AS serviceCode, desired_date AS desiredDate,
       desired_time AS desiredTime, payment_status AS paymentStatus, payment_amount AS paymentAmount,
-      patient_category AS category, status
+      paid_amount AS paidAmount, patient_category AS category, status
      FROM bookings
      WHERE organization_id = ? AND phone_normalized = ? AND code = ? AND ${identityClause} LIMIT 1`,
   ).bind(session.organizationId, session.phoneNormalized, code, session.identityValue).first<{
@@ -57,12 +57,16 @@ export async function POST(request: Request) {
     desiredTime: string;
     paymentStatus: string;
     paymentAmount: number;
+    paidAmount: number;
     category: string;
     status: string;
   }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (booking.category !== "civilian" || booking.paymentAmount <= 0) {
     return Response.json({ error: "Для цієї заявки онлайн-оплата не потрібна" }, { status: 409 });
+  }
+  if (booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
+    return Response.json({ error: "Ця заявка вже повністю оплачена" }, { status: 409 });
   }
   if (["cancelled", "completed"].includes(booking.status)) {
     return Response.json({ error: "Ця заявка вже закрита" }, { status: 409 });
@@ -103,6 +107,9 @@ export async function POST(request: Request) {
     }, { headers: { "cache-control": "no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
+    if (message === "payment_already_settled") {
+      return Response.json({ error: "Ця заявка вже повністю оплачена" }, { status: 409 });
+    }
     if (message === "payment_reference_conflict") {
       return Response.json({ error: "Платіжний референс уже використано" }, { status: 409 });
     }

@@ -5,6 +5,14 @@
 ## [Unreleased]
 
 ### Changed
+- Канонічну межу продукту зафіксовано явно: `BAS Small Company = бізнесове ядро`, `RadiologyOS = BAS-подібне ядро + медичні модулі`, `Публічний сайт = зовнішня вітрина і канал запису`; public layer не є власником проведених господарських фактів.
+- Платежі переведено на BAS registrar: trusted підтверджена оплата створює і проводить `business_documents(type=payment)`, після чого атомарно створюються `cash_movements(+amount)` і `patient_settlement_movements(-amount)`; публічний `pending payment_transaction` не створює бізнес-документів або регістрових рухів.
+- Повернення стало окремим `business_documents(type=refund)` із посиланням на первинний payment document, рухами `cash(-amount)` і `patient_settlements(+amount)` та ідемпотентним повторним викликом. Грошовий refund більше не моделюється як автоматичне сторно `revenue` — дохід коригується тільки через корекцію/сторно факту наданої послуги.
+- `payment_transactions` збережено як технічний payment-provider/manual ledger і доповнено незмінними `payment_document_id` / `refund_document_id`; історичні paid/refunded транзакції без registrar links залишаються explicit `Legacy` без евристичного backfill.
+- Додано D1-hardening фінансового registrar: tenant/booking/patient/source-document integrity, append-only cash/settlement registers, exact sign/amount/currency/provider/reference contract і заборона обнулення або підміни вже встановленого document link.
+- Додано `/staff/finance` з BAS-подібними вкладками `Документи / Рухи грошей / Взаєморозрахунки`, register-derived підсумками та окремим Legacy count; фінанси винесено в business-core навігацію й command palette.
+- Додано `/staff/finance/print` і `payment_receipt` template v1: tenant/RBAC guarded immutable snapshot, SHA-256, A4 browser print/Save as PDF та повторний друк історичного payload навіть після зміни ПІБ/назви послуги.
+- Додано behavioral/security coverage для payment/refund posting, idempotency, public pending boundary, tenant isolation, immutable registrar links, forged movement rejection та immutable finance print snapshots.
 - Склад став першим повністю практичним BAS-подібним модулем: `Номенклатура → Складський документ → Проведення → Регістр рухів → Друкована форма`.
 - Додано загальний tenant-scoped реєстр `business_documents` і складські табличні частини `inventory_document_lines`; нові надходження та списання створюють документ-реєстратор, а старі рухи залишаються `Legacy` без небезпечного backfill за здогадками.
 - Чернетка складського документа не змінює залишок; `posted` створює рухи один раз, повторне проведення ідемпотентне, а проведені господарські факти фізично захищені D1 від тихого UPDATE/DELETE.
@@ -33,8 +41,7 @@
 - Додано окремий read-only endpoint конкретної ревізії з tenant/RBAC/assignment перевіркою та security audit без клінічного тексту, плюс behavioral coverage незмінності та міжтенантної ізоляції.
 
 ### Planned
-- Перенесення наступних внутрішніх модулів на той самий BAS-каркас; пріоритет після складу — послуги/акти та оплати/взаєморозрахунки.
-- Реальний posting engine та tenant-scoped регістри для послуг, оплат, виробітку й навантаження обладнання.
+- Наступний business-core перенос: `service_delivery` / акт наданих послуг → `services_delivered + revenue + patient_settlements(+charge) + equipment_load + staff_output` із medical linkage без змішування DICOM/PACS і господарських документів.
 - Підключення object storage для збереження бінарних PDF друкованих форм; D1 snapshot уже зберігає канонічні дані, версію та hash.
 - Розділення `staff.html` на окремі модулі.
 - Календар у стилі Google Calendar.

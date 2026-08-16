@@ -62,6 +62,8 @@ export async function POST(request: Request) {
       payment,
       paymentStatus: "paid",
       paidAmount: result.booking.paymentAmount,
+      documentId: result.documentId,
+      legacy: result.legacy,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
@@ -69,8 +71,11 @@ export async function POST(request: Request) {
     if (message === "invalid_booking_amount") {
       return Response.json({ error: "Для цієї заявки не визначено коректну суму до сплати" }, { status: 409 });
     }
+    if (message === "payment_already_settled") {
+      return Response.json({ error: "Ця заявка вже має підтверджену повну оплату" }, { status: 409 });
+    }
     if (message === "payment_reference_conflict") {
-      return Response.json({ error: "Цей платіжний референс уже прив’язаний до іншої оплати" }, { status: 409 });
+      return Response.json({ error: "Цей платіжний референс уже прив’язаний до іншої оплати або повернення" }, { status: 409 });
     }
     console.error("payment_reconciliation_failed", bookingId, error);
     return Response.json({ error: "Не вдалося підтвердити оплату" }, { status: 500 });
@@ -98,12 +103,26 @@ export async function DELETE(request: Request) {
       actor: ctx.member.email,
     });
     const payment = await latestPaymentForBooking(db as never, ctx.organizationId, bookingId);
-    return Response.json({ ok: true, changed: refund.changed, payment, paymentStatus: "refunded", paidAmount: 0 });
+    return Response.json({
+      ok: true,
+      changed: refund.changed,
+      payment,
+      paymentStatus: "refunded",
+      paidAmount: 0,
+      documentId: refund.documentId,
+      legacy: refund.legacy,
+    });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
     if (message === "booking_not_found") return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     if (message === "paid_payment_not_found") {
       return Response.json({ error: "Немає підтвердженої оплати для повернення" }, { status: 409 });
+    }
+    if (message === "refund_already_claimed") {
+      return Response.json({ error: "Для цього платежу вже створюється або існує документ повернення" }, { status: 409 });
+    }
+    if (message === "payment_reference_conflict") {
+      return Response.json({ error: "Повернення конфліктує з уже проведеним фінансовим документом" }, { status: 409 });
     }
     console.error("payment_refund_failed", bookingId, error);
     return Response.json({ error: "Не вдалося оформити повернення" }, { status: 500 });
