@@ -224,6 +224,9 @@ export async function createFinanceDocumentDraft(
       .bind(input.organizationId,documentId).run().catch(()=>{});
     await db.prepare("DELETE FROM business_documents WHERE organization_id=? AND id=? AND state='draft'")
       .bind(input.organizationId,documentId).run().catch(()=>{});
+    if(input.type === "refund" && sourceTransactionId && String(error).toLowerCase().includes("unique")) {
+      throw new Error("refund_already_claimed");
+    }
     throw error;
   }
   const document=await getFinanceDocument(db,input.organizationId,documentId);
