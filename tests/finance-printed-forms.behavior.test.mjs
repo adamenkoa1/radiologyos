@@ -36,11 +36,12 @@ test("posted payment receipt reuses its immutable historical snapshot",async()=>
     const form1=await first.json();
     assert.equal(form1.snapshot.formType,"payment_receipt");
     assert.equal(form1.snapshot.documentState,"posted");
-    assert.equal(form1.snapshot.templateVersion,1);
+    assert.equal(form1.snapshot.templateVersion,2);
     assert.equal(form1.snapshot.sha256.length,64);
     assert.equal(form1.payload.booking.patientName,"Пацієнт Оригінальний");
     assert.equal(form1.payload.booking.service,"КТ ОГК");
     assert.equal(form1.payload.payment.amount,2800);
+    assert.equal(form1.payload.cashAccount.code,"BANK-UAH");
 
     await db.prepare(
       "UPDATE bookings SET name='Пацієнт Перейменований' WHERE organization_id=1 AND id=?"
@@ -54,14 +55,8 @@ test("posted payment receipt reuses its immutable historical snapshot",async()=>
     assert.equal(form2.payload.booking.patientName,"Пацієнт Оригінальний");
     assert.equal(form2.payload.booking.service,"КТ ОГК");
 
-    assert.throws(
-      ()=>raw.prepare("UPDATE printed_form_snapshots SET generated_by='tamper@example.com' WHERE id=?").run(form1.snapshot.id),
-      /printed_form_snapshot_immutable/,
-    );
-    assert.throws(
-      ()=>raw.prepare("DELETE FROM printed_form_snapshots WHERE id=?").run(form1.snapshot.id),
-      /printed_form_snapshot_immutable/,
-    );
+    assert.throws(()=>raw.prepare("UPDATE printed_form_snapshots SET generated_by='tamper@example.com' WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
+    assert.throws(()=>raw.prepare("DELETE FROM printed_form_snapshots WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
   });
 });
 
@@ -83,6 +78,7 @@ test("refund receipt snapshots the original payment document as its source",asyn
     assert.equal(form.payload.document.documentType,"refund");
     assert.equal(form.payload.sourceDocument.documentType,"payment");
     assert.match(form.payload.sourceDocument.number,/^ОП-\d{6}$/);
+    assert.equal(form.payload.cashAccount.code,"BANK-UAH");
     assert.notEqual(returned.documentId,paid.documentId);
   });
 });
@@ -99,16 +95,9 @@ test("finance receipt snapshots are tenant scoped",async()=>{
     assert.equal(printed.status,201);
     const {snapshot}=await printed.json();
 
-    const foreign=await callWorker(new Request(
-      `http://localhost/api/staff/finance/print?snapshotId=${snapshot.id}`,
-      {headers:{cookie:org1}},
-    ),db);
+    const foreign=await callWorker(new Request(`http://localhost/api/staff/finance/print?snapshotId=${snapshot.id}`,{headers:{cookie:org1}}),db);
     assert.equal(foreign.status,404);
-
-    const own=await callWorker(new Request(
-      `http://localhost/api/staff/finance/print?snapshotId=${snapshot.id}`,
-      {headers:{cookie:org2}},
-    ),db);
+    const own=await callWorker(new Request(`http://localhost/api/staff/finance/print?snapshotId=${snapshot.id}`,{headers:{cookie:org2}}),db);
     assert.equal(own.status,200);
   });
 });
