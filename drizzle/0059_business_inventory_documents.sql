@@ -1,5 +1,3 @@
--- BAS-style business document registrar + first warehouse document lines.
--- Legacy inventory movements stay unlinked (document_id/document_line_id NULL): no inference/backfill.
 CREATE TABLE IF NOT EXISTS `business_documents` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `organization_id` integer NOT NULL,
@@ -68,8 +66,6 @@ CREATE INDEX IF NOT EXISTS `inventory_movements_document_idx`
   ON `inventory_movements` (`organization_id`,`document_id`,`id`) WHERE `document_id` IS NOT NULL;
 --> statement-breakpoint
 
--- Versioned generated forms. payload_json is the immutable render snapshot; storage_key is reserved
--- for a persisted PDF/file representation when object storage is attached.
 CREATE TABLE IF NOT EXISTS `printed_form_snapshots` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `organization_id` integer NOT NULL,
@@ -94,8 +90,6 @@ CREATE INDEX IF NOT EXISTS `printed_form_snapshots_document_idx`
   ON `printed_form_snapshots` (`organization_id`,`document_id`,`id` DESC);
 --> statement-breakpoint
 
--- A warehouse line must point to a warehouse document in the same tenant and its referenced records
--- must also belong to that tenant. This protects against API filter mistakes.
 CREATE TRIGGER IF NOT EXISTS `inventory_document_lines_tenant_insert`
 BEFORE INSERT ON `inventory_document_lines`
 BEGIN
@@ -135,8 +129,6 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Posted/cancelled/reversed documents are immutable. The only post-state transition allowed here
--- is posted -> reversed, with all business facts preserved.
 CREATE TRIGGER IF NOT EXISTS `business_documents_immutable_after_draft`
 BEFORE UPDATE ON `business_documents`
 WHEN OLD.state <> 'draft'
@@ -163,7 +155,6 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Lines can only be changed while their registrar is a draft.
 CREATE TRIGGER IF NOT EXISTS `inventory_document_lines_draft_insert`
 BEFORE INSERT ON `inventory_document_lines`
 WHEN NOT EXISTS (SELECT 1 FROM `business_documents` d WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.state='draft')
@@ -180,7 +171,6 @@ WHEN NOT EXISTS (SELECT 1 FROM `business_documents` d WHERE d.id=OLD.document_id
 BEGIN SELECT RAISE(ABORT,'inventory_document_not_draft'); END;
 --> statement-breakpoint
 
--- New linked movements must reference the exact tenant/document/line and can only be created by a posted registrar.
 CREATE TRIGGER IF NOT EXISTS `inventory_movement_document_integrity`
 BEFORE INSERT ON `inventory_movements`
 WHEN NEW.document_id IS NOT NULL OR NEW.document_line_id IS NOT NULL
@@ -198,7 +188,6 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Generated forms are evidence: snapshots are append-only.
 CREATE TRIGGER IF NOT EXISTS `printed_form_snapshots_no_update`
 BEFORE UPDATE ON `printed_form_snapshots`
 BEGIN SELECT RAISE(ABORT,'printed_form_snapshot_immutable'); END;
