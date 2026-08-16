@@ -61,6 +61,16 @@ WHEN NOT EXISTS (
   AND (NEW.destination_warehouse_id IS NOT NULL OR NEW.destination_warehouse_code<>'' OR NEW.destination_warehouse_name<>'')
 BEGIN SELECT RAISE(ABORT,'inventory_destination_not_allowed'); END;
 --> statement-breakpoint
+CREATE TRIGGER `inventory_nontransfer_destination_update`
+BEFORE UPDATE OF `organization_id`,`document_id`,`destination_warehouse_id`,`destination_warehouse_code`,`destination_warehouse_name`
+ON `inventory_document_lines`
+WHEN NOT EXISTS (
+  SELECT 1 FROM business_documents d
+  WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.document_type='inventory_transfer'
+)
+  AND (NEW.destination_warehouse_id IS NOT NULL OR NEW.destination_warehouse_code<>'' OR NEW.destination_warehouse_name<>'')
+BEGIN SELECT RAISE(ABORT,'inventory_destination_not_allowed'); END;
+--> statement-breakpoint
 
 -- Receipt/writeoff have one movement per document line; transfer intentionally has transfer_out + transfer_in.
 DROP INDEX IF EXISTS `inventory_movements_document_line_idx`;
