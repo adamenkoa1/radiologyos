@@ -118,6 +118,9 @@ export async function DELETE(request: Request) {
     if (message === "paid_payment_not_found") {
       return Response.json({ error: "Немає підтвердженої оплати для повернення" }, { status: 409 });
     }
+    if (message === "refund_already_claimed") {
+      return Response.json({ error: "Для цього платежу вже створюється або існує документ повернення" }, { status: 409 });
+    }
     if (message === "payment_reference_conflict") {
       return Response.json({ error: "Повернення конфліктує з уже проведеним фінансовим документом" }, { status: 409 });
     }
