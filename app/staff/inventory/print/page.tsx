@@ -3,11 +3,12 @@
 import { useEffect,useState } from "react";
 
 type PrintLine={lineNo:number;itemId:number;itemName:string;unit:string;warehouseId?:number;warehouseCode?:string;warehouseName?:string;lotNumber:string;expiresOn:string;supplier:string;quantity:number;reason:string;bookingId:number|null};
-type PrintPayload={templateVersion:number;formType:"inventory_receipt"|"inventory_writeoff";organization:{name:string};document:{id:number;number:string;documentType:string;occurredAt:string;state:string;comment:string;createdBy:string;createdAt:string;postedBy:string;postedAt:string};lines:PrintLine[]};
+type Transfer={sourceWarehouseId:number;sourceWarehouseCode:string;sourceWarehouseName:string;destinationWarehouseId:number;destinationWarehouseCode:string;destinationWarehouseName:string};
+type PrintPayload={templateVersion:number;formType:"inventory_receipt"|"inventory_writeoff"|"inventory_transfer";organization:{name:string};document:{id:number;number:string;documentType:string;occurredAt:string;state:string;comment:string;createdBy:string;createdAt:string;postedBy:string;postedAt:string};transfer:Transfer|null;lines:PrintLine[]};
 type Snapshot={id:number;documentId:number;formType:string;templateVersion:number;generatedBy:string;generatedAt:string;storageKey:string;sha256:string};
 type ResponsePayload={snapshot:Snapshot;payload:PrintPayload;error?:string};
 
-const TYPE_UK={inventory_receipt:"Надходження матеріалів",inventory_writeoff:"Списання матеріалів"} as const;
+const TYPE_UK={inventory_receipt:"Надходження матеріалів",inventory_writeoff:"Списання матеріалів",inventory_transfer:"Переміщення між складами"} as const;
 const STATE_UK:Record<string,string>={draft:"ЧЕРНЕТКА",posted:"Проведено",reversed:"Сторновано",cancelled:"Скасовано"};
 function fmt(n:number){return Number(n||0).toLocaleString("uk-UA",{maximumFractionDigits:2});}
 function fmtDate(v:string){const d=new Date(v);return Number.isNaN(d.getTime())?v:d.toLocaleString("uk-UA",{dateStyle:"medium",timeStyle:"short"});}
@@ -35,6 +36,7 @@ export default function InventoryPrintPage(){
   if(!data)return <main className="inventoryPrintPage"><div className="inventoryPrintSheet"><p>Формування друкованої форми…</p></div></main>;
   const {payload,snapshot}=data;
   const isDraft=payload.document.state==="draft";
+  const isTransfer=payload.formType==="inventory_transfer";
   return <main className="inventoryPrintPage">
     <div className="inventoryPrintToolbar"><button onClick={()=>window.close()}>Закрити</button><button onClick={()=>window.print()}>Друкувати / PDF</button></div>
     <article className="inventoryPrintSheet">
@@ -44,9 +46,13 @@ export default function InventoryPrintPage(){
         <div><span>Створив</span><b>{payload.document.createdBy}</b></div><div><span>Стан</span><b>{STATE_UK[payload.document.state]||payload.document.state}</b></div>
         {payload.document.postedBy&&<><div><span>Провів</span><b>{payload.document.postedBy}</b></div><div><span>Проведено</span><b>{fmtDate(payload.document.postedAt)}</b></div></>}
       </section>
+      {isTransfer&&payload.transfer&&<section className="inventoryPrintMeta">
+        <div><span>Зі складу</span><b>{payload.transfer.sourceWarehouseName}</b><small>{payload.transfer.sourceWarehouseCode||"без коду"}</small></div>
+        <div><span>На склад</span><b>{payload.transfer.destinationWarehouseName}</b><small>{payload.transfer.destinationWarehouseCode||"без коду"}</small></div>
+      </section>}
       {payload.document.comment&&<p><b>Примітка:</b> {payload.document.comment}</p>}
-      <table><thead><tr><th>№</th><th>Склад</th><th>Матеріал</th><th>Партія / термін</th><th>Постачальник</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>
-        {payload.lines.map(l=><tr key={l.lineNo}><td>{l.lineNo}</td><td><b>{l.warehouseName||"—"}</b>{l.warehouseCode?<><br/><small>{l.warehouseCode}</small></>:null}</td><td><b>{l.itemName}</b></td><td>{l.lotNumber||"—"}{l.expiresOn?<><br/><small>до {l.expiresOn}</small></>:null}</td><td>{l.supplier||"—"}</td><td className="num">{fmt(l.quantity)} {l.unit}</td><td>{l.reason||"—"}{l.bookingId?<><br/><small>дослідження #{l.bookingId}</small></>:null}</td></tr>)}
+      <table><thead><tr><th>№</th>{!isTransfer&&<th>Склад</th>}<th>Матеріал</th><th>Партія / термін</th><th>Постачальник</th><th>Кількість</th><th>Підстава</th></tr></thead><tbody>
+        {payload.lines.map(l=><tr key={l.lineNo}><td>{l.lineNo}</td>{!isTransfer&&<td><b>{l.warehouseName||"—"}</b>{l.warehouseCode?<><br/><small>{l.warehouseCode}</small></>:null}</td>}<td><b>{l.itemName}</b></td><td>{l.lotNumber||"—"}{l.expiresOn?<><br/><small>до {l.expiresOn}</small></>:null}</td><td>{l.supplier||"—"}</td><td className="num">{fmt(l.quantity)} {l.unit}</td><td>{l.reason||"—"}{l.bookingId?<><br/><small>дослідження #{l.bookingId}</small></>:null}</td></tr>)}
       </tbody></table>
       <section className="inventoryPrintFooter"><div><span>Відповідальний</span><div className="inventoryPrintSignature"/></div><div><span>Підпис</span><div className="inventoryPrintSignature"/></div></section>
       <p className="inventoryPrintVersion">Форма v{snapshot.templateVersion} · snapshot #{snapshot.id} · SHA-256 {snapshot.sha256.slice(0,12)}…</p>
