@@ -45,12 +45,19 @@ WHEN NEW.status='completed' AND NEW.performed_at<>''
       AND d.document_type='service_delivery' AND d.state IN ('draft','posted')
   )
 BEGIN
+  -- Number every service-delivery document from the business-document sequence itself.
+  -- This keeps automatic and explicit/legacy posting in one collision-free journal.
   INSERT INTO `business_documents`
     (`organization_id`,`document_type`,`number`,`occurred_at`,`state`,`comment`,`created_by`)
   VALUES (
-    NEW.organization_id,'service_delivery',printf('НП-%06d',NEW.id),NEW.performed_at,'draft',
+    NEW.organization_id,'service_delivery','',NEW.performed_at,'draft',
     'Автоматично з факту виконання дослідження','system:execution'
   );
+
+  UPDATE `business_documents`
+  SET number=printf('НП-%06d',id)
+  WHERE id=last_insert_rowid() AND organization_id=NEW.organization_id
+    AND document_type='service_delivery' AND state='draft' AND number='';
 
   INSERT INTO `service_delivery_details`
     (`organization_id`,`document_id`,`booking_id`,`patient_id`,`patient_category`,`service_code`,`service_title`,
@@ -62,13 +69,17 @@ BEGIN
     NEW.assigned_radiologist_email,NEW.assigned_radiographer_email,NEW.payment_amount,
     CASE WHEN NEW.patient_category='civilian' THEN NEW.payment_amount ELSE 0 END,'UAH'
   FROM `business_documents` d
-  WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='draft';
+  WHERE d.id=last_insert_rowid() AND d.organization_id=NEW.organization_id
+    AND d.document_type='service_delivery' AND d.state='draft';
 
   UPDATE `business_documents`
   SET state='posted',posted_by='system:execution',posted_at=CURRENT_TIMESTAMP
-  WHERE organization_id=NEW.organization_id AND document_type='service_delivery'
-    AND number=printf('НП-%06d',NEW.id) AND state='draft';
+  WHERE organization_id=NEW.organization_id AND document_type='service_delivery' AND state='draft'
+    AND id=(
+      SELECT s.document_id FROM `service_delivery_details` s
+      WHERE s.organization_id=NEW.organization_id AND s.booking_id=NEW.id
+      ORDER BY s.document_id DESC LIMIT 1
+    );
 
   INSERT INTO `services_delivered_movements`
     (`organization_id`,`document_id`,`booking_id`,`patient_id`,`service_code`,`equipment_id`,`quantity`,
@@ -76,16 +87,18 @@ BEGIN
   SELECT NEW.organization_id,d.id,NEW.id,NEW.patient_id,NEW.service_code,NEW.equipment_id,1,
          NEW.anatomical_regions_count,NEW.performed_at,'system:execution',NEW.performed_at
   FROM `business_documents` d
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
   WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted';
+    AND s.booking_id=NEW.id AND d.state='posted';
 
   INSERT INTO `equipment_load_movements`
     (`organization_id`,`document_id`,`booking_id`,`equipment_id`,`minutes_delta`,`performed_at`,`actor_email`,`occurred_at`)
   SELECT NEW.organization_id,d.id,NEW.id,NEW.equipment_id,NEW.duration_minutes,NEW.performed_at,
          'system:execution',NEW.performed_at
   FROM `business_documents` d
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
   WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted';
+    AND s.booking_id=NEW.id AND d.state='posted';
 
   INSERT INTO `revenue_movements`
     (`organization_id`,`document_id`,`booking_id`,`patient_id`,`service_code`,`movement_type`,`amount_delta`,
@@ -93,8 +106,9 @@ BEGIN
   SELECT NEW.organization_id,d.id,NEW.id,NEW.patient_id,NEW.service_code,'service_delivery',NEW.payment_amount,
          'UAH','system:execution',NEW.performed_at
   FROM `business_documents` d
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
   WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted'
+    AND s.booking_id=NEW.id AND d.state='posted'
     AND NEW.patient_category='civilian' AND NEW.payment_amount>0;
 
   INSERT INTO `patient_settlement_movements`
@@ -103,8 +117,9 @@ BEGIN
   SELECT NEW.organization_id,d.id,NEW.id,NEW.patient_id,'charge',NEW.payment_amount,'UAH',
          'system:execution',NEW.performed_at
   FROM `business_documents` d
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
   WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted'
+    AND s.booking_id=NEW.id AND d.state='posted'
     AND NEW.patient_category='civilian' AND NEW.payment_amount>0;
 
   INSERT INTO `staff_output_movements`
@@ -113,8 +128,9 @@ BEGIN
   SELECT NEW.organization_id,d.id,NEW.id,NEW.assigned_radiologist_email,'radiologist',1,
          NEW.anatomical_regions_count,NEW.performed_at,'system:execution',NEW.performed_at
   FROM `business_documents` d
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
   WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted'
+    AND s.booking_id=NEW.id AND d.state='posted'
     AND NEW.assigned_radiologist_email<>'';
 
   INSERT INTO `staff_output_movements`
@@ -123,7 +139,8 @@ BEGIN
   SELECT NEW.organization_id,d.id,NEW.id,NEW.assigned_radiographer_email,'radiographer',1,
          NEW.anatomical_regions_count,NEW.performed_at,'system:execution',NEW.performed_at
   FROM `business_documents` d
-  WHERE d.organization_id=NEW.organization_id AND d.document_type='service_delivery'
-    AND d.number=printf('НП-%06d',NEW.id) AND d.state='posted'
+  JOIN `service_delivery_details` s ON s.document_id=d.id AND s.organization_id=d.organization_id
+  WHERE d.organization_id=NEW.organizationId AND d.document_type='service_delivery'
+    AND s.booking_id=NEW.id AND d.state='posted'
     AND NEW.assigned_radiographer_email<>'';
 END;
