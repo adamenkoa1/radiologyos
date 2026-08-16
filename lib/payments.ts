@@ -1,11 +1,19 @@
+import {
+  cleanupFinanceDocumentDraft,
+  createFinanceDocumentDraft,
+  financePostingStatements,
+} from "./finance-documents";
+
 export type PaymentTransactionStatus = "pending" | "paid" | "failed" | "refunded" | "cancelled";
 
 export interface PaymentBookingSnapshot {
   id: number;
   organizationId: number;
   code: string;
+  patientId: string;
   paymentAmount: number;
   paymentStatus: string;
+  paymentMethod: string;
   paidAmount: number;
   serviceCode: string;
   patientCategory: string;
@@ -40,9 +48,9 @@ export async function paymentBookingSnapshot(
   bookingId: number,
 ): Promise<PaymentBookingSnapshot | null> {
   const row = await db.prepare(
-    `SELECT id, organization_id AS organizationId, code,
+    `SELECT id, organization_id AS organizationId, code, patient_id AS patientId,
       payment_amount AS paymentAmount, payment_status AS paymentStatus,
-      paid_amount AS paidAmount, service_code AS serviceCode,
+      payment_method AS paymentMethod, paid_amount AS paidAmount, service_code AS serviceCode,
       patient_category AS patientCategory
      FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1`,
   ).bind(organizationId, bookingId).first<PaymentBookingSnapshot>();
@@ -70,7 +78,8 @@ export async function createPendingPayment(
   if (providerReference) {
     const existing = await db.prepare(
       `SELECT id, booking_id AS bookingId, amount, currency, provider, provider_reference AS providerReference,
-        status, created_at AS createdAt, paid_at AS paidAt, refunded_at AS refundedAt
+        status, payment_document_id AS paymentDocumentId, refund_document_id AS refundDocumentId,
+        created_at AS createdAt, paid_at AS paidAt, refunded_at AS refundedAt
        FROM payment_transactions
        WHERE organization_id = ? AND provider = ? AND provider_reference = ? LIMIT 1`,
     ).bind(input.organizationId, provider, providerReference).first<Record<string, unknown>>();
@@ -82,6 +91,8 @@ export async function createPendingPayment(
     }
   }
 
+  // A public/payment-provider initiation is not yet an economic fact. It remains a technical
+  // pending transaction until a trusted settlement path confirms that money actually arrived.
   const result = await db.prepare(
     `INSERT INTO payment_transactions
       (organization_id, booking_id, amount, currency, provider, provider_reference, status)
@@ -104,10 +115,34 @@ export async function createPendingPayment(
       provider,
       providerReference,
       status: "pending" as const,
+      paymentDocumentId: null,
+      refundDocumentId: null,
     },
     created: true,
     booking,
   };
+}
+
+type ExistingManualPayment = {
+  id: number;
+  bookingId: number;
+  amount: number;
+  status: string;
+  paymentDocumentId: number | null;
+  refundDocumentId: number | null;
+};
+
+async function existingManualPayment(
+  db: PaymentLedgerDb,
+  organizationId: number,
+  providerReference: string,
+) {
+  return db.prepare(
+    `SELECT id, booking_id AS bookingId, amount, status,
+            payment_document_id AS paymentDocumentId, refund_document_id AS refundDocumentId
+     FROM payment_transactions
+     WHERE organization_id = ? AND provider = 'manual' AND provider_reference = ? LIMIT 1`,
+  ).bind(organizationId, providerReference).first<ExistingManualPayment>();
 }
 
 export async function recordManualPayment(
@@ -125,56 +160,107 @@ export async function recordManualPayment(
   if (!Number.isInteger(booking.paymentAmount) || booking.paymentAmount <= 0) throw new Error("invalid_booking_amount");
 
   const providerReference = cleanReference(input.providerReference || `manual:${booking.code}`);
-  const existing = await db.prepare(
-    `SELECT id, booking_id AS bookingId, amount, status
-     FROM payment_transactions
-     WHERE organization_id = ? AND provider = 'manual' AND provider_reference = ? LIMIT 1`,
-  ).bind(input.organizationId, providerReference).first<{ id: number; bookingId: number; amount: number; status: string }>();
+  const existing = await existingManualPayment(db, input.organizationId, providerReference);
 
   if (existing) {
     if (existing.bookingId !== booking.id || existing.amount !== booking.paymentAmount) {
       throw new Error("payment_reference_conflict");
     }
-    if (existing.status === "paid" && booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
-      return { id: existing.id, created: false, changed: false, booking };
+    if (existing.status === "refunded" || existing.refundDocumentId) {
+      throw new Error("payment_reference_conflict");
     }
+    if (existing.status === "paid" && booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
+      return {
+        id: existing.id,
+        created: false,
+        changed: false,
+        booking,
+        documentId: existing.paymentDocumentId || null,
+        legacy: !existing.paymentDocumentId,
+      };
+    }
+    if (existing.paymentDocumentId) throw new Error("payment_reference_conflict");
   }
 
   const method = input.method.trim().slice(0, 40) || "other";
-  const nowExpr = "CURRENT_TIMESTAMP";
-  const statements = existing
-    ? [
-        db.prepare(
-          `UPDATE payment_transactions SET status = 'paid', paid_at = ${nowExpr}, updated_at = ${nowExpr}
-           WHERE organization_id = ? AND id = ?`,
-        ).bind(input.organizationId, existing.id),
-        db.prepare(
-          `UPDATE bookings SET payment_status = 'paid', paid_amount = payment_amount, payment_method = ?
-           WHERE organization_id = ? AND id = ?`,
-        ).bind(method, input.organizationId, booking.id),
-        db.prepare(
-          `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
-           VALUES (?, ?, 'payment_confirmed', ?, ?)`,
-        ).bind(input.organizationId, booking.id, `manual · ${booking.paymentAmount} UAH · ${method}`, input.actor),
-      ]
-    : [
-        db.prepare(
-          `INSERT INTO payment_transactions
-            (organization_id, booking_id, amount, currency, provider, provider_reference, status, paid_at)
-           VALUES (?, ?, ?, 'UAH', 'manual', ?, 'paid', ${nowExpr})`,
-        ).bind(input.organizationId, booking.id, booking.paymentAmount, providerReference),
-        db.prepare(
-          `UPDATE bookings SET payment_status = 'paid', paid_amount = payment_amount, payment_method = ?
-           WHERE organization_id = ? AND id = ?`,
-        ).bind(method, input.organizationId, booking.id),
-        db.prepare(
-          `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
-           VALUES (?, ?, 'payment_confirmed', ?, ?)`,
-        ).bind(input.organizationId, booking.id, `manual · ${booking.paymentAmount} UAH · ${method}`, input.actor),
-      ];
+  const financeDb = db as unknown as D1Database;
+  const finance = await createFinanceDocumentDraft(financeDb, {
+    organizationId: input.organizationId,
+    bookingId: booking.id,
+    actorEmail: input.actor,
+    type: "payment",
+    amount: booking.paymentAmount,
+    currency: "UAH",
+    method,
+    provider: "manual",
+    providerReference,
+    comment: `Оплата за заявкою ${booking.code}`,
+  });
 
-  await db.batch(statements);
-  return { id: existing?.id || 0, created: !existing, changed: true, booking };
+  const nowExpr = "CURRENT_TIMESTAMP";
+  const statements: unknown[] = [
+    ...financePostingStatements(financeDb, finance, input.actor),
+    ...(existing
+      ? [db.prepare(
+          `UPDATE payment_transactions
+           SET status = 'paid', paid_at = ${nowExpr}, updated_at = ${nowExpr}, payment_document_id = ?
+           WHERE organization_id = ? AND id = ? AND payment_document_id IS NULL`,
+        ).bind(finance.document.id, input.organizationId, existing.id)]
+      : [db.prepare(
+          `INSERT INTO payment_transactions
+            (organization_id, booking_id, amount, currency, provider, provider_reference, status, paid_at, payment_document_id)
+           VALUES (?, ?, ?, 'UAH', 'manual', ?, 'paid', ${nowExpr}, ?)`,
+        ).bind(input.organizationId, booking.id, booking.paymentAmount, providerReference, finance.document.id)]),
+    db.prepare(
+      `UPDATE bookings SET payment_status = 'paid', paid_amount = payment_amount, payment_method = ?
+       WHERE organization_id = ? AND id = ?`,
+    ).bind(method, input.organizationId, booking.id),
+    db.prepare(
+      `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
+       VALUES (?, ?, 'payment_confirmed', ?, ?)`,
+    ).bind(
+      input.organizationId,
+      booking.id,
+      `manual · ${booking.paymentAmount} UAH · ${method} · document:${finance.document.number}`,
+      input.actor,
+    ),
+  ];
+
+  try {
+    await db.batch(statements);
+  } catch (error) {
+    await cleanupFinanceDocumentDraft(financeDb, input.organizationId, finance.document.id);
+    const message = String(error).toLowerCase();
+    if (message.includes("unique")) {
+      const race = await existingManualPayment(db, input.organizationId, providerReference);
+      const refreshed = await paymentBookingSnapshot(db, input.organizationId, booking.id);
+      if (
+        race?.status === "paid" && race.bookingId === booking.id && race.amount === booking.paymentAmount
+        && refreshed?.paymentStatus === "paid" && refreshed.paidAmount === refreshed.paymentAmount
+      ) {
+        return {
+          id: race.id,
+          created: false,
+          changed: false,
+          booking: refreshed,
+          documentId: race.paymentDocumentId || null,
+          legacy: !race.paymentDocumentId,
+        };
+      }
+    }
+    throw error;
+  }
+
+  const refreshed = await paymentBookingSnapshot(db, input.organizationId, booking.id) || booking;
+  const transaction = await existingManualPayment(db, input.organizationId, providerReference);
+  return {
+    id: transaction?.id || existing?.id || 0,
+    created: !existing,
+    changed: true,
+    booking: refreshed,
+    documentId: finance.document.id,
+    legacy: false,
+  };
 }
 
 export async function latestPaymentForBooking(
@@ -184,6 +270,7 @@ export async function latestPaymentForBooking(
 ) {
   return db.prepare(
     `SELECT id, amount, currency, provider, provider_reference AS providerReference, status,
+      payment_document_id AS paymentDocumentId, refund_document_id AS refundDocumentId,
       created_at AS createdAt, paid_at AS paidAt, refunded_at AS refundedAt
      FROM payment_transactions
      WHERE organization_id = ? AND booking_id = ?
