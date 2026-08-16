@@ -2,14 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
-async function seedBooking(db,code,amount) {
+async function seedBooking(db,code,amount,desiredTime) {
   const result=await db.prepare(
     `INSERT INTO bookings (
       organization_id,code,name,phone,phone_normalized,service,service_code,equipment_id,
       duration_minutes,desired_date,desired_time,patient_category,payment_status,payment_amount,paid_amount,status
      ) VALUES (1,?,'Crosslink Patient','+380501112233','380501112233','КТ ОГК','ct-chest','ct',30,
-       '2026-08-20','15:00','civilian','pending',?,0,'confirmed')`
-  ).bind(code,amount).run();
+       '2026-08-20',?,'civilian','pending',?,0,'confirmed')`
+  ).bind(code,desiredTime,amount).run();
   return Number(result.meta.last_row_id);
 }
 
@@ -24,8 +24,8 @@ async function pay(db,cookie,bookingId,reference) {
 test("refund source document must belong to the exact source payment transaction",async()=>{
   await withD1(async(db,raw)=>{
     const cookie=await seedStaffSession(db,{email:"crosslink@example.com",role:"registrar",organizationId:1});
-    const bookingA=await seedBooking(db,"RD-CROSS-A",1400);
-    const bookingB=await seedBooking(db,"RD-CROSS-B",1600);
+    const bookingA=await seedBooking(db,"RD-CROSS-A",1400,"15:00");
+    const bookingB=await seedBooking(db,"RD-CROSS-B",1600,"16:00");
     const paymentA=await pay(db,cookie,bookingA,"CROSS-PAY-A");
     const paymentB=await pay(db,cookie,bookingB,"CROSS-PAY-B");
     const txA=raw.prepare(
@@ -51,8 +51,10 @@ test("refund source document must belong to the exact source payment transaction
        (organization_id,document_id,booking_id,amount,currency,method,provider,provider_reference,source_document_id,source_transaction_id)
        VALUES (1,?,?,?,'UAH','bank_transfer','manual','CROSS-PAY-A',?,?)`
     ).run(refundId,bookingA,txA.amount,paymentA.documentId,txA.id);
-    assert.equal(raw.prepare(
+    const stored=raw.prepare(
       "SELECT source_document_id AS sourceDocumentId,source_transaction_id AS sourceTransactionId FROM finance_document_details WHERE document_id=?"
-    ).get(refundId).sourceDocumentId,paymentA.documentId);
+    ).get(refundId);
+    assert.equal(stored.sourceDocumentId,paymentA.documentId);
+    assert.equal(stored.sourceTransactionId,txA.id);
   });
 });
