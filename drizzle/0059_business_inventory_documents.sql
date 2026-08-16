@@ -93,20 +93,22 @@ CREATE INDEX IF NOT EXISTS `printed_form_snapshots_document_idx`
 CREATE TRIGGER IF NOT EXISTS `inventory_document_lines_tenant_insert`
 BEFORE INSERT ON `inventory_document_lines`
 BEGIN
-  SELECT CASE WHEN NOT EXISTS (
-    SELECT 1 FROM `business_documents` d
-    WHERE d.id = NEW.document_id AND d.organization_id = NEW.organization_id
-      AND d.document_type IN ('inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count')
-  ) THEN RAISE(ABORT,'inventory_document_tenant_mismatch') END;
-  SELECT CASE WHEN NOT EXISTS (
-    SELECT 1 FROM `inventory_items` i WHERE i.id = NEW.item_id AND i.organization_id = NEW.organization_id
-  ) THEN RAISE(ABORT,'inventory_item_tenant_mismatch') END;
-  SELECT CASE WHEN NEW.lot_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM `inventory_lots` l WHERE l.id = NEW.lot_id AND l.organization_id = NEW.organization_id AND l.item_id = NEW.item_id
-  ) THEN RAISE(ABORT,'inventory_lot_tenant_mismatch') END;
-  SELECT CASE WHEN NEW.booking_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM `bookings` b WHERE b.id = NEW.booking_id AND b.organization_id = NEW.organization_id
-  ) THEN RAISE(ABORT,'inventory_booking_tenant_mismatch') END;
+  SELECT CASE
+    WHEN NOT EXISTS (
+      SELECT 1 FROM `business_documents` d
+      WHERE d.id = NEW.document_id AND d.organization_id = NEW.organization_id
+        AND d.document_type IN ('inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count')
+    ) THEN RAISE(ABORT,'inventory_document_tenant_mismatch')
+    WHEN NOT EXISTS (
+      SELECT 1 FROM `inventory_items` i WHERE i.id = NEW.item_id AND i.organization_id = NEW.organization_id
+    ) THEN RAISE(ABORT,'inventory_item_tenant_mismatch')
+    WHEN NEW.lot_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM `inventory_lots` l WHERE l.id = NEW.lot_id AND l.organization_id = NEW.organization_id AND l.item_id = NEW.item_id
+    ) THEN RAISE(ABORT,'inventory_lot_tenant_mismatch')
+    WHEN NEW.booking_id IS NOT NULL AND NOT EXISTS (
+      SELECT 1 FROM `bookings` b WHERE b.id = NEW.booking_id AND b.organization_id = NEW.organization_id
+    ) THEN RAISE(ABORT,'inventory_booking_tenant_mismatch')
+  END;
 END;
 --> statement-breakpoint
 
@@ -175,16 +177,19 @@ CREATE TRIGGER IF NOT EXISTS `inventory_movement_document_integrity`
 BEFORE INSERT ON `inventory_movements`
 WHEN NEW.document_id IS NOT NULL OR NEW.document_line_id IS NOT NULL
 BEGIN
-  SELECT CASE WHEN NEW.document_id IS NULL OR NEW.document_line_id IS NULL THEN RAISE(ABORT,'inventory_document_link_incomplete') END;
-  SELECT CASE WHEN NOT EXISTS (
-    SELECT 1
-    FROM `business_documents` d
-    JOIN `inventory_document_lines` l
-      ON l.document_id=d.id AND l.organization_id=d.organization_id
-    WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.state='posted'
-      AND l.id=NEW.document_line_id AND l.item_id=NEW.item_id
-      AND (l.lot_id IS NULL OR l.lot_id=NEW.lot_id)
-  ) THEN RAISE(ABORT,'inventory_document_link_invalid') END;
+  SELECT CASE
+    WHEN NEW.document_id IS NULL OR NEW.document_line_id IS NULL
+      THEN RAISE(ABORT,'inventory_document_link_incomplete')
+    WHEN NOT EXISTS (
+      SELECT 1
+      FROM `business_documents` d
+      JOIN `inventory_document_lines` l
+        ON l.document_id=d.id AND l.organization_id=d.organization_id
+      WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.state='posted'
+        AND l.id=NEW.document_line_id AND l.item_id=NEW.item_id
+        AND (l.lot_id IS NULL OR l.lot_id=NEW.lot_id)
+    ) THEN RAISE(ABORT,'inventory_document_link_invalid')
+  END;
 END;
 --> statement-breakpoint
 
