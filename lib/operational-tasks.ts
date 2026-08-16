@@ -1,3 +1,5 @@
+import { stateLabel } from "./study-state";
+
 type Candidate = {
   organizationId:number;
   key:string;
@@ -5,15 +7,47 @@ type Candidate = {
   details:string;
   priority:"normal"|"high";
   dueDate:string;
+  bookingId:number|null;
   assignedEmail:string;
-  sourceEntityType:"inventory_item"|"equipment_maintenance";
+  sourceEntityType:"inventory_item"|"equipment_maintenance"|"booking";
   sourceEntityId:string;
+};
+
+type BookingCandidateRow = {
+  id:number;
+  status:string;
+  desiredDate:string;
+  assignedRadiologistEmail:string;
+  assignedRadiographerEmail:string;
+};
+
+type ClinicalHandoff = {
+  stage:"verification"|"acquisition"|"reporting"|"issuance";
+  title:string;
+  priority:"normal"|"high";
+  assignee:""|"radiologist"|"radiographer";
 };
 
 function kyivDate(now:number) {
   return new Intl.DateTimeFormat("en-CA",{
     timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit",
   }).format(new Date(now));
+}
+
+function clinicalHandoff(status:string):ClinicalHandoff|null {
+  if(status==="new"||status==="requested"||status==="needs_verification") {
+    return {stage:"verification",title:"Перевірити заявку на дослідження",priority:"normal",assignee:""};
+  }
+  if(status==="arrived"||status==="queued"||status==="in_progress") {
+    return {stage:"acquisition",title:"Провести дослідження",priority:"normal",assignee:"radiographer"};
+  }
+  if(status==="performed"||status==="images_ready"||status==="reporting") {
+    return {stage:"reporting",title:"Підготувати протокол дослідження",priority:"high",assignee:"radiologist"};
+  }
+  if(status==="protocol_ready") {
+    return {stage:"issuance",title:"Видати готовий результат",priority:"normal",assignee:""};
+  }
+  return null;
 }
 
 async function auditAutomation(
@@ -45,7 +79,7 @@ async function activeAssignee(db:D1Database,organizationId:number,email:string) 
 }
 
 async function candidatesForOrg(db:D1Database,organizationId:number,today:string):Promise<Candidate[]> {
-  const [inventory,maintenance]=await Promise.all([
+  const [inventory,maintenance,bookings]=await Promise.all([
     db.prepare(`SELECT i.id,i.name,i.unit,i.min_stock AS minStock,
         COALESCE(SUM(m.quantity_delta),0) AS stock
       FROM inventory_items i
@@ -63,6 +97,16 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
           OR (event_type IN ('fault','repair') AND downtime_start<>'' AND downtime_end=''))
       ORDER BY id`)
       .bind(organizationId,today).all<{id:number;equipmentId:string;eventType:string;title:string;assignedEmail:string;dueDate:string;downtimeStart:string}>(),
+    db.prepare(`SELECT id,status,desired_date AS desiredDate,
+        assigned_radiologist_email AS assignedRadiologistEmail,
+        assigned_radiographer_email AS assignedRadiographerEmail
+      FROM bookings
+      WHERE organization_id=? AND status IN (
+        'new','requested','needs_verification','arrived','queued','in_progress',
+        'performed','images_ready','reporting','protocol_ready'
+      )
+      ORDER BY id`)
+      .bind(organizationId).all<BookingCandidateRow>(),
   ]);
 
   const out:Candidate[]=[];
@@ -71,7 +115,7 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
       organizationId,key:`inventory:low:${item.id}`,
       title:`Поповнити запас: ${item.name}`,
       details:`Поточний залишок: ${Number(item.stock)} ${item.unit}. Мінімальний запас: ${Number(item.minStock)} ${item.unit}.`,
-      priority:"high",dueDate:today,assignedEmail:"",
+      priority:"high",dueDate:today,bookingId:null,assignedEmail:"",
       sourceEntityType:"inventory_item",sourceEntityId:String(item.id),
     });
   }
@@ -84,8 +128,25 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
       details:overdue
         ? `Обладнання: ${event.equipmentId}. Строк ${event.dueDate} прострочено.`
         : `Обладнання: ${event.equipmentId}. Зафіксований активний простій з ${event.downtimeStart}.`,
-      priority:"high",dueDate:event.dueDate||today,assignedEmail,
+      priority:"high",dueDate:event.dueDate||today,bookingId:null,assignedEmail,
       sourceEntityType:"equipment_maintenance",sourceEntityId:String(event.id),
+    });
+  }
+  for(const booking of bookings.results||[]) {
+    const handoff=clinicalHandoff(booking.status);
+    if(!handoff)continue;
+    const requestedAssignee=handoff.assignee==="radiologist"
+      ? booking.assignedRadiologistEmail
+      : handoff.assignee==="radiographer"
+        ? booking.assignedRadiographerEmail
+        : "";
+    const assignedEmail=await activeAssignee(db,organizationId,requestedAssignee||"");
+    out.push({
+      organizationId,key:`booking:${handoff.stage}:${booking.id}`,
+      title:handoff.title,
+      details:`Поточний етап: ${stateLabel(booking.status)}. Відкрийте картку дослідження та виконайте наступний крок.`,
+      priority:handoff.priority,dueDate:booking.desiredDate||today,bookingId:booking.id,assignedEmail,
+      sourceEntityType:"booking",sourceEntityId:String(booking.id),
     });
   }
   return out;
@@ -101,11 +162,18 @@ export async function runOperationalTasks(db:D1Database,now=Date.now()):Promise<
     const activeKeys=new Set(candidates.map(c=>c.key));
 
     for(const task of candidates) {
+      await db.prepare(`UPDATE staff_tasks SET
+          title=?,details=?,priority=?,due_date=?,booking_id=?,assigned_email=?,
+          source_entity_type=?,source_entity_id=?,updated_at=CURRENT_TIMESTAMP
+        WHERE organization_id=? AND status='open' AND source='automation' AND automation_key=?`)
+        .bind(task.title,task.details,task.priority,task.dueDate,task.bookingId,task.assignedEmail,
+          task.sourceEntityType,task.sourceEntityId,task.organizationId,task.key).run();
+
       const result=await db.prepare(`INSERT OR IGNORE INTO staff_tasks
-        (organization_id,title,details,status,priority,due_date,assigned_email,created_by,
+        (organization_id,title,details,status,priority,due_date,booking_id,assigned_email,created_by,
          source,automation_key,source_entity_type,source_entity_id)
-        VALUES (?,?,?,'open',?,?,?,'system:automation','automation',?,?,?)`)
-        .bind(task.organizationId,task.title,task.details,task.priority,task.dueDate,task.assignedEmail,
+        VALUES (?,?,?,'open',?,?,?,?,'system:automation','automation',?,?,?)`)
+        .bind(task.organizationId,task.title,task.details,task.priority,task.dueDate,task.bookingId,task.assignedEmail,
           task.key,task.sourceEntityType,task.sourceEntityId).run();
       if(Number(result.meta.changes||0)>0) {
         created++;
