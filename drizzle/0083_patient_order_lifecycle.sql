@@ -70,14 +70,15 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- A cancelled business document may never become a new document basis. This prevents a cancelled
--- Patient Order from later acquiring a payment/service-delivery through a stale UI or direct SQL.
+-- A cancelled Patient Order may never become a new document basis. This prevents a stale UI or
+-- direct SQL from attaching payment/service-delivery facts after the operational cancellation.
 CREATE TRIGGER IF NOT EXISTS `business_document_cancelled_basis_insert`
 BEFORE INSERT ON `business_documents`
 WHEN NEW.basis_document_id IS NOT NULL
   AND EXISTS (
     SELECT 1 FROM `business_documents` src
-    WHERE src.id=NEW.basis_document_id AND src.organization_id=NEW.organization_id AND src.state='cancelled'
+    WHERE src.id=NEW.basis_document_id AND src.organization_id=NEW.organization_id
+      AND src.document_type='patient_order' AND src.state='cancelled'
   )
 BEGIN SELECT RAISE(ABORT,'business_document_basis_cancelled'); END;
 --> statement-breakpoint
@@ -86,7 +87,8 @@ BEFORE UPDATE OF `basis_document_id`,`organization_id` ON `business_documents`
 WHEN NEW.basis_document_id IS NOT NULL
   AND EXISTS (
     SELECT 1 FROM `business_documents` src
-    WHERE src.id=NEW.basis_document_id AND src.organization_id=NEW.organization_id AND src.state='cancelled'
+    WHERE src.id=NEW.basis_document_id AND src.organization_id=NEW.organization_id
+      AND src.document_type='patient_order' AND src.state='cancelled'
   )
 BEGIN SELECT RAISE(ABORT,'business_document_basis_cancelled'); END;
 --> statement-breakpoint
