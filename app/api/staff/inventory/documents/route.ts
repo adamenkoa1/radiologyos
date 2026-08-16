@@ -26,11 +26,13 @@ function mapCreateError(error:unknown) {
   if (code.includes("lines_required")) return [400,"Додайте хоча б один рядок документа"] as const;
   if (code.includes("invalid_quantity")) return [400,"Кількість має бути більшою за нуль"] as const;
   if (code.includes("warehouse_not_found")) return [404,"Склад не знайдено або він неактивний"] as const;
+  if (code.includes("transfer_warehouse_required")) return [400,"Для переміщення вкажіть склад-відправник і склад-одержувач"] as const;
+  if (code.includes("transfer_same_warehouse")) return [400,"Склад-відправник і склад-одержувач мають бути різними"] as const;
   if (code.includes("item_required")) return [400,"Для надходження вкажіть матеріал"] as const;
   if (code.includes("item_not_found")) return [404,"Матеріал не знайдено або він неактивний"] as const;
   if (code.includes("invalid_expiry")) return [400,"Некоректний термін придатності"] as const;
   if (code.includes("supplier_not_found")) return [404,"Постачальника не знайдено, він неактивний або не є постачальником"] as const;
-  if (code.includes("lot_required")) return [400,"Для списання вкажіть партію"] as const;
+  if (code.includes("lot_required")) return [400,"Для списання або переміщення вкажіть партію"] as const;
   if (code.includes("lot_not_found")) return [404,"Партію не знайдено або матеріал неактивний"] as const;
   if (code.includes("booking_not_found")) return [400,"Дослідження не належить до цієї організації"] as const;
   if (code.includes("reason_required")) return [400,"Вкажіть причину списання"] as const;
@@ -72,13 +74,19 @@ export async function POST(request:Request) {
         type:body.documentType,
         occurredAt:clean(body.occurredAt,32) || undefined,
         comment:clean(body.comment,500),
+        sourceWarehouseId:int(body.sourceWarehouseId),
+        destinationWarehouseId:int(body.destinationWarehouseId),
         lines,
       });
       if (!created) return Response.json({ error:"Не вдалося створити документ" },{status:500});
       await audit(db,{
         organizationId:ctx.organizationId,actorEmail:ctx.member.email,
         action:"inventory_document_created",resource:"business_document",targetId:created.document.id,
-        details:{ type:created.document.documentType, lineCount:created.lines.length },
+        details:{
+          type:created.document.documentType,lineCount:created.lines.length,
+          sourceWarehouseId:created.transfer?.sourceWarehouseId ?? null,
+          destinationWarehouseId:created.transfer?.destinationWarehouseId ?? null,
+        },
       });
       return Response.json(created,{status:201});
     } catch (error) {
