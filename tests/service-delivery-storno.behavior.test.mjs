@@ -179,10 +179,12 @@ test("tenant and role scope prevent foreign or clinical-only storno",async()=>{
 test("D1 rejects forged negative register movement without a posted correction registrar",async()=>{
   await withD1(async(db,raw)=>{
     const seeded=await seedCompleted(db,raw,{code:"RD-STORNO-FORGE",amount:2700});
+    // The storno precondition is stronger than the generic revenue registrar guard: a negative
+    // correction movement is rejected immediately unless the exact source is already reversed.
     assert.throws(()=>raw.prepare(
       `INSERT INTO revenue_movements
        (organization_id,document_id,booking_id,patient_id,service_code,movement_type,amount_delta,currency,actor_email)
        VALUES (1,?,?,?,'ct-chest','service_correction',-2700,'UAH','attacker@example.com')`
-    ).run(seeded.sourceDocumentId,seeded.bookingId,""),/revenue_document_mismatch/);
+    ).run(seeded.sourceDocumentId,seeded.bookingId,""),/service_correction_source_not_reversed/);
   });
 });
