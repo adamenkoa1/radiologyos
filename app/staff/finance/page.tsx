@@ -93,7 +93,7 @@ export default function FinancePage() {
   return <StaffWorkspaceShell
     active="finance"
     title="Фінанси"
-    description="BAS-подібний журнал оплат, повернень, рухів грошей і взаєморозрахунків."
+    description="BAS-подібний журнал наданих послуг, оплат, повернень, рухів грошей і взаєморозрахунків."
   >
     <section className="financeSummary" aria-label="Підсумок фінансового регістру">
       <article><span>Надійшло</span><b>{money(totals.incoming)}</b><small>за BAS-документами</small></article>
@@ -113,6 +113,7 @@ export default function FinancePage() {
           <button type="button" className={tab==="documents"?"active":""} onClick={()=>setTab("documents")}>Документи</button>
           <button type="button" className={tab==="cash"?"active":""} onClick={()=>setTab("cash")}>Рухи грошей</button>
           <button type="button" className={tab==="settlements"?"active":""} onClick={()=>setTab("settlements")}>Взаєморозрахунки</button>
+          <button type="button" onClick={()=>window.location.assign("/staff/finance/services")}>Надані послуги ↗</button>
         </div>
         <input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Пошук: документ, RD, пацієнт…" aria-label="Пошук у фінансовому журналі"/>
         <button type="button" onClick={()=>void load()}>Оновити</button>
