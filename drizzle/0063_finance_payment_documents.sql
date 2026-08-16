@@ -11,6 +11,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS `payment_transactions_payment_document_idx`
 CREATE UNIQUE INDEX IF NOT EXISTS `payment_transactions_refund_document_idx`
   ON `payment_transactions` (`organization_id`,`refund_document_id`) WHERE `refund_document_id` IS NOT NULL;
 --> statement-breakpoint
+-- Current finance model is full-payment, not partial-payment: one linked paid transaction per booking.
+-- A refunded transaction leaves this partial index and a later new payment may then be posted.
+CREATE UNIQUE INDEX IF NOT EXISTS `payment_transactions_one_linked_paid_booking_idx`
+  ON `payment_transactions` (`organization_id`,`booking_id`)
+  WHERE `status`='paid' AND `payment_document_id` IS NOT NULL;
+--> statement-breakpoint
 
 CREATE TABLE IF NOT EXISTS `finance_document_details` (
   `organization_id` integer NOT NULL,
@@ -23,15 +29,22 @@ CREATE TABLE IF NOT EXISTS `finance_document_details` (
   `provider` text DEFAULT '' NOT NULL,
   `provider_reference` text DEFAULT '' NOT NULL,
   `source_document_id` integer,
+  `source_transaction_id` integer,
   `created_at` text DEFAULT CURRENT_TIMESTAMP NOT NULL,
   PRIMARY KEY (`document_id`),
   FOREIGN KEY (`document_id`,`organization_id`) REFERENCES `business_documents`(`id`,`organization_id`),
   FOREIGN KEY (`booking_id`) REFERENCES `bookings`(`id`),
-  FOREIGN KEY (`source_document_id`) REFERENCES `business_documents`(`id`)
+  FOREIGN KEY (`source_document_id`) REFERENCES `business_documents`(`id`),
+  FOREIGN KEY (`source_transaction_id`) REFERENCES `payment_transactions`(`id`)
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS `finance_document_details_booking_idx`
   ON `finance_document_details` (`organization_id`,`booking_id`,`document_id` DESC);
+--> statement-breakpoint
+-- A payment transaction can be the source of at most one refund document. This is the refund concurrency claim.
+CREATE UNIQUE INDEX IF NOT EXISTS `finance_document_details_source_transaction_idx`
+  ON `finance_document_details` (`organization_id`,`source_transaction_id`)
+  WHERE `source_transaction_id` IS NOT NULL;
 --> statement-breakpoint
 
 -- Positive cash delta means money entered the organization; negative means money left it.
@@ -100,9 +113,24 @@ BEGIN
     SELECT 1 FROM `patient_profiles` p WHERE p.patient_id=NEW.patient_id AND p.organization_id=NEW.organization_id
   ) THEN RAISE(ABORT,'finance_patient_tenant_mismatch') END;
   SELECT CASE WHEN NEW.source_document_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM `business_documents` s
-    WHERE s.id=NEW.source_document_id AND s.organization_id=NEW.organization_id AND s.state IN ('posted','reversed')
-  ) THEN RAISE(ABORT,'finance_source_document_tenant_mismatch') END;
+    SELECT 1 FROM `business_documents` d
+    JOIN `business_documents` s ON s.id=NEW.source_document_id AND s.organization_id=d.organization_id
+    WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id
+      AND d.document_type='refund' AND s.document_type='payment' AND s.state IN ('posted','reversed')
+  ) THEN RAISE(ABORT,'finance_source_document_invalid') END;
+  SELECT CASE WHEN NEW.source_transaction_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM `business_documents` d
+    JOIN `payment_transactions` p ON p.id=NEW.source_transaction_id AND p.organization_id=d.organization_id
+    WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.document_type='refund'
+      AND p.booking_id=NEW.booking_id AND p.amount=NEW.amount AND p.currency=NEW.currency
+      AND p.provider=NEW.provider AND p.provider_reference=NEW.provider_reference
+      AND p.status IN ('paid','refunded')
+  ) THEN RAISE(ABORT,'finance_source_transaction_invalid') END;
+  SELECT CASE WHEN EXISTS (
+    SELECT 1 FROM `business_documents` d WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id
+      AND d.document_type='payment'
+  ) AND (NEW.source_document_id IS NOT NULL OR NEW.source_transaction_id IS NOT NULL)
+    THEN RAISE(ABORT,'finance_payment_cannot_have_source') END;
 END;
 --> statement-breakpoint
 CREATE TRIGGER IF NOT EXISTS `finance_document_details_draft_update`
@@ -133,9 +161,24 @@ BEGIN
     SELECT 1 FROM `patient_profiles` p WHERE p.patient_id=NEW.patient_id AND p.organization_id=NEW.organization_id
   ) THEN RAISE(ABORT,'finance_patient_tenant_mismatch') END;
   SELECT CASE WHEN NEW.source_document_id IS NOT NULL AND NOT EXISTS (
-    SELECT 1 FROM `business_documents` s
-    WHERE s.id=NEW.source_document_id AND s.organization_id=NEW.organization_id AND s.state IN ('posted','reversed')
-  ) THEN RAISE(ABORT,'finance_source_document_tenant_mismatch') END;
+    SELECT 1 FROM `business_documents` d
+    JOIN `business_documents` s ON s.id=NEW.source_document_id AND s.organization_id=d.organization_id
+    WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id
+      AND d.document_type='refund' AND s.document_type='payment' AND s.state IN ('posted','reversed')
+  ) THEN RAISE(ABORT,'finance_source_document_invalid') END;
+  SELECT CASE WHEN NEW.source_transaction_id IS NOT NULL AND NOT EXISTS (
+    SELECT 1 FROM `business_documents` d
+    JOIN `payment_transactions` p ON p.id=NEW.source_transaction_id AND p.organization_id=d.organization_id
+    WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id AND d.document_type='refund'
+      AND p.booking_id=NEW.booking_id AND p.amount=NEW.amount AND p.currency=NEW.currency
+      AND p.provider=NEW.provider AND p.provider_reference=NEW.provider_reference
+      AND p.status IN ('paid','refunded')
+  ) THEN RAISE(ABORT,'finance_source_transaction_invalid') END;
+  SELECT CASE WHEN EXISTS (
+    SELECT 1 FROM `business_documents` d WHERE d.id=NEW.document_id AND d.organization_id=NEW.organization_id
+      AND d.document_type='payment'
+  ) AND (NEW.source_document_id IS NOT NULL OR NEW.source_transaction_id IS NOT NULL)
+    THEN RAISE(ABORT,'finance_payment_cannot_have_source') END;
 END;
 --> statement-breakpoint
 
