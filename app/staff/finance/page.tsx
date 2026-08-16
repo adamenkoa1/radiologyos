@@ -115,6 +115,7 @@ export default function FinancePage() {
           <button type="button" className={tab==="settlements"?"active":""} onClick={()=>setTab("settlements")}>Взаєморозрахунки</button>
           <button type="button" onClick={()=>window.location.assign("/staff/finance/services")}>Надані послуги ↗</button>
           <button type="button" onClick={()=>window.location.assign("/staff/documents")}>Усі документи ↗</button>
+          <button type="button" onClick={()=>window.location.assign("/staff/reports/registers")}>Обороти регістрів · admin ↗</button>
         </div>
         <input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Пошук: документ, RD, пацієнт…" aria-label="Пошук у фінансовому журналі"/>
         <button type="button" onClick={()=>void load()}>Оновити</button>
