@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -77,9 +77,9 @@ const businessModules:BusinessModule[]=[
     {label:"Склади",href:"/staff/warehouses"},
   ]},
   { key:"purchases",label:"Закупівлі",items:[
-    {label:"Постачальники",href:"/staff/counterparties",hint:"Поточний довідник контрагентів"},
-    {label:"Надходження на склад",href:"/staff/inventory",hint:"Поточний контур оприбуткування"},
-    {label:"Переміщення запасів",href:"/staff/inventory/transfers"},
+    {label:"Кредиторка і оплати",href:"/staff/supplier-payables",hint:"Оцінка надходжень, борги та оплати постачальникам"},
+    {label:"Постачальники",href:"/staff/counterparties",hint:"Довідник контрагентів"},
+    {label:"Надходження на склад",href:"/staff/inventory",hint:"Документи оприбуткування"},
   ]},
   { key:"reports",label:"Звіти",items:[
     {label:"Звіти відділення",href:"/staff/reports"},
@@ -110,7 +110,7 @@ const moduleBySection:Record<WorkspaceSection,string>={
   protocols:"medicine",imaging:"medicine",studies:"medicine",
   services:"services",tariffs:"services",
   finance:"finance",counterparties:"finance",
-  inventory:"inventory",
+  inventory:"inventory",purchases:"purchases",
   reports:"reports",
   equipment:"directories",schedule:"directories",
   settings:"admin",organization:"admin",site:"admin",whatsapp:"admin",structure:"admin",audit:"admin",
@@ -122,7 +122,7 @@ const sectionLabels:Record<WorkspaceSection,string>={
   counterparties:"Контрагенти",settings:"Налаштування",organization:"Організація",site:"Публічний сайт",
   appointments:"Календар записів",whatsapp:"WhatsApp",chat:"Чат з пацієнтами",schedule:"Графік кабінетів",
   equipment:"Обладнання",services:"Послуги",structure:"Структура відділення",audit:"Журнал дій",
-  intake:"Прийом",board:"Дошка досліджень",tasks:"Завдання",inventory:"Склад",
+  intake:"Прийом",board:"Дошка досліджень",tasks:"Завдання",inventory:"Склад",purchases:"Кредиторка постачальників",
 };
 
 function formatDateTime(value:Date) {
@@ -174,7 +174,7 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory" || active === "finance" || active === "counterparties";
+  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory" || active === "finance" || active === "counterparties" || active === "purchases";
   return <div className={`workspaceShell basWorkspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
     <CommandPalette />
     <aside className="workspaceSidebar">
