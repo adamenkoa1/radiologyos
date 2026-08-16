@@ -57,6 +57,10 @@ export async function paymentBookingSnapshot(
   return row || null;
 }
 
+function isFullyPaid(booking:PaymentBookingSnapshot) {
+  return booking.paymentStatus === "paid" && booking.paymentAmount > 0 && booking.paidAmount === booking.paymentAmount;
+}
+
 export async function createPendingPayment(
   db: PaymentLedgerDb,
   input: {
@@ -87,9 +91,13 @@ export async function createPendingPayment(
       if (Number(existing.bookingId) !== booking.id || Number(existing.amount) !== booking.paymentAmount) {
         throw new Error("payment_reference_conflict");
       }
+      if (String(existing.status) === "paid" && isFullyPaid(booking)) {
+        throw new Error("payment_already_settled");
+      }
       return { transaction: existing, created: false, booking };
     }
   }
+  if (isFullyPaid(booking)) throw new Error("payment_already_settled");
 
   // A public/payment-provider initiation is not yet an economic fact. It remains a technical
   // pending transaction until a trusted settlement path confirms that money actually arrived.
@@ -169,7 +177,7 @@ export async function recordManualPayment(
     if (existing.status === "refunded" || existing.refundDocumentId) {
       throw new Error("payment_reference_conflict");
     }
-    if (existing.status === "paid" && booking.paymentStatus === "paid" && booking.paidAmount === booking.paymentAmount) {
+    if (existing.status === "paid" && isFullyPaid(booking)) {
       return {
         id: existing.id,
         created: false,
@@ -181,6 +189,7 @@ export async function recordManualPayment(
     }
     if (existing.paymentDocumentId) throw new Error("payment_reference_conflict");
   }
+  if (isFullyPaid(booking)) throw new Error("payment_already_settled");
 
   const method = input.method.trim().slice(0, 40) || "other";
   const financeDb = db as unknown as D1Database;
@@ -236,7 +245,7 @@ export async function recordManualPayment(
       const refreshed = await paymentBookingSnapshot(db, input.organizationId, booking.id);
       if (
         race?.status === "paid" && race.bookingId === booking.id && race.amount === booking.paymentAmount
-        && refreshed?.paymentStatus === "paid" && refreshed.paidAmount === refreshed.paymentAmount
+        && refreshed && isFullyPaid(refreshed)
       ) {
         return {
           id: race.id,
@@ -247,6 +256,7 @@ export async function recordManualPayment(
           legacy: !race.paymentDocumentId,
         };
       }
+      if (refreshed && isFullyPaid(refreshed)) throw new Error("payment_already_settled");
     }
     throw error;
   }
