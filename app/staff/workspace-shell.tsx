@@ -47,6 +47,7 @@ const systemModules: NavModule[] = [
   ]},
   { label:"Склад", href:"/staff/inventory", sections:["inventory"], icon:"▣", items:[
     { label:"Витратні матеріали", href:"/staff/inventory" },
+    { label:"Склади", href:"/staff/warehouses" },
   ]},
   { label:"Фінанси і звіти", href:"/staff/finance", sections:["finance","counterparties","reports","tariffs"], icon:"💳", items:[
     { label:"Фінансові документи", href:"/staff/finance" },
