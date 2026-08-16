@@ -22,6 +22,27 @@ BEGIN
 END;
 --> statement-breakpoint
 
+-- A correction document cannot be posted independently. It is posted only from the AFTER trigger
+-- of the source transition, where the source row is already visible as reversed.
+CREATE TRIGGER IF NOT EXISTS `service_correction_post_requires_reversed_source`
+BEFORE UPDATE OF `state` ON `business_documents`
+WHEN OLD.state='draft' AND NEW.state='posted'
+  AND EXISTS (
+    SELECT 1 FROM `service_correction_details` c
+    WHERE c.document_id=OLD.id AND c.organization_id=OLD.organization_id
+  )
+BEGIN
+  SELECT CASE WHEN NOT EXISTS (
+    SELECT 1
+    FROM `service_correction_details` c
+    JOIN `business_documents` src
+      ON src.id=c.source_document_id AND src.organization_id=c.organization_id
+    WHERE c.document_id=OLD.id AND c.organization_id=OLD.organization_id
+      AND OLD.reversed_document_id=src.id AND src.state='reversed'
+  ) THEN RAISE(ABORT,'service_correction_requires_reversed_source') END;
+END;
+--> statement-breakpoint
+
 -- A negative movement is valid only after the exact source service has actually entered reversed state.
 CREATE TRIGGER IF NOT EXISTS `revenue_correction_requires_reversed_source`
 BEFORE INSERT ON `revenue_movements`
