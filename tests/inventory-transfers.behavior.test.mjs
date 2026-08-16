@@ -5,6 +5,7 @@ import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs
 async function post(db,cookie,url,body){return callWorker(jsonRequest(url,body,{headers:{cookie}}),db);}
 async function warehouse(db,cookie,body){return post(db,cookie,"/api/staff/warehouses",body);}
 async function inventory(db,cookie,body){return post(db,cookie,"/api/staff/inventory",body);}
+async function document(db,cookie,body){return post(db,cookie,"/api/staff/inventory/documents",body);}
 async function transfer(db,cookie,body){return post(db,cookie,"/api/staff/inventory/transfers",body);}
 
 async function seedStock(db,raw,cookie,quantity=5){
@@ -82,7 +83,7 @@ test("transfer enforces tenant ownership and exact destination snapshot in D1",a
   await withD1(async(db,raw)=>{
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Other Org','other-org',1)");
     const cookie=await seedStaffSession(db,{email:"transfer-tenant@example.com",role:"admin",organizationId:1});
-    const {lotId,main}=await seedStock(db,raw,cookie,2);
+    const {itemId,lotId,main}=await seedStock(db,raw,cookie,2);
     const foreign=raw.prepare("SELECT id FROM warehouses WHERE organization_id=2 AND is_default=1").get();
     const denied=await transfer(db,cookie,{action:"create",lines:[{lotId,sourceWarehouseId:main.id,destinationWarehouseId:foreign.id,quantity:1}]});
     assert.equal(denied.status,404);
@@ -99,6 +100,17 @@ test("transfer enforces tenant ownership and exact destination snapshot in D1",a
     assert.throws(()=>raw.prepare(
       "UPDATE inventory_document_lines SET destination_warehouse_code='TAMPER' WHERE id=?"
     ).run(line.id),/inventory_transfer_destination_invalid/);
+
+    // Receipt/writeoff lines may never acquire a destination dimension and masquerade as transfers.
+    const receiptDraftRes=await document(db,cookie,{action:"create",documentType:"inventory_receipt",lines:[{
+      itemId,warehouseId:main.id,quantity:1,lotNumber:"NO-DEST",
+    }]});
+    assert.equal(receiptDraftRes.status,201);const receiptDraft=await receiptDraftRes.json();
+    assert.throws(()=>raw.prepare(
+      `UPDATE inventory_document_lines
+       SET destination_warehouse_id=?,destination_warehouse_code=?,destination_warehouse_name=?
+       WHERE id=?`
+    ).run(destination.id,destination.code,destination.name,receiptDraft.lines[0].id),/inventory_destination_not_allowed/);
 
     assert.equal((await transfer(db,cookie,{action:"post",documentId:body.document.id})).status,200);
     const out=raw.prepare("SELECT * FROM inventory_movements WHERE document_id=? AND movement_type='transfer_out'").get(body.document.id);
