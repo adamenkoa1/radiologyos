@@ -50,7 +50,7 @@ export default function CounterpartiesPage(){
     }finally{setBusy(false);}
   }
 
-  return <StaffWorkspaceShell active="finance" title="Контрагенти" description="BAS-довідник постачальників і платників. Документи посилаються на ID контрагента, а історичну назву зберігають snapshot-ом." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
+  return <StaffWorkspaceShell active="counterparties" title="Контрагенти" description="BAS-довідник постачальників і платників. Документи посилаються на ID контрагента, а історичну назву зберігають snapshot-ом." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
     {error&&<p className="financeError">{error}</p>}
     {!data&&!error&&<p className="financeLoading">Завантаження довідника…</p>}
     {data&&<div className="inventoryDocumentsLayout">
