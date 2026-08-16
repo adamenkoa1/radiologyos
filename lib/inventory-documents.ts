@@ -2,7 +2,7 @@ import type { DocumentState } from "./business-core";
 import { getActiveSupplierCounterparty } from "./counterparties";
 import { resolveWarehouse } from "./warehouses";
 
-export type InventoryDocumentType = "inventory_receipt" | "inventory_writeoff";
+export type InventoryDocumentType = "inventory_receipt" | "inventory_writeoff" | "inventory_transfer";
 
 export type InventoryDocumentLineInput = {
   itemId?: number;
@@ -50,6 +50,17 @@ export type InventoryDocumentLineRow = {
   bookingId:number|null;
 };
 
+export type InventoryTransferDetailsRow = {
+  organizationId:number;
+  documentId:number;
+  sourceWarehouseId:number;
+  sourceWarehouseCode:string;
+  sourceWarehouseName:string;
+  destinationWarehouseId:number;
+  destinationWarehouseCode:string;
+  destinationWarehouseName:string;
+};
+
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 function text(value:unknown,max:number) {
@@ -67,11 +78,13 @@ function intOrNull(value:unknown) {
 }
 
 function prefix(type:InventoryDocumentType) {
-  return type === "inventory_receipt" ? "НД" : "СП";
+  if (type === "inventory_receipt") return "НД";
+  if (type === "inventory_writeoff") return "СП";
+  return "ПМ";
 }
 
 export function isInventoryDocumentType(value:unknown): value is InventoryDocumentType {
-  return value === "inventory_receipt" || value === "inventory_writeoff";
+  return value === "inventory_receipt" || value === "inventory_writeoff" || value === "inventory_transfer";
 }
 
 async function item(db:D1Database,organizationId:number,itemId:number) {
@@ -100,6 +113,18 @@ async function bookingExists(db:D1Database,organizationId:number,bookingId:numbe
   ).bind(organizationId,bookingId).first<{ok:number}>());
 }
 
+async function getTransferDetails(db:D1Database,organizationId:number,documentId:number) {
+  return db.prepare(
+    `SELECT organization_id AS organizationId,document_id AS documentId,
+            source_warehouse_id AS sourceWarehouseId,source_warehouse_code AS sourceWarehouseCode,
+            source_warehouse_name AS sourceWarehouseName,
+            destination_warehouse_id AS destinationWarehouseId,
+            destination_warehouse_code AS destinationWarehouseCode,
+            destination_warehouse_name AS destinationWarehouseName
+     FROM inventory_transfer_details WHERE organization_id=? AND document_id=? LIMIT 1`
+  ).bind(organizationId,documentId).first<InventoryTransferDetailsRow>();
+}
+
 export async function getInventoryDocument(db:D1Database,organizationId:number,documentId:number) {
   const document = await db.prepare(
     `SELECT id,organization_id AS organizationId,document_type AS documentType,number,
@@ -107,7 +132,7 @@ export async function getInventoryDocument(db:D1Database,organizationId:number,d
             posted_by AS postedBy,posted_at AS postedAt
      FROM business_documents
      WHERE organization_id=? AND id=?
-       AND document_type IN ('inventory_receipt','inventory_writeoff')
+       AND document_type IN ('inventory_receipt','inventory_writeoff','inventory_transfer')
      LIMIT 1`
   ).bind(organizationId,documentId).first<InventoryDocumentRow>();
   if (!document) return null;
@@ -120,7 +145,10 @@ export async function getInventoryDocument(db:D1Database,organizationId:number,d
      FROM inventory_document_lines
      WHERE organization_id=? AND document_id=? ORDER BY line_no,id`
   ).bind(organizationId,documentId).all<InventoryDocumentLineRow>();
-  return { document, lines:lines.results };
+  const transfer = document.documentType === "inventory_transfer"
+    ? await getTransferDetails(db,organizationId,documentId)
+    : null;
+  return { document, lines:lines.results, transfer };
 }
 
 export async function listInventoryDocuments(db:D1Database,organizationId:number,limit=150) {
@@ -129,25 +157,42 @@ export async function listInventoryDocuments(db:D1Database,organizationId:number
     `SELECT d.id,d.organization_id AS organizationId,d.document_type AS documentType,d.number,
             d.occurred_at AS occurredAt,d.state,d.comment,d.created_by AS createdBy,
             d.created_at AS createdAt,d.posted_by AS postedBy,d.posted_at AS postedAt,
-            COUNT(l.id) AS lineCount,COALESCE(SUM(l.quantity),0) AS totalQuantity
+            COUNT(l.id) AS lineCount,COALESCE(SUM(l.quantity),0) AS totalQuantity,
+            MAX(t.source_warehouse_name) AS transferSourceWarehouseName,
+            MAX(t.destination_warehouse_name) AS transferDestinationWarehouseName
      FROM business_documents d
      LEFT JOIN inventory_document_lines l
        ON l.organization_id=d.organization_id AND l.document_id=d.id
-     WHERE d.organization_id=? AND d.document_type IN ('inventory_receipt','inventory_writeoff')
+     LEFT JOIN inventory_transfer_details t
+       ON t.organization_id=d.organization_id AND t.document_id=d.id
+     WHERE d.organization_id=? AND d.document_type IN ('inventory_receipt','inventory_writeoff','inventory_transfer')
      GROUP BY d.id
      ORDER BY d.occurred_at DESC,d.id DESC LIMIT ${safeLimit}`
-  ).bind(organizationId).all<InventoryDocumentRow & {lineCount:number;totalQuantity:number}>();
+  ).bind(organizationId).all<InventoryDocumentRow & {
+    lineCount:number;totalQuantity:number;transferSourceWarehouseName:string|null;transferDestinationWarehouseName:string|null;
+  }>();
   return rows.results;
 }
 
 export async function createInventoryDocument(
   db:D1Database,
-  input:{organizationId:number;actorEmail:string;type:InventoryDocumentType;occurredAt?:string;comment?:string;lines:InventoryDocumentLineInput[]},
+  input:{
+    organizationId:number;actorEmail:string;type:InventoryDocumentType;occurredAt?:string;comment?:string;
+    sourceWarehouseId?:number|null;destinationWarehouseId?:number|null;lines:InventoryDocumentLineInput[];
+  },
 ) {
   const occurredAt = text(input.occurredAt,32) || new Date().toISOString();
   const comment = text(input.comment,500);
   if (!Array.isArray(input.lines) || input.lines.length < 1 || input.lines.length > 100) {
     throw new Error("inventory_document_lines_required");
+  }
+
+  const transferWarehouses = input.type === "inventory_transfer" ? {
+    source:await resolveWarehouse(db,{organizationId:input.organizationId,warehouseId:intOrNull(input.sourceWarehouseId)}),
+    destination:await resolveWarehouse(db,{organizationId:input.organizationId,warehouseId:intOrNull(input.destinationWarehouseId)}),
+  } : null;
+  if (transferWarehouses && transferWarehouses.source.id === transferWarehouses.destination.id) {
+    throw new Error("inventory_transfer_same_warehouse");
   }
 
   const normalized:Array<Required<Pick<InventoryDocumentLineInput,"quantity">> & {
@@ -159,7 +204,7 @@ export async function createInventoryDocument(
   for (const source of input.lines) {
     const qty = quantity(source.quantity);
     if (!qty) throw new Error("inventory_document_invalid_quantity");
-    const warehouse=await resolveWarehouse(db,{
+    const warehouse = transferWarehouses?.source ?? await resolveWarehouse(db,{
       organizationId:input.organizationId,
       warehouseId:intOrNull(source.warehouseId),
     });
@@ -187,9 +232,9 @@ export async function createInventoryDocument(
       if (!lotId) throw new Error("inventory_document_lot_required");
       const found = await lot(db,input.organizationId,lotId);
       if (!found || !found.active) throw new Error("inventory_document_lot_not_found");
-      const bookingId = intOrNull(source.bookingId);
+      const bookingId = input.type === "inventory_transfer" ? null : intOrNull(source.bookingId);
       if (!(await bookingExists(db,input.organizationId,bookingId))) throw new Error("inventory_document_booking_not_found");
-      const reason = text(source.reason,500);
+      const reason = text(source.reason,500) || (input.type === "inventory_transfer" ? "Переміщення між складами" : "");
       if (!reason) throw new Error("inventory_document_reason_required");
       normalized.push({
         itemId:found.itemId,lotId,warehouseId:warehouse.id,warehouseCode:warehouse.code,warehouseName:warehouse.name,
@@ -212,7 +257,20 @@ export async function createInventoryDocument(
   ).bind(number,input.organizationId,documentId).run();
 
   try {
-    await db.batch(normalized.map((line,index)=>db.prepare(
+    const statements:D1PreparedStatement[] = [];
+    if (transferWarehouses) {
+      statements.push(db.prepare(
+        `INSERT INTO inventory_transfer_details
+          (organization_id,document_id,source_warehouse_id,source_warehouse_code,source_warehouse_name,
+           destination_warehouse_id,destination_warehouse_code,destination_warehouse_name)
+         VALUES (?,?,?,?,?,?,?,?)`
+      ).bind(
+        input.organizationId,documentId,
+        transferWarehouses.source.id,transferWarehouses.source.code,transferWarehouses.source.name,
+        transferWarehouses.destination.id,transferWarehouses.destination.code,transferWarehouses.destination.name,
+      ));
+    }
+    statements.push(...normalized.map((line,index)=>db.prepare(
       `INSERT INTO inventory_document_lines
         (organization_id,document_id,line_no,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,
          lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id)
@@ -221,7 +279,10 @@ export async function createInventoryDocument(
       input.organizationId,documentId,index+1,line.itemId,line.lotId,line.warehouseId,line.warehouseCode,line.warehouseName,
       line.lotNumber,line.expiresOn,line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,
     )));
+    await db.batch(statements);
   } catch (error) {
+    await db.prepare("DELETE FROM inventory_transfer_details WHERE organization_id=? AND document_id=?")
+      .bind(input.organizationId,documentId).run().catch(()=>{});
     await db.prepare("DELETE FROM business_documents WHERE organization_id=? AND id=? AND state='draft'")
       .bind(input.organizationId,documentId).run().catch(()=>{});
     throw error;
@@ -234,7 +295,7 @@ export async function cancelInventoryDocument(db:D1Database,organizationId:numbe
   const result = await db.prepare(
     `UPDATE business_documents SET state='cancelled'
      WHERE organization_id=? AND id=? AND state='draft'
-       AND document_type IN ('inventory_receipt','inventory_writeoff')`
+       AND document_type IN ('inventory_receipt','inventory_writeoff','inventory_transfer')`
   ).bind(organizationId,documentId).run();
   return Number(result.meta.changes || 0) === 1;
 }
@@ -288,11 +349,14 @@ export async function postInventoryDocument(
   if (current.document.state === "posted") return { ok:true as const,idempotent:true,document:current };
   if (current.document.state !== "draft") return { ok:false as const,status:409,error:"Провести можна лише чернетку" };
   if (current.lines.length < 1) return { ok:false as const,status:409,error:"У документі немає рядків" };
+  if (current.document.documentType === "inventory_transfer" && !current.transfer) {
+    return { ok:false as const,status:409,error:"У переміщенні не вказані склади" };
+  }
 
-  if (current.document.documentType === "inventory_writeoff") {
+  if (current.document.documentType === "inventory_writeoff" || current.document.documentType === "inventory_transfer") {
     const required = new Map<string,{warehouseId:number;lotId:number;quantity:number}>();
     for (const line of current.lines) {
-      if (!line.lotId) return { ok:false as const,status:409,error:"У списанні не вказана партія" };
+      if (!line.lotId) return { ok:false as const,status:409,error:"У документі не вказана партія" };
       const key=`${line.warehouseId}:${line.lotId}`;
       const prior=required.get(key);
       required.set(key,{warehouseId:line.warehouseId,lotId:line.lotId,quantity:(prior?.quantity||0)+Number(line.quantity)});
@@ -332,12 +396,14 @@ export async function postInventoryDocument(
   }
 
   const postedAt = new Date().toISOString();
-  const statements = [
+  const statements:D1PreparedStatement[] = [
     db.prepare(
       `UPDATE business_documents SET state='posted',posted_by=?,posted_at=?
        WHERE organization_id=? AND id=? AND state='draft'`
     ).bind(input.actorEmail,postedAt,input.organizationId,input.documentId),
-    ...lines.map((line)=>db.prepare(
+  ];
+  if (current.document.documentType !== "inventory_transfer") {
+    statements.push(...lines.map((line)=>db.prepare(
       `INSERT INTO inventory_movements
         (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,
          movement_type,quantity_delta,reason,booking_id,actor_email,document_id,document_line_id)
@@ -347,8 +413,8 @@ export async function postInventoryDocument(
       current.document.documentType === "inventory_receipt" ? "receipt" : "writeoff",
       current.document.documentType === "inventory_receipt" ? Number(line.quantity) : -Number(line.quantity),
       line.reason,line.bookingId,input.actorEmail,input.documentId,line.id,
-    )),
-  ];
+    )));
+  }
 
   try {
     await db.batch(statements);
