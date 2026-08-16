@@ -243,6 +243,8 @@ PaymentTransaction {
 
 `pending` може бути створений зовнішнім сайтом/платіжним сценарієм і не є господарським фактом. Після trusted confirmation встановлюється `paymentDocumentId`; після проведеного повернення — `refundDocumentId`. Встановлені document links є незмінними. Старі paid/refunded транзакції без links залишаються explicit legacy і не backfill-яться евристично.
 
+У поточній full-payment моделі D1 допускає лише одну linked `paid` transaction для одного booking одночасно. Після refund transaction виходить із цього partial uniqueness scope, тому майбутня нова оплата може бути проведена окремим документом.
+
 ## FinanceDocumentDetail
 
 Таблично-реквізитна частина `payment/refund` registrar:
@@ -259,11 +261,12 @@ FinanceDocumentDetail {
   provider
   providerReference
   sourceDocumentId?
+  sourceTransactionId?
   createdAt
 }
 ```
 
-Для `refund` `sourceDocumentId` посилається на первинний проведений payment document, якщо він існує. D1 перевіряє tenant booking/patient/source document і дозволяє редагування реквізитів лише доки document у `draft`.
+Для `refund` `sourceDocumentId` посилається на первинний проведений payment document, якщо він існує, а `sourceTransactionId` обов'язково claim-ить точну технічну платіжну транзакцію. Один source transaction може бути підставою не більше ніж для одного refund document; це фізично закриває конкурентне подвійне повернення. D1 перевіряє tenant booking/patient/source document/source transaction і дозволяє редагування реквізитів лише доки document у `draft`.
 
 ## CashMovement
 
@@ -443,6 +446,8 @@ BusinessDocument {
 - refund є окремим документом, а не UPDATE первинної оплати;
 - повторне підтвердження/повернення ідемпотентне;
 - `payment_transactions` зв'язується з точними document ids;
+- одна linked full payment на booking захищена partial unique index;
+- refund claim-ить точний `sourceTransactionId`, тому одна transaction не може створити два повернення;
 - публічний pending payment не створює registrar/register movement;
 - legacy transactions лишаються без штучного документа.
 
