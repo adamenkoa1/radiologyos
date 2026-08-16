@@ -96,22 +96,23 @@ export async function POST(request:Request) {
   const formType=detail.document.documentType;
   const documentState=detail.document.state;
 
-  // Once a document leaves draft, its first generated form for this template/state becomes the
-  // canonical reprint. Warehouse/item master-data edits never rewrite the frozen payload.
+  // Once a document leaves draft, its earliest snapshot for that document/type/state is the
+  // canonical reprint across template upgrades. A later template may enrich first-time prints,
+  // but it must never silently replace what was already printed for the posted document.
   if(documentState!=="draft") {
     const existing=await db.prepare(
       `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,
               document_state AS documentState,payload_json AS payloadJson,generated_by AS generatedBy,
               generated_at AS generatedAt,storage_key AS storageKey,sha256
        FROM printed_form_snapshots
-       WHERE organization_id=? AND document_id=? AND form_type=? AND template_version=? AND document_state=?
+       WHERE organization_id=? AND document_id=? AND form_type=? AND document_state=?
        ORDER BY id ASC LIMIT 1`
-    ).bind(ctx.organizationId,documentId,formType,TEMPLATE_VERSION,documentState).first<SnapshotRow>();
+    ).bind(ctx.organizationId,documentId,formType,documentState).first<SnapshotRow>();
     if(existing) {
       await audit(db,{
         organizationId:ctx.organizationId,actorEmail:ctx.member.email,
         action:"printed_form_reprinted",resource:"business_document",targetId:documentId,
-        details:{formType,templateVersion:TEMPLATE_VERSION,snapshotId:existing.id},
+        details:{formType,templateVersion:existing.templateVersion,snapshotId:existing.id},
       });
       return Response.json({snapshot:publicSnapshot(existing),payload:JSON.parse(existing.payloadJson)});
     }
