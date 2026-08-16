@@ -20,12 +20,15 @@ test("posted inventory form is snapshotted and exact reprint survives master-dat
     const first=await printDocument(db,cookie,documentId);
     assert.equal(first.status,201);
     const form1=await first.json();
-    assert.equal(form1.snapshot.templateVersion,1);
+    assert.equal(form1.snapshot.templateVersion,2);
     assert.equal(form1.snapshot.documentState,"posted");
     assert.equal(form1.snapshot.sha256.length,64);
     assert.equal(form1.payload.lines[0].itemName,"Контраст оригінальний");
+    assert.equal(form1.payload.lines[0].warehouseCode,"MAIN");
+    assert.equal(form1.payload.lines[0].warehouseName,"Основний склад");
 
     await db.prepare("UPDATE inventory_items SET name='Контраст перейменований' WHERE organization_id=1 AND id=?").bind(itemId).run();
+    await db.prepare("UPDATE warehouses SET name='Головний склад',code='MAIN-RENAMED' WHERE organization_id=1 AND is_default=1").run();
 
     const again=await printDocument(db,cookie,documentId);
     assert.equal(again.status,200);
@@ -33,6 +36,8 @@ test("posted inventory form is snapshotted and exact reprint survives master-dat
     assert.equal(form2.snapshot.id,form1.snapshot.id,"posted reprint must reuse canonical snapshot");
     assert.equal(form2.snapshot.sha256,form1.snapshot.sha256);
     assert.equal(form2.payload.lines[0].itemName,"Контраст оригінальний","historical print must not silently use renamed master data");
+    assert.equal(form2.payload.lines[0].warehouseCode,"MAIN");
+    assert.equal(form2.payload.lines[0].warehouseName,"Основний склад","historical print must keep warehouse snapshot");
 
     assert.throws(()=>raw.prepare("UPDATE printed_form_snapshots SET generated_by='tamper@example.com' WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
     assert.throws(()=>raw.prepare("DELETE FROM printed_form_snapshots WHERE id=?").run(form1.snapshot.id),/printed_form_snapshot_immutable/);
