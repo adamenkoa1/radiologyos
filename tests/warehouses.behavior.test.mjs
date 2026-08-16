@@ -68,12 +68,12 @@ test("warehouse tenant and frozen snapshot are enforced",async()=>{
     assert.equal((await document(db,org1,{action:"post",documentId:body.document.id})).status,200);
     const line=raw.prepare("SELECT warehouse_id,warehouse_code,warehouse_name FROM inventory_document_lines WHERE document_id=?").get(body.document.id);
     const movement=raw.prepare("SELECT warehouse_id,warehouse_code,warehouse_name FROM inventory_movements WHERE document_id=?").get(body.document.id);
-    assert.deepEqual(line,{warehouse_id:second.id,warehouse_code:"XR",warehouse_name:"Рентген-склад"});
-    assert.deepEqual(movement,{warehouse_id:second.id,warehouse_code:"XR",warehouse_name:"Рентген-склад"});
+    assert.deepEqual({...line},{warehouse_id:second.id,warehouse_code:"XR",warehouse_name:"Рентген-склад"});
+    assert.deepEqual({...movement},{warehouse_id:second.id,warehouse_code:"XR",warehouse_name:"Рентген-склад"});
 
     const renamed=await saveWarehouse(db,org1,{id:second.id,name:"Склад рентгенографії",code:"XR2",active:true,isDefault:false},"PATCH");
     assert.equal(renamed.status,200);
     const after=raw.prepare("SELECT warehouse_code,warehouse_name FROM inventory_movements WHERE document_id=?").get(body.document.id);
-    assert.deepEqual(after,{warehouse_code:"XR",warehouse_name:"Рентген-склад"},"posted register snapshot must not follow master-data rename");
+    assert.deepEqual({...after},{warehouse_code:"XR",warehouse_name:"Рентген-склад"},"posted register snapshot must not follow master-data rename");
   });
 });
