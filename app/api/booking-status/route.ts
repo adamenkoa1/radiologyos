@@ -2,6 +2,7 @@ import {
   normalizeBookingCode,
   requirePatientSession,
 } from "../../../lib/patient-auth";
+import { patientOrderCancellationBlocker } from "../../../lib/patient-orders";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { stateLabel } from "../../../lib/study-state";
 import { dbBinding } from "../../../lib/db";
@@ -54,6 +55,15 @@ export async function PATCH(request: Request) {
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!["new", "confirmed", "rescheduled"].includes(booking.status)) {
     return Response.json({ error: "Цю заявку вже не можна скасувати онлайн" }, { status: 409 });
+  }
+  const blocker=await patientOrderCancellationBlocker(db,session.organizationId,booking.id);
+  if(blocker){
+    const error=blocker==="payment_refund_required"
+      ?"За заявкою вже є оплата. Для скасування зверніться до реєстратури щодо повернення коштів."
+      :blocker==="service_storno_required"
+        ?"Послугу вже проведено. Для скасування зверніться до реєстратури."
+        :"Скасування тимчасово недоступне через незавершений пов’язаний документ. Зверніться до реєстратури.";
+    return Response.json({error},{status:409});
   }
   await db.batch([
     db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ? AND organization_id = ?").bind(booking.id, session.organizationId),
