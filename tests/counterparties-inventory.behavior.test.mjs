@@ -101,16 +101,17 @@ test("D1 rejects cross-tenant and payer-only supplier references",async()=>{
     const itemId=await seedItem(db,1);
     const cross=raw.prepare("INSERT INTO counterparties (organization_id,name,kind) VALUES (2,'Foreign Supplier','supplier')").run();
     const payer=raw.prepare("INSERT INTO counterparties (organization_id,name,kind) VALUES (1,'Local Payer','payer')").run();
+    const warehouse=raw.prepare("SELECT id,code,name FROM warehouses WHERE organization_id=1 AND is_default=1 LIMIT 1").get();
     const doc=raw.prepare(
       "INSERT INTO business_documents (organization_id,document_type,number,state,created_by) VALUES (1,'inventory_receipt','НД-REF-GUARD','draft','test@example.com')"
     ).run();
-    const insert=(supplierId,supplier)=>raw.prepare(
+    const insert=(supplierId)=>raw.prepare(
       `INSERT INTO inventory_document_lines
-       (organization_id,document_id,line_no,item_id,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason)
-       VALUES (1,?,1,?,'LOT','','',?,1,'test')`
-    ).run(Number(doc.lastInsertRowid),itemId,supplierId);
-    assert.throws(()=>insert(Number(cross.lastInsertRowid),"Foreign Supplier"),/counterparty_supplier_tenant_mismatch/);
-    assert.throws(()=>insert(Number(payer.lastInsertRowid),"Local Payer"),/counterparty_not_active_supplier/);
+       (organization_id,document_id,line_no,item_id,warehouse_id,warehouse_code,warehouse_name,lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason)
+       VALUES (1,?,1,?,?,?,?, 'LOT','', '',?,1,'test')`
+    ).run(Number(doc.lastInsertRowid),itemId,warehouse.id,warehouse.code,warehouse.name,supplierId);
+    assert.throws(()=>insert(Number(cross.lastInsertRowid)),/counterparty_supplier_tenant_mismatch/);
+    assert.throws(()=>insert(Number(payer.lastInsertRowid)),/counterparty_not_active_supplier/);
   });
 });
 
