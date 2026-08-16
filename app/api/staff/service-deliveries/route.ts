@@ -43,6 +43,9 @@ export async function POST(request:Request) {
     if(code==="service_not_performed") {
       return Response.json({error:"Надання послуги можна провести лише після фактичного виконання дослідження"},{status:409});
     }
+    if(code==="service_delivery_reversed") {
+      return Response.json({error:"Надання послуги вже сторновано. Повторне проведення того самого факту заборонене"},{status:409});
+    }
     if(code==="service_delivery_in_progress" || code==="service_delivery_already_exists") {
       return Response.json({error:"Документ надання послуги вже створюється або проведений"},{status:409});
     }
