@@ -114,7 +114,7 @@ test("overpayment is rejected and cancelled draft produces no register movements
 test("renamed and inactive historical supplier can still be paid without breaking receipt snapshot", async()=>{
   await withD1(async(db,raw)=>{
     const cookie=await seedStaffSession(db,{email:"supplier-history@example.com",role:"admin",organizationId:1});
-    const supplierId=seedSupplier(raw,{code:"SUP-H",name:"Стара назва"});const cashAccountId=seedCash(raw,{code:"BANK-H",name:"Банк"});
+    const supplierId=seedSupplier(raw,1,{code:"SUP-H",name:"Стара назва"});const cashAccountId=seedCash(raw,1,{code:"BANK-H",name:"Банк"});
     const {draft}=await createSupplierReceipt(db,raw,cookie,{supplierId,quantity:3,sku:"PAY-HIST"});
     await valueReceipt(db,cookie,draft,100);await postDocument(db,cookie,{action:"post",documentId:draft.document.id});
     raw.prepare("UPDATE counterparties SET name='Нова назва',active=0 WHERE organization_id=1 AND id=?").run(supplierId);
