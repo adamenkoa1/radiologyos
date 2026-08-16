@@ -29,7 +29,7 @@ test("marking a study completed atomically posts its BAS service-delivery docume
        WHERE d.organization_id=1 AND s.booking_id=? AND d.document_type='service_delivery'`
     ).get(bookingId);
     assert.ok(doc?.id>0);
-    assert.equal(doc.number,`НП-${String(bookingId).padStart(6,"0")}`);
+    assert.equal(doc.number,`НП-${String(doc.id).padStart(6,"0")}`);
     assert.equal(doc.state,"posted");
     assert.equal(doc.chargeAmount,2500);
 
