@@ -43,7 +43,7 @@ test("posted payment receipt reuses its immutable historical snapshot",async()=>
     assert.equal(form1.payload.payment.amount,2800);
 
     await db.prepare(
-      "UPDATE bookings SET name='Пацієнт Перейменований',service='Інша назва послуги' WHERE organization_id=1 AND id=?"
+      "UPDATE bookings SET name='Пацієнт Перейменований' WHERE organization_id=1 AND id=?"
     ).bind(bookingId).run();
 
     const again=await printDocument(db,cookie,paid.documentId);
