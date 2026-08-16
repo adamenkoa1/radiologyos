@@ -6,8 +6,10 @@ import {
   DOCUMENT_STATES,
   DOCUMENT_TYPES,
   PRINTED_FORM_TYPES,
+  RADIOLOGYOS_ARCHITECTURE,
   REFERENCE_TYPES,
   REGISTER_TYPES,
+  SYSTEM_LAYERS,
   canMutateBusinessFacts,
   canTransitionDocument,
   registersForDocument,
@@ -22,6 +24,16 @@ test("business core preserves BAS-style layer order", () => {
     "register",
     "report",
   ]);
+});
+
+test("RadiologyOS keeps business core, medical layer and public site as explicit boundaries", () => {
+  assert.deepEqual([...SYSTEM_LAYERS], ["business_core", "medical", "public_site"]);
+  assert.equal(RADIOLOGYOS_ARCHITECTURE.businessCore.layer, "business_core");
+  assert.equal(RADIOLOGYOS_ARCHITECTURE.medical.dependsOn, "business_core");
+  assert.equal(RADIOLOGYOS_ARCHITECTURE.publicSite.layer, "public_site");
+  assert.equal(RADIOLOGYOS_ARCHITECTURE.publicSite.economicFactOwner, false);
+  assert.ok(RADIOLOGYOS_ARCHITECTURE.publicSite.exposes.includes("booking_intake"));
+  assert.ok(RADIOLOGYOS_ARCHITECTURE.publicSite.exposes.includes("payment_initiation"));
 });
 
 test("clinic business model exposes canonical references and documents", () => {
@@ -49,6 +61,8 @@ test("posted documents cannot be silently edited or cancelled", () => {
 
 test("posting maps business documents to registers", () => {
   assert.deepEqual(registersForDocument("payment"), ["cash", "patient_settlements"]);
+  assert.deepEqual(registersForDocument("refund"), ["cash", "patient_settlements"]);
+  assert.equal(registersForDocument("refund").includes("revenue"), false, "money refund alone must not rewrite revenue");
   assert.ok(registersForDocument("service_delivery").includes("revenue"));
   assert.ok(registersForDocument("service_delivery").includes("equipment_load"));
   assert.ok(registersForDocument("inventory_writeoff").includes("inventory_balance"));
