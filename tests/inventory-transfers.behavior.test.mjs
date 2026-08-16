@@ -91,6 +91,11 @@ test("transfer enforces tenant ownership and exact destination snapshot in D1",a
     const {warehouse:destination}=await destinationRes.json();
     const created=await transfer(db,cookie,{action:"create",lines:[{lotId,sourceWarehouseId:main.id,destinationWarehouseId:destination.id,quantity:1}]});
     const body=await created.json();const line=body.lines[0];
+
+    // Destination is already part of an immutable business fact while the document is a draft.
+    assert.throws(()=>raw.prepare(
+      "DELETE FROM warehouses WHERE organization_id=1 AND id=?"
+    ).run(destination.id),/warehouse_in_use/);
     assert.throws(()=>raw.prepare(
       "UPDATE inventory_document_lines SET destination_warehouse_code='TAMPER' WHERE id=?"
     ).run(line.id),/inventory_transfer_destination_invalid/);
