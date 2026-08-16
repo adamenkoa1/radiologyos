@@ -66,9 +66,8 @@ test("public catalog and tariff map use the canonical effective service source",
 
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /label:"Продажі"/);
-  assert.match(shell, /href:"\/staff\/reports"/);
-  assert.match(shell, /href:"\/staff\/tariffs"/);
+  assert.match(shell, /key:"services",label:"Послуги"/);
+  assert.match(shell, /label:"Тарифи",href:"\/staff\/tariffs"/);
   const page = await read("app/staff/tariffs/page.tsx");
   assert.match(page, /active="tariffs"/);
   const priceHtml = await read("public/site/price.html");
