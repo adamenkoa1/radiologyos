@@ -19,6 +19,27 @@ async function addOrgTwo(db) {
   ).run();
 }
 
+async function seedScopedStaffSession(db, options) {
+  const organizationId = Number(options.organizationId || 1);
+  const cookie = await seedStaffSession(db, { ...options, withMembership:false });
+  const existing = await db.prepare(
+    `SELECT 1 AS ok FROM memberships
+     WHERE organization_id = ? AND member_email = ? LIMIT 1`
+  ).bind(organizationId, options.email).first();
+  if (existing) {
+    await db.prepare(
+      `UPDATE memberships SET role = ?, active = 1
+       WHERE organization_id = ? AND member_email = ?`
+    ).bind(options.role, organizationId, options.email).run();
+  } else {
+    await db.prepare(
+      `INSERT INTO memberships (organization_id, member_email, role, active)
+       VALUES (?, ?, ?, 1)`
+    ).bind(organizationId, options.email, options.role).run();
+  }
+  return cookie;
+}
+
 test("Calendar6 port keeps the eight source schedule types and exact matrix concepts", async () => {
   const source = await read("lib/shift-calendar.ts");
   for (let index = 1; index <= 8; index += 1) {
@@ -128,19 +149,19 @@ test("staff shift calendar is tenant scoped, self scoped for clinicians, and man
 
 test("department head can manage staff shifts while organization admin stays control-plane only", async () => {
   await withD1(async (db) => {
-    const headCookie = await seedStaffSession(db, {
-      email:"head@example.com", role:"department_head", displayName:"Department Head", organizationId:1,
+    const headCookie = await seedScopedStaffSession(db, {
+      email:"shift-department-head@example.com", role:"department_head", displayName:"Department Head", organizationId:1,
     });
-    await seedStaffSession(db, {
-      email:"radiographer@example.com", role:"radiographer", displayName:"Radiographer", organizationId:1,
+    await seedScopedStaffSession(db, {
+      email:"shift-radiographer@example.com", role:"radiographer", displayName:"Radiographer", organizationId:1,
     });
-    const sysCookie = await seedStaffSession(db, {
-      email:"sys@example.com", role:"organization_admin", displayName:"System Admin", organizationId:1,
+    const sysCookie = await seedScopedStaffSession(db, {
+      email:"shift-system-admin@example.com", role:"organization_admin", displayName:"System Admin", organizationId:1,
     });
 
     const headSave = await callWorker(post("/api/staff/shifts", headCookie, {
       action:"assignment",
-      staffEmail:"radiographer@example.com",
+      staffEmail:"shift-radiographer@example.com",
       presetCode:"calendar6-1",
       teamIndex:2,
       anchorDate:"2026-08-17",
@@ -149,7 +170,7 @@ test("department head can manage staff shifts while organization admin stays con
 
     const sysSave = await callWorker(post("/api/staff/shifts", sysCookie, {
       action:"assignment",
-      staffEmail:"radiographer@example.com",
+      staffEmail:"shift-radiographer@example.com",
       presetCode:"calendar6-1",
       teamIndex:1,
       anchorDate:"2026-08-17",
