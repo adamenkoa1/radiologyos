@@ -4,6 +4,7 @@
 # Prerequisites (one-time), see HOSTING.md:
 #   1. A Cloudflare account and `wrangler login` completed.
 #   2. A D1 database created and its id pasted into wrangler.cloudflare.toml.
+#   3. The private `radiologyos-printed-forms` R2 bucket created.
 #
 # Then run:  bash scripts/deploy-cloudflare.sh
 set -euo pipefail
@@ -22,16 +23,19 @@ if [[ "${RADIOLOGYOS_DEPLOY_CONFIRM:-}" != "DEPLOY" ]]; then
   exit 1
 fi
 
-echo "[1/5] Building the artifact (dist/server + dist/client)…"
+echo "[1/6] Building the artifact (dist/server + dist/client)…"
 npm run build
 
-echo "[2/5] Recording the current D1 recovery bookmark…"
+echo "[2/6] Verifying the private printed-form R2 bucket exists…"
+npx wrangler r2 bucket info radiologyos-printed-forms --config "${CONFIG}" --json > /tmp/radiologyos-printed-forms-r2.json
+
+echo "[3/6] Recording the current D1 recovery bookmark…"
 npx wrangler d1 time-travel info radiologyos --config "${CONFIG}"
 
-echo "[3/5] Applying D1 migrations to the remote database…"
+echo "[4/6] Applying D1 migrations to the remote database…"
 bash scripts/apply-d1-migrations-remote.sh radiologyos "${CONFIG}" drizzle
 
-echo "[4/5] Verifying a secure active administrator credential…"
+echo "[5/6] Verifying a secure active administrator credential…"
 ADMIN_GUARD_SQL=$(cat <<'SQL'
 WITH admins AS (
   SELECT password_hash,
@@ -62,7 +66,7 @@ node -e '
   }
 '
 
-echo "[5/5] Deploying the Worker and static assets…"
+echo "[6/6] Deploying the Worker and static assets…"
 # Runtime configuration such as OUTBOUND_ALLOWED_HOSTS may be managed in the
 # Cloudflare Worker environment rather than committed to source control.
 npx wrangler deploy --keep-vars --config "${CONFIG}"
