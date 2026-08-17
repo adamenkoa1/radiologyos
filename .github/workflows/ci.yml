@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -22,9 +22,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-        with:
-          ref: ${{ github.head_ref || github.ref }}
-          fetch-depth: 0
 
       - name: Set up Node.js
         uses: actions/setup-node@v5
@@ -34,38 +31,6 @@ jobs:
 
       - name: Install dependencies deterministically
         run: npm run install:ci
-
-      - name: Build Drizzle rebaseline artifact
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
-        shell: bash
-        run: |
-          mkdir -p .drizzle-rebaseline-debug
-          set +e
-          npm install --no-save better-sqlite3@11.10.0 > .drizzle-rebaseline-debug/install.log 2>&1
-          install_status=$?
-          if [ "$install_status" -ne 0 ]; then
-            cat .drizzle-rebaseline-debug/install.log
-            exit "$install_status"
-          fi
-          node scripts/drizzle-rebaseline-converge.mjs > .drizzle-rebaseline-debug/pull.log 2>&1
-          pull_status=$?
-          cat .drizzle-rebaseline-debug/pull.log
-          exit "$pull_status"
-
-      - name: Upload Drizzle rebaseline artifact
-        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
-        uses: actions/upload-artifact@v4
-        with:
-          name: drizzle-rebaseline
-          path: |
-            .drizzle-rebaseline-artifact
-            .drizzle-rebaseline-debug
-          include-hidden-files: true
-          if-no-files-found: error
-
-      - name: Clean Drizzle rebaseline diagnostics
-        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
-        run: rm -rf .drizzle-rebaseline-artifact .drizzle-rebaseline-debug
 
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
@@ -104,17 +69,3 @@ jobs:
 
       - name: Production release gate
         run: npm run test:production-gate
-
-      - name: Commit Drizzle rebaseline output
-        if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
-        shell: bash
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add db/schema.ts drizzle/meta
-          if git diff --cached --quiet; then
-            echo "Generated Drizzle baseline is already committed."
-            exit 0
-          fi
-          git commit -m "fix: rebaseline Drizzle schema metadata"
-          git push origin "HEAD:${{ github.head_ref }}"
