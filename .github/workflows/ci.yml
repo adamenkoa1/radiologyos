@@ -34,7 +34,9 @@ jobs:
 
       - name: Build Drizzle rebaseline artifact
         if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
-        run: node scripts/drizzle-rebaseline-artifact.mjs
+        run: |
+          npm install --no-save better-sqlite3@11.10.0
+          node scripts/drizzle-rebaseline-artifact.mjs
 
       - name: Upload Drizzle rebaseline artifact
         if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
