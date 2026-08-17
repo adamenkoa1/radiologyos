@@ -92,6 +92,13 @@ function extractChecks(createSql) {
   return checks;
 }
 
+function ensureConstraintSeparator(value) {
+  const trailingWhitespace = value.match(/\s*$/)?.[0] || "";
+  const body = value.slice(0, value.length - trailingWhitespace.length);
+  if (!body || body.endsWith("[") || body.endsWith(",")) return value;
+  return `${body},${trailingWhitespace}`;
+}
+
 function injectChecks(schema, checksByTable) {
   let output = schema;
   for (const [tableName, expressions] of checksByTable) {
@@ -107,7 +114,8 @@ function injectChecks(schema, checksByTable) {
       .join("\n");
     const callbackEnd = block.lastIndexOf("]);");
     if (callbackEnd >= 0 && block.includes("(table) => [")) {
-      block = `${block.slice(0, callbackEnd)}${checkLines}\n${block.slice(callbackEnd)}`;
+      const beforeChecks = ensureConstraintSeparator(block.slice(0, callbackEnd));
+      block = `${beforeChecks}${checkLines}\n${block.slice(callbackEnd)}`;
     } else {
       const simpleEnd = block.lastIndexOf("});");
       if (simpleEnd < 0) throw new Error(`Could not add CHECK constraints to ${tableName}`);
