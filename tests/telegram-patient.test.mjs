@@ -54,12 +54,13 @@ test("patient link endpoint binds Telegram to patient_id and canonicalizes DOB p
   assert.match(route, /isRateLimited\(/);
 });
 
-test("public webhook is protected by the secret header set on setWebhook", async () => {
+test("public webhook resolves exactly one tenant from the secret header and fails closed", async () => {
   const route = await read("app/api/telegram/webhook/route.ts");
   assert.match(route, /x-telegram-bot-api-secret-token/);
-  assert.match(route, /provided !== secret/);
-  assert.match(route, /status: 401/);
-  assert.match(route, /handleTelegramUpdate\(/);
+  assert.match(route, /resolveOrganizationByIntegrationSecret\(db, "telegram_webhook_secret", provided\)/);
+  assert.match(route, /if \(!organizationId\) return new Response\("forbidden", \{ status: 401 \}\)/);
+  assert.match(route, /handleTelegramUpdate\(db, update, organizationId\)/);
+  assert.match(route, /sendTelegramTo\(db, chatId, reply, organizationId\)/);
 });
 
 test("admin enable endpoint registers the webhook with a stored secret", async () => {
@@ -81,9 +82,10 @@ test("telegram lib can message an arbitrary chat and register a webhook", async 
   assert.match(lib, /secret_token: secret/);
 });
 
-test("notify selects exact Telegram chat by patient_id and legacy chat by booking code only", async () => {
+test("notify selects exact Telegram chat by patient_id and sends with booking tenant credentials", async () => {
   const notify = await read("lib/notify.ts");
   assert.match(notify, /import \{ sendTelegramTo \} from ".\/telegram"/);
+  assert.match(notify, /getOrganizationIntegrationSettings/);
   assert.match(notify, /FROM patient_telegram_identities ti/);
   assert.match(notify, /b\.patient_id != '' AND ti\.patient_id = b\.patient_id/);
   assert.match(notify, /b\.patient_id = '' AND ti\.patient_id = ''/);
@@ -91,7 +93,10 @@ test("notify selects exact Telegram chat by patient_id and legacy chat by bookin
   assert.doesNotMatch(notify, /ti\.identity_kind = 'dob'.*ti\.identity_value = b\.date_of_birth/s);
   const pushes = notify.match(/channel: "telegram"/g) || [];
   assert.ok(pushes.length >= 2, "очікуємо Telegram-канал у reminder і message");
-  assert.match(notify, /sendTelegramTo\(db, telegramChatId, body\)/);
+  const sends = notify.match(/sendTelegramTo\(db, telegramChatId, body, organizationId\)/g) || [];
+  assert.ok(sends.length >= 2, "очікуємо tenant-aware Telegram send у reminder і message");
+  assert.match(notify, /whatsappConfig\(db, organizationId\)/);
+  assert.match(notify, /sendWhatsApp\(db, booking\.phoneNormalized, body, organizationId\)/);
 });
 
 test("cabinet offers a Telegram connect button that calls the link endpoint", async () => {
