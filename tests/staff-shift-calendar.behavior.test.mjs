@@ -179,7 +179,7 @@ test("department head can manage staff shifts while organization admin stays con
 
     const auditRows = await db.prepare(
       `SELECT action, organization_id AS organizationId
-       FROM audit_log WHERE action LIKE 'staff_shift_%' ORDER BY id`
+       FROM security_audit_log WHERE action LIKE 'staff_shift_%' ORDER BY id`
     ).all();
     assert.ok(auditRows.results.some((row) => row.action === "staff_shift_assignment_saved" && row.organizationId === 1));
   });
