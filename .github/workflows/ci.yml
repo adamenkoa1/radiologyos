@@ -44,7 +44,7 @@ jobs:
             cat .drizzle-rebaseline-debug/install.log
             exit "$install_status"
           fi
-          node scripts/drizzle-rebaseline-artifact.mjs > .drizzle-rebaseline-debug/pull.log 2>&1
+          node scripts/drizzle-rebaseline-converge.mjs > .drizzle-rebaseline-debug/pull.log 2>&1
           pull_status=$?
           cat .drizzle-rebaseline-debug/pull.log
           exit "$pull_status"
