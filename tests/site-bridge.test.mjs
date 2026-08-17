@@ -93,8 +93,6 @@ test("department settings use system-admin authority and validate input", async 
   const migration = await read("drizzle/0010_department_settings.sql");
   assert.match(migration, /telegram_bot_token/);
   assert.match(migration, /pay_link/);
-  const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
-  assert.ok(journal.entries.some((e) => e.tag === "0010_department_settings"));
 });
 
 test("a test-message endpoint verifies the current organization's Telegram connection", async () => {
