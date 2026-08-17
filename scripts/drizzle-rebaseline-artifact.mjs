@@ -145,6 +145,16 @@ try {
   const afterSql = (await readdir(drizzleDir)).filter((name) => /^\d{4}_.+\.sql$/.test(name));
   const generatedMigrations = afterSql.filter((name) => !beforeSql.has(name));
   if (generatedMigrations.length) {
+    for (const name of generatedMigrations) {
+      await copyFile(join(drizzleDir, name), join(artifactDir, `drift-${name}`));
+      const prefix = name.slice(0, 4);
+      const generatedSnapshot = join(drizzleDir, "meta", `${prefix}_snapshot.json`);
+      try {
+        await copyFile(generatedSnapshot, join(artifactDir, `drift-${prefix}_snapshot.json`));
+      } catch {
+        // The SQL file itself is sufficient when drizzle-kit omits a snapshot.
+      }
+    }
     throw new Error(`Rebaseline is not a no-op; generated: ${generatedMigrations.join(", ")}`);
   }
 
