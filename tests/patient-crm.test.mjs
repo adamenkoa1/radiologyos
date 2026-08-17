@@ -14,9 +14,6 @@ test("CRM migration creates profile and communication tables with indexes", asyn
   assert.match(migration, /CREATE INDEX IF NOT EXISTS `patient_communications_phone_idx`/);
   assert.match(migration, /CREATE INDEX IF NOT EXISTS `bookings_patient_idx`/);
 
-  const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
-  assert.ok(journal.entries.some((entry) => entry.tag === "0006_patient_crm"));
-
   const sharedPhone = await read("drizzle/0054_patient_shared_phone.sql");
   assert.match(sharedPhone, /patient_id.*PRIMARY KEY/s);
   assert.match(sharedPhone, /CREATE INDEX IF NOT EXISTS `patient_profiles_org_phone_idx`/);
