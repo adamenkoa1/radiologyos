@@ -33,6 +33,101 @@ const printResult = (result) => {
   process.stderr.write(result.stderr || "");
 };
 
+function extractChecks(createSql) {
+  const checks = [];
+  const sqlText = String(createSql || "");
+  let quote = "";
+  for (let i = 0; i < sqlText.length; i += 1) {
+    const ch = sqlText[i];
+    if (quote) {
+      if (quote === "]") {
+        if (ch === "]") quote = "";
+      } else if (ch === quote) {
+        if ((quote === "'" || quote === '"') && sqlText[i + 1] === quote) i += 1;
+        else quote = "";
+      }
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "[") {
+      quote = "]";
+      continue;
+    }
+    if (sqlText.slice(i, i + 5).toUpperCase() !== "CHECK") continue;
+    const before = sqlText[i - 1] || " ";
+    const after = sqlText[i + 5] || " ";
+    if (/[A-Za-z0-9_]/.test(before) || /[A-Za-z0-9_]/.test(after)) continue;
+    let open = i + 5;
+    while (/\s/.test(sqlText[open] || "")) open += 1;
+    if (sqlText[open] !== "(") continue;
+    let depth = 1;
+    let innerQuote = "";
+    let end = open + 1;
+    for (; end < sqlText.length; end += 1) {
+      const inner = sqlText[end];
+      if (innerQuote) {
+        if (innerQuote === "]") {
+          if (inner === "]") innerQuote = "";
+        } else if (inner === innerQuote) {
+          if ((innerQuote === "'" || innerQuote === '"') && sqlText[end + 1] === innerQuote) end += 1;
+          else innerQuote = "";
+        }
+        continue;
+      }
+      if (inner === "'" || inner === '"' || inner === "`") innerQuote = inner;
+      else if (inner === "[") innerQuote = "]";
+      else if (inner === "(") depth += 1;
+      else if (inner === ")") {
+        depth -= 1;
+        if (depth === 0) break;
+      }
+    }
+    if (depth !== 0) throw new Error(`Unbalanced CHECK expression in: ${sqlText}`);
+    checks.push(sqlText.slice(open + 1, end).trim());
+    i = end;
+  }
+  return checks;
+}
+
+function injectChecks(schema, checksByTable) {
+  let output = schema;
+  for (const [tableName, expressions] of checksByTable) {
+    if (!expressions.length) continue;
+    const marker = `sqliteTable("${tableName}",`;
+    const start = output.indexOf(marker);
+    if (start < 0) throw new Error(`Generated schema is missing table ${tableName}`);
+    const next = output.indexOf("\nexport const ", start + marker.length);
+    const end = next < 0 ? output.length : next;
+    let block = output.slice(start, end);
+    const checkLines = expressions
+      .map((expression, index) => `\tcheck(${JSON.stringify(`${tableName}_check_${index + 1}`)}, sql.raw(${JSON.stringify(expression)})),`)
+      .join("\n");
+    const callbackEnd = block.lastIndexOf("]);");
+    if (callbackEnd >= 0 && block.includes("(table) => [")) {
+      block = `${block.slice(0, callbackEnd)}${checkLines}\n${block.slice(callbackEnd)}`;
+    } else {
+      const simpleEnd = block.lastIndexOf("});");
+      if (simpleEnd < 0) throw new Error(`Could not add CHECK constraints to ${tableName}`);
+      block = `${block.slice(0, simpleEnd)}},\n(table) => [\n${checkLines}\n]);${block.slice(simpleEnd + 3)}`;
+    }
+    output = `${output.slice(0, start)}${block}${output.slice(end)}`;
+  }
+  return output;
+}
+
+function injectPartialIndexes(schema, partialIndexes) {
+  const lines = schema.split("\n");
+  for (const { name, predicate } of partialIndexes) {
+    const at = lines.findIndex((line) => line.includes(`("${name}")`) && line.includes(".on("));
+    if (at < 0) throw new Error(`Generated schema is missing partial index ${name}`);
+    lines[at] = lines[at].replace(/,$/, `.where(sql.raw(${JSON.stringify(predicate)})),`);
+  }
+  return lines.join("\n");
+}
+
 try {
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA foreign_keys = ON;");
@@ -55,6 +150,17 @@ try {
       throw new Error(`${migration}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+
+  const tableRows = db.prepare("SELECT name, sql FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all();
+  const checksByTable = new Map(tableRows.map(({ name, sql }) => [name, extractChecks(sql)]));
+  const partialIndexes = db.prepare("SELECT name, tbl_name AS tableName, sql FROM sqlite_master WHERE type = 'index' AND sql IS NOT NULL ORDER BY name").all()
+    .map(({ name, tableName, sql }) => {
+      const match = String(sql).match(/\bWHERE\b([\s\S]+)$/i);
+      return match ? { name, tableName, predicate: match[1].replace(/;\s*$/, "").trim() } : null;
+    })
+    .filter(Boolean);
+  console.log(`Recovered D1 CHECK constraints: ${[...checksByTable.values()].reduce((sum, items) => sum + items.length, 0)}`);
+  console.log(`Recovered D1 partial indexes: ${partialIndexes.map(({ name }) => name).join(", ") || "none"}`);
 
   // drizzle-kit 0.31.10 cannot introspect the repository's raw-SQL views.
   // They remain authoritative in committed migrations; remove them only from
@@ -79,21 +185,18 @@ try {
   const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
   const snapshot = JSON.parse(await readFile(pulledSnapshot, "utf8"));
 
-  // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings,
-  // mis-serializes raw CHECK expressions and drops one REAL DEFAULT 0. Raw
-  // CHECKs remain authoritative in committed SQL migrations. SQLite PRAGMA
-  // reports some INTEGER PRIMARY KEY AUTOINCREMENT columns as nullable even
-  // though primary-key semantics make them non-null; normalize the snapshot to
-  // Drizzle's semantic representation so future generate runs remain no-op.
+  // drizzle-kit 0.31.10 misplaces/truncates CHECK expressions, loses partial
+  // index predicates, emits SQL expression defaults as strings and drops one
+  // REAL DEFAULT 0. Rebuild those pieces from sqlite_master, which is the schema
+  // produced by the committed migrations, rather than trusting pull output.
   const generatedSchemaPath = join(artifactDir, "schema.ts");
   let currentTable = "";
-  const generatedSchema = (await readFile(generatedSchemaPath, "utf8"))
+  let generatedSchema = (await readFile(generatedSchemaPath, "utf8"))
     .replaceAll('.default("sql`(CURRENT_TIMESTAMP)`")', '.default(sql`(CURRENT_TIMESTAMP)`)')
     .replaceAll(
       '.default("sql`(lower(hex(randomblob(16))))`")',
       '.default(sql`(lower(hex(randomblob(16))))`)',
     )
-    .replace(", check,", ",")
     .split("\n")
     .filter((line) => !line.trimStart().startsWith("check("))
     .map((line) => {
@@ -105,8 +208,13 @@ try {
       return line;
     })
     .join("\n");
+  generatedSchema = injectChecks(generatedSchema, checksByTable);
+  generatedSchema = injectPartialIndexes(generatedSchema, partialIndexes);
   await writeFile(generatedSchemaPath, generatedSchema);
 
+  // Keep snapshot normalization conservative in this diagnostic pass. The next
+  // generated snapshot is copied into the artifact when CHECK/predicate metadata
+  // differs, giving the exact Drizzle v6 representation to apply safely.
   for (const table of Object.values(snapshot.tables || {})) {
     table.checkConstraints = {};
     const id = table.columns?.id;
