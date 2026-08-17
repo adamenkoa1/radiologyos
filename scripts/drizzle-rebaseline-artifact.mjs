@@ -32,7 +32,6 @@ try {
   const drizzleKit = resolve(root, "node_modules/.bin/drizzle-kit");
   const result = spawnSync(drizzleKit, [
     "pull",
-    "--init",
     "--dialect=sqlite",
     `--url=${dbPath}`,
     `--out=${artifactDir}`,
