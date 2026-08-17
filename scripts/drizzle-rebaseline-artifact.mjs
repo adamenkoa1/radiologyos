@@ -77,23 +77,16 @@ try {
 
   const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
   const snapshot = JSON.parse(await readFile(pulledSnapshot, "utf8"));
-  const nullableAutoPkTables = new Set(
-    Object.entries(snapshot.tables || {})
-      .filter(([, table]) => {
-        const id = table.columns?.id;
-        return id?.primaryKey && id?.autoincrement && !id?.notNull;
-      })
-      .map(([tableName]) => tableName),
-  );
 
   // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings,
-  // mis-serializes raw CHECK expressions, marks a few SQLite INTEGER PRIMARY
-  // KEY columns explicitly NOT NULL, and drops one REAL DEFAULT 0. Normalize
-  // only those observed introspector quirks. Raw CHECKs remain authoritative in
-  // committed SQL migrations.
+  // mis-serializes raw CHECK expressions and drops one REAL DEFAULT 0. Raw
+  // CHECKs remain authoritative in committed SQL migrations. SQLite PRAGMA
+  // reports some INTEGER PRIMARY KEY AUTOINCREMENT columns as nullable even
+  // though primary-key semantics make them non-null; normalize the snapshot to
+  // Drizzle's semantic representation so future generate runs remain no-op.
   const generatedSchemaPath = join(artifactDir, "schema.ts");
   let currentTable = "";
-  let generatedSchema = (await readFile(generatedSchemaPath, "utf8"))
+  const generatedSchema = (await readFile(generatedSchemaPath, "utf8"))
     .replaceAll('.default("sql`(CURRENT_TIMESTAMP)`")', '.default(sql`(CURRENT_TIMESTAMP)`)')
     .replaceAll(
       '.default("sql`(lower(hex(randomblob(16))))`")',
@@ -105,12 +98,6 @@ try {
     .map((line) => {
       const tableMatch = line.match(/sqliteTable\("([^"]+)"/);
       if (tableMatch) currentTable = tableMatch[1];
-      if (
-        nullableAutoPkTables.has(currentTable)
-        && line.includes("id: integer().primaryKey({ autoIncrement: true }).notNull(),")
-      ) {
-        return line.replace(".primaryKey({ autoIncrement: true }).notNull()", ".primaryKey({ autoIncrement: true })");
-      }
       if (currentTable === "inventory_items" && line.includes('minStock: real("min_stock").notNull(),')) {
         return line.replace('.notNull(),', '.default(0).notNull(),');
       }
@@ -119,7 +106,11 @@ try {
     .join("\n");
   await writeFile(generatedSchemaPath, generatedSchema);
 
-  for (const table of Object.values(snapshot.tables || {})) table.checkConstraints = {};
+  for (const table of Object.values(snapshot.tables || {})) {
+    table.checkConstraints = {};
+    const id = table.columns?.id;
+    if (id?.primaryKey && id?.autoincrement) id.notNull = true;
+  }
   await writeFile(pulledSnapshot, `${JSON.stringify(snapshot, null, 2)}\n`);
 
   // Convert drizzle-kit pull's synthetic 0000 metadata into a baseline anchored
