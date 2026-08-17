@@ -60,8 +60,8 @@ try {
   const generate = spawnSync(drizzleKit, [
     "generate",
     "--dialect=sqlite",
-    `--schema=${join(root, "db/schema.ts")}`,
-    `--out=${artifactDir}`,
+    "--schema=./db/schema.ts",
+    "--out=.drizzle-rebaseline-artifact",
   ], {
     cwd: root,
     encoding: "utf8",
