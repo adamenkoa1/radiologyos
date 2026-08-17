@@ -21,7 +21,16 @@ async function post(db,cookie,bookingId) {
   return callWorker(jsonRequest("/api/staff/service-deliveries",{bookingId},{headers:{cookie}}),db);
 }
 
-test("completed civilian service posts one BAS service document and all business registers",async()=>{
+function performanceFor(raw,organizationId,sourceDocumentId) {
+  return raw.prepare(
+    `SELECT id,state,basis_document_id AS basisDocumentId
+     FROM business_documents
+     WHERE organization_id=? AND document_type='study_performance' AND basis_document_id=?
+     LIMIT 1`
+  ).get(organizationId,sourceDocumentId);
+}
+
+test("completed civilian service splits economic and operational registrar ownership",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedCompletedBooking(db);
     const cookie=await seedStaffSession(db,{email:"registrar-service@example.com",role:"registrar",organizationId:1});
@@ -59,12 +68,31 @@ test("completed civilian service posts one BAS service document and all business
     assert.equal(detail.charge_amount,2400);
     assert.equal(detail.performed_at,"2026-08-20T10:05:00");
 
+    const performance=performanceFor(raw,1,firstBody.document.id);
+    assert.ok(performance?.id>0);
+    assert.equal(performance.state,"posted");
+    assert.equal(performance.basisDocumentId,firstBody.document.id);
+
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM services_delivered_movements WHERE organization_id=1 AND document_id=?"
-    ).get(firstBody.document.id).n,1);
+    ).get(firstBody.document.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM equipment_load_movements WHERE organization_id=1 AND document_id=?"
+    ).get(firstBody.document.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM staff_output_movements WHERE organization_id=1 AND document_id=?"
+    ).get(firstBody.document.id).n,0);
+
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM services_delivered_movements WHERE organization_id=1 AND document_id=?"
+    ).get(performance.id).n,1);
     assert.equal(raw.prepare(
       "SELECT minutes_delta FROM equipment_load_movements WHERE organization_id=1 AND document_id=?"
-    ).get(firstBody.document.id).minutes_delta,30);
+    ).get(performance.id).minutes_delta,30);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM staff_output_movements WHERE organization_id=1 AND document_id=?"
+    ).get(performance.id).n,2);
+
     assert.equal(raw.prepare(
       "SELECT amount_delta FROM revenue_movements WHERE organization_id=1 AND document_id=?"
     ).get(firstBody.document.id).amount_delta,2400);
@@ -72,22 +100,25 @@ test("completed civilian service posts one BAS service document and all business
       "SELECT amount_delta FROM patient_settlement_movements WHERE organization_id=1 AND document_id=?"
     ).get(firstBody.document.id).amount_delta,2400);
     assert.equal(raw.prepare(
-      "SELECT COUNT(*) AS n FROM staff_output_movements WHERE organization_id=1 AND document_id=?"
-    ).get(firstBody.document.id).n,2);
+      "SELECT COUNT(*) AS n FROM revenue_movements WHERE organization_id=1 AND document_id=?"
+    ).get(performance.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE organization_id=1 AND document_id=?"
+    ).get(performance.id).n,0);
 
     assert.throws(()=>raw.prepare(
       "UPDATE revenue_movements SET amount_delta=1 WHERE document_id=?"
     ).run(firstBody.document.id),/revenue_movement_immutable/);
     assert.throws(()=>raw.prepare(
       "DELETE FROM equipment_load_movements WHERE document_id=?"
-    ).run(firstBody.document.id),/equipment_load_movement_immutable/);
+    ).run(performance.id),/equipment_load_movement_immutable/);
     assert.throws(()=>raw.prepare(
       "UPDATE service_delivery_details SET charge_amount=1 WHERE document_id=?"
     ).run(firstBody.document.id),/service_delivery_not_draft/);
   });
 });
 
-test("free military service records operational output without inventing revenue or patient debt",async()=>{
+test("free military service records study-performance output without inventing revenue or patient debt",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedCompletedBooking(db,{code:"RD-SVC-MIL",amount:2400,category:"military"});
     const cookie=await seedStaffSession(db,{email:"registrar-military@example.com",role:"registrar",organizationId:1});
@@ -96,15 +127,17 @@ test("free military service records operational output without inventing revenue
     const body=await response.json();
     assert.equal(body.document.chargeAmount,0);
 
+    const performance=performanceFor(raw,1,body.document.id);
+    assert.ok(performance?.id>0);
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM services_delivered_movements WHERE document_id=?"
-    ).get(body.document.id).n,1);
+    ).get(performance.id).n,1);
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM equipment_load_movements WHERE document_id=?"
-    ).get(body.document.id).n,1);
+    ).get(performance.id).n,1);
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM staff_output_movements WHERE document_id=?"
-    ).get(body.document.id).n,2);
+    ).get(performance.id).n,2);
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM revenue_movements WHERE document_id=?"
     ).get(body.document.id).n,0);

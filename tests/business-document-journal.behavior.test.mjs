@@ -101,12 +101,30 @@ test("document structure shows canonical parents, children and exact register mo
     assert.equal(serviceDetailResponse.status,200);
     const serviceDetail=await serviceDetailResponse.json();
     assert.ok(serviceDetail.relations.children.some(row=>row.id===correction.document.id && row.relationType==="storno"));
-    assert.equal(serviceDetail.movements.services.length,1);
+    const performanceRelation=serviceDetail.relations.children.find(
+      row=>row.documentType==="study_performance" && row.relationType==="based_on",
+    );
+    assert.ok(performanceRelation?.id>0);
+    assert.equal(serviceDetail.movements.services.length,0);
     assert.equal(serviceDetail.movements.revenue.length,1);
     assert.equal(serviceDetail.movements.settlement.length,1);
-    assert.equal(serviceDetail.movements.equipment.length,1);
-    assert.equal(serviceDetail.movements.staff.length,2);
+    assert.equal(serviceDetail.movements.equipment.length,0);
+    assert.equal(serviceDetail.movements.staff.length,0);
     assert.equal(serviceDetail.movements.cash.length,0);
+
+    const performanceDetailResponse=await journal(db,cookie,performanceRelation.id);
+    assert.equal(performanceDetailResponse.status,200);
+    const performanceDetail=await performanceDetailResponse.json();
+    assert.ok(performanceDetail.relations.parent.some(
+      row=>row.id===seeded.serviceDocumentId && row.relationType==="based_on",
+    ));
+    assert.equal(performanceDetail.document.state,"reversed");
+    assert.equal(performanceDetail.movements.services.length,1);
+    assert.equal(performanceDetail.movements.revenue.length,0);
+    assert.equal(performanceDetail.movements.settlement.length,0);
+    assert.equal(performanceDetail.movements.equipment.length,1);
+    assert.equal(performanceDetail.movements.staff.length,2);
+    assert.equal(performanceDetail.movements.cash.length,0);
 
     const correctionDetailResponse=await journal(db,cookie,correction.document.id);
     assert.equal(correctionDetailResponse.status,200);

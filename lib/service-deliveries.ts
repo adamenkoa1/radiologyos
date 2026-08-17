@@ -122,28 +122,14 @@ export async function postServiceDelivery(
     ).run();
 
     const postedAt=new Date().toISOString();
+    // Posting service_delivery creates the linked posted study_performance through D1. The
+    // study_performance INSERT trigger owns all positive operational movements; this batch
+    // therefore keeps only the economic movements on the service-delivery registrar.
     const statements:D1PreparedStatement[]=[
       db.prepare(
         `UPDATE business_documents SET state='posted',posted_by=?,posted_at=?
          WHERE organization_id=? AND id=? AND state='draft'`
       ).bind(createdBy,postedAt,input.organizationId,documentId),
-      db.prepare(
-        `INSERT INTO services_delivered_movements
-         (organization_id,document_id,booking_id,patient_id,service_code,equipment_id,quantity,
-          anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,booking.id,booking.patientId || "",booking.serviceCode,
-        booking.equipmentId,booking.anatomicalRegionsCount,booking.performedAt,createdBy,booking.performedAt,
-      ),
-      db.prepare(
-        `INSERT INTO equipment_load_movements
-         (organization_id,document_id,booking_id,equipment_id,minutes_delta,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,booking.id,booking.equipmentId,booking.durationMinutes,
-        booking.performedAt,createdBy,booking.performedAt,
-      ),
     ];
 
     if(chargeAmount>0) {
@@ -164,26 +150,6 @@ export async function postServiceDelivery(
           input.organizationId,documentId,booking.id,booking.patientId || "",chargeAmount,createdBy,booking.performedAt,
         ),
       );
-    }
-    if(booking.radiologistEmail) {
-      statements.push(db.prepare(
-        `INSERT INTO staff_output_movements
-         (organization_id,document_id,booking_id,member_email,staff_role,units_delta,anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,'radiologist',1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,booking.id,booking.radiologistEmail,
-        booking.anatomicalRegionsCount,booking.performedAt,createdBy,booking.performedAt,
-      ));
-    }
-    if(booking.radiographerEmail) {
-      statements.push(db.prepare(
-        `INSERT INTO staff_output_movements
-         (organization_id,document_id,booking_id,member_email,staff_role,units_delta,anatomical_regions_count,performed_at,actor_email,occurred_at)
-         VALUES (?,?,?,?,'radiographer',1,?,?,?,?)`
-      ).bind(
-        input.organizationId,documentId,booking.id,booking.radiographerEmail,
-        booking.anatomicalRegionsCount,booking.performedAt,createdBy,booking.performedAt,
-      ));
     }
     await db.batch(statements);
   } catch(error) {
