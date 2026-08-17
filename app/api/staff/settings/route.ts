@@ -1,17 +1,16 @@
-// Department settings managed by an administrator: Telegram notifications for
-// new bookings and the PrivatBank payment link for civilian patients.
-// These settings are still legacy-global in app_settings, so until they are
-// tenantized only the primary/public organization may administer them.
+// Integration settings managed in the current organization control plane.
+// Every read/write is scoped by the server-derived organization context.
 
 import { canManageSystem } from "../../../../lib/staff-auth";
 import { requireSystemOrgContext } from "../../../../lib/tenant";
-import { getSettings, setSetting } from "../../../../lib/settings";
+import {
+  getOrganizationIntegrationSettings,
+  setOrganizationIntegrationSetting,
+} from "../../../../lib/settings";
 import { safeOutboundUrl } from "../../../../lib/outbound";
 import { parseLeadHours, REMINDER_LEAD_KEY } from "../../../../lib/reminders";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
-
-const PRIMARY_ORGANIZATION_ID = 1;
 
 function clean(value: unknown, max: number) {
   return typeof value === "string" ? value.trim().slice(0, max) : "";
@@ -47,11 +46,11 @@ export async function GET(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
-    return Response.json({ error: "Налаштування доступні лише системному адміністратору основної організації" }, { status: 403 });
+  if (!canManageSystem(ctx.role)) {
+    return Response.json({ error: "Налаштування доступні лише системному адміністратору організації" }, { status: 403 });
   }
 
-  const values = await getSettings(db, SETTING_KEYS);
+  const values = await getOrganizationIntegrationSettings(db, ctx.organizationId, SETTING_KEYS);
   return Response.json({
     settings: settingsView(values),
     staff: ctx.member,
@@ -63,8 +62,8 @@ export async function PUT(request: Request) {
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
   const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || !canManageSystem(ctx.role)) {
-    return Response.json({ error: "Змінювати налаштування може лише системний адміністратор основної організації" }, { status: 403 });
+  if (!canManageSystem(ctx.role)) {
+    return Response.json({ error: "Змінювати налаштування може лише системний адміністратор організації" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({})) as {
@@ -79,19 +78,12 @@ export async function PUT(request: Request) {
   const smsGatewayUrl = clean(body.smsGatewayUrl, 600);
   const emailGatewayUrl = clean(body.emailGatewayUrl, 600);
   const emailGatewayFrom = clean(body.emailGatewayFrom, 254);
-  // Секрети шлюзів: порожнє зберігає поточне, "-" очищує (як токен Telegram).
   const smsAuth = clean(body.smsGatewayAuth, 400);
   const emailAuth = clean(body.emailGatewayAuth, 400);
-  // Empty token keeps the stored one (so the admin isn't forced to re-enter the
-  // secret on every save); a value of "-" explicitly clears it.
   const token = clean(body.telegramBotToken, 120);
 
   let paymentUrl: URL | null = null;
-  try {
-    paymentUrl = payLink ? new URL(payLink) : null;
-  } catch {
-    paymentUrl = null;
-  }
+  try { paymentUrl = payLink ? new URL(payLink) : null; } catch { paymentUrl = null; }
   if (payLink && (!paymentUrl || paymentUrl.protocol !== "https:" || paymentUrl.username || paymentUrl.password)) {
     return Response.json({ error: "Посилання на оплату має починатися з https://" }, { status: 400 });
   }
@@ -110,27 +102,31 @@ export async function PUT(request: Request) {
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
-  if (token === "-") await setSetting(db, "telegram_bot_token", "");
-  else if (token) await setSetting(db, "telegram_bot_token", token);
-  await setSetting(db, "telegram_chat_id", chatId);
-  await setSetting(db, "pay_link", payLink);
-  await setSetting(db, "external_ics_url", externalIcsUrl);
-  await setSetting(db, "patient_reminders_enabled", body.remindersEnabled ? "1" : "");
-  await setSetting(db, REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
-  await setSetting(db, "sms_gateway_url", smsGatewayUrl);
-  await setSetting(db, "email_gateway_url", emailGatewayUrl);
-  await setSetting(db, "email_gateway_from", emailGatewayFrom);
-  if (smsAuth === "-") await setSetting(db, "sms_gateway_auth", "");
-  else if (smsAuth) await setSetting(db, "sms_gateway_auth", smsAuth);
-  if (emailAuth === "-") await setSetting(db, "email_gateway_auth", "");
-  else if (emailAuth) await setSetting(db, "email_gateway_auth", emailAuth);
+
+  const set = (key: string, value: string) =>
+    setOrganizationIntegrationSetting(db, ctx.organizationId, key, value, ctx.member.email);
+  if (token === "-") await set("telegram_bot_token", "");
+  else if (token) await set("telegram_bot_token", token);
+  await set("telegram_chat_id", chatId);
+  await set("pay_link", payLink);
+  await set("external_ics_url", externalIcsUrl);
+  await set("patient_reminders_enabled", body.remindersEnabled ? "1" : "");
+  await set(REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
+  await set("sms_gateway_url", smsGatewayUrl);
+  await set("email_gateway_url", emailGatewayUrl);
+  await set("email_gateway_from", emailGatewayFrom);
+  if (smsAuth === "-") await set("sms_gateway_auth", "");
+  else if (smsAuth) await set("sms_gateway_auth", smsAuth);
+  if (emailAuth === "-") await set("email_gateway_auth", "");
+  else if (emailAuth) await set("email_gateway_auth", emailAuth);
 
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: ctx.member.email,
     action: "settings_update",
     resource: "settings",
+    details: { scope: "organization_integrations" },
   });
-  const values = await getSettings(db, SETTING_KEYS);
+  const values = await getOrganizationIntegrationSettings(db, ctx.organizationId, SETTING_KEYS);
   return Response.json({ ok: true, settings: settingsView(values) });
 }

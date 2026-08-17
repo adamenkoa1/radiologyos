@@ -35,8 +35,13 @@ test("secondary tenant cannot resolve or read the primary tenant external calend
   });
 });
 
-test("primary tenant provider diagnostics still see the configured external calendar", async () => {
+test("primary tenant provider diagnostics still see a genuinely legacy-only external calendar", async () => {
   await withD1(async (db) => {
+    // Migration 0089 seeds org1-scoped integration values. Remove the scoped
+    // calendar row so this fixture exercises the intentional org1 legacy read.
+    await db.prepare(
+      "DELETE FROM organization_integration_settings WHERE organization_id = 1 AND key = 'external_ics_url'"
+    ).run();
     await db.prepare(
       `INSERT INTO app_settings (key, value) VALUES ('external_ics_url', 'https://calendar.example/private.ics')
        ON CONFLICT(key) DO UPDATE SET value=excluded.value`
@@ -53,11 +58,10 @@ test("primary tenant provider diagnostics still see the configured external cale
   });
 });
 
-test("provider resolver fails closed for legacy-global calendar URL outside org 1", async () => {
+test("provider resolver asks for the external calendar in the authenticated tenant scope", async () => {
   const { readFile } = await import("node:fs/promises");
   const source = await readFile(new URL("../lib/providers/index.ts", import.meta.url), "utf8");
-  assert.match(source, /PRIMARY_ORGANIZATION_ID = 1/);
-  assert.match(source, /ctx\.organizationId === PRIMARY_ORGANIZATION_ID/);
-  assert.match(source, /getSettings\(db, \["external_ics_url"\]\)/);
-  assert.match(source, /: Promise\.resolve\(""\)/);
+  assert.match(source, /getOrganizationIntegrationSettings\(db, ctx\.organizationId, \["external_ics_url"\]\)/);
+  assert.doesNotMatch(source, /getSettings\(db, \["external_ics_url"\]\)/);
+  assert.doesNotMatch(source, /PRIMARY_ORGANIZATION_ID/);
 });

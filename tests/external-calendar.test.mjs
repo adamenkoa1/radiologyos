@@ -34,10 +34,11 @@ test("external-calendar endpoint serves the tenant feed via the calendar provide
   assert.match(provider, /safeOutboundUrl\(url\)/);
   assert.match(provider, /fetchLimited\(safeUrl/);
 
-  // Резолвер добирає джерело (external_ics_url) у tenant-контексті.
+  // Резолвер добирає external_ics_url лише у tenant-контексті.
   const resolver = await read("lib/providers/index.ts");
-  assert.match(resolver, /external_ics_url/);
-  assert.match(resolver, /createCalendarProvider\(icsUrl\)/);
+  assert.match(resolver, /getOrganizationIntegrationSettings\(db, ctx\.organizationId, \["external_ics_url"\]\)/);
+  assert.match(resolver, /createCalendarProvider\(calendarCfg\.external_ics_url \|\| ""\)/);
+  assert.doesNotMatch(resolver, /getSettings\(db, \["external_ics_url"\]\)/);
 });
 
 test("settings expose the external calendar URL and the dashboard shows events", async () => {

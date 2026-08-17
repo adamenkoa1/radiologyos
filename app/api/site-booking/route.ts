@@ -249,7 +249,7 @@ export async function POST(request: Request) {
       codes,
       desiredDate: appointments[0].date,
       desiredTime: appointments[0].time,
-    })).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
+    }), PUBLIC_ORGANIZATION_ID).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {

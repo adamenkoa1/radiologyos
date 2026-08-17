@@ -70,12 +70,13 @@ test("my-protocol returns issued protocol through immutable patient_id or the ex
   assert.match(route, /FROM protocols WHERE organization_id = \? AND booking_id = \?/);
 });
 
-test("new bookings notify the registrar via Telegram (best-effort)", async () => {
+test("new public bookings notify the registrar via the public organization's Telegram credentials", async () => {
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /api\.telegram\.org\/bot/);
-  assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok: false/);
+  assert.match(lib, /getOrganizationIntegrationSettings\(db, organizationId/);
+  assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok:\s*false/);
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /sendTelegram\(/);
+  assert.match(route, /sendTelegram\(db,\s*bookingMessage\([\s\S]*?\),\s*PUBLIC_ORGANIZATION_ID\)/);
   assert.match(route, /bookingMessage\(/);
 });
 
@@ -83,7 +84,6 @@ test("department settings use system-admin authority and validate input", async 
   const route = await read("app/api/staff/settings/route.ts");
   assert.match(route, /requireSystemOrgContext\(request, db\)/);
   assert.match(route, /canManageSystem\(ctx\.role\)/);
-  assert.match(route, /ctx\.organizationId !== PRIMARY_ORGANIZATION_ID/);
   assert.doesNotMatch(route, /requireStaff\(request, db\)/);
   assert.match(route, /telegram_bot_token/);
   assert.match(route, /pay_link/);
@@ -97,15 +97,16 @@ test("department settings use system-admin authority and validate input", async 
   assert.ok(journal.entries.some((e) => e.tag === "0010_department_settings"));
 });
 
-test("a test-message endpoint verifies the Telegram connection (admin-only)", async () => {
+test("a test-message endpoint verifies the current organization's Telegram connection", async () => {
   const route = await read("app/api/staff/settings/telegram-test/route.ts");
-  assert.match(route, /requireOrgContext\(request, db\)/);
-  assert.match(route, /ctx\.role !== "admin"/);
+  assert.match(route, /requireSystemOrgContext\(request, db\)/);
+  assert.match(route, /canManageSystem\(ctx\.role\)/);
+  assert.doesNotMatch(route, /PRIMARY_ORGANIZATION_ID/);
   assert.doesNotMatch(route, /requireStaff\(request, db\)/);
-  assert.match(route, /sendTelegramResult\(/);
+  assert.match(route, /sendTelegramResult\(db, text, ctx\.organizationId\)/);
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /export async function sendTelegramResult/);
-  assert.match(lib, /description \|\|/);
+  assert.match(lib, /description\s*\|\|/);
 });
 
 test("payment link is served publicly and used by the site, not hardcoded", async () => {

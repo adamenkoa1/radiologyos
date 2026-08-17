@@ -1,216 +1,140 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  callWorker,
-  jsonRequest,
-  seedPatientSession,
-  seedStaffSession,
-  withD1,
-} from "./helpers/d1.mjs";
+import { callWorker, jsonRequest, seedPatientSession, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
 async function addOrganizationTwo(db) {
-  await db.prepare(
-    "INSERT INTO organizations (id, slug, name, active) VALUES (2, 'messaging-two', 'Messaging Two', 1)"
-  ).run();
+  await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'messaging-two', 'Messaging Two', 1)").run();
 }
-
-async function setGlobal(db, key, value) {
-  await db.prepare(
-    `INSERT INTO app_settings (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`
-  ).bind(key, value).run();
+async function setGlobal(db,key,value) {
+  await db.prepare(`INSERT INTO app_settings (key,value) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value`).bind(key,value).run();
 }
-
-async function addBooking(db, {
-  id,
-  organizationId,
-  code,
-  phone = "380501112233",
-  email = "",
-  date = "2026-09-01",
-  time = "10:00",
-}) {
+async function setOrg(db,organizationId,key,value) {
+  await db.prepare(`INSERT INTO organization_integration_settings (organization_id,key,value) VALUES (?,?,?) ON CONFLICT(organization_id,key) DO UPDATE SET value=excluded.value`).bind(organizationId,key,value).run();
+}
+async function addBooking(db,{id,organizationId,code,phone="380501112233",email="",date="2026-09-01",time="10:00"}) {
   await db.prepare(
     `INSERT INTO bookings
       (id, organization_id, code, name, phone, phone_normalized, patient_email,
        service, service_code, desired_date, desired_time, status, date_of_birth, patient_category)
      VALUES (?, ?, ?, ?, ?, ?, ?, 'КТ', 'CT-01', ?, ?, 'confirmed', '1990-05-05', 'civilian')`
-  ).bind(id, organizationId, code, `Patient ${code}`, `+${phone}`, phone, email, date, time).run();
+  ).bind(id,organizationId,code,`Patient ${code}`,`+${phone}`,phone,email,date,time).run();
 }
 
-test("secondary tenant manual notify never uses primary global gateways", async () => {
-  await withD1(async (db) => {
-    await addOrganizationTwo(db);
-    await addBooking(db, { id:201, organizationId:2, code:"MSG-ORG2" });
-    await setGlobal(db, "sms_gateway_url", "https://gateway.example/sms");
-    await setGlobal(db, "sms_gateway_auth", "org1-secret");
-    await setGlobal(db, "email_gateway_url", "https://gateway.example/email");
-    await setGlobal(db, "telegram_bot_token", "123456:abcdefghijklmnopqrstuvwxyzABCDE");
-    await setGlobal(db, "whatsapp_id_instance", "org1-instance");
-    await setGlobal(db, "whatsapp_api_token_instance", "org1-token");
-    await setGlobal(db, "whatsapp_enabled", "1");
-
-    const cookie = await seedStaffSession(db, {
-      email:"org2-registrar@example.com", role:"registrar", organizationId:2,
-    });
-    const response = await callWorker(
-      jsonRequest(
-        "/api/staff/notify",
-        { bookingId:201, message:"Повідомлення для пацієнта" },
-        { headers:{ cookie } },
-      ),
-      db,
-    );
-    assert.equal(response.status, 200);
-    const body = await response.json();
-    assert.equal(body.summary.sent, 0);
-    assert.equal(body.summary.failed, 0);
-    assert.ok(body.summary.skipped >= 1);
-
-    const rows = await db.prepare(
-      `SELECT organization_id AS organizationId, channel, status
-       FROM patient_notifications WHERE booking_id = 201 ORDER BY id`
-    ).all();
-    assert.ok(rows.results.length >= 1);
-    assert.ok(rows.results.every((row) => row.organizationId === 2));
-    assert.ok(rows.results.every((row) => row.status === "skipped"));
-    assert.ok(rows.results.every((row) => row.channel !== "whatsapp"));
+test("secondary tenant never inherits primary global messaging gateways", async()=>{
+  await withD1(async(db)=>{
+    await addOrganizationTwo(db); await addBooking(db,{id:201,organizationId:2,code:"MSG-ORG2"});
+    await setGlobal(db,"sms_gateway_url","https://gateway.example/sms");
+    await setGlobal(db,"sms_gateway_auth","org1-secret");
+    await setGlobal(db,"email_gateway_url","https://gateway.example/email");
+    const cookie=await seedStaffSession(db,{email:"org2-registrar@example.com",role:"registrar",organizationId:2});
+    const response=await callWorker(jsonRequest("/api/staff/notify",{bookingId:201,message:"Повідомлення"},{headers:{cookie}}),db);
+    assert.equal(response.status,200); const body=await response.json();
+    assert.equal(body.summary.sent,0); assert.equal(body.summary.failed,0); assert.ok(body.summary.skipped>=1);
   });
 });
 
-test("secondary tenant contact-center cannot reply through primary WhatsApp", async () => {
-  await withD1(async (db) => {
+test("secondary provider diagnostics use only explicit tenant settings",async()=>{
+  await withD1(async(db)=>{
     await addOrganizationTwo(db);
-    const phone = "380502223344";
-    await addBooking(db, { id:202, organizationId:2, code:"CHAT-ORG2", phone });
-    await db.prepare(
-      `INSERT INTO patient_communications
-        (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
-       VALUES (2, '', ?, 'whatsapp', 'inbound', 'Org2 legacy thread', 'system')`
-    ).bind(phone).run();
-    await setGlobal(db, "whatsapp_id_instance", "org1-instance");
-    await setGlobal(db, "whatsapp_api_token_instance", "org1-token");
-    await setGlobal(db, "whatsapp_enabled", "1");
+    await setGlobal(db,"sms_gateway_url","https://primary.example/sms");
+    await setGlobal(db,"email_gateway_url","https://primary.example/email");
+    let cookie=await seedStaffSession(db,{email:"org2-provider@example.com",role:"admin",organizationId:2});
+    let response=await callWorker(jsonRequest("/api/staff/providers",undefined,{method:"GET",headers:{cookie}}),db);
+    let body=await response.json(); assert.equal(body.providers.messaging.sms,false); assert.equal(body.providers.messaging.email,false);
+    await setOrg(db,2,"sms_gateway_url","https://secondary.example/sms");
+    await setOrg(db,2,"email_gateway_url","https://secondary.example/email");
+    response=await callWorker(jsonRequest("/api/staff/providers",undefined,{method:"GET",headers:{cookie}}),db);
+    body=await response.json(); assert.equal(body.providers.messaging.sms,true); assert.equal(body.providers.messaging.email,true);
 
-    const cookie = await seedStaffSession(db, {
-      email:"org2-chat@example.com", role:"registrar", organizationId:2,
-    });
-    const thread = await callWorker(
-      jsonRequest(`/api/staff/chat?phone=${phone}`, undefined, { method:"GET", headers:{ cookie } }),
-      db,
-    );
-    assert.equal(thread.status, 200);
-    assert.deepEqual((await thread.json()).availableReplyChannels, []);
-
-    const reply = await callWorker(
-      jsonRequest(
-        "/api/staff/chat",
-        { phone:`+${phone}`, text:"Не використовуйте org1 gateway", channel:"whatsapp" },
-        { headers:{ cookie } },
-      ),
-      db,
-    );
-    assert.equal(reply.status, 403);
-    const outbound = await db.prepare(
-      `SELECT COUNT(*) AS n FROM patient_communications
-       WHERE organization_id = 2 AND phone_normalized = ? AND direction = 'outbound'`
-    ).bind(phone).first("n");
-    assert.equal(outbound, 0);
+    // Model a genuinely legacy-only org1: migration 0089 normally seeds scoped rows,
+    // and scoped values must remain authoritative whenever they exist.
+    await db.prepare(`
+      DELETE FROM organization_integration_settings
+      WHERE organization_id = 1
+        AND key IN (
+          'telegram_bot_username',
+          'telegram_bot_token',
+          'sms_gateway_url',
+          'sms_gateway_auth',
+          'email_gateway_url',
+          'email_gateway_auth',
+          'email_gateway_from'
+        )
+    `).run();
+    cookie=await seedStaffSession(db,{email:"org1-provider@example.com",role:"admin",organizationId:1});
+    response=await callWorker(jsonRequest("/api/staff/providers",undefined,{method:"GET",headers:{cookie}}),db);
+    body=await response.json(); assert.equal(body.providers.messaging.sms,true); assert.equal(body.providers.messaging.email,true);
   });
 });
 
-test("secondary tenant patient cannot receive a deep-link to the primary Telegram bot", async () => {
-  await withD1(async (db) => {
-    await addOrganizationTwo(db);
-    const phone = "380503334455";
-    await addBooking(db, { id:203, organizationId:2, code:"TG-ORG2", phone });
-    await setGlobal(db, "telegram_bot_token", "123456:abcdefghijklmnopqrstuvwxyzABCDE");
-    const cookie = await seedPatientSession(db, phone, 2);
-
-    const response = await callWorker(
-      jsonRequest("/api/my-telegram-link", {}, { headers:{ cookie } }),
-      db,
-    );
-    assert.equal(response.status, 503);
-    const body = await response.json();
-    assert.equal(body.botConfigured, false);
-    const tokens = await db.prepare(
-      "SELECT COUNT(*) AS n FROM telegram_link_tokens WHERE organization_id = 2"
-    ).first("n");
-    assert.equal(tokens, 0);
+test("secondary patient cannot receive primary Telegram bot link but can use its own cached bot",async()=>{
+  await withD1(async(db)=>{
+    await addOrganizationTwo(db); const phone="380503334455"; await addBooking(db,{id:203,organizationId:2,code:"TG-ORG2",phone});
+    await setGlobal(db,"telegram_bot_token","123456:abcdefghijklmnopqrstuvwxyzABCDE");
+    const cookie=await seedPatientSession(db,phone,2);
+    let response=await callWorker(jsonRequest("/api/my-telegram-link",{},{headers:{cookie}}),db);
+    assert.equal(response.status,503);
+    await setOrg(db,2,"telegram_bot_token","654321:abcdefghijklmnopqrstuvwxyzABCDE");
+    await setOrg(db,2,"telegram_bot_username","OrgTwoBot");
+    response=await callWorker(jsonRequest("/api/my-telegram-link",{},{headers:{cookie}}),db);
+    assert.equal(response.status,200); const body=await response.json(); assert.match(body.url,/^https:\/\/t\.me\/OrgTwoBot\?start=/);
+    const tokens=await db.prepare("SELECT COUNT(*) AS n FROM telegram_link_tokens WHERE organization_id=2").first("n"); assert.equal(tokens,1);
   });
 });
 
-test("provider diagnostics hide primary SMS/email capabilities from secondary tenant", async () => {
-  await withD1(async (db) => {
-    await addOrganizationTwo(db);
-    await setGlobal(db, "sms_gateway_url", "https://gateway.example/sms");
-    await setGlobal(db, "email_gateway_url", "https://gateway.example/email");
-
-    const org2Cookie = await seedStaffSession(db, {
-      email:"org2-provider@example.com", role:"admin", organizationId:2,
-    });
-    const org2 = await callWorker(
-      jsonRequest("/api/staff/providers", undefined, { method:"GET", headers:{ cookie:org2Cookie } }),
-      db,
-    );
-    assert.equal(org2.status, 200);
-    const org2Body = await org2.json();
-    assert.equal(org2Body.providers.messaging.sms, false);
-    assert.equal(org2Body.providers.messaging.email, false);
-
-    const org1Cookie = await seedStaffSession(db, {
-      email:"org1-provider@example.com", role:"admin", organizationId:1,
-    });
-    const org1 = await callWorker(
-      jsonRequest("/api/staff/providers", undefined, { method:"GET", headers:{ cookie:org1Cookie } }),
-      db,
-    );
-    assert.equal(org1.status, 200);
-    const org1Body = await org1.json();
-    assert.equal(org1Body.providers.messaging.sms, true);
-    assert.equal(org1Body.providers.messaging.email, true);
+test("legacy WhatsApp webhook secret remains org1 compatible",async()=>{
+  await withD1(async(db)=>{
+    await addOrganizationTwo(db); const phone="380504445566";
+    await addBooking(db,{id:204,organizationId:1,code:"WA-ORG1",phone}); await addBooking(db,{id:205,organizationId:2,code:"WA-ORG2",phone});
+    await setGlobal(db,"whatsapp_webhook_token","legacy-secret");
+    const response=await callWorker(jsonRequest("/api/whatsapp/webhook",{
+      typeWebhook:"incomingMessageReceived",idMessage:"MSG-PRIMARY-SCOPE",senderData:{chatId:`${phone}@c.us`},
+      messageData:{typeMessage:"textMessage",textMessageData:{textMessage:"невідома команда"}},
+    },{headers:{"x-webhook-token":"legacy-secret"}}),db);
+    assert.equal(response.status,200);
+    const rows=await db.prepare("SELECT organization_id AS organizationId FROM patient_communications WHERE external_id='MSG-PRIMARY-SCOPE'").all();
+    assert.equal(rows.results.length,1); assert.equal(rows.results[0].organizationId,1);
   });
 });
 
-test("global WhatsApp webhook writes and looks up only primary-tenant data", async () => {
-  await withD1(async (db) => {
-    await addOrganizationTwo(db);
-    const phone = "380504445566";
-    await addBooking(db, { id:204, organizationId:1, code:"WA-ORG1", phone, time:"09:00" });
-    await addBooking(db, { id:205, organizationId:2, code:"WA-ORG2", phone, time:"11:00" });
-    await setGlobal(db, "whatsapp_webhook_token", "webhook-secret");
-
-    const response = await callWorker(
-      jsonRequest(
-        "/api/whatsapp/webhook",
-        {
-          typeWebhook:"incomingMessageReceived",
-          idMessage:"MSG-PRIMARY-SCOPE",
-          senderData:{ chatId:`${phone}@c.us`, senderName:"Patient" },
-          messageData:{ typeMessage:"textMessage", textMessageData:{ textMessage:"невідома команда" } },
-        },
-        { headers:{ "x-webhook-token":"webhook-secret" } },
-      ),
-      db,
-    );
-    assert.equal(response.status, 200);
-
-    const rows = await db.prepare(
-      `SELECT organization_id AS organizationId, external_id AS externalId
-       FROM patient_communications WHERE external_id = 'MSG-PRIMARY-SCOPE'`
-    ).all();
-    assert.equal(rows.results.length, 1);
-    assert.equal(rows.results[0].organizationId, 1);
+test("tenant WhatsApp webhook routes same-phone data only to owning organization",async()=>{
+  await withD1(async(db)=>{
+    await addOrganizationTwo(db); const phone="380505556677";
+    await addBooking(db,{id:206,organizationId:1,code:"WA1",phone}); await addBooking(db,{id:207,organizationId:2,code:"WA2",phone});
+    await setOrg(db,2,"whatsapp_webhook_token","org2-secret");
+    const response=await callWorker(jsonRequest("/api/whatsapp/webhook",{
+      typeWebhook:"incomingMessageReceived",idMessage:"MSG-ORG2-SCOPE",senderData:{chatId:`${phone}@c.us`},
+      messageData:{typeMessage:"textMessage",textMessageData:{textMessage:"невідома команда"}},
+    },{headers:{"x-webhook-token":"org2-secret"}}),db);
+    assert.equal(response.status,200);
+    const rows=await db.prepare("SELECT organization_id AS organizationId FROM patient_communications WHERE external_id='MSG-ORG2-SCOPE'").all();
+    assert.deepEqual(rows.results.map(r=>r.organizationId),[2]);
   });
 });
 
-test("WhatsApp webhook source scopes appointment lookup and communication inserts to org 1", async () => {
-  const { readFile } = await import("node:fs/promises");
-  const source = await readFile(new URL("../app/api/whatsapp/webhook/route.ts", import.meta.url), "utf8");
-  assert.match(source, /PRIMARY_ORGANIZATION_ID = 1/);
-  assert.match(source, /WHERE organization_id = \? AND phone_normalized = \?/);
-  assert.match(source, /\.bind\(PRIMARY_ORGANIZATION_ID, phone, todayKyiv\(\)\)/);
-  assert.match(source, /\(organization_id, phone_normalized, channel, direction, summary, actor, external_id\)/);
-  assert.doesNotMatch(source, /INSERT OR IGNORE INTO patient_communications \(phone_normalized/);
+test("duplicate tenant webhook secrets fail closed",async()=>{
+  await withD1(async(db)=>{
+    await addOrganizationTwo(db); await setOrg(db,1,"whatsapp_webhook_token","duplicate-secret"); await setOrg(db,2,"whatsapp_webhook_token","duplicate-secret");
+    const response=await callWorker(jsonRequest("/api/whatsapp/webhook",{}, {headers:{"x-webhook-token":"duplicate-secret"}}),db);
+    assert.equal(response.status,401);
+  });
+});
+
+test("scoped org1 secret makes stale legacy webhook secret invalid",async()=>{
+  await withD1(async(db)=>{
+    await setGlobal(db,"whatsapp_webhook_token","old-secret"); await setOrg(db,1,"whatsapp_webhook_token","new-secret");
+    const oldResponse=await callWorker(jsonRequest("/api/whatsapp/webhook",{}, {headers:{"x-webhook-token":"old-secret"}}),db);
+    assert.equal(oldResponse.status,401);
+  });
+});
+
+test("integration source has no primary-only Telegram or webhook routing guard",async()=>{
+  const {readFile}=await import("node:fs/promises");
+  const telegram=await readFile(new URL("../app/api/my-telegram-link/route.ts",import.meta.url),"utf8");
+  const whatsappWebhook=await readFile(new URL("../app/api/whatsapp/webhook/route.ts",import.meta.url),"utf8");
+  assert.doesNotMatch(telegram,/session\.organizationId !== PRIMARY_ORGANIZATION_ID/);
+  assert.match(telegram,/telegramBotUsername\(db, session\.organizationId\)/);
+  assert.match(whatsappWebhook,/resolveOrganizationByIntegrationSecret/);
+  assert.match(whatsappWebhook,/\.bind\(organizationId,phone,todayKyiv\(\)\)/);
+  assert.doesNotMatch(whatsappWebhook,/PRIMARY_ORGANIZATION_ID = 1/);
 });

@@ -1,8 +1,8 @@
-// Public GET exposes the primary department's generic payment link. POST starts a
-// booking-bound manual payment for an OTP-authenticated patient only while the
-// legacy payment destination remains primary-tenant scoped.
+// Public GET exposes the primary storefront payment link. Patient POST resolves
+// the destination from the authenticated patient's organization and never falls
+// back to the primary destination for secondary tenants.
 
-import { getSetting } from "../../../lib/settings";
+import { getOrganizationIntegrationSetting } from "../../../lib/settings";
 import { dbBinding } from "../../../lib/db";
 import { requirePatientSession } from "../../../lib/patient-auth";
 import { createPendingPayment, latestPaymentForBooking } from "../../../lib/payments";
@@ -11,15 +11,16 @@ import { recordAnalyticsEvent } from "../../../lib/analytics";
 const PRIMARY_ORGANIZATION_ID = 1;
 const DEFAULT_PRIVAT24_PAY_LINK = 'https://irc.privatbank.ua/qrstickws/route/qr?type=nextfastpay&params=%7B%22token%22%3A%22cadc7a4d-d56c-4005-9cfe-04a96077f8c1%22%7D';
 
-async function configuredPayLink(db: D1Database | null | undefined) {
-  if (!db) return DEFAULT_PRIVAT24_PAY_LINK;
-  return (await getSetting(db, "pay_link")) || DEFAULT_PRIVAT24_PAY_LINK;
+async function configuredPayLink(db: D1Database | null | undefined, organizationId: number) {
+  if (!db) return organizationId === PRIMARY_ORGANIZATION_ID ? DEFAULT_PRIVAT24_PAY_LINK : "";
+  const configured = await getOrganizationIntegrationSetting(db, organizationId, "pay_link");
+  return configured || (organizationId === PRIMARY_ORGANIZATION_ID ? DEFAULT_PRIVAT24_PAY_LINK : "");
 }
 
 export async function GET() {
   const db = dbBinding();
   return Response.json(
-    { payLink: await configuredPayLink(db) },
+    { payLink: await configuredPayLink(db, PRIMARY_ORGANIZATION_ID) },
     { headers: { "cache-control": "no-store" } },
   );
 }
@@ -30,7 +31,8 @@ export async function POST(request: Request) {
 
   const session = await requirePatientSession(request, db);
   if (!session) return Response.json({ error: "Потрібне підтвердження номера телефону" }, { status: 401 });
-  if (session.organizationId !== PRIMARY_ORGANIZATION_ID) {
+  const payLink = await configuredPayLink(db, session.organizationId);
+  if (!payLink) {
     return Response.json(
       { error: "Онлайн-оплата ще не налаштована для цієї організації" },
       { status: 503, headers: { "cache-control": "no-store" } },
@@ -49,17 +51,8 @@ export async function POST(request: Request) {
      FROM bookings
      WHERE organization_id = ? AND phone_normalized = ? AND code = ? AND ${identityClause} LIMIT 1`,
   ).bind(session.organizationId, session.phoneNormalized, code, session.identityValue).first<{
-    id: number;
-    code: string;
-    service: string;
-    serviceCode: string;
-    desiredDate: string;
-    desiredTime: string;
-    paymentStatus: string;
-    paymentAmount: number;
-    paidAmount: number;
-    category: string;
-    status: string;
+    id:number; code:string; service:string; serviceCode:string; desiredDate:string; desiredTime:string;
+    paymentStatus:string; paymentAmount:number; paidAmount:number; category:string; status:string;
   }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (booking.category !== "civilian" || booking.paymentAmount <= 0) {
@@ -75,45 +68,27 @@ export async function POST(request: Request) {
   const providerReference = `manual:${booking.code}`;
   try {
     const pending = await createPendingPayment(db as never, {
-      organizationId: session.organizationId,
-      bookingId: booking.id,
-      provider: "manual",
-      currency: "UAH",
-      providerReference,
+      organizationId:session.organizationId, bookingId:booking.id, provider:"manual", currency:"UAH", providerReference,
     });
     const payment = await latestPaymentForBooking(db as never, session.organizationId, booking.id);
     await recordAnalyticsEvent(db, {
-      eventName: "payment_started",
-      organizationId: session.organizationId,
-      serviceCode: booking.serviceCode,
-      patientCategory: "civilian",
-      source: "server",
+      eventName:"payment_started", organizationId:session.organizationId,
+      serviceCode:booking.serviceCode, patientCategory:"civilian", source:"server",
     });
     return Response.json({
-      booking: {
-        code: booking.code,
-        service: booking.service,
-        serviceCode: booking.serviceCode,
-        desiredDate: booking.desiredDate,
-        desiredTime: booking.desiredTime,
-        amount: booking.paymentAmount,
-        currency: "UAH",
-        paymentStatus: booking.paymentStatus,
+      booking:{
+        code:booking.code, service:booking.service, serviceCode:booking.serviceCode,
+        desiredDate:booking.desiredDate, desiredTime:booking.desiredTime,
+        amount:booking.paymentAmount, currency:"UAH", paymentStatus:booking.paymentStatus,
       },
-      payment,
-      created: pending.created,
-      payLink: await configuredPayLink(db),
-      purpose: `Сплата за медичні послуги, заявка ${booking.code}: ${booking.service}`,
-    }, { headers: { "cache-control": "no-store" } });
+      payment, created:pending.created, payLink,
+      purpose:`Сплата за медичні послуги, заявка ${booking.code}: ${booking.service}`,
+    }, { headers:{ "cache-control":"no-store" } });
   } catch (error) {
     const message = error instanceof Error ? error.message : "";
-    if (message === "payment_already_settled") {
-      return Response.json({ error: "Ця заявка вже повністю оплачена" }, { status: 409 });
-    }
-    if (message === "payment_reference_conflict") {
-      return Response.json({ error: "Платіжний референс уже використано" }, { status: 409 });
-    }
+    if (message === "payment_already_settled") return Response.json({ error:"Ця заявка вже повністю оплачена" }, { status:409 });
+    if (message === "payment_reference_conflict") return Response.json({ error:"Платіжний референс уже використано" }, { status:409 });
     console.error("payment_start_failed", booking.id, error);
-    return Response.json({ error: "Не вдалося підготувати оплату" }, { status: 500 });
+    return Response.json({ error:"Не вдалося підготувати оплату" }, { status:500 });
   }
 }

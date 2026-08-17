@@ -1,11 +1,9 @@
 // Резолвер провайдерів — добирає реалізації інтеграцій у tenant-контексті.
-//
-// Messaging configuration and the external calendar URL are still legacy-global
-// in app_settings and belong to the primary/public tenant. Secondary tenants
-// must not receive those credentials/capabilities until storage is tenantized.
-// PACS та payment вже мають per-org джерела.
+// Integration settings are scoped by organization. Organization 1 alone may
+// use the legacy app_settings compatibility read; secondary tenants never fall
+// back to primary credentials.
 
-import { getSettings } from "../settings";
+import { getOrganizationIntegrationSettings } from "../settings";
 import { getOrgProfile } from "../org-profile";
 import type { OrgContext } from "../tenant";
 import { createMessagingProvider } from "./messaging";
@@ -13,13 +11,11 @@ import { createCalendarProvider } from "./calendar";
 import { createPaymentProvider, type PaymentConfig } from "./payment";
 import type { PacsProvider, ResolvedProviders } from "./types";
 
-const PRIMARY_ORGANIZATION_ID = 1;
 const MESSAGING_SETTING_KEYS = [
   "sms_gateway_url", "sms_gateway_auth",
   "email_gateway_url", "email_gateway_auth", "email_gateway_from",
 ];
 
-// Дістає конфіг оплат із settings_json профілю організації (безпечно).
 function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
   const raw = settings.payment;
   if (!raw || typeof raw !== "object") return {};
@@ -32,21 +28,13 @@ function paymentConfig(settings: Record<string, unknown>): PaymentConfig {
 }
 
 export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise<ResolvedProviders> {
-  const primaryTenant = ctx.organizationId === PRIMARY_ORGANIZATION_ID;
-  const messagingSettings = primaryTenant
-    ? getSettings(db, MESSAGING_SETTING_KEYS)
-    : Promise.resolve({} as Record<string, string>);
-  const calendarUrl = primaryTenant
-    ? getSettings(db, ["external_ics_url"]).then((s) => s.external_ics_url || "").catch(() => "")
-    : Promise.resolve("");
-
-  const [cfg, profile, pacsRow, icsUrl] = await Promise.all([
-    messagingSettings,
+  const [cfg, profile, pacsRow, calendarCfg] = await Promise.all([
+    getOrganizationIntegrationSettings(db, ctx.organizationId, MESSAGING_SETTING_KEYS),
     getOrgProfile(db, ctx),
     db.prepare(
       "SELECT enabled, viewer_base_url AS viewer, dicomweb_base_url AS dicomweb FROM pacs_settings WHERE organization_id = ? LIMIT 1"
     ).bind(ctx.organizationId).first<{ enabled: number; viewer: string; dicomweb: string }>().catch(() => null),
-    calendarUrl,
+    getOrganizationIntegrationSettings(db, ctx.organizationId, ["external_ics_url"]),
   ]);
 
   const messaging = createMessagingProvider({
@@ -54,7 +42,6 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     email: { url: cfg.email_gateway_url || "", auth: cfg.email_gateway_auth || "", from: cfg.email_gateway_from || "" },
   });
 
-  // PACS доступний, коли його увімкнено в налаштуваннях саме цього tenant.
   const pacsEnabled = Boolean(pacsRow?.enabled);
   const pacs: PacsProvider = {
     name: pacsEnabled ? "dicomweb" : "none",
@@ -66,9 +53,7 @@ export async function resolveProviders(db: D1Database, ctx: OrgContext): Promise
     }),
   };
 
-  const calendar = createCalendarProvider(icsUrl);
-
-  // Платіжний провайдер добирається з профілю організації (per-org).
+  const calendar = createCalendarProvider(calendarCfg.external_ics_url || "");
   const payment = createPaymentProvider(paymentConfig(profile.settings));
 
   return { messaging, payment, pacs, calendar };

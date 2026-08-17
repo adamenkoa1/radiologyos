@@ -54,12 +54,15 @@ test("kyivNow converts a UTC instant to Kyiv date and minutes", () => {
 
 test("worker schedules tenant-limited reminders and internal operational tasks every 15 minutes", async () => {
   const worker = await read("worker/index.ts");
+  assert.match(worker, /async function runTenantReminders\(db: D1Database, now: number\)/);
+  assert.match(worker, /SELECT id FROM organizations WHERE active = 1 ORDER BY id/);
+  assert.match(worker, /runDueReminders\(db, now, Number\(org\.id\)\)/);
   assert.match(worker, /async scheduled\(/);
   assert.match(worker, /const now=Date\.now\(\)/);
-  assert.match(worker, /runDueReminders\(env\.DB,\s*now,\s*INITIAL_ORGANIZATION_ID\)/);
-  assert.match(worker, /runOperationalTasks\(env\.DB,\s*now\)/);
+  assert.match(worker, /runTenantReminders\(env\.DB, now\)/);
+  assert.match(worker, /runOperationalTasks\(env\.DB, now\)/);
   assert.match(worker, /Promise\.allSettled\(\[/);
-  assert.match(worker, /const INITIAL_ORGANIZATION_ID = 1/);
+  assert.doesNotMatch(worker, /INITIAL_ORGANIZATION_ID/);
   assert.match(worker, /ctx\.waitUntil/);
   const wrangler = await read("wrangler.cloudflare.toml");
   assert.match(wrangler, /workers_dev = false/);
@@ -75,7 +78,7 @@ test("runner scopes bookings, dedupe and contact consent by exact identity and o
   assert.match(src, /sharedProfileCount/);
   assert.match(src, /staleLinkedContact/);
   assert.match(src, /!b\.patientId && b\.sharedProfileCount > 0/);
-  assert.match(src, /sendWhatsApp\(db, b\.phoneNormalized, body\)/);
+  assert.match(src, /sendWhatsApp\(db, b\.phoneNormalized, body, organizationId\)/);
   assert.match(src, /kind LIKE 'reminder_%h'/);
   assert.match(src, /status IN \('confirmed','rescheduled'\)/);
 });

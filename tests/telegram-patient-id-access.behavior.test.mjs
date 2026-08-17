@@ -11,8 +11,11 @@ const CODE_B = "RD-260930-2";
 
 async function setSetting(db, key, value) {
   await db.prepare(
-    `INSERT INTO app_settings (key, value) VALUES (?, ?)
-     ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+    `INSERT INTO organization_integration_settings (organization_id, key, value, updated_by)
+     VALUES (1, ?, ?, 'test@example.com')
+     ON CONFLICT(organization_id, key) DO UPDATE SET
+       value = excluded.value,
+       updated_by = excluded.updated_by`,
   ).bind(key, value).run();
 }
 

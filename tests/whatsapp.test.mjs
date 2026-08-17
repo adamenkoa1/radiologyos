@@ -47,27 +47,35 @@ test("migration 0021 adds external_id and dedupes by unique index", async () => 
 
 test("whatsapp send is a guarded no-op until configured", async () => {
   const lib = await read("lib/whatsapp.ts");
+  assert.match(lib, /getOrganizationIntegrationSettings\(db, organizationId/);
   assert.match(lib, /WhatsApp не підключено/);
   assert.match(lib, /waInstance\$\{encodeURIComponent\(cfg\.idInstance\)\}\/sendMessage/);
   assert.match(lib, /@c\.us/);
 });
 
-test("webhook route is token-guarded (constant-time + header), deduped and rate-limited", async () => {
+test("webhook route resolves one tenant by secret, dedupes and rate-limits inside that tenant", async () => {
   const route = await read("app/api/whatsapp/webhook/route.ts");
-  assert.match(route, /tokenMatches\(token, expected\)/); // звірка за сталий час
-  assert.match(route, /crypto\.subtle\.digest\("SHA-256"/); // хеш-порівняння
-  assert.match(route, /x-webhook-token/); // токен приймається із заголовка
-  assert.match(route, /isRateLimited\(db, request, "whatsapp-webhook", 60, 15\)/); // нижча стеля
+  assert.match(route, /resolveOrganizationByIntegrationSecret\(db,"whatsapp_webhook_token",token\)/);
+  assert.match(route, /if\(!organizationId\) return Response\.json\(\{ok:false\},\{status:401\}\)/);
+  assert.match(route, /x-webhook-token/); // секрет приймається із заголовка
+  assert.match(route, /`whatsapp-webhook:\$\{organizationId\}`/); // rate-limit tenant-scoped
   assert.match(route, /INSERT OR IGNORE INTO patient_communications/);
+  assert.match(route, /\.bind\(organizationId,msg\.phoneNormalized/);
+  assert.match(route, /sendWhatsApp\(db,msg\.phoneNormalized,reply,organizationId\)/);
   assert.match(route, /interpretBotCommand|botReply/);
 });
 
-test("staff whatsapp + contact-center routes are permission-guarded", async () => {
+test("staff WhatsApp administration uses system control-plane tenant scope; contact center remains medical-role guarded", async () => {
   const wa = await read("app/api/staff/whatsapp/route.ts");
-  assert.match(wa, /requireOrgContext\(request, db\)/);
-  assert.match(wa, /ctx\.role !== "admin"/);
+  assert.match(wa, /requireSystemOrgContext\(request, db\)/);
+  assert.match(wa, /canManageSystem\(ctx\.role\)/);
+  assert.doesNotMatch(wa, /PRIMARY_ORGANIZATION_ID/);
   assert.doesNotMatch(wa, /requireStaff\(request, db\)/);
+  assert.match(wa, /setOrganizationIntegrationSetting\(db, ctx\.organizationId/);
+  assert.match(wa, /whatsappConfig\(db, ctx\.organizationId\)/);
   assert.match(wa, /whatsapp_api_token_instance/);
+  assert.doesNotMatch(wa, /\bsetSetting\(db/);
+
   const chat = await read("app/api/staff/chat/route.ts");
   assert.match(chat, /canViewPatientRegistry\(member\.role\)/);
   assert.match(chat, /const CHANNELS = new Set\(\["whatsapp", "telegram", "sms", "email"\]\)/);
