@@ -47,7 +47,10 @@ async function settlementTurnover(db:D1Database,organizationId:number,period:Reg
   return {opening,increase,decrease,net:increase-decrease,closing};
 }
 
-async function serviceTurnover(db:D1Database,organizationId:number,period:RegisterPeriod) {
+// Compatibility projection for the canonical studies_performed register. Until the dedicated
+// study_performance registrar owns these facts, performed-study counts are the immutable union
+// of positive service-delivery movements and their explicit storno movements.
+async function performedStudyTurnover(db:D1Database,organizationId:number,period:RegisterPeriod) {
   const row=await db.prepare(
     `SELECT
        COALESCE(SUM(CASE WHEN quantity_delta>0 THEN quantity_delta ELSE 0 END),0) AS increase,
@@ -66,6 +69,28 @@ async function serviceTurnover(db:D1Database,organizationId:number,period:Regist
   return {
     increase:Number(row?.increase||0),decrease:Number(row?.decrease||0),net:Number(row?.net||0),regionsNet:Number(row?.regionsNet||0),
   };
+}
+
+async function studiesByService(db:D1Database,organizationId:number,period:RegisterPeriod) {
+  const rows=await db.prepare(
+    `SELECT service_code AS serviceCode,
+       COALESCE(SUM(CASE WHEN quantity_delta>0 THEN quantity_delta ELSE 0 END),0) AS performed,
+       COALESCE(SUM(CASE WHEN quantity_delta<0 THEN -quantity_delta ELSE 0 END),0) AS reversed,
+       COALESCE(SUM(quantity_delta),0) AS net,
+       COALESCE(SUM(regions_delta),0) AS regionsNet
+     FROM (
+       SELECT service_code,quantity AS quantity_delta,anatomical_regions_count AS regions_delta,occurred_at
+       FROM services_delivered_movements WHERE organization_id=?
+       UNION ALL
+       SELECT service_code,quantity_delta,anatomical_regions_delta AS regions_delta,occurred_at
+       FROM service_correction_movements WHERE organization_id=?
+     ) x
+     WHERE substr(occurred_at,1,10) BETWEEN ? AND ?
+     GROUP BY service_code
+     ORDER BY ABS(net) DESC,service_code
+     LIMIT 100`
+  ).bind(organizationId,organizationId,period.from,period.to).all();
+  return rows.results;
 }
 
 async function inventoryBalances(db:D1Database,organizationId:number,period:RegisterPeriod) {
@@ -161,11 +186,11 @@ async function staffByMember(db:D1Database,organizationId:number,period:Register
 }
 
 export async function buildRegisterTurnoverReport(db:D1Database,organizationId:number,period:RegisterPeriod) {
-  const [revenue,cash,settlements,services,equipment,staff,inventory,inventoryByWarehouse,revenueServices,cashMethods,equipmentRows,staffRows]=await Promise.all([
+  const [revenue,cash,settlements,services,equipment,staff,inventory,inventoryByWarehouse,revenueServices,cashMethods,equipmentRows,staffRows,studyRows]=await Promise.all([
     deltaTurnover(db,"revenue_movements","amount_delta",organizationId,period),
     deltaTurnover(db,"cash_movements","amount_delta",organizationId,period),
     settlementTurnover(db,organizationId,period),
-    serviceTurnover(db,organizationId,period),
+    performedStudyTurnover(db,organizationId,period),
     deltaTurnover(db,"equipment_load_movements","minutes_delta",organizationId,period),
     deltaTurnover(db,"staff_output_movements","units_delta",organizationId,period),
     inventoryBalances(db,organizationId,period),
@@ -174,11 +199,13 @@ export async function buildRegisterTurnoverReport(db:D1Database,organizationId:n
     cashByMethod(db,organizationId,period),
     equipmentByUnit(db,organizationId,period),
     staffByMember(db,organizationId,period),
+    studiesByService(db,organizationId,period),
   ]);
+  const studies={...services};
   return {
     period,
     generatedAt:new Date().toISOString(),
-    registers:{revenue,cash,settlements,services,equipment,staff},
-    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},
+    registers:{revenue,cash,settlements,services,studies,equipment,staff},
+    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,studiesByService:studyRows,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},
   };
 }
