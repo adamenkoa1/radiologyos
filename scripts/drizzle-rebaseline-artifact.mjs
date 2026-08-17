@@ -38,7 +38,7 @@ try {
 
   await rm(artifactDir, { recursive: true, force: true });
   const drizzleKit = resolve(root, "node_modules/.bin/drizzle-kit");
-  const result = spawnSync(drizzleKit, [
+  const pull = spawnSync(drizzleKit, [
     "pull",
     "--dialect=sqlite",
     `--url=${dbPath}`,
@@ -49,9 +49,29 @@ try {
     encoding: "utf8",
     stdio: "pipe",
   });
-  process.stdout.write(result.stdout || "");
-  process.stderr.write(result.stderr || "");
-  if (result.status !== 0) throw new Error(`drizzle-kit pull failed with exit code ${result.status}`);
+  process.stdout.write(pull.stdout || "");
+  process.stderr.write(pull.stderr || "");
+  if (pull.status !== 0) throw new Error(`drizzle-kit pull failed with exit code ${pull.status}`);
+
+  // Compare the checked-in application schema against the introspected D1
+  // snapshot. Any generated 0001 migration is evidence of schema.ts drift and
+  // is intentionally kept in the artifact for review; no production state is
+  // touched by this diagnostic generate.
+  const generate = spawnSync(drizzleKit, [
+    "generate",
+    "--dialect=sqlite",
+    `--schema=${join(root, "db/schema.ts")}`,
+    `--out=${artifactDir}`,
+  ], {
+    cwd: root,
+    encoding: "utf8",
+    stdio: "pipe",
+    env: { ...process.env, CI: "true" },
+  });
+  console.log("--- drizzle generate against introspected baseline ---");
+  process.stdout.write(generate.stdout || "");
+  process.stderr.write(generate.stderr || "");
+  if (generate.status !== 0) throw new Error(`drizzle-kit generate failed with exit code ${generate.status}`);
 
   const files = (await readdir(artifactDir, { recursive: true })).sort();
   console.log(`Rebaseline source: ${migrations.at(-1)} (${migrations.length} committed migrations)`);
