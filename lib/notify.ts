@@ -6,10 +6,10 @@
 // успіху, в історії комунікацій пацієнта. Ніколи не кидає виняток —
 // підтвердження / перенесення не має падати через недоступний шлюз.
 //
-// Messaging credentials are still legacy-global and belong to org 1. Until
-// they are tenantized, secondary-tenant bookings must never use those gateways.
+// Messaging credentials are organization-scoped. Every tenant-aware send path
+// resolves gateways from the booking's server-derived organization id.
 
-import { getSettings } from "./settings";
+import { getOrganizationIntegrationSettings } from "./settings";
 import { createMessagingProvider } from "./providers/messaging";
 import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "./whatsapp";
 import { sendTelegramTo } from "./telegram";
@@ -36,7 +36,6 @@ export interface ReminderSummary {
 }
 
 const DEPARTMENT = "Відділення променевої діагностики, Чернігівський військовий госпіталь";
-const PRIMARY_ORGANIZATION_ID = 1;
 
 export function reminderText(kind: ReminderKind, booking: ReminderBooking): string {
   const when = `${booking.desiredDate}${booking.desiredTime ? ` о ${booking.desiredTime}` : ""}`;
@@ -58,13 +57,12 @@ async function bookingOrganizationId(db: D1Database, bookingId: number): Promise
   return Number.isInteger(id) && id > 0 ? id : 0;
 }
 
-async function globalMessagingSettings(
+async function messagingSettings(
   db: D1Database,
   organizationId: number,
   keys: string[],
 ): Promise<Record<string, string>> {
-  if (organizationId !== PRIMARY_ORGANIZATION_ID) return {};
-  return getSettings(db, keys);
+  return getOrganizationIntegrationSettings(db, organizationId, keys);
 }
 
 async function record(
@@ -184,7 +182,7 @@ export async function sendPatientReminder(
   if (!organizationId) return summary;
   const body = reminderText(kind, booking);
 
-  const cfg = await globalMessagingSettings(db, organizationId, [
+  const cfg = await messagingSettings(db, organizationId, [
     "patient_reminders_enabled", "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
@@ -212,17 +210,15 @@ export async function sendPatientReminder(
   if (telegramChatId) {
     channels.push({
       channel: "telegram", recipient: "Telegram", url: cfg.telegram_bot_token ? telegramChatId : "",
-      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
+      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body, organizationId); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
     });
   }
-  if (organizationId === PRIMARY_ORGANIZATION_ID) {
-    const wa = await whatsappConfig(db);
-    if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
-      channels.push({
-        channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
-        send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
-      });
-    }
+  const wa = await whatsappConfig(db, organizationId);
+  if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
+    channels.push({
+      channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
+      send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body, organizationId); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
+    });
   }
   if (booking.phone) {
     channels.push({
@@ -278,7 +274,7 @@ export async function sendPatientMessage(
   const body = (text || "").trim();
   if (!body) return summary;
 
-  const cfg = await globalMessagingSettings(db, organizationId, [
+  const cfg = await messagingSettings(db, organizationId, [
     "telegram_bot_token",
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
@@ -304,17 +300,15 @@ export async function sendPatientMessage(
   if (telegramChatId) {
     channels.push({
       channel: "telegram", recipient: "Telegram", url: cfg.telegram_bot_token ? telegramChatId : "",
-      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
+      send: async () => { const r = await sendTelegramTo(db, telegramChatId, body, organizationId); if (!r.ok) throw new Error(r.error || "Telegram помилка"); },
     });
   }
-  if (organizationId === PRIMARY_ORGANIZATION_ID) {
-    const wa = await whatsappConfig(db);
-    if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
-      channels.push({
-        channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
-        send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
-      });
-    }
+  const wa = await whatsappConfig(db, organizationId);
+  if (booking.phoneNormalized && whatsappConfigured(wa) && wa.enabled) {
+    channels.push({
+      channel: "whatsapp", recipient: booking.phone, url: wa.idInstance,
+      send: async () => { const r = await sendWhatsApp(db, booking.phoneNormalized, body, organizationId); if (!r.ok) throw new Error(r.error || "WhatsApp помилка"); },
+    });
   }
   if (booking.phone) {
     channels.push({ channel: "sms", recipient: booking.phone, url: cfg.sms_gateway_url || "", send: () => messaging.sendSms(booking.phone, body) });
