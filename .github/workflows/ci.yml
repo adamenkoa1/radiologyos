@@ -32,6 +32,18 @@ jobs:
       - name: Install dependencies deterministically
         run: npm run install:ci
 
+      - name: Build Drizzle rebaseline artifact
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
+        run: node scripts/drizzle-rebaseline-artifact.mjs
+
+      - name: Upload Drizzle rebaseline artifact
+        if: github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
+        uses: actions/upload-artifact@v4
+        with:
+          name: drizzle-rebaseline
+          path: .drizzle-rebaseline-artifact
+          if-no-files-found: error
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
