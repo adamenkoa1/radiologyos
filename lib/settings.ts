@@ -75,3 +75,38 @@ export async function setOrganizationIntegrationSetting(
        updated_by = excluded.updated_by`
   ).bind(organizationId, key, value, updatedBy || null).run();
 }
+
+// Public webhooks have no authenticated tenant context. Resolve their tenant
+// only from an exact secret that belongs to exactly one organization. Duplicate
+// secrets fail closed. Legacy app_settings is accepted for org1 only until that
+// key has an authoritative org1 scoped row; a stale legacy secret can therefore
+// never override a rotated org1 secret.
+export async function resolveOrganizationByIntegrationSecret(
+  db: D1Database,
+  key: string,
+  providedSecret: string,
+): Promise<number | null> {
+  const secret = String(providedSecret || "");
+  if (!secret) return null;
+
+  const rows = await db.prepare(
+    `SELECT organization_id AS organizationId
+     FROM organization_integration_settings
+     WHERE key = ? AND value = ?
+     ORDER BY organization_id
+     LIMIT 2`
+  ).bind(key, secret).all<{ organizationId:number }>().catch(() => ({ results: [] } as { results:Array<{organizationId:number}> }));
+  const matches = rows.results || [];
+  if (matches.length !== 0) {
+    return matches.length === 1 ? Number(matches[0].organizationId) : null;
+  }
+
+  const org1Scoped = await db.prepare(
+    `SELECT 1 AS present FROM organization_integration_settings
+     WHERE organization_id = ? AND key = ? LIMIT 1`
+  ).bind(LEGACY_INTEGRATION_ORGANIZATION_ID, key).first<{ present:number }>().catch(() => null);
+  if (org1Scoped) return null;
+
+  const legacy = await getSetting(db, key).catch(() => "");
+  return legacy && legacy === secret ? LEGACY_INTEGRATION_ORGANIZATION_ID : null;
+}
