@@ -24,8 +24,8 @@ const printResult = (result) => {
 };
 
 const listMigrations = async () => (await readdir(drizzleDir)).filter((name) => migrationPattern.test(name)).sort();
-
-const beforeSql = new Set(await listMigrations());
+const committedMigrations = await listMigrations();
+const beforeSql = new Set(committedMigrations);
 const firstPass = run(process.execPath, [join(root, "scripts", "drizzle-rebaseline-artifact.mjs")]);
 printResult(firstPass);
 
@@ -35,18 +35,46 @@ if (firstPass.status === 0) {
 }
 
 const artifactJournalPath = join(artifactMetaDir, "_journal.json");
-let journal;
+let initialJournal;
 try {
-  journal = JSON.parse(await readFile(artifactJournalPath, "utf8"));
+  initialJournal = JSON.parse(await readFile(artifactJournalPath, "utf8"));
 } catch (error) {
   throw new Error(`Initial rebaseline failed before producing baseline metadata: ${error instanceof Error ? error.message : String(error)}`);
 }
 
-const baselineEntry = Array.isArray(journal.entries) ? journal.entries.at(-1) : null;
-if (!baselineEntry || !Number.isInteger(baselineEntry.idx) || typeof baselineEntry.tag !== "string") {
+const initialBaselineEntry = Array.isArray(initialJournal.entries) ? initialJournal.entries.at(-1) : null;
+if (!initialBaselineEntry || !Number.isInteger(initialBaselineEntry.idx) || typeof initialBaselineEntry.tag !== "string") {
   throw new Error("Initial rebaseline did not produce a valid baseline journal entry");
 }
 
+// Reconstruct journal provenance for every committed SQL migration. Numeric idx
+// values follow the historical file prefixes exactly, including the intentional
+// 0085 gap; no applied migration is rewritten or renumbered.
+const journalEntries = committedMigrations.map((name) => {
+  const tag = name.slice(0, -4);
+  const idx = Number(tag.slice(0, 4));
+  if (!Number.isInteger(idx)) throw new Error(`Invalid migration prefix: ${name}`);
+  const gitTime = run("git", ["log", "-1", "--format=%ct", "--", `drizzle/${name}`]);
+  const whenSeconds = Number(String(gitTime.stdout || "").trim());
+  if (!Number.isFinite(whenSeconds) || whenSeconds <= 0) {
+    throw new Error(`Unable to recover commit timestamp for drizzle/${name}; full git history is required`);
+  }
+  return {
+    idx,
+    version: "6",
+    when: whenSeconds * 1000,
+    tag,
+    breakpoints: true,
+  };
+});
+const journal = {
+  version: "7",
+  dialect: "sqlite",
+  entries: journalEntries,
+};
+await writeFile(artifactJournalPath, `${JSON.stringify(journal, null, 2)}\n`);
+
+const baselineEntry = journalEntries.at(-1);
 const baselinePrefix = String(baselineEntry.idx).padStart(4, "0");
 const expectedNextPrefix = String(baselineEntry.idx + 1).padStart(4, "0");
 const afterFirstPass = await listMigrations();
@@ -79,6 +107,7 @@ await rm(join(drizzleDir, driftMigration), { force: true });
 await rm(driftSnapshot, { force: true });
 await writeFile(join(drizzleMetaDir, "_journal.json"), `${JSON.stringify(journal, null, 2)}\n`);
 
+console.log(`Reconstructed journal provenance for ${journalEntries.length} committed migrations.`);
 console.log(`Promoted ${expectedNextPrefix}_snapshot.json to ${baselinePrefix}_snapshot.json for Drizzle metadata convergence.`);
 console.log("--- drizzle generate convergence proof ---");
 const secondPass = run(drizzleKit, ["generate"]);
