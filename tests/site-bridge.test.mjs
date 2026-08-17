@@ -97,12 +97,13 @@ test("department settings use system-admin authority and validate input", async 
   assert.ok(journal.entries.some((e) => e.tag === "0010_department_settings"));
 });
 
-test("a test-message endpoint verifies the Telegram connection (admin-only)", async () => {
+test("a test-message endpoint verifies the current organization's Telegram connection", async () => {
   const route = await read("app/api/staff/settings/telegram-test/route.ts");
-  assert.match(route, /requireOrgContext\(request, db\)/);
-  assert.match(route, /ctx\.role !== "admin"/);
+  assert.match(route, /requireSystemOrgContext\(request, db\)/);
+  assert.match(route, /canManageSystem\(ctx\.role\)/);
+  assert.doesNotMatch(route, /PRIMARY_ORGANIZATION_ID/);
   assert.doesNotMatch(route, /requireStaff\(request, db\)/);
-  assert.match(route, /sendTelegramResult\(/);
+  assert.match(route, /sendTelegramResult\(db, text, ctx\.organizationId\)/);
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /export async function sendTelegramResult/);
   assert.match(lib, /description \|\|/);
