@@ -60,6 +60,10 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+      - name: Clean Drizzle rebaseline diagnostics
+        if: always() && github.event_name == 'pull_request' && github.head_ref == 'fix/drizzle-metadata-rebaseline'
+        run: rm -rf .drizzle-rebaseline-artifact .drizzle-rebaseline-debug
+
       - name: Audit production dependencies
         run: npm audit --omit=dev --audit-level=high
 
