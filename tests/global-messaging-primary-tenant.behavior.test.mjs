@@ -45,6 +45,22 @@ test("secondary provider diagnostics use only explicit tenant settings",async()=
     await setOrg(db,2,"email_gateway_url","https://secondary.example/email");
     response=await callWorker(jsonRequest("/api/staff/providers",undefined,{method:"GET",headers:{cookie}}),db);
     body=await response.json(); assert.equal(body.providers.messaging.sms,true); assert.equal(body.providers.messaging.email,true);
+
+    // Model a genuinely legacy-only org1: migration 0089 normally seeds scoped rows,
+    // and scoped values must remain authoritative whenever they exist.
+    await db.prepare(`
+      DELETE FROM organization_integration_settings
+      WHERE organization_id = 1
+        AND key IN (
+          'telegram_bot_username',
+          'telegram_bot_token',
+          'sms_gateway_url',
+          'sms_gateway_auth',
+          'email_gateway_url',
+          'email_gateway_auth',
+          'email_gateway_from'
+        )
+    `).run();
     cookie=await seedStaffSession(db,{email:"org1-provider@example.com",role:"admin",organizationId:1});
     response=await callWorker(jsonRequest("/api/staff/providers",undefined,{method:"GET",headers:{cookie}}),db);
     body=await response.json(); assert.equal(body.providers.messaging.sms,true); assert.equal(body.providers.messaging.email,true);
