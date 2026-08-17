@@ -1,4 +1,4 @@
-import {asArray,asObject,detail,documentHeader,escapeHtml,formatDate,meta,type RenderObject} from "./common";
+import {asArray,asObject,detail,documentHeader,escapeHtml,formatDate,meta,type RenderObject} from "./common.ts";
 
 export function renderInventoryPrintedForm(payload:RenderObject){
   const doc=asObject(payload.document);

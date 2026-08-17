@@ -1,8 +1,8 @@
-import {PrintedFormArtifactError,type PrintedFormArtifactSnapshot,type PrintedFormPdfArtifact} from "./printed-form-artifact-types";
-import {isPdfBytes,objectMetadata,readStoredPrintedFormPdf,sha256Bytes} from "./printed-form-object";
-import {renderPrintedFormHtml} from "./printed-form-render";
-import {printedFormStorageKey} from "./printed-form-storage-key";
-import {browserRunBinding,printedFormsBucketBinding} from "./printed-form-runtime";
+import {PrintedFormArtifactError,type PrintedFormArtifactSnapshot,type PrintedFormPdfArtifact} from "./printed-form-artifact-types.ts";
+import {isPdfBytes,objectMetadata,readStoredPrintedFormPdf,sha256Bytes} from "./printed-form-object.ts";
+import {renderPrintedFormHtml} from "./printed-form-render/index.ts";
+import {printedFormStorageKey} from "./printed-form-storage-key.ts";
+import {browserRunBinding,printedFormsBucketBinding} from "./printed-form-runtime.ts";
 export async function materializePrintedFormPdf(s:PrintedFormArtifactSnapshot,payload:unknown):Promise<PrintedFormPdfArtifact>{
  const key=printedFormStorageKey(s);if(s.storageKey&&s.storageKey!==key)throw new PrintedFormArtifactError("integrity_failed","Snapshot storage key does not match canonical identity");
  const bucket=printedFormsBucketBinding();if(!bucket)throw new PrintedFormArtifactError("runtime_unavailable","Printed-form object storage is not configured");

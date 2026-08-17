@@ -1,8 +1,8 @@
-import {asObject,escapeHtml,PRINT_CSS,type PrintedFormRenderSnapshot} from "./common";
-import {renderInventoryPrintedForm} from "./inventory";
-import {renderPaymentPrintedForm} from "./payment";
-import {renderServiceActPrintedForm} from "./service-act";
-export type {PrintedFormRenderSnapshot} from "./common";
+import {asObject,escapeHtml,PRINT_CSS,type PrintedFormRenderSnapshot} from "./common.ts";
+import {renderInventoryPrintedForm} from "./inventory.ts";
+import {renderPaymentPrintedForm} from "./payment.ts";
+import {renderServiceActPrintedForm} from "./service-act.ts";
+export type {PrintedFormRenderSnapshot} from "./common.ts";
 export function renderPrintedFormHtml(s:PrintedFormRenderSnapshot,payload:unknown){
  const p=asObject(payload);let body="";
  if(s.formType==="inventory_receipt"||s.formType==="inventory_writeoff")body=renderInventoryPrintedForm(p);

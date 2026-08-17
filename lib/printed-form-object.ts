@@ -1,6 +1,6 @@
-import {PrintedFormArtifactError,type PrintedFormArtifactSnapshot,type PrintedFormPdfArtifact} from "./printed-form-artifact-types";
-import {printedFormState} from "./printed-form-storage-key";
-import type {PrintedFormObject,PrintedFormsBucket} from "./printed-form-runtime";
+import {PrintedFormArtifactError,type PrintedFormArtifactSnapshot,type PrintedFormPdfArtifact} from "./printed-form-artifact-types.ts";
+import {printedFormState} from "./printed-form-storage-key.ts";
+import type {PrintedFormObject,PrintedFormsBucket} from "./printed-form-runtime.ts";
 const SHA=/^[a-f0-9]{64}$/;
 export function concreteArrayBuffer(bytes:Uint8Array){const buffer=new ArrayBuffer(bytes.byteLength);new Uint8Array(buffer).set(bytes);return buffer;}
 export async function sha256Bytes(bytes:Uint8Array){const digest=await crypto.subtle.digest("SHA-256",concreteArrayBuffer(bytes));const hex=Array.from(new Uint8Array(digest),b=>b.toString(16).padStart(2,"0")).join("");return {digest,hex};}

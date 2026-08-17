@@ -1,4 +1,4 @@
-import {asObject,detail,documentHeader,escapeHtml,formatDate,formatMoney,meta,type RenderObject} from "./common";
+import {asObject,detail,documentHeader,escapeHtml,formatDate,formatMoney,meta,type RenderObject} from "./common.ts";
 export function renderPaymentPrintedForm(payload:RenderObject){
  const doc=asObject(payload.document),booking=asObject(payload.booking),pay=asObject(payload.payment),cash=asObject(payload.cashAccount),source=asObject(payload.sourceDocument);
  const refund=doc.documentType==="refund";
