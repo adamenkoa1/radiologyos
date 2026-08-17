@@ -1,24 +1,24 @@
-// Надсилає тестове SMS / e-mail через збережений шлюз, щоб адміністратор міг
-// перевірити налаштування в один клік (аналог telegram-test). Помилку шлюзу
-// повертає дослівно, щоб було видно причину (401, таймаут, заборонена адреса).
-// Messaging gateway settings are legacy-global, so only org 1 may use them.
+// Надсилає тестове SMS / e-mail через шлюз поточної організації.
+// Integration credentials are resolved only from the server-derived tenant
+// context; secondary organizations never inherit org1 gateways.
 
-import { requireOrgContext } from "../../../../../lib/tenant";
-import { getSettings } from "../../../../../lib/settings";
+import { canManageSystem } from "../../../../../lib/staff-auth";
+import { requireSystemOrgContext } from "../../../../../lib/tenant";
+import { getOrganizationIntegrationSettings } from "../../../../../lib/settings";
 import { createMessagingProvider } from "../../../../../lib/providers/messaging";
 import { normalizeUkrainianPhone } from "../../../../../lib/phone";
 import { dbBinding } from "../../../../../lib/db";
+import { audit } from "../../../../../lib/audit";
 
-const PRIMARY_ORGANIZATION_ID = 1;
 const TEST_TEXT = "RadiologyOS: тестове повідомлення. Канал сповіщень налаштовано правильно.";
 
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const ctx = await requireOrgContext(request, db);
+  const ctx = await requireSystemOrgContext(request, db);
   if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID || ctx.role !== "admin") {
-    return Response.json({ error: "Доступно лише адміністратору основної організації" }, { status: 403 });
+  if (!canManageSystem(ctx.role)) {
+    return Response.json({ error: "Доступно лише системному адміністратору організації" }, { status: 403 });
   }
 
   const body = await request.json().catch(() => ({})) as { channel?: string; to?: string };
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
   if (!channel) return Response.json({ error: "Невідомий канал" }, { status: 400 });
   if (!to) return Response.json({ error: "Вкажіть отримувача для тесту" }, { status: 400 });
 
-  const cfg = await getSettings(db, [
+  const cfg = await getOrganizationIntegrationSettings(db, ctx.organizationId, [
     "sms_gateway_url", "sms_gateway_auth",
     "email_gateway_url", "email_gateway_auth", "email_gateway_from",
   ]);
@@ -50,5 +50,13 @@ export async function POST(request: Request) {
   } catch (error) {
     return Response.json({ error: error instanceof Error ? error.message : "Не вдалося надіслати" }, { status: 400 });
   }
+
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: ctx.member.email,
+    action: "messaging_integration_test",
+    resource: "settings",
+    details: { scope: "organization_integrations", channel },
+  });
   return Response.json({ ok: true });
 }
