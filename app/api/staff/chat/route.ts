@@ -1,6 +1,5 @@
 // Єдиний контакт-центр пацієнтів. Історія береться з patient_communications
-// незалежно від каналу; ручні відповіді поки відправляються через legacy-global
-// WhatsApp-шлюз org 1.
+// незалежно від каналу; WhatsApp replies use only the current tenant gateway.
 //
 // КРИТИЧНА ІНВАРІАНТА: phone — лише контакт, а не identity. Exact-діалоги
 // групуються та читаються виключно за immutable patient_id. Старі записи без
@@ -10,11 +9,10 @@
 import { canViewPatientRegistry } from "../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
-import { sendWhatsApp } from "../../../../lib/whatsapp";
+import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "../../../../lib/whatsapp";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
 
-const PRIMARY_ORGANIZATION_ID = 1;
 const CHANNELS = new Set(["whatsapp", "telegram", "sms", "email"]);
 const PATIENT_ID = /^[a-f0-9]{32}$/i;
 
@@ -71,6 +69,8 @@ export async function GET(request: Request) {
   if (!canViewPatientRegistry(member.role)) {
     return Response.json({ error: "Контакт-центр доступний реєстратору або адміністратору" }, { status: 403 });
   }
+  const wa = await whatsappConfig(db, orgId);
+  const canReplyWhatsApp = whatsappConfigured(wa) && wa.enabled;
 
   const url = new URL(request.url);
   const channel = channelFilter(request);
@@ -78,10 +78,6 @@ export async function GET(request: Request) {
   let legacyPhone = normalizeUkrainianPhone(url.searchParams.get("legacyPhone") || "");
   const compatibilityPhone = normalizeUkrainianPhone(url.searchParams.get("phone") || "");
 
-  // Backward compatibility for old bookmarks/callers: phone-only reads are
-  // accepted only when that phone maps to exactly one communication scope.
-  // Scope ambiguity is global across channels: a channel filter may narrow
-  // messages only after identity has already been resolved safely.
   if (!patientId && !legacyPhone && compatibilityPhone) {
     const scope = await resolvePhoneCompatibilityScope(db, orgId, compatibilityPhone, "");
     if (scope.ambiguous) {
@@ -100,11 +96,9 @@ export async function GET(request: Request) {
          FROM patient_profiles
          WHERE organization_id = ? AND patient_id = ? LIMIT 1`
       ).bind(orgId, patientId).first<{ name:string; phone:string; doNotContact:number }>();
-
       if (!profile) {
         return Response.json({ error:"Діалог пацієнта не знайдено" }, { status:404, headers:{ "cache-control":"no-store" } });
       }
-
       const rows = channel
         ? await db.prepare(
             `SELECT id, patient_id AS patientId, channel, direction, summary AS text, actor,
@@ -120,7 +114,6 @@ export async function GET(request: Request) {
              WHERE organization_id = ? AND patient_id = ?
              ORDER BY created_at ASC, id ASC LIMIT 400`
           ).bind(orgId, patientId).all();
-
       const issues = await db.prepare(
         `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
          FROM patient_notifications n
@@ -128,19 +121,16 @@ export async function GET(request: Request) {
          WHERE n.organization_id = ? AND b.patient_id = ? AND n.status = 'failed'
          ORDER BY n.id DESC LIMIT 30`
       ).bind(orgId, patientId).all();
-
       const telegram = await db.prepare(
         `SELECT 1 AS linked FROM patient_telegram_identities
          WHERE organization_id = ? AND patient_id = ? AND telegram_chat_id != '' LIMIT 1`
       ).bind(orgId, patientId).first<{ linked:number }>();
-
       const shared = profile.phone
         ? await db.prepare(
             `SELECT COUNT(*) AS count FROM patient_profiles
              WHERE organization_id = ? AND phone_normalized = ?`
           ).bind(orgId, profile.phone).first<{ count:number }>()
         : null;
-
       await audit(db, {
         organizationId: orgId,
         actorEmail: member.email,
@@ -149,7 +139,6 @@ export async function GET(request: Request) {
         targetId: patientId,
         details: { channel:channel || "all", identityKind:"patient" },
       });
-
       return Response.json({
         conversationKey:`patient:${patientId}`,
         identityKind:"patient",
@@ -160,7 +149,7 @@ export async function GET(request: Request) {
         messages:rows.results,
         issues:issues.results,
         availableReplyChannels:
-          orgId === PRIMARY_ORGANIZATION_ID
+          canReplyWhatsApp
           && !!profile.phone
           && Number(profile.doNotContact || 0) !== 1
           && Number(shared?.count || 0) <= 1
@@ -185,11 +174,9 @@ export async function GET(request: Request) {
            WHERE organization_id = ? AND patient_id = '' AND phone_normalized = ?
            ORDER BY created_at ASC, id ASC LIMIT 400`
         ).bind(orgId, legacyPhone).all();
-
     if (rows.results.length === 0) {
       return Response.json({ error:"Legacy-діалог не знайдено" }, { status:404, headers:{ "cache-control":"no-store" } });
     }
-
     const identity = await db.prepare(
       `WITH input(org_id, phone) AS (VALUES (?, ?))
        SELECT
@@ -202,7 +189,6 @@ export async function GET(request: Request) {
           HAVING COUNT(*) = 1), '') AS name
        FROM input i`
     ).bind(orgId, legacyPhone).first<{ exactProfileCount:number; legacyBookingCount:number; name:string }>();
-
     const issues = await db.prepare(
       `SELECT n.id, n.channel, n.kind, n.status, n.error, n.created_at AS createdAt, n.booking_id AS bookingId
        FROM patient_notifications n
@@ -210,10 +196,8 @@ export async function GET(request: Request) {
        WHERE n.organization_id = ? AND b.patient_id = '' AND b.phone_normalized = ? AND n.status = 'failed'
        ORDER BY n.id DESC LIMIT 30`
     ).bind(orgId, legacyPhone).all();
-
     const exactProfileCount = Number(identity?.exactProfileCount || 0);
     const legacyBookingCount = Number(identity?.legacyBookingCount || 0);
-
     await audit(db, {
       organizationId:orgId,
       actorEmail:member.email,
@@ -222,7 +206,6 @@ export async function GET(request: Request) {
       targetId:`legacy:${legacyPhone}`,
       details:{ channel:channel || "all", identityKind:"legacy", exactProfileCount, legacyBookingCount },
     });
-
     return Response.json({
       conversationKey:`legacy:${legacyPhone}`,
       identityKind:"legacy",
@@ -233,7 +216,7 @@ export async function GET(request: Request) {
       messages:rows.results,
       issues:issues.results,
       availableReplyChannels:
-        orgId === PRIMARY_ORGANIZATION_ID && exactProfileCount === 0 && legacyBookingCount === 1
+        canReplyWhatsApp && exactProfileCount === 0 && legacyBookingCount === 1
           ? ["whatsapp"] : [],
       linkedTelegram:false,
       legacyAmbiguous:exactProfileCount > 0 || legacyBookingCount !== 1,
@@ -354,13 +337,11 @@ export async function GET(request: Request) {
   const failed = await db.prepare(
     `SELECT COUNT(*) AS count FROM patient_notifications WHERE organization_id = ? AND status = 'failed'`
   ).bind(orgId).first<{ count:number }>();
-
   const normalizedConversations = (conversations.results as Array<Record<string, unknown>>).map((row) => ({
     ...row,
     sharedPhone:Number(row.exactProfileCount || 0) > 1,
     legacyAmbiguous:row.identityKind === "legacy" && Number(row.exactProfileCount || 0) > 0,
   }));
-
   return Response.json({
     conversations:normalizedConversations,
     channelStats:channelStats.results,
@@ -379,9 +360,6 @@ export async function POST(request: Request) {
   if (!canViewPatientRegistry(member.role)) {
     return Response.json({ error:"Відповідати може реєстратор або адміністратору" }, { status:403 });
   }
-  if (ctx.organizationId !== PRIMARY_ORGANIZATION_ID) {
-    return Response.json({ error:"Вихідний WhatsApp ще не налаштований для цієї організації" }, { status:403 });
-  }
 
   const body = await request.json().catch(() => ({})) as {
     patientId?:string; phone?:string; text?:string; channel?:string; identityKind?:string;
@@ -397,7 +375,6 @@ export async function POST(request: Request) {
 
   let phone = requestedPhone;
   let storedPatientId = "";
-
   if (patientId) {
     const profile = await db.prepare(
       `SELECT phone_normalized AS phone, do_not_contact AS doNotContact
@@ -440,9 +417,7 @@ export async function POST(request: Request) {
         error:"Цей номер належить exact-профілю. Виберіть конкретного пацієнта перед відправленням.",
       }, { status:409 });
     }
-    if (legacyBookingCount === 0) {
-      return Response.json({ error:"Пацієнта не знайдено в цій організації" }, { status:404 });
-    }
+    if (legacyBookingCount === 0) return Response.json({ error:"Пацієнта не знайдено в цій організації" }, { status:404 });
     if (legacyBookingCount !== 1) {
       return Response.json({
         error:"Legacy-номер пов'язаний з кількома записами. Спочатку ідентифікуйте пацієнта в CRM.",
@@ -450,9 +425,8 @@ export async function POST(request: Request) {
     }
   }
 
-  const result = await sendWhatsApp(db, phone, text);
+  const result = await sendWhatsApp(db, phone, text, ctx.organizationId);
   if (!result.ok) return Response.json({ error:result.error || "Не вдалося надіслати" }, { status:400 });
-
   await db.prepare(
     `INSERT INTO patient_communications
        (organization_id, patient_id, phone_normalized, channel, direction, summary, actor, external_id)
@@ -466,7 +440,6 @@ export async function POST(request: Request) {
     targetId:storedPatientId || `legacy:${phone}`,
     details:{ channel:"whatsapp", length:text.length, identityKind:storedPatientId ? "patient" : "legacy" },
   });
-
   return Response.json({
     ok:true,
     message:{ patientId:storedPatientId, direction:"outbound", channel:"whatsapp", text, actor:member.email, createdAt:new Date().toISOString() },
