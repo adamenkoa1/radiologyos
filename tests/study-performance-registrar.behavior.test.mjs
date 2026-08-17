@@ -186,7 +186,8 @@ test("service storno reverses performance before appending operational correctio
       `SELECT quantity_delta AS quantityDelta,anatomical_regions_delta AS regionsDelta
        FROM service_correction_movements WHERE document_id=?`
     ).get(correction.id);
-    assert.deepEqual(serviceCorrection,{quantityDelta:-1,regionsDelta:-2});
+    assert.equal(serviceCorrection.quantityDelta,-1);
+    assert.equal(serviceCorrection.regionsDelta,-2);
     assert.equal(raw.prepare(
       "SELECT SUM(minutes_delta) AS n FROM equipment_load_movements WHERE document_id=?"
     ).get(correction.id).n,-30);
