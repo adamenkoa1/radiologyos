@@ -82,7 +82,7 @@ test("telegram lib can message an arbitrary chat and register a webhook", async 
   assert.match(lib, /export async function telegramBotUsername/);
   assert.match(lib, /export async function setTelegramWebhook/);
   assert.match(lib, /getMe/);
-  assert.match(lib, /secret_token: secret/);
+  assert.match(lib, /secret_token\s*:\s*secret/);
 });
 
 test("notify selects exact Telegram chat by patient_id and sends with booking tenant credentials", async () => {
