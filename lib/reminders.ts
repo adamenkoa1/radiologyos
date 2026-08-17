@@ -1,9 +1,7 @@
-// Планові нагадування пацієнтам за N годин до візиту (напр. за 3 год і за 1 год).
-// Запускається cron-тригером Cloudflare (scheduled-handler у worker/index.ts).
-// Чиста логіка «які нагадування настали» — у lib/reminders-core.ts (тестована);
-// тут лише ввід-вивід: читання БД, надсилання WhatsApp, дедуплікація.
+// Планові нагадування пацієнтам за N годин до візиту.
+// Раннер завжди отримує явний tenant і використовує тільки його integration settings.
 
-import { getSettings } from "./settings";
+import { getOrganizationIntegrationSettings } from "./settings";
 import { sendWhatsApp, whatsappConfig, whatsappConfigured } from "./whatsapp";
 import {
   REMINDER_LEAD_KEY, dueReminders, kyivNow, leadReminderText, minutesOfTime,
@@ -18,9 +16,6 @@ type ReminderRow = {
   staleLinkedContact:number;
 };
 
-// Раннер завжди отримує явний tenant. Поки messaging credentials зберігаються
-// глобально в app_settings, production scheduled-handler викликає його лише для
-// початкової організації; це не дає одному каналу повідомлень обробляти чужі записи.
 export async function runDueReminders(
   db: D1Database,
   nowMs: number,
@@ -29,12 +24,14 @@ export async function runDueReminders(
   const result = { sent: 0, skipped: 0, failed: 0 };
   if (!Number.isInteger(organizationId) || organizationId <= 0) return result;
   try {
-    const cfg = await getSettings(db, ["patient_reminders_enabled", REMINDER_LEAD_KEY]);
+    const cfg = await getOrganizationIntegrationSettings(db, organizationId, [
+      "patient_reminders_enabled", REMINDER_LEAD_KEY,
+    ]);
     if (!["1", "true", "on", "yes"].includes((cfg.patient_reminders_enabled || "").trim().toLowerCase())) {
-      return result; // нагадування вимкнені
+      return result;
     }
-    const wa = await whatsappConfig(db);
-    if (!whatsappConfigured(wa) || !wa.enabled) return result; // немає куди слати
+    const wa = await whatsappConfig(db, organizationId);
+    if (!whatsappConfigured(wa) || !wa.enabled) return result;
 
     const leads = parseLeadHours(cfg[REMINDER_LEAD_KEY]);
     const { date, minutes: nowMin } = kyivNow(nowMs);
@@ -48,9 +45,7 @@ export async function runDueReminders(
              WHERE p.organization_id = b.organization_id
                AND p.patient_id = b.patient_id
                AND p.do_not_contact = 1
-           ) THEN 1
-           ELSE 0
-         END AS doNotContact,
+           ) THEN 1 ELSE 0 END AS doNotContact,
          CASE WHEN b.patient_id = '' THEN (
            SELECT COUNT(*) FROM patient_profiles p
            WHERE p.organization_id = b.organization_id
@@ -62,13 +57,11 @@ export async function runDueReminders(
              WHERE p.organization_id = b.organization_id
                AND p.patient_id = b.patient_id
                AND p.phone_normalized = b.phone_normalized
-           ) THEN 1
-           ELSE 0
-         END AS staleLinkedContact
+           ) THEN 1 ELSE 0 END AS staleLinkedContact
        FROM bookings b
        WHERE b.organization_id = ? AND b.desired_date = ? AND b.status IN ('confirmed','rescheduled')`
     ).bind(organizationId, date).all<ReminderRow>();
-    const bookings = (rows.results || []);
+    const bookings = rows.results || [];
     if (!bookings.length) return result;
 
     const leadBookings: LeadBooking[] = [];
@@ -92,11 +85,6 @@ export async function runDueReminders(
       const b = byId.get(due.id);
       if (!b || !b.phoneNormalized) continue;
       const kind = `reminder_${due.hours}h`;
-      // Exact bookings use only their own profile's DNC flag and current phone.
-      // If the profile phone changed since the booking snapshot was created, the
-      // old destination is no longer trusted and automated messaging fails closed.
-      // For an unlinked legacy booking, any CRM profile on that phone is also
-      // identity-ambiguous and must not receive appointment details automatically.
       if (b.doNotContact || b.staleLinkedContact || (!b.patientId && b.sharedProfileCount > 0)) {
         const reason = b.doNotContact
           ? "Пацієнт у списку «не турбувати»"
@@ -109,7 +97,7 @@ export async function runDueReminders(
       }
       const body = leadReminderText(b.service, b.desiredTime, due.hours);
       try {
-        const r = await sendWhatsApp(db, b.phoneNormalized, body);
+        const r = await sendWhatsApp(db, organizationId, b.phoneNormalized, body);
         if (r.ok) { await record(db, organizationId, b, kind, "sent", ""); result.sent += 1; }
         else { await record(db, organizationId, b, kind, "failed", r.error || "WhatsApp помилка"); result.failed += 1; }
       } catch (error) {
@@ -118,7 +106,7 @@ export async function runDueReminders(
       }
     }
   } catch {
-    // мовчазна відмова — cron не має падати; наступний запуск спробує знову
+    // Cron must fail closed for this tenant and retry on the next run.
   }
   return result;
 }
