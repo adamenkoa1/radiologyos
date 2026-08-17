@@ -4,11 +4,14 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("messaging-test endpoint is admin-only and sends via the saved gateway", async () => {
+test("messaging-test endpoint uses system control-plane auth and the tenant gateway", async () => {
   const route = await read("app/api/staff/settings/messaging-test/route.ts");
-  assert.match(route, /requireOrgContext\(request, db\)/);
-  assert.match(route, /ctx\.role !== "admin"/);
+  assert.match(route, /requireSystemOrgContext\(request, db\)/);
+  assert.match(route, /canManageSystem\(ctx\.role\)/);
   assert.doesNotMatch(route, /requireStaff\(request, db\)/);
+  assert.doesNotMatch(route, /PRIMARY_ORGANIZATION_ID/);
+  assert.match(route, /getOrganizationIntegrationSettings\(db, ctx\.organizationId/);
+  assert.doesNotMatch(route, /getSettings\(db/);
   assert.match(route, /createMessagingProvider\(/);
   assert.match(route, /messaging\.sendSms\(/);
   assert.match(route, /messaging\.sendEmail\(/);
