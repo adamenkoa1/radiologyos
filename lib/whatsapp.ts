@@ -1,5 +1,6 @@
 // Best-effort WhatsApp through green-api.com. Configuration is organization-
-// scoped; callers must provide the tenant id that owns the patient/workflow.
+// scoped. The optional organization id is explicit at tenant-aware call sites;
+// omitted means the legacy public org1 path only.
 
 import { getOrganizationIntegrationSettings } from "./settings";
 
@@ -7,10 +8,14 @@ export { interpretBotCommand, menuText, parseIncomingWebhook } from "./whatsapp-
 export type { BotAction, IncomingMessage } from "./whatsapp-bot";
 
 const GREEN_API_HOST = "https://api.green-api.com";
+const LEGACY_PUBLIC_ORGANIZATION_ID = 1;
 
 export type WhatsAppConfig = { idInstance: string; apiToken: string; enabled: boolean };
 
-export async function whatsappConfig(db: D1Database, organizationId: number): Promise<WhatsAppConfig> {
+export async function whatsappConfig(
+  db: D1Database,
+  organizationId = LEGACY_PUBLIC_ORGANIZATION_ID,
+): Promise<WhatsAppConfig> {
   const s = await getOrganizationIntegrationSettings(db, organizationId, [
     "whatsapp_id_instance", "whatsapp_api_token_instance", "whatsapp_enabled",
   ]);
@@ -24,9 +29,9 @@ export function whatsappConfigured(cfg: WhatsAppConfig): boolean {
 
 export async function sendWhatsApp(
   db: D1Database,
-  organizationId: number,
   phoneNormalized: string,
   text: string,
+  organizationId = LEGACY_PUBLIC_ORGANIZATION_ID,
 ): Promise<{ ok: boolean; error?: string; idMessage?: string }> {
   const cfg = await whatsappConfig(db, organizationId);
   if (!whatsappConfigured(cfg) || !cfg.enabled) {
