@@ -10,6 +10,7 @@ const drizzleDir = join(root, "drizzle");
 const artifactDir = join(root, ".drizzle-rebaseline-artifact");
 const workDir = await mkdtemp(join(tmpdir(), "radiologyos-drizzle-rebaseline-"));
 const dbPath = join(workDir, "migrated.sqlite");
+const quoteIdentifier = (value) => `"${String(value).replaceAll('"', '""')}"`;
 
 try {
   const db = new DatabaseSync(dbPath);
@@ -26,6 +27,13 @@ try {
       throw new Error(`${migration}: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
+
+  // drizzle-kit 0.31.10 cannot introspect the repository's raw-SQL views.
+  // They remain authoritative in committed migrations; remove them only from
+  // this disposable database copy so table/index/FK introspection can finish.
+  const views = db.prepare("SELECT name FROM sqlite_master WHERE type = 'view' ORDER BY name").all();
+  console.log(`Raw SQL views excluded from Drizzle pull: ${views.map(({ name }) => name).join(", ") || "none"}`);
+  for (const { name } of views) db.exec(`DROP VIEW ${quoteIdentifier(name)}`);
   db.close();
 
   await rm(artifactDir, { recursive: true, force: true });
