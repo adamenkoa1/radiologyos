@@ -75,9 +75,10 @@ try {
   printResult(pull);
   if (pull.status !== 0) throw new Error(`drizzle-kit pull failed with exit code ${pull.status}`);
 
-  // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings in
-  // schema.ts even though the pulled snapshot contains the correct expression.
-  // Repair only the two expression forms present in this database.
+  // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings and
+  // mis-serializes raw CHECK expressions. Raw CHECKs remain authoritative in
+  // committed SQL migrations; the declarative baseline intentionally covers
+  // tables, columns, indexes, unique constraints and foreign keys only.
   const generatedSchemaPath = join(artifactDir, "schema.ts");
   let generatedSchema = await readFile(generatedSchemaPath, "utf8");
   generatedSchema = generatedSchema
@@ -85,13 +86,21 @@ try {
     .replaceAll(
       '.default("sql`(lower(hex(randomblob(16))))`")',
       '.default(sql`(lower(hex(randomblob(16))))`)',
-    );
+    )
+    .replace(", check,", ",")
+    .split("\n")
+    .filter((line) => !line.trimStart().startsWith("check("))
+    .join("\n");
   await writeFile(generatedSchemaPath, generatedSchema);
+
+  const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
+  const snapshot = JSON.parse(await readFile(pulledSnapshot, "utf8"));
+  for (const table of Object.values(snapshot.tables || {})) table.checkConstraints = {};
+  await writeFile(pulledSnapshot, `${JSON.stringify(snapshot, null, 2)}\n`);
 
   // Convert drizzle-kit pull's synthetic 0000 metadata into a baseline anchored
   // to the latest real committed migration. idx=89 deliberately preserves the
   // historical missing 0085 filename and makes the next generated migration 0090.
-  const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
   const baselineSnapshot = join(artifactMetaDir, `${latestPrefix}_snapshot.json`);
   await rename(pulledSnapshot, baselineSnapshot);
   const gitTime = run("git", ["log", "-1", "--format=%ct", "--", `drizzle/${latestMigration}`]);
