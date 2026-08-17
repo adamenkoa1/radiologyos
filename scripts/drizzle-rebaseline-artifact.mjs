@@ -75,13 +75,25 @@ try {
   printResult(pull);
   if (pull.status !== 0) throw new Error(`drizzle-kit pull failed with exit code ${pull.status}`);
 
-  // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings and
-  // mis-serializes raw CHECK expressions. Raw CHECKs remain authoritative in
-  // committed SQL migrations; the declarative baseline intentionally covers
-  // tables, columns, indexes, unique constraints and foreign keys only.
+  const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
+  const snapshot = JSON.parse(await readFile(pulledSnapshot, "utf8"));
+  const nullableAutoPkTables = new Set(
+    Object.entries(snapshot.tables || {})
+      .filter(([, table]) => {
+        const id = table.columns?.id;
+        return id?.primaryKey && id?.autoincrement && !id?.notNull;
+      })
+      .map(([tableName]) => tableName),
+  );
+
+  // drizzle-kit 0.31.10 emits SQL expression defaults as quoted strings,
+  // mis-serializes raw CHECK expressions, marks a few SQLite INTEGER PRIMARY
+  // KEY columns explicitly NOT NULL, and drops one REAL DEFAULT 0. Normalize
+  // only those observed introspector quirks. Raw CHECKs remain authoritative in
+  // committed SQL migrations.
   const generatedSchemaPath = join(artifactDir, "schema.ts");
-  let generatedSchema = await readFile(generatedSchemaPath, "utf8");
-  generatedSchema = generatedSchema
+  let currentTable = "";
+  let generatedSchema = (await readFile(generatedSchemaPath, "utf8"))
     .replaceAll('.default("sql`(CURRENT_TIMESTAMP)`")', '.default(sql`(CURRENT_TIMESTAMP)`)')
     .replaceAll(
       '.default("sql`(lower(hex(randomblob(16))))`")',
@@ -90,11 +102,23 @@ try {
     .replace(", check,", ",")
     .split("\n")
     .filter((line) => !line.trimStart().startsWith("check("))
+    .map((line) => {
+      const tableMatch = line.match(/sqliteTable\("([^"]+)"/);
+      if (tableMatch) currentTable = tableMatch[1];
+      if (
+        nullableAutoPkTables.has(currentTable)
+        && line.includes("id: integer().primaryKey({ autoIncrement: true }).notNull(),")
+      ) {
+        return line.replace(".primaryKey({ autoIncrement: true }).notNull()", ".primaryKey({ autoIncrement: true })");
+      }
+      if (currentTable === "inventory_items" && line.includes('minStock: real("min_stock").notNull(),')) {
+        return line.replace('.notNull(),', '.default(0).notNull(),');
+      }
+      return line;
+    })
     .join("\n");
   await writeFile(generatedSchemaPath, generatedSchema);
 
-  const pulledSnapshot = join(artifactMetaDir, "0000_snapshot.json");
-  const snapshot = JSON.parse(await readFile(pulledSnapshot, "utf8"));
   for (const table of Object.values(snapshot.tables || {})) table.checkConstraints = {};
   await writeFile(pulledSnapshot, `${JSON.stringify(snapshot, null, 2)}\n`);
 
