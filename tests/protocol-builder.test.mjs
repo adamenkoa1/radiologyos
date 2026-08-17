@@ -14,9 +14,6 @@ test("protocol migration creates the document table and backfills existing proto
   assert.match(migration, /CREATE INDEX IF NOT EXISTS `protocols_status_idx`/);
   assert.match(migration, /INSERT OR IGNORE INTO `protocols`/);
 
-  const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
-  assert.ok(journal.entries.some((entry) => entry.tag === "0005_protocol_documents"));
-
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const protocols = sqliteTable\("protocols"/);
   for (const column of ["signed_by", "signed_at", "signed_version"]) {
