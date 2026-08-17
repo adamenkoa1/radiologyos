@@ -97,7 +97,7 @@ export async function runDueReminders(
       }
       const body = leadReminderText(b.service, b.desiredTime, due.hours);
       try {
-        const r = await sendWhatsApp(db, organizationId, b.phoneNormalized, body);
+        const r = await sendWhatsApp(db, b.phoneNormalized, body, organizationId);
         if (r.ok) { await record(db, organizationId, b, kind, "sent", ""); result.sent += 1; }
         else { await record(db, organizationId, b, kind, "failed", r.error || "WhatsApp помилка"); result.failed += 1; }
       } catch (error) {
