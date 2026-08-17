@@ -57,6 +57,7 @@ jobs:
           path: |
             .drizzle-rebaseline-artifact
             .drizzle-rebaseline-debug
+          include-hidden-files: true
           if-no-files-found: error
 
       - name: Audit production dependencies
