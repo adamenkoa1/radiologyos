@@ -59,7 +59,6 @@ const STATIC_ASSET_PATHS = new Set([
   "/hospital-emblem.jpg",
   "/window.svg",
 ]);
-const INITIAL_ORGANIZATION_ID = 1;
 
 function secure(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
@@ -143,6 +142,11 @@ async function recoverStaffCancellationConflict(
   return blocker ? Response.json({ error: patientOrderBlockerMessage(blocker) }, { status: 409 }) : null;
 }
 
+async function runTenantReminders(db: D1Database, now: number): Promise<void> {
+  const rows = await db.prepare("SELECT id FROM organizations WHERE active = 1 ORDER BY id").all<{ id:number }>();
+  await Promise.allSettled((rows.results || []).map((org) => runDueReminders(db, now, Number(org.id))));
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
@@ -213,9 +217,7 @@ const worker = {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
     const now=Date.now();
     ctx.waitUntil(Promise.allSettled([
-      // Patient messaging remains limited to org1 until credentials are tenant-scoped.
-      runDueReminders(env.DB, now, INITIAL_ORGANIZATION_ID),
-      // Internal operational tasks use no external credentials and are safe for all active tenants.
+      runTenantReminders(env.DB, now),
       runOperationalTasks(env.DB, now),
     ]));
   },
