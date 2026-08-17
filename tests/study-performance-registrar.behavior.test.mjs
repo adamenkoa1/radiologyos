@@ -57,7 +57,16 @@ function movementCounts(raw,documentId) {
   };
 }
 
-test("automatic completion creates one physical study-performance document without duplicate movements",async()=>{
+function correctionForSource(raw,organizationId,sourceDocumentId) {
+  return raw.prepare(
+    `SELECT d.id,d.state,c.anatomical_regions_count AS regions,c.duration_minutes AS duration
+     FROM business_documents d
+     JOIN service_correction_details c ON c.document_id=d.id AND c.organization_id=d.organization_id
+     WHERE d.organization_id=? AND c.source_document_id=? LIMIT 1`
+  ).get(organizationId,sourceDocumentId);
+}
+
+test("automatic completion makes study-performance the positive operational owner",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db);
     await complete(db,1,bookingId);
@@ -74,15 +83,21 @@ test("automatic completion creates one physical study-performance document witho
     assert.equal(performance.postedAt,source.postedAt);
 
     assert.deepEqual(movementCounts(raw,performance.id),{
-      services:0,equipment:0,staff:0,revenue:0,settlements:0,cash:0,
+      services:1,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
     });
     assert.deepEqual(movementCounts(raw,source.id),{
-      services:1,equipment:1,staff:2,revenue:1,settlements:1,cash:0,
+      services:0,equipment:0,staff:0,revenue:1,settlements:1,cash:0,
     });
+
+    const serviceMovement=raw.prepare(
+      "SELECT actor_email AS actor,occurred_at AS occurredAt FROM services_delivered_movements WHERE document_id=?"
+    ).get(performance.id);
+    assert.equal(serviceMovement.actor,performance.postedBy);
+    assert.equal(serviceMovement.occurredAt,performance.occurredAt);
   });
 });
 
-test("explicit legacy service posting creates the same registrar and does not invent a historical backfill",async()=>{
+test("explicit legacy posting follows the same split without inventing a historical backfill",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{
       code:"RD-PERF-LEGACY",status:"completed",performedAt:"2026-08-22T11:05:00",
@@ -105,12 +120,32 @@ test("explicit legacy service posting creates the same registrar and does not in
     assert.equal(performance.postedBy,"legacy-registrar@example.com");
     assert.equal(performance.occurredAt,"2026-08-22T11:05:00");
     assert.deepEqual(movementCounts(raw,performance.id),{
+      services:1,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
+    });
+    assert.deepEqual(movementCounts(raw,source.id),{
+      services:0,equipment:0,staff:0,revenue:1,settlements:1,cash:0,
+    });
+  });
+});
+
+test("military completion owns operational facts in study-performance without economic movements",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{
+      code:"RD-PERF-MIL",category:"military",amount:5000,
+    });
+    await complete(db,1,bookingId,"2026-08-22T12:05:00");
+    const {source,performance}=documents(raw,1,bookingId);
+    assert.ok(source?.id>0 && performance?.id>0);
+    assert.deepEqual(movementCounts(raw,performance.id),{
+      services:1,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
+    });
+    assert.deepEqual(movementCounts(raw,source.id),{
       services:0,equipment:0,staff:0,revenue:0,settlements:0,cash:0,
     });
   });
 });
 
-test("service storno reverses the linked performance document and independent reversal is forbidden",async()=>{
+test("service storno reverses performance before appending operational corrections",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-PERF-STORNO"});
     await complete(db,1,bookingId);
@@ -131,11 +166,64 @@ test("service storno reverses the linked performance document and independent re
 
     const source=raw.prepare("SELECT state FROM business_documents WHERE id=?").get(before.source.id);
     const performance=raw.prepare("SELECT state FROM business_documents WHERE id=?").get(before.performance.id);
+    const correction=correctionForSource(raw,1,before.source.id);
     assert.equal(source.state,"reversed");
     assert.equal(performance.state,"reversed");
+    assert.equal(correction.state,"posted");
+
+    // Positive history stays immutable on the reversed performance registrar.
     assert.deepEqual(movementCounts(raw,before.performance.id),{
-      services:0,equipment:0,staff:0,revenue:0,settlements:0,cash:0,
+      services:1,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
     });
+    // Economic history stays on service_delivery; the separate correction owns all negative entries.
+    assert.deepEqual(movementCounts(raw,before.source.id),{
+      services:0,equipment:0,staff:0,revenue:1,settlements:1,cash:0,
+    });
+    assert.deepEqual(movementCounts(raw,correction.id),{
+      services:0,equipment:1,staff:2,revenue:1,settlements:1,cash:0,
+    });
+    const serviceCorrection=raw.prepare(
+      `SELECT quantity_delta AS quantityDelta,anatomical_regions_delta AS regionsDelta
+       FROM service_correction_movements WHERE document_id=?`
+    ).get(correction.id);
+    assert.deepEqual(serviceCorrection,{quantityDelta:-1,regionsDelta:-2});
+    assert.equal(raw.prepare(
+      "SELECT SUM(minutes_delta) AS n FROM equipment_load_movements WHERE document_id=?"
+    ).get(correction.id).n,-30);
+    assert.equal(raw.prepare(
+      "SELECT SUM(units_delta) AS n FROM staff_output_movements WHERE document_id=?"
+    ).get(correction.id).n,-2);
+  });
+});
+
+test("D1 rejects positive operational movements owned by the economic source document",async()=>{
+  await withD1(async(db,raw)=>{
+    const bookingId=await seedBooking(db,{code:"RD-PERF-OWNER-GUARD"});
+    await complete(db,1,bookingId);
+    const {source,performance}=documents(raw,1,bookingId);
+    assert.ok(source?.id>0 && performance?.id>0);
+
+    const snapshot=raw.prepare(
+      `SELECT booking_id AS bookingId,patient_id AS patientId,service_code AS serviceCode,equipment_id AS equipmentId,
+              anatomical_regions_count AS regions,performed_at AS performedAt
+       FROM service_delivery_details WHERE document_id=?`
+    ).get(source.id);
+    assert.throws(()=>raw.prepare(
+      `INSERT INTO services_delivered_movements
+       (organization_id,document_id,booking_id,patient_id,service_code,equipment_id,quantity,
+        anatomical_regions_count,performed_at,actor_email,occurred_at)
+       VALUES (1,?,?,?,?,?,1,?,?,?,?)`
+    ).run(
+      source.id,snapshot.bookingId,snapshot.patientId,snapshot.serviceCode,snapshot.equipmentId,
+      snapshot.regions,snapshot.performedAt,source.postedBy,snapshot.performedAt,
+    ),/services_delivered_performance_mismatch/);
+
+    assert.throws(()=>raw.prepare(
+      `INSERT INTO equipment_load_movements
+       (organization_id,document_id,booking_id,equipment_id,minutes_delta,performed_at,actor_email,occurred_at)
+       VALUES (1,?,?,?,?,?,?,?)`
+    ).run(source.id,snapshot.bookingId,snapshot.equipmentId,30,snapshot.performedAt,source.postedBy,snapshot.performedAt),
+      /equipment_load_document_mismatch/);
   });
 });
 
@@ -165,13 +253,13 @@ test("D1 enforces one performance registrar per source and a service-delivery ba
   });
 });
 
-test("study-performance basis cannot cross tenant boundaries",async()=>{
+test("study-performance basis and operational ownership cannot cross tenant boundaries",async()=>{
   await withD1(async(db,raw)=>{
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Performance Org 2','performance-org-2',1)");
     const bookingId=await seedBooking(db,{organizationId:2,code:"RD-PERF-ORG2",category:"military",amount:0});
     await complete(db,2,bookingId);
-    const {source}=documents(raw,2,bookingId);
-    assert.ok(source?.id>0);
+    const {source,performance}=documents(raw,2,bookingId);
+    assert.ok(source?.id>0 && performance?.id>0);
 
     assert.throws(()=>raw.prepare(
       `INSERT INTO business_documents
@@ -183,5 +271,8 @@ test("study-performance basis cannot cross tenant boundaries",async()=>{
     assert.equal(raw.prepare(
       "SELECT COUNT(*) AS n FROM business_documents WHERE organization_id=1 AND document_type='study_performance' AND basis_document_id=?"
     ).get(source.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM services_delivered_movements WHERE organization_id=1 AND document_id=?"
+    ).get(performance.id).n,0);
   });
 });
