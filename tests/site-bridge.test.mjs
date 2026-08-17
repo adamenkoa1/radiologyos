@@ -106,7 +106,7 @@ test("a test-message endpoint verifies the current organization's Telegram conne
   assert.match(route, /sendTelegramResult\(db, text, ctx\.organizationId\)/);
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /export async function sendTelegramResult/);
-  assert.match(lib, /description \|\|/);
+  assert.match(lib, /description\s*\|\|/);
 });
 
 test("payment link is served publicly and used by the site, not hardcoded", async () => {
