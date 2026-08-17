@@ -74,7 +74,7 @@ test("new public bookings notify the registrar via the public organization's Tel
   const lib = await read("lib/telegram.ts");
   assert.match(lib, /api\.telegram\.org\/bot/);
   assert.match(lib, /getOrganizationIntegrationSettings\(db, organizationId/);
-  assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok: false/);
+  assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok:\s*false/);
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /sendTelegram\(db,\s*bookingMessage\([\s\S]*?\),\s*PUBLIC_ORGANIZATION_ID\)/);
   assert.match(route, /bookingMessage\(/);
