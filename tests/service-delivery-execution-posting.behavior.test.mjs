@@ -14,7 +14,16 @@ async function seedBooking(db,{code="RD-SVC-AUTO",category="civilian",amount=250
   return Number(result.meta.last_row_id);
 }
 
-test("marking a study completed atomically posts its BAS service-delivery document",async()=>{
+function performanceFor(raw,sourceDocumentId) {
+  return raw.prepare(
+    `SELECT id,state,basis_document_id AS basisDocumentId
+     FROM business_documents
+     WHERE organization_id=1 AND document_type='study_performance' AND basis_document_id=?
+     LIMIT 1`
+  ).get(sourceDocumentId);
+}
+
+test("marking a study completed atomically posts economic and operational registrar documents",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db);
     await db.prepare(
@@ -33,10 +42,22 @@ test("marking a study completed atomically posts its BAS service-delivery docume
     assert.equal(doc.state,"posted");
     assert.equal(doc.chargeAmount,2500);
 
+    const performance=performanceFor(raw,doc.id);
+    assert.ok(performance?.id>0);
+    assert.equal(performance.state,"posted");
+    assert.equal(performance.basisDocumentId,doc.id);
+
     assert.equal(raw.prepare("SELECT amount_delta FROM revenue_movements WHERE document_id=?").get(doc.id).amount_delta,2500);
     assert.equal(raw.prepare("SELECT amount_delta FROM patient_settlement_movements WHERE document_id=?").get(doc.id).amount_delta,2500);
-    assert.equal(raw.prepare("SELECT minutes_delta FROM equipment_load_movements WHERE document_id=?").get(doc.id).minutes_delta,30);
-    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM staff_output_movements WHERE document_id=?").get(doc.id).n,2);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM services_delivered_movements WHERE document_id=?").get(doc.id).n,0);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM equipment_load_movements WHERE document_id=?").get(doc.id).n,0);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM staff_output_movements WHERE document_id=?").get(doc.id).n,0);
+
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM services_delivered_movements WHERE document_id=?").get(performance.id).n,1);
+    assert.equal(raw.prepare("SELECT minutes_delta FROM equipment_load_movements WHERE document_id=?").get(performance.id).minutes_delta,30);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM staff_output_movements WHERE document_id=?").get(performance.id).n,2);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM revenue_movements WHERE document_id=?").get(performance.id).n,0);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE document_id=?").get(performance.id).n,0);
   });
 });
 
@@ -67,7 +88,7 @@ test("posted service delivery freezes the booking facts that define revenue and 
   });
 });
 
-test("military completion auto-posts operational registers without revenue or patient charge",async()=>{
+test("military completion auto-posts study-performance output without revenue or patient charge",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-SVC-AUTO-MIL",category:"military",amount:2500});
     await db.prepare(
@@ -79,8 +100,12 @@ test("military completion auto-posts operational registers without revenue or pa
        FROM business_documents d JOIN service_delivery_details s ON s.document_id=d.id
        WHERE s.booking_id=? AND d.document_type='service_delivery'`
     ).get(bookingId);
+    const performance=performanceFor(raw,doc.id);
+    assert.ok(performance?.id>0);
     assert.equal(doc.chargeAmount,0);
-    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM services_delivered_movements WHERE document_id=?").get(doc.id).n,1);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM services_delivered_movements WHERE document_id=?").get(performance.id).n,1);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM equipment_load_movements WHERE document_id=?").get(performance.id).n,1);
+    assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM staff_output_movements WHERE document_id=?").get(performance.id).n,2);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM revenue_movements WHERE document_id=?").get(doc.id).n,0);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE document_id=?").get(doc.id).n,0);
   });
