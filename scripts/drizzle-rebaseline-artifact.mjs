@@ -45,6 +45,7 @@ try {
   const latestPrefix = latestTag.slice(0, 4);
   const latestIndex = Number(latestPrefix);
   if (!Number.isInteger(latestIndex)) throw new Error(`Invalid latest migration prefix: ${latestPrefix}`);
+  const existingJournal = JSON.parse(await readFile(join(drizzleDir, "meta", "_journal.json"), "utf8"));
 
   for (const migration of migrations) {
     const sql = await readFile(join(drizzleDir, migration), "utf8");
@@ -114,22 +115,30 @@ try {
   await writeFile(pulledSnapshot, `${JSON.stringify(snapshot, null, 2)}\n`);
 
   // Convert drizzle-kit pull's synthetic 0000 metadata into a baseline anchored
-  // to the latest real committed migration. idx=89 deliberately preserves the
-  // historical missing 0085 filename and makes the next generated migration 0090.
+  // to the latest real committed migration. Keep the existing journal entries
+  // as historical metadata so old migration provenance remains inspectable, then
+  // append idx=89. The historical missing 0085 filename is deliberately kept;
+  // the next generated migration must therefore be 0090.
   const baselineSnapshot = join(artifactMetaDir, `${latestPrefix}_snapshot.json`);
   await rename(pulledSnapshot, baselineSnapshot);
   const gitTime = run("git", ["log", "-1", "--format=%ct", "--", `drizzle/${latestMigration}`]);
   const whenSeconds = Number(String(gitTime.stdout || "").trim());
+  const baselineEntry = {
+    idx: latestIndex,
+    version: "6",
+    when: Number.isFinite(whenSeconds) && whenSeconds > 0 ? whenSeconds * 1000 : 0,
+    tag: latestTag,
+    breakpoints: true,
+  };
   const journal = {
     version: "7",
     dialect: "sqlite",
-    entries: [{
-      idx: latestIndex,
-      version: "6",
-      when: Number.isFinite(whenSeconds) && whenSeconds > 0 ? whenSeconds * 1000 : 0,
-      tag: latestTag,
-      breakpoints: true,
-    }],
+    entries: [
+      ...(Array.isArray(existingJournal.entries)
+        ? existingJournal.entries.filter((entry) => entry.idx < latestIndex && entry.tag !== latestTag)
+        : []),
+      baselineEntry,
+    ],
   };
   await writeFile(join(artifactMetaDir, "_journal.json"), `${JSON.stringify(journal, null, 2)}\n`);
   for (const name of await readdir(artifactDir)) {
