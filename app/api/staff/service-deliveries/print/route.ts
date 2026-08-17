@@ -1,5 +1,6 @@
 import { audit } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
+import { printedFormStorageKey } from "../../../../../lib/printed-form-storage-key";
 import { canManageFinance } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 
@@ -164,12 +165,16 @@ export async function POST(request:Request) {
   const payload=renderPayload(source);
   const payloadJson=JSON.stringify(payload);
   const hash=await sha256(payloadJson);
+  const storageKey=printedFormStorageKey({
+    organizationId:ctx.organizationId,documentId,formType:FORM_TYPE,
+    templateVersion:TEMPLATE_VERSION,documentState:source.documentState,sha256:hash,
+  });
   const inserted=await db.prepare(
     `INSERT OR IGNORE INTO printed_form_snapshots
-      (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,sha256)
-     VALUES (?,?,?,?,?,?,?,?)`
+      (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,storage_key,sha256)
+     VALUES (?,?,?,?,?,?,?,?,?)`
   ).bind(
-    ctx.organizationId,documentId,FORM_TYPE,TEMPLATE_VERSION,source.documentState,payloadJson,ctx.member.email,hash,
+    ctx.organizationId,documentId,FORM_TYPE,TEMPLATE_VERSION,source.documentState,payloadJson,ctx.member.email,storageKey,hash,
   ).run();
   const snapshot=await db.prepare(
     `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,

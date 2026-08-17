@@ -8,7 +8,7 @@
 
 name = "radiologyos"
 main = "dist/server/index.js"
-compatibility_date = "2025-04-01"
+compatibility_date = "2026-03-24"
 compatibility_flags = ["nodejs_compat"]
 workers_dev = false
 
@@ -37,6 +37,17 @@ directory = "dist/client"
 binding = "ASSETS"
 run_worker_first = true
 html_handling = "none"
+
+# Browser Run renders immutable printed-form snapshots as real PDFs. The
+# compatibility date above is intentionally at/after the Quick Actions minimum.
+[browser]
+binding = "BROWSER"
+
+# Private object storage for generated printed-form PDFs. Create this bucket once
+# before the first deploy that includes this binding; it must not be public.
+[[r2_buckets]]
+binding = "PRINTED_FORMS"
+bucket_name = "radiologyos-printed-forms"
 
 # D1 database. Create it once (see HOSTING.md) and paste its id below.
 [[d1_databases]]

@@ -36,7 +36,7 @@ export default function InventoryPrintPage(){
   const {payload,snapshot}=data;
   const isDraft=payload.document.state==="draft";
   return <main className="inventoryPrintPage">
-    <div className="inventoryPrintToolbar"><button onClick={()=>window.close()}>Закрити</button><button onClick={()=>window.print()}>Друкувати / PDF</button></div>
+    <div className="inventoryPrintToolbar"><button onClick={()=>window.close()}>Закрити</button><button onClick={()=>window.open(`/api/staff/printed-forms/pdf?snapshotId=${snapshot.id}`,"_blank","noopener,noreferrer")}>Завантажити PDF</button><button onClick={()=>window.print()}>Друкувати</button></div>
     <article className="inventoryPrintSheet">
       <header><div><small>{payload.organization.name}</small><h1>{TYPE_UK[payload.formType]}</h1><p>Документ {payload.document.number}</p></div><div><strong>{STATE_UK[payload.document.state]||payload.document.state}</strong>{isDraft&&<p>Не впливає на залишки до проведення</p>}</div></header>
       <section className="inventoryPrintMeta">

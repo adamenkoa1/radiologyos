@@ -46,7 +46,7 @@ export default function ServiceActPrintPage(){
   const {payload,snapshot}=data;
   const paid=payload.service.chargeAmount>0;
   return <main className="financePrintPage">
-    <div className="financePrintToolbar"><button onClick={()=>window.close()}>Закрити</button><button onClick={()=>window.print()}>Друкувати / PDF</button></div>
+    <div className="financePrintToolbar"><button onClick={()=>window.close()}>Закрити</button><button onClick={()=>window.open(`/api/staff/printed-forms/pdf?snapshotId=${snapshot.id}`,"_blank","noopener,noreferrer")}>Завантажити PDF</button><button onClick={()=>window.print()}>Друкувати</button></div>
     <article className="financePrintSheet">
       <header>
         <div><small>{payload.organization.name}</small><h1>Акт наданих послуг</h1><p>Документ {payload.document.number}</p></div>

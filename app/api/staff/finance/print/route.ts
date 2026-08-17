@@ -1,6 +1,7 @@
 import { audit } from "../../../../../lib/audit";
 import { dbBinding } from "../../../../../lib/db";
 import { getFinanceDocument } from "../../../../../lib/finance-documents";
+import { printedFormStorageKey } from "../../../../../lib/printed-form-storage-key";
 import { canManageFinance } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 
@@ -75,11 +76,12 @@ export async function POST(request:Request){
 
   const payload=await renderPayload(db,ctx.organizationId,documentId);if(!payload)return Response.json({error:"Фінансовий документ не знайдено"},{status:404});
   const payloadJson=JSON.stringify(payload);const hash=await sha256(payloadJson);
+  const storageKey=printedFormStorageKey({organizationId:ctx.organizationId,documentId,formType:FORM_TYPE,templateVersion:TEMPLATE_VERSION,documentState,sha256:hash});
   await db.prepare(
     `INSERT OR IGNORE INTO printed_form_snapshots
-      (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,sha256)
-     VALUES (?,?,?,?,?,?,?,?)`
-  ).bind(ctx.organizationId,documentId,FORM_TYPE,TEMPLATE_VERSION,documentState,payloadJson,ctx.member.email,hash).run();
+      (organization_id,document_id,form_type,template_version,document_state,payload_json,generated_by,storage_key,sha256)
+     VALUES (?,?,?,?,?,?,?,?,?)`
+  ).bind(ctx.organizationId,documentId,FORM_TYPE,TEMPLATE_VERSION,documentState,payloadJson,ctx.member.email,storageKey,hash).run();
   const snapshot=await db.prepare(
     `SELECT id,document_id AS documentId,form_type AS formType,template_version AS templateVersion,document_state AS documentState,
             payload_json AS payloadJson,generated_by AS generatedBy,generated_at AS generatedAt,storage_key AS storageKey,sha256

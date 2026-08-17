@@ -6,12 +6,15 @@ import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
 import { runDueReminders } from "../lib/reminders";
 import { runOperationalTasks } from "../lib/operational-tasks";
 import { patientOrderCancellationBlocker, type PatientOrderCancellationBlocker } from "../lib/patient-orders";
+import type { BrowserRunBinding, PrintedFormsBucket } from "../lib/printed-form-runtime";
 import { canAccessBooking, canManageBookings } from "../lib/staff-auth";
 import { requireOrgContext } from "../lib/tenant";
 
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  BROWSER?: BrowserRunBinding;
+  PRINTED_FORMS?: PrintedFormsBucket;
   OUTBOUND_ALLOWED_HOSTS?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -150,6 +153,8 @@ async function runTenantReminders(db: D1Database, now: number): Promise<void> {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    (globalThis as typeof globalThis & { __RADIOLOGY_BROWSER_RUN__?: BrowserRunBinding }).__RADIOLOGY_BROWSER_RUN__ = env.BROWSER;
+    (globalThis as typeof globalThis & { __RADIOLOGY_PRINTED_FORMS__?: PrintedFormsBucket }).__RADIOLOGY_PRINTED_FORMS__ = env.PRINTED_FORMS;
     (globalThis as typeof globalThis & {
       __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
     }).__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = env.OUTBOUND_ALLOWED_HOSTS || "";
