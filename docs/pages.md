@@ -117,6 +117,20 @@ RadiologyOS = BAS-подібне ядро + медичні модулі.
 - refund snapshot містить первинний payment document як підставу, якщо він існує;
 - повторний друк проведеного документа відтворює перший canonical snapshot конкретного state/version.
 
+### `/staff/shifts`
+Tenant-scoped графік змін персоналу — сучасний веб-порт логіки Calendar6.
+
+- 8 пресетів із наданого `Setting.mdb`;
+- циклічні матриці бригад з явною опорною датою;
+- місячна таблиця `працівник × день`;
+- денні/вечірні/нічні/добові зміни, вихідні та персональні корекції;
+- відпустка/лікарняний/інша ручна позначка;
+- CSV та браузерний друк;
+- `department_head`/legacy `admin` керують графіками tenant; інші operational staff читають тільки власний графік;
+- `organization_admin` не отримує кадрово-операційне керування через control-plane роль.
+
+Детальна модель і provenance Calendar6: `docs/staff-shift-calendar.md`.
+
 ## 3. Цільова внутрішня маршрутизація
 
 ```text
@@ -124,6 +138,7 @@ RadiologyOS = BAS-подібне ядро + медичні модулі.
 ├── dashboard
 ├── applications
 ├── schedule
+├── shifts
 ├── queue
 ├── patients
 ├── studies
@@ -145,6 +160,7 @@ RadiologyOS = BAS-подібне ядро + медичні модулі.
 - Dashboard: завідувач, старший рентгенлаборант, адміністратор.
 - Applications: реєстратор, адміністратор.
 - Schedule: реєстратор, старший рентгенлаборант, лікарі, лаборанти.
+- Staff shifts: керування — `department_head` або legacy `admin`; власний графік read-only — авторизований operational/self-service staff; system `organization_admin` не керує змінами.
 - Patients: реєстратор, лікарі, дозволений персонал.
 - Protocols: лікар-рентгенолог, лікар УЗД.
 - Equipment: старший рентгенлаборант, інженер, адміністратор.

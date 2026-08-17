@@ -92,6 +92,7 @@ const businessModules:BusinessModule[]=[
     {label:"Склади",href:"/staff/warehouses"},
     {label:"Контрагенти",href:"/staff/counterparties"},
     {label:"Графік кабінетів",href:"/staff/schedule"},
+    {label:"Графік змін персоналу",href:"/staff/shifts",hint:"Циклічні зміни, бригади та персональні корекції"},
   ]},
   { key:"admin",label:"Адміністрування",shortLabel:"Адмін",items:[
     {label:"Налаштування",href:"/staff/settings"},
