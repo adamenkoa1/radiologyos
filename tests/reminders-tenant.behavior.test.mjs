@@ -70,13 +70,13 @@ test("scheduled reminder SQL isolates bookings, dedupe and exact contact consent
   });
 });
 
-test("production scheduled handler keeps patient reminders on org1 and operational jobs isolated", () => {
-  assert.match(workerSource, /const INITIAL_ORGANIZATION_ID = 1/);
+test("production scheduled handler runs patient reminders for every active organization and keeps operational jobs isolated", () => {
+  assert.match(workerSource, /async function runTenantReminders\(db: D1Database, now: number\)/);
+  assert.match(workerSource, /SELECT id FROM organizations WHERE active = 1 ORDER BY id/);
+  assert.match(workerSource, /runDueReminders\(db, now, Number\(org\.id\)\)/);
+  assert.doesNotMatch(workerSource, /INITIAL_ORGANIZATION_ID/);
   assert.match(workerSource, /const now=Date\.now\(\)/);
-  assert.match(
-    workerSource,
-    /runDueReminders\(env\.DB,\s*now,\s*INITIAL_ORGANIZATION_ID\)/,
-  );
+  assert.match(workerSource, /runTenantReminders\(env\.DB, now\)/);
   assert.match(workerSource, /runOperationalTasks\(env\.DB,\s*now\)/);
   assert.match(workerSource, /Promise\.allSettled\(\[/);
   assert.match(workerSource, /async scheduled\s*\(/);
