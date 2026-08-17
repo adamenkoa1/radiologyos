@@ -5,113 +5,624 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1785095278162,
+      "when": 1785102722000,
       "tag": "0000_mute_typhoid_mary",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "6",
-      "when": 1785103800000,
+      "when": 1785104912000,
       "tag": "0001_domain_model",
       "breakpoints": true
     },
     {
       "idx": 2,
       "version": "6",
-      "when": 1785110400000,
+      "when": 1785127362000,
       "tag": "0002_operations_reporting",
       "breakpoints": true
     },
     {
       "idx": 3,
       "version": "6",
-      "when": 1785124800000,
+      "when": 1785134774000,
       "tag": "0003_execution_report_builder",
       "breakpoints": true
     },
     {
       "idx": 4,
       "version": "6",
-      "when": 1785135600000,
+      "when": 1785135357000,
       "tag": "0004_generic_external_reference",
       "breakpoints": true
     },
     {
       "idx": 5,
       "version": "6",
-      "when": 1785146400000,
+      "when": 1785165694000,
       "tag": "0005_protocol_documents",
       "breakpoints": true
     },
     {
       "idx": 6,
       "version": "6",
-      "when": 1785157200000,
+      "when": 1785165694000,
       "tag": "0006_patient_crm",
       "breakpoints": true
     },
     {
       "idx": 7,
       "version": "6",
-      "when": 1785168000000,
+      "when": 1785165694000,
       "tag": "0007_dicom_pacs",
       "breakpoints": true
     },
     {
       "idx": 8,
       "version": "6",
-      "when": 1785178800000,
+      "when": 1785358814000,
       "tag": "0008_staff_auth",
       "breakpoints": true
     },
     {
       "idx": 9,
       "version": "6",
-      "when": 1785189600000,
+      "when": 1785358814000,
       "tag": "0009_staff_self_service",
       "breakpoints": true
     },
     {
       "idx": 10,
       "version": "6",
-      "when": 1785200400000,
+      "when": 1785235545000,
       "tag": "0010_department_settings",
       "breakpoints": true
     },
     {
       "idx": 11,
       "version": "6",
-      "when": 1785204000000,
+      "when": 1785249056000,
       "tag": "0011_service_prices",
       "breakpoints": true
     },
     {
       "idx": 12,
       "version": "6",
-      "when": 1785207600000,
+      "when": 1785252664000,
       "tag": "0012_calendar_token",
       "breakpoints": true
     },
     {
       "idx": 13,
       "version": "6",
-      "when": 1785211200000,
+      "when": 1785253225000,
       "tag": "0013_external_calendar",
       "breakpoints": true
     },
     {
       "idx": 14,
       "version": "6",
-      "when": 1785297600000,
+      "when": 1785309168000,
       "tag": "0014_patient_reminders",
       "breakpoints": true
     },
     {
       "idx": 15,
       "version": "6",
-      "when": 1785384000000,
+      "when": 1785353300000,
+      "tag": "0015_tenant_foundation",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "6",
+      "when": 1785358814000,
       "tag": "0016_security_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1785414597000,
+      "tag": "0017_staff_phone",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "6",
+      "when": 1785427452000,
+      "tag": "0018_booking_dob",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "6",
+      "when": 1785429911000,
+      "tag": "0019_site_content",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "6",
+      "when": 1785434472000,
+      "tag": "0020_patient_profile_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "6",
+      "when": 1785436032000,
+      "tag": "0021_whatsapp",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "6",
+      "when": 1785475681000,
+      "tag": "0022_drop_equipment",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "6",
+      "when": 1785500612000,
+      "tag": "0023_security_audit_log",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "6",
+      "when": 1785670591000,
+      "tag": "0024_staff_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "6",
+      "when": 1786375465000,
+      "tag": "0025_patient_telegram",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "6",
+      "when": 1786392254000,
+      "tag": "0026_booking_capacity_locks",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "6",
+      "when": 1786392254000,
+      "tag": "0027_booking_capacity_triggers",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "6",
+      "when": 1786393540000,
+      "tag": "0028_patient_otp",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "6",
+      "when": 1786397320000,
+      "tag": "0029_payment_transactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "6",
+      "when": 1786403939000,
+      "tag": "0030_analytics_events",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "6",
+      "when": 1786404446000,
+      "tag": "0031_pacs_tenant_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "6",
+      "when": 1786405508000,
+      "tag": "0032_mwl_bridge_tokens",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "6",
+      "when": 1786441324000,
+      "tag": "0033_security_audit_tenant_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "6",
+      "when": 1786648771000,
+      "tag": "0034_protocol_medical_access_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "6",
+      "when": 1786725268000,
+      "tag": "0035_patient_composite_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "6",
+      "when": 1786730295000,
+      "tag": "0036_staff_tasks",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "6",
+      "when": 1786731617000,
+      "tag": "0037_inventory_stock",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "6",
+      "when": 1786733733000,
+      "tag": "0038_equipment_maintenance",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "6",
+      "when": 1786735609000,
+      "tag": "0039_staff_saved_views",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "6",
+      "when": 1786736309000,
+      "tag": "0040_booking_comments",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "6",
+      "when": 1786737530000,
+      "tag": "0041_operational_task_automation",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "6",
+      "when": 1786738496000,
+      "tag": "0042_study_custom_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "6",
+      "when": 1786738980000,
+      "tag": "0043_protocol_tenant_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "6",
+      "when": 1786739434000,
+      "tag": "0044_protocol_lifecycle_projection",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "6",
+      "when": 1786740056000,
+      "tag": "0045_dicom_study_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "6",
+      "when": 1786741324000,
+      "tag": "0046_patient_session_identity_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "6",
+      "when": 1786743839000,
+      "tag": "0047_protocol_revisions_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "6",
+      "when": 1786744656000,
+      "tag": "0048_security_audit_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "6",
+      "when": 1786779414000,
+      "tag": "0049_protocol_signing_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "6",
+      "when": 1786782603000,
+      "tag": "0050_patient_profile_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "6",
+      "when": 1786783229000,
+      "tag": "0051_booking_patient_link",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "6",
+      "when": 1786784914000,
+      "tag": "0052_patient_communication_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "6",
+      "when": 1786793714000,
+      "tag": "0053_patient_session_patient_id",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "6",
+      "when": 1786797390000,
+      "tag": "0054_patient_shared_phone",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "6",
+      "when": 1786804067000,
+      "tag": "0055_protocol_issue_transition_audit",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "6",
+      "when": 1786818368000,
+      "tag": "0056_protocol_addendum_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "6",
+      "when": 1786819296000,
+      "tag": "0057_telegram_patient_identity",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "6",
+      "when": 1786823960000,
+      "tag": "0058_staff_task_booking_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "6",
+      "when": 1786913323000,
+      "tag": "0059_business_inventory_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "6",
+      "when": 1786833879000,
+      "tag": "0060_business_document_composite_key",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "6",
+      "when": 1786833894000,
+      "tag": "0061_printed_form_document_state",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "6",
+      "when": 1786834314000,
+      "tag": "0062_inventory_document_integrity_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "6",
+      "when": 1786849031000,
+      "tag": "0063_finance_payment_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "6",
+      "when": 1786849575000,
+      "tag": "0064_finance_transaction_status_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "6",
+      "when": 1786849617000,
+      "tag": "0065_finance_refund_source_crosslink",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "6",
+      "when": 1786864398000,
+      "tag": "0066_service_delivery_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "6",
+      "when": 1786864757000,
+      "tag": "0067_service_delivery_draft_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "6",
+      "when": 1786865115000,
+      "tag": "0068_service_delivery_execution_posting",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "6",
+      "when": 1786871598000,
+      "tag": "0069_service_delivery_printed_forms",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "6",
+      "when": 1786872059000,
+      "tag": "0070_service_delivery_storno",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "6",
+      "when": 1786872488000,
+      "tag": "0071_service_storno_atomic_posting",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "6",
+      "when": 1786872594000,
+      "tag": "0072_service_storno_draft_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "6",
+      "when": 1786874111000,
+      "tag": "0073_patient_order_root",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "6",
+      "when": 1786874187000,
+      "tag": "0074_patient_order_basis_integrity",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "6",
+      "when": 1786874337000,
+      "tag": "0075_patient_order_guard_precedence",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "6",
+      "when": 1786890106000,
+      "tag": "0076_business_document_basis_guard_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "6",
+      "when": 1786890967000,
+      "tag": "0077_counterparties_suppliers",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "6",
+      "when": 1786891212000,
+      "tag": "0078_historical_supplier_trace",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "6",
+      "when": 1786897634000,
+      "tag": "0079_cash_accounts",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "6",
+      "when": 1786897634000,
+      "tag": "0080_cash_account_identity_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "6",
+      "when": 1786898844000,
+      "tag": "0081_warehouses",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "6",
+      "when": 1786902535000,
+      "tag": "0082_inventory_transfers",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "6",
+      "when": 1786906684000,
+      "tag": "0083_patient_order_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "6",
+      "when": 1786908234000,
+      "tag": "0084_supplier_payables",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "6",
+      "when": 1786908465000,
+      "tag": "0086_supplier_payment_snapshot_hardening",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "6",
+      "when": 1786908488000,
+      "tag": "0087_supplier_payable_historical_snapshot",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "6",
+      "when": 1786942163000,
+      "tag": "0088_staff_shift_calendar",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "6",
+      "when": 1786972048000,
+      "tag": "0089_organization_integration_settings",
       "breakpoints": true
     }
   ]
