@@ -8,6 +8,8 @@ const drizzleDir = join(root, "drizzle");
 const artifactDir = join(root, ".drizzle-rebaseline-artifact");
 const artifactMetaDir = join(artifactDir, "meta");
 const drizzleMetaDir = join(drizzleDir, "meta");
+const schemaPath = join(root, "db", "schema.ts");
+const artifactSchemaPath = join(artifactDir, "schema.ts");
 const drizzleKit = resolve(root, "node_modules/.bin/drizzle-kit");
 const migrationPattern = /^\d{4}_.+\.sql$/;
 
@@ -24,6 +26,23 @@ const printResult = (result) => {
 };
 
 const listMigrations = async () => (await readdir(drizzleDir)).filter((name) => migrationPattern.test(name)).sort();
+
+function normalizeSchemaStyle(schema) {
+  return schema
+    .replaceAll("\n(table) => [", "\ntable => [")
+    .split("\n")
+    .map((line) => {
+      const suffix = ").notNull(),";
+      const defaultAt = line.lastIndexOf(".default(");
+      if (defaultAt < 0 || !line.endsWith(suffix)) return line;
+      const argumentStart = defaultAt + ".default(".length;
+      const argumentEnd = line.length - suffix.length;
+      const argument = line.slice(argumentStart, argumentEnd);
+      return `${line.slice(0, defaultAt)}.notNull().default(${argument}),`;
+    })
+    .join("\n");
+}
+
 const committedMigrations = await listMigrations();
 const beforeSql = new Set(committedMigrations);
 const firstPass = run(process.execPath, [join(root, "scripts", "drizzle-rebaseline-artifact.mjs")]);
@@ -106,6 +125,14 @@ await copyFile(driftSnapshot, artifactBaselineSnapshot);
 await rm(join(drizzleDir, driftMigration), { force: true });
 await rm(driftSnapshot, { force: true });
 await writeFile(join(drizzleMetaDir, "_journal.json"), `${JSON.stringify(journal, null, 2)}\n`);
+
+// Keep the generated TypeScript in the repository's established style without
+// changing Drizzle semantics. Existing migration-contract tests intentionally
+// read this source form, so normalize callback parentheses and modifier order,
+// then let the second generate prove the normalized source still matches 0089.
+const normalizedSchema = normalizeSchemaStyle(await readFile(schemaPath, "utf8"));
+await writeFile(schemaPath, normalizedSchema);
+await writeFile(artifactSchemaPath, normalizedSchema);
 
 console.log(`Reconstructed journal provenance for ${journalEntries.length} committed migrations.`);
 console.log(`Promoted ${expectedNextPrefix}_snapshot.json to ${baselinePrefix}_snapshot.json for Drizzle metadata convergence.`);
