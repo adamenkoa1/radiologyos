@@ -1,4 +1,4 @@
-import { normalizeRegisterPeriod } from "./register-turnover-report";
+import { normalizeRegisterPeriod } from "./register-turnover-report.ts";
 
 export const REGISTER_REPORT_SECTIONS=["summary","revenue","cash","expenses","equipment","staff","inventory","inventory_by_warehouse"] as const;
 export type RegisterReportSection=typeof REGISTER_REPORT_SECTIONS[number];
