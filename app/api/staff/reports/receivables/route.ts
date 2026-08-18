@@ -24,7 +24,11 @@ export async function GET(request:Request){
       action:"report_viewed",
       resource:"report",
       targetId:"receivables",
-      details:{asOf,rows:report.debtors.length+report.credits.length,truncated:report.truncated},
+      details:{
+        asOf,
+        rows:report.summary.debtorBookings+report.summary.creditBookings,
+        truncated:report.truncated,
+      },
     });
     return Response.json(report,{headers:{"cache-control":"no-store"}});
   }catch(error){
