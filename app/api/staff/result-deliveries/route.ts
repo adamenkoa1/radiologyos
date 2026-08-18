@@ -72,6 +72,13 @@ export async function GET(request:Request) {
   const pending=[...(protocols.results||[]),...(addenda.results||[])]
     .sort((a,b)=>String(a.signedAt).localeCompare(String(b.signedAt)))
     .slice(0,500);
+  await audit(db,{
+    organizationId:ctx.organizationId,
+    actorEmail:ctx.member.email,
+    action:"result_delivery_queue_viewed",
+    resource:"result_delivery_queue",
+    details:{rows:pending.length},
+  });
   return Response.json({pending,staff:ctx.member},{headers:{"cache-control":"no-store"}});
 }
 
