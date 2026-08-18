@@ -1,0 +1,66 @@
+name: Prepare 0098 inventory expenses
+
+on:
+  push:
+    branches: [feature/inventory-expense-valuation]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/inventory-expense-valuation
+          fetch-depth: 0
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Install dependencies
+        run: npm run install:ci
+      - name: Add expense movement schema
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('db/schema.ts');s=p.read_text()
+          marker='export const supplierPayableMovements = sqliteTable'
+          assert s.count(marker)==1,s.count(marker)
+          assert 'export const expenseMovements = sqliteTable' not in s
+          block='''export const expenseMovements = sqliteTable("expense_movements", {\n\tid: integer().primaryKey({ autoIncrement: true }).notNull(),\n\torganizationId: integer("organization_id").notNull().default(1),\n\tinventoryMovementId: integer("inventory_movement_id").notNull(),\n\tdocumentId: integer("document_id").notNull(),\n\tdocumentLineId: integer("document_line_id").notNull(),\n\tsourceReceiptDocumentId: integer("source_receipt_document_id").notNull(),\n\tsourceReceiptLineId: integer("source_receipt_line_id").notNull(),\n\tbookingId: integer("booking_id"),\n\titemId: integer("item_id").notNull(),\n\tlotId: integer("lot_id").notNull(),\n\twarehouseId: integer("warehouse_id").notNull(),\n\tunitCost: integer("unit_cost").notNull().default(0),\n\tamountDelta: integer("amount_delta").notNull(),\n\tcurrency: text().notNull().default("UAH"),\n\treason: text().notNull().default(""),\n\tactorEmail: text("actor_email").notNull(),\n\toccurredAt: text("occurred_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),\n},\n table => [\n\tuniqueIndex("expense_movements_inventory_movement_idx").on(table.organizationId, table.inventoryMovementId),\n\tindex("expense_movements_org_time_idx").on(table.organizationId, table.occurredAt, table.id),\n\tindex("expense_movements_org_item_time_idx").on(table.organizationId, table.itemId, table.occurredAt),\n\tindex("expense_movements_org_lot_idx").on(table.organizationId, table.lotId, table.id),\n\tcheck("expense_movements_unit_cost_nonnegative", sql`${table.unitCost} >= 0`),\n\tcheck("expense_movements_amount_positive", sql`${table.amountDelta} > 0`),\n]);\n\n'''
+          s=s.replace(marker,block+marker)
+          p.write_text(s)
+          PY
+      - name: Generate 0098 schema migration
+        run: npm run db:generate
+      - name: Canonicalize 0098 and append D1 registrar triggers
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files=sorted(Path('drizzle').glob('0098_*.sql'))
+          assert len(files)==1,files
+          source=files[0]
+          target=Path('drizzle/0098_inventory_expense_valuation.sql')
+          if source!=target:
+            source.rename(target)
+          journal_path=Path('drizzle/meta/_journal.json')
+          journal=json.loads(journal_path.read_text())
+          assert journal['entries'][-1]['idx']==98,journal['entries'][-1]
+          journal['entries'][-1]['tag']='0098_inventory_expense_valuation'
+          journal_path.write_text(json.dumps(journal,ensure_ascii=False,indent=2)+'\n')
+
+          sql=target.read_text().rstrip()+'''\n--> statement-breakpoint\n\n-- Expense is a valuation projection of a posted inventory writeoff movement.\n-- Quantity remains owned by inventory_movements; acquisition cost remains owned by the exact\n-- posted receipt line that created the lot. Historical/zero-cost lots do not get synthetic expense.\nCREATE TRIGGER `expense_movements_no_update`\nBEFORE UPDATE ON `expense_movements`\nBEGIN SELECT RAISE(ABORT,'expense_movement_immutable'); END;\n--> statement-breakpoint\nCREATE TRIGGER `expense_movements_no_delete`\nBEFORE DELETE ON `expense_movements`\nBEGIN SELECT RAISE(ABORT,'expense_movement_immutable'); END;\n--> statement-breakpoint\n\nCREATE TRIGGER `expense_movements_integrity_insert`\nBEFORE INSERT ON `expense_movements`\nBEGIN\n  SELECT CASE WHEN NOT EXISTS (\n    SELECT 1\n    FROM `inventory_movements` m\n    JOIN `inventory_document_lines` w\n      ON w.id=m.document_line_id AND w.organization_id=m.organization_id\n    JOIN `business_documents` wd\n      ON wd.id=m.document_id AND wd.organization_id=m.organization_id\n    JOIN `inventory_document_lines` r\n      ON r.id=NEW.source_receipt_line_id AND r.organization_id=NEW.organization_id\n    JOIN `business_documents` rd\n      ON rd.id=NEW.source_receipt_document_id AND rd.organization_id=NEW.organization_id\n    WHERE m.id=NEW.inventory_movement_id AND m.organization_id=NEW.organization_id\n      AND m.movement_type='writeoff' AND m.quantity_delta<0\n      AND wd.id=NEW.document_id AND wd.document_type='inventory_writeoff' AND wd.state='posted'\n      AND w.id=NEW.document_line_id AND w.document_id=wd.id\n      AND w.item_id=NEW.item_id AND w.lot_id=NEW.lot_id AND w.warehouse_id=NEW.warehouse_id\n      AND w.booking_id IS NEW.booking_id AND w.reason=NEW.reason\n      AND m.item_id=w.item_id AND m.lot_id=w.lot_id AND m.warehouse_id=w.warehouse_id\n      AND m.document_id=wd.id AND m.document_line_id=w.id AND m.booking_id IS w.booking_id\n      AND m.quantity_delta=-w.quantity AND m.actor_email=NEW.actor_email\n      AND rd.document_type='inventory_receipt' AND rd.state='posted'\n      AND r.document_id=rd.id AND r.lot_id=w.lot_id AND r.item_id=w.item_id\n      AND r.unit_cost=NEW.unit_cost AND r.line_amount>0 AND r.unit_cost>0\n      AND NEW.currency='UAH' AND NEW.occurred_at=wd.occurred_at\n  ) THEN RAISE(ABORT,'expense_movement_source_mismatch') END;\n\n  SELECT CASE WHEN (\n    SELECT COUNT(*)\n    FROM `inventory_document_lines` r\n    JOIN `business_documents` rd ON rd.id=r.document_id AND rd.organization_id=r.organization_id\n    WHERE r.organization_id=NEW.organization_id AND r.lot_id=NEW.lot_id\n      AND rd.document_type='inventory_receipt' AND rd.state='posted'\n  )<>1 THEN RAISE(ABORT,'inventory_lot_valuation_ambiguous') END;\n\n  SELECT CASE WHEN NEW.amount_delta<>(\n    SELECT CASE\n      WHEN COALESCE((SELECT SUM(m2.quantity_delta) FROM inventory_movements m2\n                     WHERE m2.organization_id=NEW.organization_id AND m2.lot_id=NEW.lot_id),0)<=0.000001\n      THEN MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                        WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0))\n      ELSE MIN(\n        MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                     WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0)),\n        CAST(ROUND((-m.quantity_delta)*r.unit_cost) AS INTEGER)\n      )\n    END\n    FROM inventory_movements m\n    JOIN inventory_document_lines r ON r.id=NEW.source_receipt_line_id AND r.organization_id=NEW.organization_id\n    WHERE m.id=NEW.inventory_movement_id AND m.organization_id=NEW.organization_id\n  ) THEN RAISE(ABORT,'expense_movement_amount_mismatch') END;\nEND;\n--> statement-breakpoint\n\nCREATE TRIGGER `inventory_writeoff_expense_auto_post`\nAFTER INSERT ON `inventory_movements`\nWHEN NEW.movement_type='writeoff' AND NEW.quantity_delta<0\n  AND NEW.document_id IS NOT NULL AND NEW.document_line_id IS NOT NULL\nBEGIN\n  SELECT CASE WHEN (\n    SELECT COUNT(*)\n    FROM `inventory_document_lines` r\n    JOIN `business_documents` rd ON rd.id=r.document_id AND rd.organization_id=r.organization_id\n    WHERE r.organization_id=NEW.organization_id AND r.lot_id=NEW.lot_id\n      AND rd.document_type='inventory_receipt' AND rd.state='posted'\n  )>1 THEN RAISE(ABORT,'inventory_lot_valuation_ambiguous') END;\n\n  INSERT INTO `expense_movements` (\n    organization_id,inventory_movement_id,document_id,document_line_id,\n    source_receipt_document_id,source_receipt_line_id,booking_id,item_id,lot_id,warehouse_id,\n    unit_cost,amount_delta,currency,reason,actor_email,occurred_at\n  )\n  SELECT\n    NEW.organization_id,NEW.id,NEW.document_id,NEW.document_line_id,\n    rd.id,r.id,w.booking_id,NEW.item_id,NEW.lot_id,NEW.warehouse_id,\n    r.unit_cost,\n    CASE\n      WHEN COALESCE((SELECT SUM(m2.quantity_delta) FROM inventory_movements m2\n                     WHERE m2.organization_id=NEW.organization_id AND m2.lot_id=NEW.lot_id),0)<=0.000001\n      THEN MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                        WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0))\n      ELSE MIN(\n        MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                     WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0)),\n        CAST(ROUND((-NEW.quantity_delta)*r.unit_cost) AS INTEGER)\n      )\n    END,\n    'UAH',w.reason,NEW.actor_email,wd.occurred_at\n  FROM `inventory_document_lines` w\n  JOIN `business_documents` wd\n    ON wd.id=NEW.document_id AND wd.organization_id=NEW.organization_id\n  JOIN `inventory_document_lines` r\n    ON r.organization_id=NEW.organization_id AND r.lot_id=NEW.lot_id\n  JOIN `business_documents` rd\n    ON rd.id=r.document_id AND rd.organization_id=r.organization_id\n  WHERE w.id=NEW.document_line_id AND w.organization_id=NEW.organization_id\n    AND w.document_id=NEW.document_id AND w.item_id=NEW.item_id AND w.lot_id=NEW.lot_id\n    AND w.warehouse_id=NEW.warehouse_id AND NEW.quantity_delta=-w.quantity\n    AND wd.document_type='inventory_writeoff' AND wd.state='posted'\n    AND rd.document_type='inventory_receipt' AND rd.state='posted'\n    AND r.unit_cost>0 AND r.line_amount>0\n    AND (\n      CASE\n        WHEN COALESCE((SELECT SUM(m2.quantity_delta) FROM inventory_movements m2\n                       WHERE m2.organization_id=NEW.organization_id AND m2.lot_id=NEW.lot_id),0)<=0.000001\n        THEN MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                          WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0))\n        ELSE MIN(\n          MAX(0,r.line_amount-COALESCE((SELECT SUM(e.amount_delta) FROM expense_movements e\n                                       WHERE e.organization_id=NEW.organization_id AND e.lot_id=NEW.lot_id),0)),\n          CAST(ROUND((-NEW.quantity_delta)*r.unit_cost) AS INTEGER)\n        )\n      END\n    )>0;\nEND;\n--> statement-breakpoint\n'''
+          target.write_text(sql)
+          PY
+      - name: Commit generated migration
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add db/schema.ts drizzle/0098_inventory_expense_valuation.sql drizzle/meta/_journal.json drizzle/meta/0098_snapshot.json
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: add inventory expense valuation registrar"
+          git push origin HEAD:feature/inventory-expense-valuation
