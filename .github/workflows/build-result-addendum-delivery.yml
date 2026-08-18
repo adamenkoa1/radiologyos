@@ -1,4 +1,4 @@
-name: Build result addendum delivery
+name: Normalize result addendum delivery metadata
 
 on:
   pull_request:
@@ -8,32 +8,27 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  normalize:
     if: github.event.pull_request.head.ref == 'feature/result-addendum-delivery' && github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
         with:
           ref: feature/result-addendum-delivery
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 22
-          cache: npm
-      - name: Install dependencies
-        run: npm ci --ignore-scripts
-      - name: Patch Drizzle schema and read models
-        run: python .github/scripts/build-result-addendum-delivery.py pre
-      - name: Generate 0094 metadata
-        run: npm run db:generate
-      - name: Finalize 0094 and behavioral coverage
-        run: python .github/scripts/build-result-addendum-delivery.py post
-      - name: Commit generated block
+      - name: Restore canonical journal formatting
         shell: bash
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          path=Path('drizzle/meta/_journal.json')
+          data=json.loads(path.read_text(encoding='utf-8'))
+          path.write_text(json.dumps(data,ensure_ascii=False,indent=2,separators=(',',':'))+'\n',encoding='utf-8')
+          PY
           git diff --check
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add db/schema.ts drizzle/0094_result_addendum_delivery.sql drizzle/meta/0094_snapshot.json drizzle/meta/_journal.json lib/business-document-journal.ts app/staff/documents/page.tsx tests/result-addendum-delivery-registrar.behavior.test.mjs
+          git add drizzle/meta/_journal.json
           git diff --cached --quiet && exit 0
-          git commit -m 'feat: register issued addendum delivery'
+          git commit -m 'chore: normalize 0094 journal metadata'
           git push origin HEAD:feature/result-addendum-delivery
