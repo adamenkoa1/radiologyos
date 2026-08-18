@@ -8,12 +8,13 @@ type Balance=Turnover&{opening:number;closing:number};
 type Report={
   period:{from:string;to:string};generatedAt:string;
   registers:{
-    revenue:Turnover;cash:Turnover;settlements:Balance;
+    revenue:Turnover;cash:Turnover;settlements:Balance;expenses:Turnover;
     services:Turnover&{regionsNet:number};equipment:Turnover;staff:Turnover;
   };
   breakdowns:{
     revenueByService:Array<{serviceCode:string;accrued:number;reversed:number;net:number}>;
     cashByMethod:Array<{method:string;incoming:number;outgoing:number;net:number}>;
+    expensesByItem:Array<{itemId:number;sku:string;name:string;unit:string;amount:number;movementCount:number}>;
     equipment:Array<{equipmentId:string;loadedMinutes:number;reversedMinutes:number;netMinutes:number}>;
     staff:Array<{memberEmail:string;staffRole:string;performed:number;reversed:number;net:number}>;
     inventory:Array<{itemId:number;sku:string;name:string;unit:string;opening:number;incoming:number;outgoing:number;closing:number}>;
@@ -75,6 +76,7 @@ export default function RegisterTurnoverPage(){
         <article><span>Послуги, нетто</span><b>{number(data.registers.services.net)}</b><small>виконано {number(data.registers.services.increase)} · сторно {number(data.registers.services.decrease)} · зон {number(data.registers.services.regionsNet)}</small></article>
         <article><span>Навантаження обладнання</span><b>{number(data.registers.equipment.net)} хв</b><small>+{number(data.registers.equipment.increase)} · сторно {number(data.registers.equipment.decrease)}</small></article>
         <article><span>Виробіток персоналу</span><b>{number(data.registers.staff.net)}</b><small>+{number(data.registers.staff.increase)} · сторно {number(data.registers.staff.decrease)}</small></article>
+        <article><span>Витрати матеріалів</span><b>{money(data.registers.expenses.net)}</b><small>lot-cost із проведених списань</small></article>
       </section>
 
       <section className="financeJournal">
@@ -97,6 +99,14 @@ export default function RegisterTurnoverPage(){
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Спосіб</th><th className="num">Надійшло</th><th className="num">Повернено</th><th className="num">Нетто</th></tr></thead><tbody>
           {data.breakdowns.cashByMethod.map(row=><tr key={row.method}><td>{METHOD_UK[row.method]||row.method||"—"}</td><td className="num positive">{money(row.incoming)}</td><td className="num negative">{money(row.outgoing)}</td><td className="num"><b>{money(row.net)}</b></td></tr>)}
           {data.breakdowns.cashByMethod.length===0&&<tr><td colSpan={4}>Рухів грошей за період немає.</td></tr>}
+        </tbody></table></div>
+      </section>
+
+      <section className="financeJournal">
+        <header className="financeToolbar"><div><b>Витрати матеріалів за собівартістю</b><small>Immutable `expense_movements`: вартість списання береться з receipt-line партії, а не вводиться вручну.</small></div></header>
+        <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал</th><th>Од.</th><th className="num">Рухів</th><th className="num">Витрати</th></tr></thead><tbody>
+          {data.breakdowns.expensesByItem.map(row=><tr key={row.itemId}><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.movementCount)}</td><td className="num"><b>{money(row.amount)}</b></td></tr>)}
+          {data.breakdowns.expensesByItem.length===0&&<tr><td colSpan={4}>Оцінених списань за період немає.</td></tr>}
         </tbody></table></div>
       </section>
 

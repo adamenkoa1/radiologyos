@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createInventoryDocument,postInventoryDocument } from "../lib/inventory-documents.ts";
 import { valueInventoryReceipt } from "../lib/supplier-payables.ts";
+import { buildRegisterTurnoverReport } from "../lib/register-turnover-report.ts";
 import { withD1 } from "./helpers/d1.mjs";
 
 async function seedCatalog(db,{sku="EXP-ITEM",supplierCode="EXP-SUP"}={}){
@@ -72,6 +73,12 @@ test("valued lot writeoffs create exact immutable expense movements and exhaust 
     assert.deepEqual(rows.map(row=>row.occurredAt),[
       "2026-10-05T10:00:00","2026-10-05T11:00:00","2026-10-05T12:00:00",
     ]);
+    const report=await buildRegisterTurnoverReport(db,1,{from:"2026-10-01",to:"2026-10-31"});
+    assert.equal(report.registers.expenses.increase,3);
+    assert.equal(report.registers.expenses.decrease,0);
+    assert.equal(report.registers.expenses.net,3);
+    const expenseItem=report.breakdowns.expensesByItem.find(row=>Number(row.itemId)===itemId);
+    assert.ok(expenseItem);assert.equal(Number(expenseItem.amount),3);assert.equal(Number(expenseItem.movementCount),3);
     const stock=raw.prepare("SELECT COALESCE(SUM(quantity_delta),0) AS stock FROM inventory_movements WHERE organization_id=1 AND lot_id=?").get(receipt.lotId);
     assert.ok(Math.abs(Number(stock.stock))<0.000001);
 
