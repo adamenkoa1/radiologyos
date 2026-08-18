@@ -1,0 +1,74 @@
+name: Patch expense register report
+
+on:
+  push:
+    branches: [feature/inventory-expense-valuation]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/inventory-expense-valuation
+      - name: Patch report, UI and behavioral contract
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p=Path('lib/register-turnover-report.ts');s=p.read_text()
+          marker='''async function equipmentByUnit(db:D1Database,organizationId:number,period:RegisterPeriod) {'''
+          assert s.count(marker)==1
+          fn='''async function expensesByItem(db:D1Database,organizationId:number,period:RegisterPeriod) {\n  const rows=await db.prepare(\n    `SELECT e.item_id AS itemId,i.sku,i.name,i.unit,\n       COALESCE(SUM(e.amount_delta),0) AS amount,COUNT(*) AS movementCount\n     FROM expense_movements e\n     JOIN inventory_items i ON i.id=e.item_id AND i.organization_id=e.organization_id\n     WHERE e.organization_id=? AND substr(e.occurred_at,1,10) BETWEEN ? AND ?\n     GROUP BY e.item_id,i.sku,i.name,i.unit\n     ORDER BY amount DESC,i.name,e.item_id LIMIT 200`\n  ).bind(organizationId,period.from,period.to).all();\n  return rows.results;\n}\n\n'''
+          s=s.replace(marker,fn+marker)
+          old='''  const [revenue,cash,settlements,services,equipment,staff,inventory,inventoryByWarehouse,revenueServices,cashMethods,equipmentRows,staffRows,studyRows]=await Promise.all(['''
+          new='''  const [revenue,cash,settlements,services,equipment,staff,expenses,inventory,inventoryByWarehouse,revenueServices,cashMethods,expenseRows,equipmentRows,staffRows,studyRows]=await Promise.all(['''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''    deltaTurnover(db,"staff_output_movements","units_delta",organizationId,period),\n    inventoryBalances(db,organizationId,period),'''
+          new='''    deltaTurnover(db,"staff_output_movements","units_delta",organizationId,period),\n    deltaTurnover(db,"expense_movements","amount_delta",organizationId,period),\n    inventoryBalances(db,organizationId,period),'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''    cashByMethod(db,organizationId,period),\n    equipmentByUnit(db,organizationId,period),'''
+          new='''    cashByMethod(db,organizationId,period),\n    expensesByItem(db,organizationId,period),\n    equipmentByUnit(db,organizationId,period),'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''    registers:{revenue,cash,settlements,services,studies,equipment,staff},\n    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,studiesByService:studyRows,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},'''
+          new='''    registers:{revenue,cash,settlements,services,studies,equipment,staff,expenses},\n    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,expensesByItem:expenseRows,studiesByService:studyRows,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          p.write_text(s)
+
+          p=Path('app/staff/reports/registers/page.tsx');s=p.read_text()
+          old='''    revenue:Turnover;cash:Turnover;settlements:Balance;\n    services:Turnover&{regionsNet:number};equipment:Turnover;staff:Turnover;'''
+          new='''    revenue:Turnover;cash:Turnover;settlements:Balance;expenses:Turnover;\n    services:Turnover&{regionsNet:number};equipment:Turnover;staff:Turnover;'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''    cashByMethod:Array<{method:string;incoming:number;outgoing:number;net:number}>;\n    equipment:Array<{equipmentId:string;loadedMinutes:number;reversedMinutes:number;netMinutes:number}>;'''
+          new='''    cashByMethod:Array<{method:string;incoming:number;outgoing:number;net:number}>;\n    expensesByItem:Array<{itemId:number;sku:string;name:string;unit:string;amount:number;movementCount:number}>;\n    equipment:Array<{equipmentId:string;loadedMinutes:number;reversedMinutes:number;netMinutes:number}>;'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''        <article><span>Виробіток персоналу</span><b>{number(data.registers.staff.net)}</b><small>+{number(data.registers.staff.increase)} · сторно {number(data.registers.staff.decrease)}</small></article>\n      </section>'''
+          new='''        <article><span>Виробіток персоналу</span><b>{number(data.registers.staff.net)}</b><small>+{number(data.registers.staff.increase)} · сторно {number(data.registers.staff.decrease)}</small></article>\n        <article><span>Витрати матеріалів</span><b>{money(data.registers.expenses.net)}</b><small>lot-cost із проведених списань</small></article>\n      </section>'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          marker='''      <section className="financeJournal">\n        <header className="financeToolbar"><div><b>Навантаження обладнання</b>'''
+          assert s.count(marker)==1
+          block='''      <section className="financeJournal">\n        <header className="financeToolbar"><div><b>Витрати матеріалів за собівартістю</b><small>Immutable `expense_movements`: вартість списання береться з receipt-line партії, а не вводиться вручну.</small></div></header>\n        <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал</th><th>Од.</th><th className="num">Рухів</th><th className="num">Витрати</th></tr></thead><tbody>\n          {data.breakdowns.expensesByItem.map(row=><tr key={row.itemId}><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.movementCount)}</td><td className="num"><b>{money(row.amount)}</b></td></tr>)}\n          {data.breakdowns.expensesByItem.length===0&&<tr><td colSpan={4}>Оцінених списань за період немає.</td></tr>}\n        </tbody></table></div>\n      </section>\n\n'''
+          s=s.replace(marker,block+marker)
+          p.write_text(s)
+
+          p=Path('tests/inventory-expense-valuation.behavior.test.mjs');s=p.read_text()
+          old='''import { valueInventoryReceipt } from "../lib/supplier-payables.ts";\nimport { withD1 } from "./helpers/d1.mjs";'''
+          new='''import { valueInventoryReceipt } from "../lib/supplier-payables.ts";\nimport { buildRegisterTurnoverReport } from "../lib/register-turnover-report.ts";\nimport { withD1 } from "./helpers/d1.mjs";'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          old='''    assert.deepEqual(rows.map(row=>row.occurredAt),[\n      "2026-10-05T10:00:00","2026-10-05T11:00:00","2026-10-05T12:00:00",\n    ]);\n    const stock=raw.prepare'''
+          new='''    assert.deepEqual(rows.map(row=>row.occurredAt),[\n      "2026-10-05T10:00:00","2026-10-05T11:00:00","2026-10-05T12:00:00",\n    ]);\n    const report=await buildRegisterTurnoverReport(db,1,{from:"2026-10-01",to:"2026-10-31"});\n    assert.equal(report.registers.expenses.increase,3);\n    assert.equal(report.registers.expenses.decrease,0);\n    assert.equal(report.registers.expenses.net,3);\n    const expenseItem=report.breakdowns.expensesByItem.find(row=>Number(row.itemId)===itemId);\n    assert.ok(expenseItem);assert.equal(Number(expenseItem.amount),3);assert.equal(Number(expenseItem.movementCount),3);\n    const stock=raw.prepare'''
+          assert s.count(old)==1;s=s.replace(old,new)
+          p.write_text(s)
+          PY
+      - name: Commit subject report patch
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add lib/register-turnover-report.ts app/staff/reports/registers/page.tsx tests/inventory-expense-valuation.behavior.test.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m "feat: expose inventory expense turnover"
+          git push origin HEAD:feature/inventory-expense-valuation
