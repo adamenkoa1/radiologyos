@@ -14,27 +14,43 @@ The two documents are linked by `study_performance.basis_document_id = service_d
 
 ## Storno
 
-Storno remains a separate `service_delivery` correction document so the existing economic correction chain stays intact. Reversing a source `service_delivery` first reverses its linked `study_performance`, then posts the correction and appends:
+The correction chain is deliberately split along the same economic/operational boundary.
 
-- `service_correction_movements` for the performed-study count,
-- negative `equipment_load_movements`,
-- negative `staff_output_movements`,
-- negative revenue/patient-settlement movements when the source carried a charge.
+`service_correction` remains the economic correction document. It reverses revenue and patient settlements and preserves the existing service-delivery correction snapshot.
 
-For sources that have a linked `study_performance`, correction guards require that exact registrar to be reversed before negative operational movements are accepted. Historical service deliveries that predate the performance registrar remain reversible when no linked performance document exists.
+For a source that has `study_performance`, migration 0093 also creates exactly one posted `study_correction` after the performance registrar is reversed. The new document uses:
+
+- `basis_document_id = study_performance.id`;
+- `reversed_document_id = study_performance.id`;
+- deterministic number `КВ-<service correction id padded to 6 digits>`;
+- the same actor, occurrence time and posting time as the economic correction.
+
+`study_correction` owns the negative operational rows:
+
+- `service_correction_movements` for performed-study count/regions;
+- negative `equipment_load_movements`;
+- negative `staff_output_movements`.
+
+Revenue and patient-settlement reversals never move to `study_correction`.
+
+Historical service deliveries that predate `study_performance` remain reversible through the original correction registrar. No historical performance or correction document is invented.
 
 ## History and reporting
 
-Migration 0091 does not rewrite or backfill historical movement rows. Older rows can therefore retain a `service_delivery` document ID while new positive operational rows reference `study_performance`. The register totals remain append-only and the `studies_performed` read model continues to calculate the net union of positive `services_delivered_movements` and explicit `service_correction_movements`.
+Migrations 0091 and 0093 do not rewrite or backfill historical movement rows. Older positive/negative rows can therefore retain a `service_delivery` correction owner, while new positives reference `study_performance` and new operational negatives reference `study_correction`.
 
-This preserves historical evidence while moving all new operational ownership to the canonical registrar.
+The canonical `studies_performed` read model intentionally calculates the net append-only union of positive `services_delivered_movements` and explicit `service_correction_movements`, independent of which historical registrar ID owns a row.
+
+This preserves historical evidence while making new operational ownership symmetric.
 
 ## Invariants
 
 - one `study_performance` per source `service_delivery`;
+- one `study_correction` per reversed `study_performance`;
 - positive operational movements cannot be inserted under a new economic source document;
-- performance/source/snapshot/tenant identities must match exactly;
-- revenue and patient settlements never move to `study_performance`;
+- new negative operational movements cannot be inserted under the economic correction when a performance registrar exists;
+- performance/source/correction/tenant identities must match exactly;
+- revenue and patient settlements never move to `study_performance` or `study_correction`;
 - a linked performance registrar must be reversed before operational storno can post;
 - existing movement rows remain immutable;
 - automatic and explicit posting use the same ownership model;
