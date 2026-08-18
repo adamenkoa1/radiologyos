@@ -43,6 +43,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   protocol_viewed: "Переглянуто протокол",
   protocol_saved: "Збережено протокол",
   protocol_issued: "Видано протокол",
+  result_delivery_queue_viewed: "Переглянуто чергу видачі результатів",
   patient_protocol_viewed: "Пацієнт переглянув протокол",
   profile_update: "Змінено профіль співробітника",
   profile_security_update: "Змінено параметри безпеки профілю",
