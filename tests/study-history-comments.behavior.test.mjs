@@ -13,25 +13,47 @@ async function booking(db,{id,org=1,code,assignedRad="",assignedTech=""}){
 const getContext=(db,cookie,id)=>callWorker(jsonRequest(`/api/staff/study-context?id=${id}`,undefined,{method:"GET",headers:{cookie}}),db);
 const addComment=(db,cookie,id,text)=>callWorker(jsonRequest("/api/staff/study-context",{id,text},{method:"POST",headers:{cookie}}),db);
 
-test("study comments are tenant scoped and audit does not copy comment text",async()=>{
+test("study context reads are tenant scoped and audit copies no sensitive text",async()=>{
   await withD1(async(db)=>{
     await db.prepare("INSERT INTO organizations (id,slug,name,active) VALUES (2,'org-two','Org Two',1)").run();
     await booking(db,{id:801,org:1,code:"RD-HIST801"});
     await booking(db,{id:803,org:2,code:"RD-HIST803"});
     const org1=await seedStaffSession(db,{email:"admin-history@org1.test",role:"admin",organizationId:1});
     const org2=await seedStaffSession(db,{email:"admin-history@org2.test",role:"admin",organizationId:2});
-    const secret="Клінічне уточнення, яке не повинно копіюватися в audit";
+    const commentSecret="Клінічне уточнення, яке не повинно копіюватися в audit";
+    const bookingSecret="Секретна примітка заявки";
+    const staffNoteSecret="Внутрішня секретна staff-note";
+    await db.prepare("UPDATE bookings SET comment=? WHERE organization_id=1 AND id=801").bind(bookingSecret).run();
+    await db.prepare(`INSERT INTO booking_staff_notes (booking_id,note,updated_by,updated_at)
+      VALUES (801,?,'admin-history@org1.test',CURRENT_TIMESTAMP)`).bind(staffNoteSecret).run();
 
-    const created=await addComment(db,org1,801,secret);
+    const created=await addComment(db,org1,801,commentSecret);
     assert.equal(created.status,201);
-    const own=await (await getContext(db,org1,801)).json();
+    const ownResponse=await getContext(db,org1,801);
+    assert.equal(ownResponse.status,200);
+    const own=await ownResponse.json();
+    assert.equal(own.booking.name,"Тестовий Пацієнт");
+    assert.equal(own.booking.comment,bookingSecret);
+    assert.equal(own.note.note,staffNoteSecret);
     assert.equal(own.comments.length,1);
-    assert.equal(own.comments[0].body,secret);
+    assert.equal(own.comments[0].body,commentSecret);
     assert.equal((await getContext(db,org2,801)).status,404);
 
-    const audit=await db.prepare("SELECT details_json AS details FROM security_audit_log WHERE organization_id=1 AND action='study_comment_added' ORDER BY id DESC LIMIT 1").first();
-    assert.ok(audit?.details);
-    assert.doesNotMatch(audit.details,/Клінічне уточнення/);
+    const commentAudit=await db.prepare("SELECT details_json AS details FROM security_audit_log WHERE organization_id=1 AND action='study_comment_added' ORDER BY id DESC LIMIT 1").first();
+    assert.ok(commentAudit?.details);
+    assert.doesNotMatch(commentAudit.details,/Клінічне уточнення/);
+
+    const readAudits=await db.prepare(`SELECT actor_email AS actorEmail,target_id AS targetId,details_json AS details
+      FROM security_audit_log WHERE action='study_context_viewed' AND target_id='801' ORDER BY id`).all();
+    assert.equal(readAudits.results.length,1);
+    const readAudit=readAudits.results[0];
+    assert.equal(readAudit.actorEmail,"admin-history@org1.test");
+    assert.equal(readAudit.targetId,"801");
+    const details=JSON.parse(readAudit.details);
+    assert.equal(details.commentCount,1);
+    assert.equal(details.hasStaffNote,true);
+    assert.ok(details.eventCount>=1);
+    assert.doesNotMatch(readAudit.details,/Тестовий Пацієнт|Секретна примітка заявки|Внутрішня секретна staff-note|Клінічне уточнення/);
   });
 });
 
@@ -45,6 +67,10 @@ test("clinicians can only read and comment on studies assigned to them",async()=
     assert.equal((await getContext(db,cookie,812)).status,404);
     assert.equal((await addComment(db,cookie,811,"Уточнення лікаря")).status,201);
     assert.equal((await addComment(db,cookie,812,"Не має пройти")).status,404);
+    const ownReadCount=await db.prepare("SELECT COUNT(*) AS n FROM security_audit_log WHERE action='study_context_viewed' AND target_id='811'").first();
+    const deniedReadCount=await db.prepare("SELECT COUNT(*) AS n FROM security_audit_log WHERE action='study_context_viewed' AND target_id='812'").first();
+    assert.equal(Number(ownReadCount.n),1);
+    assert.equal(Number(deniedReadCount.n),0);
   });
 });
 
@@ -56,6 +82,7 @@ test("study comments are append-only and use existing booking history",async()=>
   assert.match(route,/canAccessBooking\(db,ctx\.member,id,ctx\.organizationId\)/);
   assert.match(route,/booking_events/);
   assert.match(route,/booking_staff_notes/);
+  assert.match(route,/study_context_viewed/);
   assert.match(route,/study_comment_added/);
   assert.doesNotMatch(route,/export async function (DELETE|PATCH)/);
   assert.match(migration,/organization_id INTEGER NOT NULL/);
