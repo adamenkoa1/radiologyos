@@ -1,0 +1,57 @@
+name: Prepare 0096 booking cancellation metadata
+
+on:
+  push:
+    branches: [fix/booking-cancellation-terminal]
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/booking-cancellation-terminal
+          fetch-depth: 0
+      - name: Advance Drizzle metadata for trigger-only 0096
+        run: |
+          python - <<'PY'
+          import json, time, uuid
+          from pathlib import Path
+
+          meta = Path('drizzle/meta')
+          journal_path = meta / '_journal.json'
+          journal = json.loads(journal_path.read_text())
+          last = journal['entries'][-1]
+          assert last['idx'] == 95, last
+          assert last['tag'] == '0095_appointment_registrar', last
+
+          source_path = meta / '0095_snapshot.json'
+          target_path = meta / '0096_snapshot.json'
+          assert not target_path.exists()
+          snapshot = json.loads(source_path.read_text())
+          previous_id = snapshot['id']
+          snapshot['prevId'] = previous_id
+          snapshot['id'] = str(uuid.uuid4())
+          target_path.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2) + '\n')
+
+          journal['entries'].append({
+              'idx': 96,
+              'version': last['version'],
+              'when': int(time.time() * 1000),
+              'tag': '0096_booking_cancellation_terminal',
+              'breakpoints': True,
+          })
+          journal_path.write_text(json.dumps(journal, ensure_ascii=False, indent=2) + '\n')
+          PY
+      - name: Commit metadata
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add drizzle/meta/_journal.json drizzle/meta/0096_snapshot.json
+          git diff --cached --quiet && exit 0
+          git commit -m "chore: advance metadata for 0096"
+          git push origin HEAD:fix/booking-cancellation-terminal
