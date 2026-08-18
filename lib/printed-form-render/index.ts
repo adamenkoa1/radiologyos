@@ -1,4 +1,5 @@
 import {asObject,escapeHtml,PRINT_CSS,type PrintedFormRenderSnapshot} from "./common.ts";
+import {renderInventoryCountPrintedForm} from "./inventory-count.ts";
 import {renderInventoryPrintedForm} from "./inventory.ts";
 import {renderPaymentPrintedForm} from "./payment.ts";
 import {renderServiceActPrintedForm} from "./service-act.ts";
@@ -6,6 +7,7 @@ export type {PrintedFormRenderSnapshot} from "./common.ts";
 export function renderPrintedFormHtml(s:PrintedFormRenderSnapshot,payload:unknown){
  const p=asObject(payload);let body="";
  if(s.formType==="inventory_receipt"||s.formType==="inventory_writeoff")body=renderInventoryPrintedForm(p);
+ else if(s.formType==="inventory_count")body=renderInventoryCountPrintedForm(p);
  else if(s.formType==="payment_receipt")body=renderPaymentPrintedForm(p);
  else if(s.formType==="service_act")body=renderServiceActPrintedForm(p);
  if(!body)throw new Error("unsupported_printed_form");
