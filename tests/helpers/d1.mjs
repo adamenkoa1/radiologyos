@@ -63,7 +63,18 @@ export async function applyMigrations(db) {
   for (const file of files) {
     const sql = await readFile(new URL(file, DRIZZLE_DIR), "utf8");
     try {
-      db.exec(sql);
+      if (file === "0093_study_correction_registrar.sql") {
+        db.exec("BEGIN;");
+        try {
+          db.exec(sql);
+          db.exec("COMMIT;");
+        } catch (migrationError) {
+          try { db.exec("ROLLBACK;"); } catch {}
+          throw migrationError;
+        }
+      } else {
+        db.exec(sql);
+      }
     } catch (e) {
       throw new Error(`Міграція ${file} не застосувалась: ${e.message}`);
     }

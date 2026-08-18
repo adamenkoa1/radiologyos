@@ -805,7 +805,7 @@ table => [
 			foreignColumns: [table.id],
 			name: "business_documents_reversed_document_id_business_documents_id_fk"
 		})),
-	check("business_documents_check_1", sql.raw("`document_type` IN (\n    'patient_order','appointment','service_delivery','payment','refund',\n    'inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count',\n    'study_performance','result_delivery'\n  )")),
+	check("business_documents_check_1", sql.raw("`document_type` IN (\n    'patient_order','appointment','service_delivery','payment','refund',\n    'inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count',\n    'study_performance','result_delivery','study_correction'\n  )")),
 	check("business_documents_check_2", sql.raw("`state` IN ('draft','posted','reversed','cancelled')")),
 ]);
 

@@ -1135,7 +1135,7 @@
       "checkConstraints": {
         "business_documents_check_1": {
           "name": "business_documents_check_1",
-          "value": "`document_type` IN (\n    'patient_order','appointment','service_delivery','payment','refund',\n    'inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count',\n    'study_performance','result_delivery'\n  )"
+          "value": "`document_type` IN (\n    'patient_order','appointment','service_delivery','payment','refund',\n    'inventory_receipt','inventory_writeoff','inventory_transfer','inventory_count',\n    'study_performance','result_delivery','study_correction'\n  )"
         },
         "business_documents_check_2": {
           "name": "business_documents_check_2",

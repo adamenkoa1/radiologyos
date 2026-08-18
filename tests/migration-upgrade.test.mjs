@@ -33,7 +33,18 @@ async function applyFiles(db, items) {
   for (const { file } of items) {
     const sql = await readFile(new URL(file, DRIZZLE_DIR), "utf8");
     try {
-      db.exec(sql);
+      if (file === "0093_study_correction_registrar.sql") {
+        db.exec("BEGIN;");
+        try {
+          db.exec(sql);
+          db.exec("COMMIT;");
+        } catch (migrationError) {
+          try { db.exec("ROLLBACK;"); } catch {}
+          throw migrationError;
+        }
+      } else {
+        db.exec(sql);
+      }
     } catch (error) {
       throw new Error(`Migration ${file} failed during upgrade gate: ${error.message}`);
     }
