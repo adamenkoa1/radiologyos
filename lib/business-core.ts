@@ -170,6 +170,7 @@ export function requiresCorrectionDocument(state: DocumentState): boolean {
 }
 
 export const DOCUMENT_REGISTER_MAP: Readonly<Partial<Record<DocumentType, readonly RegisterType[]>>> = {
+  appointment: ["inventory_reservations"],
   service_delivery: ["services_delivered", "revenue", "patient_settlements", "receivables", "equipment_load", "staff_output", "studies_performed"],
   payment: ["cash", "patient_settlements", "receivables"],
   // A money refund reverses cash/settlement only. Revenue is corrected by a service correction/storno,
