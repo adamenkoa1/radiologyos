@@ -48,8 +48,15 @@ function wrapAsD1(db) {
     prepare(sql) { return makeStmt(sql); },
     async batch(statements) {
       const out = [];
-      for (const s of statements) out.push(await s.run());
-      return out;
+      db.exec("BEGIN;");
+      try {
+        for (const s of statements) out.push(await s.run());
+        db.exec("COMMIT;");
+        return out;
+      } catch (error) {
+        try { db.exec("ROLLBACK;"); } catch {}
+        throw error;
+      }
     },
     async exec(sql) { db.exec(sql); return { count: 0, duration: 0 }; },
     _raw: db,
