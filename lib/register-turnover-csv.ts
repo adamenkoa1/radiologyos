@@ -1,5 +1,5 @@
-import type { buildRegisterTurnoverReport } from "./register-turnover-report";
-import { REGISTER_REPORT_SECTIONS,type RegisterReportSection } from "./saved-report-views";
+import type { buildRegisterTurnoverReport } from "./register-turnover-report.ts";
+import { REGISTER_REPORT_SECTIONS,type RegisterReportSection } from "./saved-report-views.ts";
 
 type Report=Awaited<ReturnType<typeof buildRegisterTurnoverReport>>;
 const ALLOWED=new Set<string>(REGISTER_REPORT_SECTIONS);
