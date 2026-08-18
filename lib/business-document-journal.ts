@@ -16,10 +16,10 @@ const SUMMARY_SELECT=`
          d.number,d.occurred_at AS occurredAt,d.state,d.comment,d.created_by AS createdBy,
          d.created_at AS createdAt,d.posted_by AS postedBy,d.posted_at AS postedAt,
          d.reversed_document_id AS reversedDocumentId,d.basis_document_id AS basisDocumentId,
-         COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id) AS bookingId,
+         COALESCE(o.booking_id,a.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id) AS bookingId,
          COALESCE(b.code,'') AS bookingCode,COALESCE(b.name,'') AS patientName,
-         COALESCE(o.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,rad.patient_id,c.patient_id,f.patient_id,'') AS patientId,
-         COALESCE(o.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,rad.service_title,c.service_title,b.service,'') AS subject,
+         COALESCE(o.patient_id,a.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,rad.patient_id,c.patient_id,f.patient_id,'') AS patientId,
+         COALESCE(o.service_title,a.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,rad.service_title,c.service_title,b.service,'') AS subject,
          COALESCE(o.charge_amount,s.charge_amount,c.charge_amount,f.amount,0) AS amount,
          COALESCE(o.currency,s.currency,c.currency,f.currency,'UAH') AS currency,
          COALESCE(
@@ -45,6 +45,8 @@ const SUMMARY_SELECT=`
   FROM business_documents d
   LEFT JOIN patient_order_details o
     ON o.document_id=d.id AND o.organization_id=d.organization_id
+  LEFT JOIN appointment_details a
+    ON a.document_id=d.id AND a.organization_id=d.organization_id
   LEFT JOIN service_delivery_details s
     ON s.document_id=d.id AND s.organization_id=d.organization_id
   LEFT JOIN service_delivery_details sp
@@ -70,7 +72,7 @@ const SUMMARY_SELECT=`
     ON f.document_id=d.id AND f.organization_id=d.organization_id
   LEFT JOIN bookings b
     ON b.organization_id=d.organization_id
-   AND b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id)`;
+   AND b.id=COALESCE(o.booking_id,a.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id)`;
 
 export async function listBusinessDocuments(db:D1Database,organizationId:number,limit=250) {
   const rows=await db.prepare(

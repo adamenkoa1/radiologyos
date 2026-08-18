@@ -1245,6 +1245,34 @@ table => [
 	check("patient_order_details_check_3", sql.raw("`charge_amount` >= 0")),
 ]);
 
+export const appointmentDetails = sqliteTable("appointment_details", {
+	organizationId: integer("organization_id").notNull(),
+	documentId: integer("document_id").primaryKey().notNull(),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	appointmentVersion: integer("appointment_version").notNull(),
+	patientId: text("patient_id").notNull().default(""),
+	serviceCode: text("service_code").notNull(),
+	serviceTitle: text("service_title").notNull(),
+	equipmentId: text("equipment_id").notNull(),
+	durationMinutes: integer("duration_minutes").notNull(),
+	scheduledDate: text("scheduled_date").notNull(),
+	scheduledTime: text("scheduled_time").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("appointment_booking_version_unique").on(table.organizationId, table.bookingId, table.appointmentVersion),
+	index("appointment_booking_history_idx").on(table.organizationId, table.bookingId, table.appointmentVersion, table.documentId),
+	foreignKey(() => ({
+			columns: [table.documentId, table.organizationId],
+			foreignColumns: [businessDocuments.id, businessDocuments.organizationId],
+			name: "appointment_details_document_id_organization_id_business_documents_id_organization_id_fk"
+		})),
+	check("appointment_details_check_1", sql.raw("`appointment_version` > 0")),
+	check("appointment_details_check_2", sql.raw("`duration_minutes` > 0")),
+	check("appointment_details_check_3", sql.raw("length(trim(`scheduled_date`)) > 0")),
+	check("appointment_details_check_4", sql.raw("length(trim(`scheduled_time`)) > 0")),
+]);
+
 export const counterparties = sqliteTable("counterparties", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),
