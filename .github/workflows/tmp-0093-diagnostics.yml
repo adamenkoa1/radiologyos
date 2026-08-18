@@ -1,0 +1,47 @@
+name: Temporary 0093 diagnostics
+
+on:
+  push:
+    branches:
+      - feature/study-correction-registrar
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies deterministically
+        run: npm run install:ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Capture behavioral test output
+        shell: bash
+        run: |
+          set +e
+          node --experimental-strip-types --test tests/*.test.mjs 2>&1 | tee test-output.txt
+          echo "${PIPESTATUS[0]}" > test-status.txt
+          exit 0
+
+      - name: Upload diagnostic output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tmp-0093-test-output
+          path: |
+            test-output.txt
+            test-status.txt
+          retention-days: 1
