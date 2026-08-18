@@ -159,6 +159,19 @@ async function cashByMethod(db:D1Database,organizationId:number,period:RegisterP
   return rows.results;
 }
 
+async function expensesByItem(db:D1Database,organizationId:number,period:RegisterPeriod) {
+  const rows=await db.prepare(
+    `SELECT e.item_id AS itemId,i.sku,i.name,i.unit,
+       COALESCE(SUM(e.amount_delta),0) AS amount,COUNT(*) AS movementCount
+     FROM expense_movements e
+     JOIN inventory_items i ON i.id=e.item_id AND i.organization_id=e.organization_id
+     WHERE e.organization_id=? AND substr(e.occurred_at,1,10) BETWEEN ? AND ?
+     GROUP BY e.item_id,i.sku,i.name,i.unit
+     ORDER BY amount DESC,i.name,e.item_id LIMIT 200`
+  ).bind(organizationId,period.from,period.to).all();
+  return rows.results;
+}
+
 async function equipmentByUnit(db:D1Database,organizationId:number,period:RegisterPeriod) {
   const rows=await db.prepare(
     `SELECT equipment_id AS equipmentId,
@@ -186,17 +199,19 @@ async function staffByMember(db:D1Database,organizationId:number,period:Register
 }
 
 export async function buildRegisterTurnoverReport(db:D1Database,organizationId:number,period:RegisterPeriod) {
-  const [revenue,cash,settlements,services,equipment,staff,inventory,inventoryByWarehouse,revenueServices,cashMethods,equipmentRows,staffRows,studyRows]=await Promise.all([
+  const [revenue,cash,settlements,services,equipment,staff,expenses,inventory,inventoryByWarehouse,revenueServices,cashMethods,expenseRows,equipmentRows,staffRows,studyRows]=await Promise.all([
     deltaTurnover(db,"revenue_movements","amount_delta",organizationId,period),
     deltaTurnover(db,"cash_movements","amount_delta",organizationId,period),
     settlementTurnover(db,organizationId,period),
     performedStudyTurnover(db,organizationId,period),
     deltaTurnover(db,"equipment_load_movements","minutes_delta",organizationId,period),
     deltaTurnover(db,"staff_output_movements","units_delta",organizationId,period),
+    deltaTurnover(db,"expense_movements","amount_delta",organizationId,period),
     inventoryBalances(db,organizationId,period),
     inventoryBalancesByWarehouse(db,organizationId,period),
     revenueByService(db,organizationId,period),
     cashByMethod(db,organizationId,period),
+    expensesByItem(db,organizationId,period),
     equipmentByUnit(db,organizationId,period),
     staffByMember(db,organizationId,period),
     studiesByService(db,organizationId,period),
@@ -205,7 +220,7 @@ export async function buildRegisterTurnoverReport(db:D1Database,organizationId:n
   return {
     period,
     generatedAt:new Date().toISOString(),
-    registers:{revenue,cash,settlements,services,studies,equipment,staff},
-    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,studiesByService:studyRows,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},
+    registers:{revenue,cash,settlements,services,studies,equipment,staff,expenses},
+    breakdowns:{revenueByService:revenueServices,cashByMethod:cashMethods,expensesByItem:expenseRows,studiesByService:studyRows,equipment:equipmentRows,staff:staffRows,inventory,inventoryByWarehouse},
   };
 }

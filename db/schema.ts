@@ -1388,6 +1388,34 @@ table => [
 	check("supplier_payment_allocations_check_1", sql.raw("`amount` > 0")),
 ]);
 
+export const expenseMovements = sqliteTable("expense_movements", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().default(1),
+	inventoryMovementId: integer("inventory_movement_id").notNull(),
+	documentId: integer("document_id").notNull(),
+	documentLineId: integer("document_line_id").notNull(),
+	sourceReceiptDocumentId: integer("source_receipt_document_id").notNull(),
+	sourceReceiptLineId: integer("source_receipt_line_id").notNull(),
+	bookingId: integer("booking_id"),
+	itemId: integer("item_id").notNull(),
+	lotId: integer("lot_id").notNull(),
+	warehouseId: integer("warehouse_id").notNull(),
+	unitCost: integer("unit_cost").notNull().default(0),
+	amountDelta: integer("amount_delta").notNull(),
+	currency: text().notNull().default("UAH"),
+	reason: text().notNull().default(""),
+	actorEmail: text("actor_email").notNull(),
+	occurredAt: text("occurred_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+ table => [
+	uniqueIndex("expense_movements_inventory_movement_idx").on(table.organizationId, table.inventoryMovementId),
+	index("expense_movements_org_time_idx").on(table.organizationId, table.occurredAt, table.id),
+	index("expense_movements_org_item_time_idx").on(table.organizationId, table.itemId, table.occurredAt),
+	index("expense_movements_org_lot_idx").on(table.organizationId, table.lotId, table.id),
+	check("expense_movements_unit_cost_nonnegative", sql`${table.unitCost} >= 0`),
+	check("expense_movements_amount_positive", sql`${table.amountDelta} > 0`),
+]);
+
 export const supplierPayableMovements = sqliteTable("supplier_payable_movements", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull(),
