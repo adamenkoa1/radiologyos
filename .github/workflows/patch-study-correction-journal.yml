@@ -1,4 +1,5 @@
 name: Patch study-correction journal context
+# one-shot branch-only patch helper; removed before merge
 
 on:
   push:
