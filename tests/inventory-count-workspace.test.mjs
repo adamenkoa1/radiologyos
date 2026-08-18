@@ -39,3 +39,13 @@ test("inventory module exposes counts and global journal reads count-line totals
   assert.match(journal,/COUNT\(\*\) FROM inventory_count_lines/);
   assert.match(journal,/SUM\(ic\.counted_quantity\) FROM inventory_count_lines/);
 });
+
+test("inventory movement history labels and routes registrar documents by movement type",async()=>{
+  const source=await readFile(new URL("../app/staff/inventory/page.tsx",import.meta.url),"utf8");
+  assert.match(source,/count_adjustment:\"Інвентаризація\"/);
+  assert.match(source,/transfer_out:\"Переміщення: вибуття\"/);
+  assert.match(source,/transfer_in:\"Переміщення: надходження\"/);
+  assert.match(source,/\/staff\/inventory\/counts\?id=\$\{movement\.documentId\}/);
+  assert.match(source,/\/staff\/inventory\/transfers/);
+  assert.match(source,/MOVEMENT_UK\[m\.movementType\]\|\|m\.movementType/);
+});
