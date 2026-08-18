@@ -189,6 +189,23 @@ BEGIN
 END;
 --> statement-breakpoint
 
+-- Future issued rows must pass through the signed state. Existing issued protocols are unaffected
+-- because creating these triggers does not rewrite historical rows.
+CREATE TRIGGER `result_delivery_no_direct_issued_insert`
+BEFORE INSERT ON `protocols`
+WHEN NEW.status='issued'
+BEGIN
+  SELECT RAISE(ABORT,'protocol_issue_requires_signed_transition');
+END;
+--> statement-breakpoint
+CREATE TRIGGER `result_delivery_issue_transition_guard`
+BEFORE UPDATE OF `status` ON `protocols`
+WHEN NEW.status='issued' AND OLD.status<>'issued' AND OLD.status<>'signed'
+BEGIN
+  SELECT RAISE(ABORT,'protocol_issue_requires_signed_transition');
+END;
+--> statement-breakpoint
+
 -- Atomic bridge from the medical lifecycle to the business document journal. Since this is an
 -- AFTER trigger of the same UPDATE statement, any failure while creating/validating the registrar
 -- aborts and rolls back protocol issuance as well.
