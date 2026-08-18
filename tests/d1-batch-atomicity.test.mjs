@@ -10,7 +10,8 @@ test("behavioral D1 batch commits all successful statements in order",async()=>{
       db.prepare("INSERT INTO batch_atomicity_probe (id,value) VALUES (2,'second')"),
     ]);
     assert.equal(results.length,2);
-    assert.deepEqual(raw.prepare("SELECT id,value FROM batch_atomicity_probe ORDER BY id").all(),[
+    const rows=raw.prepare("SELECT id,value FROM batch_atomicity_probe ORDER BY id").all();
+    assert.deepEqual(rows.map(row=>({id:Number(row.id),value:String(row.value)})),[
       {id:1,value:"first"},{id:2,value:"second"},
     ]);
   });
