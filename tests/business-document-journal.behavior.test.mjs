@@ -47,7 +47,7 @@ async function journal(db,cookie,id=null) {
   return callWorker(new Request(`http://localhost/api/staff/business-documents${suffix}`,{headers:{cookie}}),db);
 }
 
-test("unified journal exposes service, payment, refund and storno as one tenant-scoped document stream",async()=>{
+test("unified journal exposes service, study performance, payment, refund and storno as one tenant-scoped document stream",async()=>{
   await withD1(async(db,raw)=>{
     const seeded=await seedCompleted(db,raw);
     const cookie=await seedStaffSession(db,{email:"doc-journal@example.com",role:"registrar",organizationId:1});
@@ -68,6 +68,7 @@ test("unified journal exposes service, payment, refund and storno as one tenant-
     const rows=body.documents;
 
     const service=rows.find(row=>row.id===seeded.serviceDocumentId);
+    const performance=rows.find(row=>row.journalType==="study_performance" && row.sourceDocumentId===seeded.serviceDocumentId);
     const payRow=rows.find(row=>row.id===payment.documentId);
     const refundRow=rows.find(row=>row.id===returned.documentId);
     const stornoRow=rows.find(row=>row.id===correction.document.id);
@@ -75,6 +76,14 @@ test("unified journal exposes service, payment, refund and storno as one tenant-
     assert.equal(service.state,"reversed");
     assert.equal(service.bookingCode,"RD-DOC-JOURNAL");
     assert.equal(service.amount,3200);
+    assert.ok(performance?.id>0);
+    assert.equal(performance.state,"reversed");
+    assert.equal(performance.bookingId,seeded.bookingId);
+    assert.equal(performance.bookingCode,"RD-DOC-JOURNAL");
+    assert.equal(performance.patientName,"Journal Patient");
+    assert.equal(performance.subject,"КТ ОГК");
+    assert.equal(performance.amount,0);
+    assert.equal(performance.relationType,"based_on");
     assert.equal(payRow.journalType,"payment");
     assert.equal(refundRow.journalType,"refund");
     assert.equal(refundRow.sourceDocumentId,payment.documentId);
@@ -119,6 +128,11 @@ test("document structure shows canonical parents, children and exact register mo
       row=>row.id===seeded.serviceDocumentId && row.relationType==="based_on",
     ));
     assert.equal(performanceDetail.document.state,"reversed");
+    assert.equal(performanceDetail.document.bookingId,seeded.bookingId);
+    assert.equal(performanceDetail.document.bookingCode,"RD-DOC-STRUCT");
+    assert.equal(performanceDetail.document.patientName,"Journal Patient");
+    assert.equal(performanceDetail.document.subject,"КТ ОГК");
+    assert.equal(performanceDetail.document.amount,0);
     assert.equal(performanceDetail.movements.services.length,1);
     assert.equal(performanceDetail.movements.revenue.length,0);
     assert.equal(performanceDetail.movements.settlement.length,0);
@@ -181,6 +195,9 @@ test("business document journal is tenant isolated for both list and detail",asy
     const list1=await journal(db,org1);
     const body1=await list1.json();
     assert.equal(body1.documents.some(row=>row.id===foreign.serviceDocumentId),false);
+    assert.equal(body1.documents.some(
+      row=>row.journalType==="study_performance" && row.sourceDocumentId===foreign.serviceDocumentId,
+    ),false);
 
     const foreignDetail=await journal(db,org1,foreign.serviceDocumentId);
     assert.equal(foreignDetail.status,404);
