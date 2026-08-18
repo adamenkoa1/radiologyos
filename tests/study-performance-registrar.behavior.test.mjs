@@ -167,33 +167,45 @@ test("service storno reverses performance before appending operational correctio
     const source=raw.prepare("SELECT state FROM business_documents WHERE id=?").get(before.source.id);
     const performance=raw.prepare("SELECT state FROM business_documents WHERE id=?").get(before.performance.id);
     const correction=correctionForSource(raw,1,before.source.id);
+    const studyCorrection=raw.prepare(
+      `SELECT id,number,state,basis_document_id AS basisDocumentId,reversed_document_id AS reversedDocumentId
+       FROM business_documents
+       WHERE organization_id=1 AND document_type='study_correction' AND basis_document_id=? LIMIT 1`
+    ).get(before.performance.id);
     assert.equal(source.state,"reversed");
     assert.equal(performance.state,"reversed");
     assert.equal(correction.state,"posted");
+    assert.ok(studyCorrection?.id>0);
+    assert.equal(studyCorrection.number,`КВ-${String(correction.id).padStart(6,"0")}`);
+    assert.equal(studyCorrection.basisDocumentId,before.performance.id);
+    assert.equal(studyCorrection.reversedDocumentId,before.performance.id);
 
     // Positive history stays immutable on the reversed performance registrar.
     assert.deepEqual(movementCounts(raw,before.performance.id),{
       services:1,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
     });
-    // Economic history stays on service_delivery; the separate correction owns all negative entries.
+    // Economic correction owns only revenue/settlement; operational negatives belong to study_correction.
     assert.deepEqual(movementCounts(raw,before.source.id),{
       services:0,equipment:0,staff:0,revenue:1,settlements:1,cash:0,
     });
     assert.deepEqual(movementCounts(raw,correction.id),{
-      services:0,equipment:1,staff:2,revenue:1,settlements:1,cash:0,
+      services:0,equipment:0,staff:0,revenue:1,settlements:1,cash:0,
+    });
+    assert.deepEqual(movementCounts(raw,studyCorrection.id),{
+      services:0,equipment:1,staff:2,revenue:0,settlements:0,cash:0,
     });
     const serviceCorrection=raw.prepare(
       `SELECT quantity_delta AS quantityDelta,anatomical_regions_delta AS regionsDelta
        FROM service_correction_movements WHERE document_id=?`
-    ).get(correction.id);
+    ).get(studyCorrection.id);
     assert.equal(serviceCorrection.quantityDelta,-1);
     assert.equal(serviceCorrection.regionsDelta,-2);
     assert.equal(raw.prepare(
       "SELECT SUM(minutes_delta) AS n FROM equipment_load_movements WHERE document_id=?"
-    ).get(correction.id).n,-30);
+    ).get(studyCorrection.id).n,-30);
     assert.equal(raw.prepare(
       "SELECT SUM(units_delta) AS n FROM staff_output_movements WHERE document_id=?"
-    ).get(correction.id).n,-2);
+    ).get(studyCorrection.id).n,-2);
   });
 });
 
