@@ -469,6 +469,8 @@ END;
 -- validation until the shadow table has replaced the original and every attached guard/index is restored.
 PRAGMA defer_foreign_keys = ON;
 --> statement-breakpoint
+PRAGMA legacy_alter_table = ON;
+--> statement-breakpoint
 CREATE TABLE `__new_business_documents` (
   `id` integer PRIMARY KEY AUTOINCREMENT NOT NULL,
   `organization_id` integer NOT NULL,
@@ -496,6 +498,8 @@ SELECT `id`,`organization_id`,`document_type`,`number`,`occurred_at`,`state`,`co
 DROP TABLE `business_documents`;
 --> statement-breakpoint
 ALTER TABLE `__new_business_documents` RENAME TO `business_documents`;
+--> statement-breakpoint
+PRAGMA legacy_alter_table = OFF;
 --> statement-breakpoint
 CREATE INDEX `business_documents_basis_idx`
   ON `business_documents` (`organization_id`,`basis_document_id`,`id`)
@@ -1180,4 +1184,7 @@ WHEN OLD.state='draft' AND OLD.basis_document_id IS NOT NEW.basis_document_id
     OR EXISTS (SELECT 1 FROM service_correction_details c WHERE c.document_id=OLD.id AND c.organization_id=OLD.organization_id)
   )
 BEGIN SELECT RAISE(ABORT,'business_document_basis_frozen'); END;
+--> statement-breakpoint
+--> statement-breakpoint
+PRAGMA defer_foreign_keys = OFF;
 --> statement-breakpoint
