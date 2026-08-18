@@ -12,14 +12,14 @@ function safeLimit(value:number,defaultValue=250) {
 
 const SUMMARY_SELECT=`
   SELECT d.id,d.document_type AS documentType,
-         CASE WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
+         CASE WHEN rad.document_id IS NOT NULL THEN 'result_addendum_delivery' WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
          d.number,d.occurred_at AS occurredAt,d.state,d.comment,d.created_by AS createdBy,
          d.created_at AS createdAt,d.posted_by AS postedBy,d.posted_at AS postedAt,
          d.reversed_document_id AS reversedDocumentId,d.basis_document_id AS basisDocumentId,
-         COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,c.booking_id,f.booking_id) AS bookingId,
+         COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id) AS bookingId,
          COALESCE(b.code,'') AS bookingCode,COALESCE(b.name,'') AS patientName,
-         COALESCE(o.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,c.patient_id,f.patient_id,'') AS patientId,
-         COALESCE(o.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,c.service_title,b.service,'') AS subject,
+         COALESCE(o.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,rad.patient_id,c.patient_id,f.patient_id,'') AS patientId,
+         COALESCE(o.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,rad.service_title,c.service_title,b.service,'') AS subject,
          COALESCE(o.charge_amount,s.charge_amount,c.charge_amount,f.amount,0) AS amount,
          COALESCE(o.currency,s.currency,c.currency,f.currency,'UAH') AS currency,
          COALESCE(
@@ -62,13 +62,15 @@ const SUMMARY_SELECT=`
    AND sc.organization_id=d.organization_id
   LEFT JOIN result_delivery_details rd
     ON rd.document_id=d.id AND rd.organization_id=d.organization_id
+  LEFT JOIN result_addendum_delivery_details rad
+    ON rad.document_id=d.id AND rad.organization_id=d.organization_id
   LEFT JOIN service_correction_details c
     ON c.document_id=d.id AND c.organization_id=d.organization_id
   LEFT JOIN finance_document_details f
     ON f.document_id=d.id AND f.organization_id=d.organization_id
   LEFT JOIN bookings b
     ON b.organization_id=d.organization_id
-   AND b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,c.booking_id,f.booking_id)`;
+   AND b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,rad.booking_id,c.booking_id,f.booking_id)`;
 
 export async function listBusinessDocuments(db:D1Database,organizationId:number,limit=250) {
   const rows=await db.prepare(
@@ -99,11 +101,13 @@ export async function getBusinessDocumentRelations(db:D1Database,organizationId:
   if(document.sourceDocumentId) {
     const source=await db.prepare(
       `SELECT d.id,d.document_type AS documentType,
-              CASE WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
+              CASE WHEN rad.document_id IS NOT NULL THEN 'result_addendum_delivery' WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
               d.number,d.occurred_at AS occurredAt,d.state,? AS relationType
        FROM business_documents d
        LEFT JOIN service_correction_details c
          ON c.document_id=d.id AND c.organization_id=d.organization_id
+       LEFT JOIN result_addendum_delivery_details rad
+         ON rad.document_id=d.id AND rad.organization_id=d.organization_id
        WHERE d.organization_id=? AND d.id=? LIMIT 1`
     ).bind(document.relationType || "source",organizationId,document.sourceDocumentId).first<RelatedDocument>();
     if(source) parent.push(source);
@@ -111,7 +115,7 @@ export async function getBusinessDocumentRelations(db:D1Database,organizationId:
 
   const children=await db.prepare(
     `SELECT d.id,d.document_type AS documentType,
-            CASE WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
+            CASE WHEN rad.document_id IS NOT NULL THEN 'result_addendum_delivery' WHEN c.document_id IS NOT NULL THEN 'service_correction' ELSE d.document_type END AS journalType,
             d.number,d.occurred_at AS occurredAt,d.state,
             CASE
               WHEN c.source_document_id=? THEN 'storno'
@@ -123,6 +127,8 @@ export async function getBusinessDocumentRelations(db:D1Database,organizationId:
      FROM business_documents d
      LEFT JOIN service_correction_details c
        ON c.document_id=d.id AND c.organization_id=d.organization_id
+     LEFT JOIN result_addendum_delivery_details rad
+       ON rad.document_id=d.id AND rad.organization_id=d.organization_id
      LEFT JOIN finance_document_details f
        ON f.document_id=d.id AND f.organization_id=d.organization_id
      WHERE d.organization_id=? AND d.id<>?
