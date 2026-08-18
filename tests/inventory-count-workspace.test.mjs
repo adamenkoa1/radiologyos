@@ -30,3 +30,12 @@ test("workspace uses registrar API and never submits client book quantity",async
   assert.match(helper,/return\{warehouseId,lotId,countedQuantity\}/);
   assert.doesNotMatch(helper,/bookQuantity:[^F]/);
 });
+
+test("inventory module exposes counts and global journal reads count-line totals",async()=>{
+  const shell=await readFile(new URL("../app/staff/workspace-shell.tsx",import.meta.url),"utf8");
+  assert.match(shell,/Інвентаризація[^\n]+\/staff\/inventory\/counts/);
+  const journal=await readFile(new URL("../lib/business-document-journal.ts",import.meta.url),"utf8");
+  assert.match(journal,/d\.document_type='inventory_count'/);
+  assert.match(journal,/COUNT\(\*\) FROM inventory_count_lines/);
+  assert.match(journal,/SUM\(ic\.counted_quantity\) FROM inventory_count_lines/);
+});
