@@ -11,7 +11,7 @@
     "build": "bash scripts/build-verified.sh",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
     "test": "npm run build && node --experimental-strip-types --test tests/*.test.mjs",
-    "test:production-gate": "npm run build && node --experimental-strip-types --test tests/canonical-public-url.test.mjs tests/hosting-headers.test.mjs tests/deploy-config.test.mjs tests/printed-form-artifacts.test.mjs tests/outbound-security.test.mjs tests/reminders-tenant.behavior.test.mjs tests/site-booking.behavior.test.mjs tests/booking-capacity.test.mjs tests/staff-confirm-reschedule.behavior.test.mjs tests/staff-rbac.behavior.test.mjs tests/patient-otp.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs tests/my-bookings.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/payment-ledger.behavior.test.mjs tests/payment-settlement.behavior.test.mjs tests/study-state.test.mjs tests/protocol-builder.test.mjs tests/dashboard.test.mjs tests/security-hardening.test.mjs tests/tenant-hardening.test.mjs tests/d1-migration-comment-compat.test.mjs tests/migration-upgrade.test.mjs",
+    "test:production-gate": "npm run build && node --experimental-strip-types --test tests/canonical-public-url.test.mjs tests/hosting-headers.test.mjs tests/deploy-config.test.mjs tests/printed-form-artifacts.test.mjs tests/outbound-security.test.mjs tests/reminders-tenant.behavior.test.mjs tests/site-booking.behavior.test.mjs tests/booking-capacity.test.mjs tests/staff-confirm-reschedule.behavior.test.mjs tests/staff-rbac.behavior.test.mjs tests/patient-otp.behavior.test.mjs tests/patient-cabinet-tenant.test.mjs tests/my-bookings.behavior.test.mjs tests/payment-api.behavior.test.mjs tests/payment-ledger.behavior.test.mjs tests/payment-settlement.behavior.test.mjs tests/study-state.test.mjs tests/protocol-builder.test.mjs tests/result-delivery-registrar.behavior.test.mjs tests/dashboard.test.mjs tests/security-hardening.test.mjs tests/tenant-hardening.test.mjs tests/d1-migration-comment-compat.test.mjs tests/migration-upgrade.test.mjs",
     "validate:artifact": "bash scripts/validate-artifact.sh",
     "lint": "bash scripts/sites-env.sh -- eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern public",
     "db:generate": "node scripts/db-generate-guard.mjs"
@@ -28,7 +28,7 @@
     "@tailwindcss/postcss": "4.2.1",
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
-    "@types/react-dom": "19.2.3",
+    "@types/react-dom": "19.2.6",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
