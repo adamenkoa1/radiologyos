@@ -1,0 +1,55 @@
+name: Patch 0093 rebuild boundary
+
+on:
+  push:
+    branches: [feature/study-correction-registrar]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout branch
+        uses: actions/checkout@v5
+        with:
+          ref: feature/study-correction-registrar
+
+      - name: Patch migration boundary
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('drizzle/0093_study_correction_registrar.sql')
+          text = path.read_text(encoding='utf-8')
+
+          before = "PRAGMA defer_foreign_keys = ON;\n--> statement-breakpoint\nCREATE TABLE `__new_business_documents` ("
+          after = "PRAGMA defer_foreign_keys = ON;\n--> statement-breakpoint\nPRAGMA legacy_alter_table = ON;\n--> statement-breakpoint\nCREATE TABLE `__new_business_documents` ("
+          assert text.count(before) == 1, 'unexpected defer boundary shape'
+          text = text.replace(before, after, 1)
+
+          before = "ALTER TABLE `__new_business_documents` RENAME TO `business_documents`;\n--> statement-breakpoint\nCREATE INDEX `business_documents_basis_idx`"
+          after = "ALTER TABLE `__new_business_documents` RENAME TO `business_documents`;\n--> statement-breakpoint\nPRAGMA legacy_alter_table = OFF;\n--> statement-breakpoint\nCREATE INDEX `business_documents_basis_idx`"
+          assert text.count(before) == 1, 'unexpected rename boundary shape'
+          text = text.replace(before, after, 1)
+
+          marker = "PRAGMA defer_foreign_keys = OFF;"
+          assert marker not in text, 'defer reset already present unexpectedly'
+          text = text.rstrip() + "\n--> statement-breakpoint\nPRAGMA defer_foreign_keys = OFF;\n--> statement-breakpoint\n"
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Commit migration fix
+        shell: bash
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add drizzle/0093_study_correction_registrar.sql
+          git diff --cached --check
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: make 0093 shadow rebuild D1-safe'
+          git push origin HEAD:feature/study-correction-registrar
