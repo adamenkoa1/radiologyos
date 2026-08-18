@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../../workspace-shell";
 
 type Warehouse={id:number;code:string;name:string;active:number;isDefault:number};
 type Balance={warehouseId:number;warehouseCode:string;warehouseName:string;lotId:number;itemId:number;itemName:string;lotNumber:string;stock:number};
+type Lot={id:number;itemId:number;itemName:string;lotNumber:string;stock:number};
 type Item={id:number;unit:string};
 type Staff={email:string;displayName:string;role:string};
 type CountState="draft"|"posted"|"reversed"|"cancelled";
@@ -12,7 +13,7 @@ type CountDoc={id:number;number:string;occurredAt:string;state:CountState;commen
 type CountLine={id:number;lineNo:number;itemId:number;lotId:number;warehouseId:number;warehouseCode:string;warehouseName:string;itemName:string;itemUnit:string;lotNumber:string;bookQuantity:number;countedQuantity:number;discrepancyQuantity:number;reason:string};
 type CountDetail={document:CountDoc;lines:CountLine[]};
 type DraftLine={warehouseId:number;lotId:number;itemId:number;itemName:string;lotNumber:string;unit:string;bookQuantity:number;countedQuantity:string;reason:string};
-type InventoryPayload={warehouses:Warehouse[];warehouseBalances:Balance[];items:Item[];staff:Staff;canManage:boolean;error?:string};
+type InventoryPayload={warehouses:Warehouse[];warehouseBalances:Balance[];lots:Lot[];items:Item[];staff:Staff;canManage:boolean;error?:string};
 type CountsPayload={documents:CountDoc[];staff:Staff;canManage:boolean;error?:string};
 
 function stateLabel(state:CountState){return state==="draft"?"Чернетка":state==="posted"?"Проведено":state==="cancelled"?"Скасовано":state==="reversed"?"Сторновано":state;}
@@ -25,6 +26,7 @@ export default function InventoryCountsPage(){
   const [selected,setSelected]=useState<CountDetail|null>(null);
   const [warehouseId,setWarehouseId]=useState(0);
   const [candidateLotId,setCandidateLotId]=useState(0);
+  const [zeroBucketLotId,setZeroBucketLotId]=useState(0);
   const [lines,setLines]=useState<DraftLine[]>([]);
   const [comment,setComment]=useState("");
   const [error,setError]=useState("");
@@ -46,17 +48,38 @@ export default function InventoryCountsPage(){
     if(preferred)setWarehouseId(current=>current||preferred.id);
   },[]);
 
+  const openDocument=useCallback(async(id:number)=>{
+    const response=await fetch(`/api/staff/inventory/counts?id=${id}`,{cache:"no-store"});
+    const payload=await response.json().catch(()=>({})) as CountDetail&{error?:string};
+    if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося відкрити інвентаризацію"}`);return;}
+    setSelected(payload);setNotice("");
+  },[]);
+
   useEffect(()=>{const timer=window.setTimeout(()=>void load().catch(e=>setError(e instanceof Error?e.message:"Помилка")),0);return()=>window.clearTimeout(timer);},[load]);
+  useEffect(()=>{
+    const requested=Number(new URL(window.location.href).searchParams.get("id"));
+    if(!Number.isInteger(requested)||requested<=0)return;
+    const timer=window.setTimeout(()=>void openDocument(requested),0);
+    return()=>window.clearTimeout(timer);
+  },[openDocument]);
 
   const activeWarehouses=useMemo(()=>inventory?.warehouses.filter(row=>row.active)||[],[inventory]);
   const itemUnits=useMemo(()=>new Map((inventory?.items||[]).map(item=>[item.id,item.unit])),[inventory]);
   const warehouseBalances=useMemo(()=>(inventory?.warehouseBalances||[]).filter(row=>row.warehouseId===warehouseId),[inventory,warehouseId]);
   const availableBalances=useMemo(()=>warehouseBalances.filter(row=>!lines.some(line=>line.warehouseId===row.warehouseId&&line.lotId===row.lotId)),[warehouseBalances,lines]);
+  const zeroBucketLots=useMemo(()=>{
+    if(!inventory||!warehouseId)return[];
+    const positiveHere=new Set(warehouseBalances.map(row=>row.lotId));
+    const usedHere=new Set(lines.filter(line=>line.warehouseId===warehouseId).map(line=>line.lotId));
+    return inventory.lots.filter(lot=>!positiveHere.has(lot.id)&&!usedHere.has(lot.id));
+  },[inventory,warehouseId,warehouseBalances,lines]);
   const effectiveCandidateLotId=availableBalances.some(row=>row.lotId===candidateLotId)?candidateLotId:(availableBalances[0]?.lotId||0);
   const candidate=availableBalances.find(row=>row.lotId===effectiveCandidateLotId)||null;
+  const effectiveZeroBucketLotId=zeroBucketLots.some(lot=>lot.id===zeroBucketLotId)?zeroBucketLotId:0;
+  const zeroBucketLot=zeroBucketLots.find(lot=>lot.id===effectiveZeroBucketLotId)||null;
   const draftDiscrepancy=useMemo(()=>lines.reduce((sum,line)=>{const counted=Number(line.countedQuantity);return sum+(Number.isFinite(counted)?counted-line.bookQuantity:0);},0),[lines]);
 
-  function changeWarehouse(next:number){setWarehouseId(next);setCandidateLotId(0);}
+  function changeWarehouse(next:number){setWarehouseId(next);setCandidateLotId(0);setZeroBucketLotId(0);}
   function addLine(){
     if(!candidate||lines.length>=200)return;
     setLines(current=>[...current,{
@@ -65,6 +88,15 @@ export default function InventoryCountsPage(){
       countedQuantity:String(candidate.stock),reason:"Інвентаризація",
     }]);
     setCandidateLotId(0);
+  }
+  function addZeroBucket(){
+    if(!zeroBucketLot||!warehouseId||lines.length>=200)return;
+    setLines(current=>[...current,{
+      warehouseId,lotId:zeroBucketLot.id,itemId:zeroBucketLot.itemId,itemName:zeroBucketLot.itemName,
+      lotNumber:zeroBucketLot.lotNumber,unit:itemUnits.get(zeroBucketLot.itemId)||"",bookQuantity:0,
+      countedQuantity:"0",reason:"Інвентаризація",
+    }]);
+    setZeroBucketLotId(0);
   }
   function addWarehouseBalances(){
     const room=Math.max(0,200-lines.length);
@@ -77,13 +109,6 @@ export default function InventoryCountsPage(){
   }
   function updateLine(index:number,patch:Partial<Pick<DraftLine,"countedQuantity"|"reason">>){setLines(current=>current.map((line,i)=>i===index?{...line,...patch}:line));}
   function removeLine(index:number){setLines(current=>current.filter((_,i)=>i!==index));}
-
-  async function openDocument(id:number){
-    const response=await fetch(`/api/staff/inventory/counts?id=${id}`,{cache:"no-store"});
-    const payload=await response.json().catch(()=>({})) as CountDetail&{error?:string};
-    if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося відкрити інвентаризацію"}`);return;}
-    setSelected(payload);setNotice("");
-  }
 
   async function create(event:React.FormEvent){
     event.preventDefault();
@@ -98,7 +123,7 @@ export default function InventoryCountsPage(){
       });
       const payload=await response.json().catch(()=>({})) as CountDetail&{error?:string};
       if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося створити інвентаризацію"}`);return;}
-      setSelected(payload);setLines([]);setComment("");setCandidateLotId(0);setNotice(`✓ Створено чернетку ${payload.document.number}`);
+      setSelected(payload);setLines([]);setComment("");setCandidateLotId(0);setZeroBucketLotId(0);setNotice(`✓ Створено чернетку ${payload.document.number}`);
       await load();
     }finally{setBusy(false);}
   }
@@ -135,6 +160,7 @@ export default function InventoryCountsPage(){
           <label>Склад<select value={warehouseId} onChange={e=>changeWarehouse(Number(e.target.value))}>{activeWarehouses.map(row=><option key={row.id} value={row.id}>{row.name} {row.code?`(${row.code})`:""}</option>)}</select></label>
           <label>Партія<select value={effectiveCandidateLotId} onChange={e=>setCandidateLotId(Number(e.target.value))}><option value={0}>Оберіть партію…</option>{availableBalances.map(row=><option key={`${row.warehouseId}-${row.lotId}`} value={row.lotId}>{row.itemName} · {row.lotNumber||`lot #${row.lotId}`} · облік {fmt(row.stock)}</option>)}</select></label>
           <div><button type="button" disabled={!candidate||lines.length>=200} onClick={addLine}>Додати рядок</button><button type="button" disabled={!availableBalances.length||lines.length>=200} onClick={addWarehouseBalances}>Додати всі залишки складу</button></div>
+          {zeroBucketLots.length>0&&<label>Партія без залишку на цьому складі<select value={effectiveZeroBucketLotId} onChange={e=>setZeroBucketLotId(Number(e.target.value))}><option value={0}>Оберіть партію…</option>{zeroBucketLots.map(lot=><option key={lot.id} value={lot.id}>{lot.itemName} · {lot.lotNumber||`lot #${lot.id}`} · облік 0</option>)}</select><button type="button" disabled={!zeroBucketLot||lines.length>=200} onClick={addZeroBucket}>Додати нульовий bucket</button></label>}
           {lines.length>0&&<div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал / партія</th><th>Облік</th><th>Факт</th><th>Δ</th><th>Причина</th><th/></tr></thead><tbody>{lines.map((line,index)=>{const counted=Number(line.countedQuantity);const discrepancy=Number.isFinite(counted)?counted-line.bookQuantity:0;return <tr key={`${line.warehouseId}-${line.lotId}`}><td><b>{line.itemName}</b><small>{line.lotNumber||`lot #${line.lotId}`} · {line.unit}</small></td><td>{fmt(line.bookQuantity)}</td><td><input aria-label={`Фактична кількість ${line.itemName}`} type="number" min="0" step="any" required value={line.countedQuantity} onChange={e=>updateLine(index,{countedQuantity:e.target.value})}/></td><td>{fmt(discrepancy)}</td><td><input aria-label={`Причина ${line.itemName}`} value={line.reason} maxLength={500} onChange={e=>updateLine(index,{reason:e.target.value})}/></td><td><button type="button" onClick={()=>removeLine(index)}>Прибрати</button></td></tr>;})}</tbody></table></div>}
           <label>Коментар<input value={comment} onChange={e=>setComment(e.target.value)} maxLength={500} placeholder="Наприклад: планова інвентаризація"/></label>
           {lines.length>0&&<p><b>Попередня сумарна розбіжність:</b> {fmt(draftDiscrepancy)}. Остаточні облікові значення фіксує сервер.</p>}
