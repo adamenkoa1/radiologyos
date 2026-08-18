@@ -111,8 +111,9 @@ test("global search includes accession, protocol, equipment and maintenance for 
       VALUES (10,'ACC-XYZ-999','CT','linked','2026-09-01 10:00','admin@test')`).run();
     await db.prepare(`INSERT INTO protocols
       (booking_id, findings, conclusion, number, status, version, updated_by, signed_by, signed_at, signed_version)
-      VALUES (10,'Без особливостей','Унікальний висновок глобального пошуку','PR-777','issued',1,
+      VALUES (10,'Без особливостей','Унікальний висновок глобального пошуку','PR-777','signed',1,
         'admin@test','doctor@test',CURRENT_TIMESTAMP,1)`).run();
+    await db.prepare("UPDATE protocols SET status='issued' WHERE booking_id=10").run();
     await db.prepare(`INSERT INTO equipment_maintenance
       (organization_id,equipment_id,event_type,status,title,details,created_by)
       VALUES (1,'siemens-somatom','fault','open','Помилка E09 стабілізатора','Перевірити живлення','admin@test')`).run();
