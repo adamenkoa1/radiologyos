@@ -1185,6 +1185,5 @@ WHEN OLD.state='draft' AND OLD.basis_document_id IS NOT NEW.basis_document_id
   )
 BEGIN SELECT RAISE(ABORT,'business_document_basis_frozen'); END;
 --> statement-breakpoint
---> statement-breakpoint
 PRAGMA defer_foreign_keys = OFF;
 --> statement-breakpoint
