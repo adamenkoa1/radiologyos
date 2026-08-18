@@ -2,9 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
-function req(url,cookie,body,method="POST"){
-  return callWorker(jsonRequest(url,body,{method,headers:{cookie}}),globalThis.__RADIOLOGY_DB__);
-}
 async function api(db,url,cookie,body,method="POST"){
   return callWorker(jsonRequest(url,body,{method,headers:{cookie}}),db);
 }
