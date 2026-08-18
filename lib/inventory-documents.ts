@@ -15,6 +15,7 @@ export type InventoryDocumentLineInput = {
   supplierCounterpartyId?: number | null;
   reason?: string;
   bookingId?: number | null;
+  reservationMovementId?: number | null;
 };
 
 export type InventoryDocumentRow = {
@@ -48,6 +49,7 @@ export type InventoryDocumentLineRow = {
   quantity:number;
   reason:string;
   bookingId:number|null;
+  reservationMovementId:number|null;
 };
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -116,7 +118,8 @@ export async function getInventoryDocument(db:D1Database,organizationId:number,d
             item_id AS itemId,lot_id AS lotId,warehouse_id AS warehouseId,
             warehouse_code AS warehouseCode,warehouse_name AS warehouseName,
             lot_number AS lotNumber,expires_on AS expiresOn,
-            supplier,supplier_counterparty_id AS supplierCounterpartyId,quantity,reason,booking_id AS bookingId
+            supplier,supplier_counterparty_id AS supplierCounterpartyId,quantity,reason,booking_id AS bookingId,
+            reservation_movement_id AS reservationMovementId
      FROM inventory_document_lines
      WHERE organization_id=? AND document_id=? ORDER BY line_no,id`
   ).bind(organizationId,documentId).all<InventoryDocumentLineRow>();
@@ -153,7 +156,7 @@ export async function createInventoryDocument(
   const normalized:Array<Required<Pick<InventoryDocumentLineInput,"quantity">> & {
     itemId:number;lotId:number|null;warehouseId:number;warehouseCode:string;warehouseName:string;
     lotNumber:string;expiresOn:string;supplier:string;supplierCounterpartyId:number|null;
-    reason:string;bookingId:number|null;
+    reason:string;bookingId:number|null;reservationMovementId:number|null;
   }> = [];
 
   for (const source of input.lines) {
@@ -180,7 +183,7 @@ export async function createInventoryDocument(
       normalized.push({
         itemId,lotId:null,warehouseId:warehouse.id,warehouseCode:warehouse.code,warehouseName:warehouse.name,
         quantity:qty,lotNumber:text(source.lotNumber,100),expiresOn,supplier,supplierCounterpartyId,
-        reason:text(source.reason,500) || "Надходження",bookingId:null,
+        reason:text(source.reason,500) || "Надходження",bookingId:null,reservationMovementId:null,
       });
     } else {
       const lotId = intOrNull(source.lotId);
@@ -188,13 +191,14 @@ export async function createInventoryDocument(
       const found = await lot(db,input.organizationId,lotId);
       if (!found || !found.active) throw new Error("inventory_document_lot_not_found");
       const bookingId = intOrNull(source.bookingId);
+      const reservationMovementId = intOrNull(source.reservationMovementId);
       if (!(await bookingExists(db,input.organizationId,bookingId))) throw new Error("inventory_document_booking_not_found");
       const reason = text(source.reason,500);
       if (!reason) throw new Error("inventory_document_reason_required");
       normalized.push({
         itemId:found.itemId,lotId,warehouseId:warehouse.id,warehouseCode:warehouse.code,warehouseName:warehouse.name,
         quantity:qty,lotNumber:found.lotNumber,expiresOn:found.expiresOn,
-        supplier:found.supplier,supplierCounterpartyId:found.supplierCounterpartyId,reason,bookingId,
+        supplier:found.supplier,supplierCounterpartyId:found.supplierCounterpartyId,reason,bookingId,reservationMovementId,
       });
     }
   }
@@ -215,11 +219,11 @@ export async function createInventoryDocument(
     await db.batch(normalized.map((line,index)=>db.prepare(
       `INSERT INTO inventory_document_lines
         (organization_id,document_id,line_no,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,
-         lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id)
-       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+         lot_number,expires_on,supplier,supplier_counterparty_id,quantity,reason,booking_id,reservation_movement_id)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
     ).bind(
       input.organizationId,documentId,index+1,line.itemId,line.lotId,line.warehouseId,line.warehouseCode,line.warehouseName,
-      line.lotNumber,line.expiresOn,line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,
+      line.lotNumber,line.expiresOn,line.supplier,line.supplierCounterpartyId,line.quantity,line.reason,line.bookingId,line.reservationMovementId,
     )));
   } catch (error) {
     await db.prepare("DELETE FROM business_documents WHERE organization_id=? AND id=? AND state='draft'")
