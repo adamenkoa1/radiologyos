@@ -1,0 +1,2 @@
+ALTER TABLE `inventory_document_lines` ADD `reservation_movement_id` integer;--> statement-breakpoint
+CREATE INDEX `inventory_lines_reservation_idx` ON `inventory_document_lines` (`organization_id`,`reservation_movement_id`,`document_id`,`line_no`) WHERE `reservation_movement_id` IS NOT NULL;
