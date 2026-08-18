@@ -67,7 +67,7 @@ test("booking cancellation reverses current appointment without replacement; com
   await db.prepare("UPDATE bookings SET performed_at='2026-10-01T12:05:00',status='completed' WHERE organization_id=1 AND id=?").bind(completedId).run();
   const completed=appointments(raw,1,completedId); assert.equal(completed.length,1); assert.equal(completed[0].state,"posted");
   const service=raw.prepare(`SELECT d.basis_document_id AS basisDocumentId FROM service_delivery_details s JOIN business_documents d ON d.id=s.document_id AND d.organization_id=s.organization_id WHERE s.organization_id=1 AND s.booking_id=? LIMIT 1`).get(completedId);
-  assert.equal(service.basisDocumentId,orderFor(raw,1,completedId).id,"0095 must not change service-delivery Patient Order basis");
+  assert.equal(service.basisDocumentId,completed[0].id,"0097 must base execution on the posted Appointment");
  });
 });
 
