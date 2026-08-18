@@ -67,13 +67,5 @@ jobs:
             exit "$status"
           fi
 
-      - name: Upload failing test output
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: ci-test-output
-          path: test-output.log
-          if-no-files-found: error
-
       - name: Production release gate
         run: npm run test:production-gate
