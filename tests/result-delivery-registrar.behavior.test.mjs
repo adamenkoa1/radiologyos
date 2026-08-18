@@ -9,6 +9,11 @@ async function seedBooking(db,{
   performedAt="",
   assignedRadiologistEmail="result-doctor@example.com",
 }={}) {
+  await db.prepare(
+    `INSERT OR IGNORE INTO patient_profiles
+      (patient_id,organization_id,phone_normalized,display_name,updated_by)
+     VALUES ('PAT-RESULT-001',?,'380501112233','Result Patient','test:result-delivery')`
+  ).bind(organizationId).run();
   const result=await db.prepare(
     `INSERT INTO bookings (
       organization_id,code,name,phone,phone_normalized,patient_id,service,service_code,equipment_id,
