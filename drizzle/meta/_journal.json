@@ -92,6 +92,7 @@
     {"idx":88,"version":"6","when":1786942163000,"tag":"0088_staff_shift_calendar","breakpoints":true},
     {"idx":89,"version":"6","when":1786972048000,"tag":"0089_organization_integration_settings","breakpoints":true},
     {"idx":90,"version":"6","when":1786996867000,"tag":"0090_study_performance_registrar","breakpoints":true},
-    {"idx":91,"version":"6","when":1786998600000,"tag":"0091_study_performance_operational_ownership","breakpoints":true}
+    {"idx":91,"version":"6","when":1786998600000,"tag":"0091_study_performance_operational_ownership","breakpoints":true},
+    {"idx":92,"version":"6","when":1787027307427,"tag":"0092_result_delivery_registrar","breakpoints":true}
   ]
 }

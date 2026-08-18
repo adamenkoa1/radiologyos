@@ -23,8 +23,11 @@ async function seedIssuedProtocol(db, bookingId) {
     `INSERT INTO protocols
       (organization_id, booking_id, number, status, version, author_email, updated_by,
        findings, conclusion, signed_by, signed_at, signed_version)
-     VALUES (1, ?, 'PROTO-A', 'issued', 1, 'doctor@example.com', 'doctor@example.com',
+     VALUES (1, ?, 'PROTO-A', 'signed', 1, 'doctor@example.com', 'doctor@example.com',
        'Finding A', 'Result A', 'doctor@example.com', CURRENT_TIMESTAMP, 1)`,
+  ).bind(bookingId).run();
+  await db.prepare(
+    "UPDATE protocols SET status='issued' WHERE organization_id=1 AND booking_id=? AND status='signed'"
   ).bind(bookingId).run();
 }
 

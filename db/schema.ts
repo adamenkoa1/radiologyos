@@ -991,6 +991,31 @@ table => [
 	check("service_delivery_details_check_4", sql.raw("`charge_amount` >= 0")),
 ]);
 
+export const resultDeliveryDetails = sqliteTable("result_delivery_details", {
+	organizationId: integer("organization_id").notNull(),
+	documentId: integer("document_id").primaryKey().notNull(),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	patientId: text("patient_id").notNull().default(""),
+	serviceTitle: text("service_title").notNull(),
+	protocolNumber: text("protocol_number").notNull(),
+	protocolVersion: integer("protocol_version").notNull(),
+	signedBy: text("signed_by").notNull(),
+	signedAt: text("signed_at").notNull(),
+	deliveredBy: text("delivered_by").notNull(),
+	deliveredAt: text("delivered_at").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("result_delivery_booking_unique").on(table.organizationId, table.bookingId),
+	index("result_delivery_document_idx").on(table.organizationId, table.documentId),
+	foreignKey(() => ({
+			columns: [table.documentId, table.organizationId],
+			foreignColumns: [businessDocuments.id, businessDocuments.organizationId],
+			name: "result_delivery_details_document_id_organization_id_business_documents_id_organization_id_fk"
+		})),
+	check("result_delivery_details_check_1", sql.raw("`protocol_version` > 0")),
+]);
+
 export const servicesDeliveredMovements = sqliteTable("services_delivered_movements", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull(),
