@@ -1,1 +1,0 @@
-Inventory count UI follow-up only; no schema or production deploy changes.
