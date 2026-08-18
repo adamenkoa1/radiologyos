@@ -1016,6 +1016,35 @@ table => [
 	check("result_delivery_details_check_1", sql.raw("`protocol_version` > 0")),
 ]);
 
+export const resultAddendumDeliveryDetails = sqliteTable("result_addendum_delivery_details", {
+	organizationId: integer("organization_id").notNull(),
+	documentId: integer("document_id").primaryKey().notNull(),
+	addendumId: text("addendum_id").notNull().references(() => protocolAddenda.id),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	patientId: text("patient_id").notNull().default(""),
+	serviceTitle: text("service_title").notNull(),
+	baseProtocolNumber: text("base_protocol_number").notNull(),
+	baseProtocolVersion: integer("base_protocol_version").notNull(),
+	addendumVersion: integer("addendum_version").notNull(),
+	signedBy: text("signed_by").notNull(),
+	signedAt: text("signed_at").notNull(),
+	deliveredBy: text("delivered_by").notNull(),
+	deliveredAt: text("delivered_at").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("result_addendum_delivery_addendum_unique").on(table.organizationId, table.addendumId),
+	index("result_addendum_delivery_booking_idx").on(table.organizationId, table.bookingId, table.documentId),
+	index("result_addendum_delivery_document_idx").on(table.organizationId, table.documentId),
+	foreignKey(() => ({
+			columns: [table.documentId, table.organizationId],
+			foreignColumns: [businessDocuments.id, businessDocuments.organizationId],
+			name: "result_addendum_delivery_details_document_id_organization_id_business_documents_id_organization_id_fk"
+		})),
+	check("result_addendum_delivery_details_check_1", sql.raw("`base_protocol_version` > 0")),
+	check("result_addendum_delivery_details_check_2", sql.raw("`addendum_version` > 0")),
+]);
+
 export const servicesDeliveredMovements = sqliteTable("services_delivered_movements", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull(),

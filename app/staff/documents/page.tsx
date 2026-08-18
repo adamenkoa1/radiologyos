@@ -24,7 +24,7 @@ const TYPE_UK:Record<string,string>={
   service_correction:"Сторно послуги",payment:"Оплата",refund:"Повернення",
   inventory_receipt:"Надходження на склад",inventory_writeoff:"Списання зі складу",
   inventory_transfer:"Переміщення складу",inventory_count:"Інвентаризація",
-  study_performance:"Виконання дослідження",study_correction:"Сторно дослідження",result_delivery:"Видача результату",
+  study_performance:"Виконання дослідження",study_correction:"Сторно дослідження",result_delivery:"Видача результату",result_addendum_delivery:"Видача виправлення",
 };
 const STATE_UK:Record<string,string>={draft:"Чернетка",posted:"Проведено",reversed:"Сторновано",cancelled:"Скасовано"};
 const REL_UK:Record<string,string>={based_on:"На підставі",storno_of:"Сторно документа",refund_of:"Повернення за оплатою",reversal_of:"Сторно/реверс",storno:"Документ сторно",refund:"Документ повернення",reversal:"Реверс",source:"Підстава",related:"Пов’язаний"};
