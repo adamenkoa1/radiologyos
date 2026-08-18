@@ -1,0 +1,29 @@
+name: Patch study-correction journal context on PR
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.pull_request.head.ref == 'fix/study-correction-journal-context' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: fix/study-correction-journal-context
+      - name: Apply exact journal patch
+        run: python .github/scripts/patch-study-correction-journal.py
+      - name: Commit patch
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add lib/business-document-journal.ts app/staff/documents/page.tsx tests/business-document-journal.behavior.test.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'fix: show study correction context in journal'
+          git push origin HEAD:fix/study-correction-journal-context
