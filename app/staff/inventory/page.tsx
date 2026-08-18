@@ -26,6 +26,11 @@ const CATEGORY_UK:Record<string,string> = {
 const CATEGORY_OPTIONS = Object.entries(CATEGORY_UK);
 const STATE_UK:Record<DocumentState,string> = { draft:"Чернетка",posted:"Проведено",reversed:"Сторновано",cancelled:"Скасовано" };
 const TYPE_UK:Record<DocumentType,string> = { inventory_receipt:"Надходження матеріалів",inventory_writeoff:"Списання матеріалів" };
+const MOVEMENT_UK:Record<string,string> = {
+  receipt:"Надходження",writeoff:"Списання",
+  transfer_out:"Переміщення: вибуття",transfer_in:"Переміщення: надходження",
+  count_adjustment:"Інвентаризація",
+};
 function fmt(n:number) { return Number(n || 0).toLocaleString("uk-UA", { maximumFractionDigits:2 }); }
 function fmtDate(value:string) { const d=new Date(value); return Number.isNaN(d.getTime())?value:d.toLocaleString("uk-UA",{dateStyle:"short",timeStyle:"short"}); }
 
@@ -121,6 +126,17 @@ export default function InventoryPage() {
     } finally {setBusy(false);}
   }
 
+  function openMovementDocument(movement:Movement) {
+    if(!movement.documentId)return;
+    if(movement.movementType==="count_adjustment"){
+      window.location.assign(`/staff/inventory/counts?id=${movement.documentId}`);return;
+    }
+    if(movement.movementType==="transfer_out"||movement.movementType==="transfer_in"){
+      window.location.assign("/staff/inventory/transfers");return;
+    }
+    void openDocument(movement.documentId);
+  }
+
   async function createItem(e:React.FormEvent) {
     e.preventDefault();
     const ok=await postInventory({ action:"create_item", ...itemForm, minStock:Number(itemForm.minStock) },"Матеріал додано");
@@ -151,6 +167,7 @@ export default function InventoryPage() {
         <button className={mode==="stock"?"active":""} onClick={()=>setMode("stock")}>Залишки</button>
         <button className={mode==="documents"?"active":""} onClick={()=>setMode("documents")}>Документи <span className="inventoryTabCount">{documents.length}</span></button>
         <button className={mode==="movements"?"active":""} onClick={()=>setMode("movements")}>Рухи</button>
+        <button onClick={()=>window.location.assign("/staff/inventory/counts")}>Інвентаризація</button>
         <button onClick={()=>window.location.assign("/staff/warehouses")}>Склади</button>
       </div>
 
@@ -189,7 +206,7 @@ export default function InventoryPage() {
         </section>}
       </div>}
 
-      {mode === "movements" && <section className="inventoryMainTable movements"><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>останні {data.movements.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Склад</th><th>Матеріал / партія</th><th>Операція</th><th>Кількість</th><th>Документ</th><th>Причина</th><th>Хто</th></tr></thead><tbody>{data.movements.map(m=><tr key={m.id}><td>{m.createdAt}</td><td>{m.warehouseName||"Legacy"}<small>{m.warehouseCode}</small></td><td><b>{m.itemName}</b><small>{m.lotNumber || "без №"}</small></td><td>{m.movementType==="receipt"?"Надходження":"Списання"}</td><td className={`num ${m.quantityDelta<0?"negative":"positive"}`}>{m.quantityDelta>0?"+":""}{fmt(m.quantityDelta)} {m.unit}</td><td>{m.documentId?<button className="inventoryDocLink" onClick={()=>void openDocument(m.documentId!)}>#{m.documentId}</button>:<span className="legacyMovement">Legacy</span>}</td><td>{m.reason}{m.bookingId?<small>дослідження #{m.bookingId}</small>:null}</td><td>{m.actorEmail}</td></tr>)}</tbody></table></div></section>}
+      {mode === "movements" && <section className="inventoryMainTable movements"><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>останні {data.movements.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Склад</th><th>Матеріал / партія</th><th>Операція</th><th>Кількість</th><th>Документ</th><th>Причина</th><th>Хто</th></tr></thead><tbody>{data.movements.map(m=><tr key={m.id}><td>{m.createdAt}</td><td>{m.warehouseName||"Legacy"}<small>{m.warehouseCode}</small></td><td><b>{m.itemName}</b><small>{m.lotNumber || "без №"}</small></td><td>{MOVEMENT_UK[m.movementType]||m.movementType}</td><td className={`num ${m.quantityDelta<0?"negative":"positive"}`}>{m.quantityDelta>0?"+":""}{fmt(m.quantityDelta)} {m.unit}</td><td>{m.documentId?<button className="inventoryDocLink" onClick={()=>openMovementDocument(m)}>#{m.documentId}</button>:<span className="legacyMovement">Legacy</span>}</td><td>{m.reason}{m.bookingId?<small>дослідження #{m.bookingId}</small>:null}</td><td>{m.actorEmail}</td></tr>)}</tbody></table></div></section>}
     </>}
   </StaffWorkspaceShell>;
 }
