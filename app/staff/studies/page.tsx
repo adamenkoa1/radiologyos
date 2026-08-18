@@ -24,6 +24,11 @@ type Data = {
   features:{ dicomPacs:boolean };
 };
 type SavedView = { id:number; name:string; config:{ filter:string; equipment:string } };
+type PendingDelivery = {
+  kind:"protocol"|"addendum"; bookingId:number; bookingCode:string; patientName:string;
+  serviceTitle:string; documentNumber:string; version:number; signedBy:string; signedAt:string;
+  addendumId:string; baseProtocolVersion:number;
+};
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
@@ -54,13 +59,24 @@ export default function StudiesPage() {
   const [viewName,setViewName] = useState("");
   const [viewBusy,setViewBusy] = useState(false);
   const [contextStudy,setContextStudy] = useState<Study|null>(null);
+  const [pendingDeliveries,setPendingDeliveries] = useState<PendingDelivery[]>([]);
+  const [deliveryBusy,setDeliveryBusy] = useState("");
 
   async function load() {
-    const response = await fetch("/api/staff/studies", { cache:"no-store" });
+    const [response,deliveryResponse] = await Promise.all([
+      fetch("/api/staff/studies", { cache:"no-store" }),
+      fetch("/api/staff/result-deliveries", { cache:"no-store" }),
+    ]);
     const payload = await response.json() as Data & { error?:string };
     if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
     setData(payload);
     setStaff({ email:"", displayName:"", role:payload.role });
+    if (deliveryResponse.ok) {
+      const deliveries = await deliveryResponse.json() as { pending?:PendingDelivery[] };
+      setPendingDeliveries(deliveries.pending || []);
+    } else {
+      setPendingDeliveries([]);
+    }
     setError("");
   }
 
@@ -75,6 +91,27 @@ export default function StudiesPage() {
     const timer = window.setTimeout(() => { void load(); void loadSavedViews(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  async function deliverResult(item:PendingDelivery) {
+    const key=item.kind === "protocol" ? `protocol:${item.bookingId}` : `addendum:${item.addendumId}`;
+    setDeliveryBusy(key); setNotice("");
+    try {
+      const body=item.kind === "protocol"
+        ? {kind:item.kind,bookingId:item.bookingId,version:item.version}
+        : {kind:item.kind,addendumId:item.addendumId,version:item.version};
+      const response=await fetch("/api/staff/result-deliveries",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(body),
+      });
+      const payload=await response.json().catch(()=>({})) as {error?:string};
+      if(!response.ok){setNotice(payload.error||"Не вдалося видати результат");return;}
+      setNotice(item.kind === "protocol" ? "Протокол видано пацієнту." : "Виправлення до протоколу видано пацієнту.");
+      await load();
+    } catch {
+      setNotice("Помилка мережі — не вдалося видати результат");
+    } finally {
+      setDeliveryBusy("");
+    }
+  }
 
   async function transition(id:number, status:string) {
     if (!status) return;
@@ -185,8 +222,8 @@ export default function StudiesPage() {
 
   return <StaffWorkspaceShell
     active="studies"
-    title="Реєстр досліджень"
-    description="Усі дослідження організації з єдиним життєвим циклом: стан, обладнання, протокол і знімки в одному місці."
+    title="Видача результатів"
+    description="Підписані протоколи й виправлення до видачі пацієнту; нижче — єдиний реєстр досліджень без змішування адміністративної видачі з клінічним редагуванням."
     staffName={staff ? roleLabels[staff.role] : undefined}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
@@ -203,6 +240,34 @@ export default function StudiesPage() {
       </div>
 
       {notice && <p className="staffError" role="status" onClick={()=>setNotice("")}>{notice}</p>}
+
+      {pendingDeliveries.length > 0 ? <section aria-labelledby="pending-deliveries-title">
+        <div className="studiesOrgBar">
+          <span className="studiesOrgBadge" id="pending-deliveries-title">До видачі</span>
+          <small>{pendingDeliveries.length} підписаних документів · клінічний текст у цій черзі не відображається</small>
+        </div>
+        <div className="studiesTableWrap">
+          <table className="studiesTable">
+            <thead><tr>
+              <th>Тип</th><th>Код</th><th>Пацієнт</th><th>Дослідження</th><th>Документ</th><th>Підписав</th><th>Підписано</th><th>Дія</th>
+            </tr></thead>
+            <tbody>{pendingDeliveries.map((item)=>{
+              const key=item.kind === "protocol" ? `protocol:${item.bookingId}` : `addendum:${item.addendumId}`;
+              return <tr key={key}>
+                <td>{item.kind === "protocol" ? "Протокол" : "Виправлення"}</td>
+                <td className="studiesCode">{item.bookingCode}</td>
+                <td>{item.patientName || "—"}</td>
+                <td>{item.serviceTitle || "—"}</td>
+                <td>{item.documentNumber || "—"}{item.kind === "addendum" ? ` · v${item.version}` : ""}</td>
+                <td>{item.signedBy || "—"}</td>
+                <td>{item.signedAt || "—"}</td>
+                <td><button type="button" className="button compact" disabled={deliveryBusy===key}
+                  onClick={()=>void deliverResult(item)}>{deliveryBusy===key ? "Видаємо…" : "Видати пацієнту"}</button></td>
+              </tr>;
+            })}</tbody>
+          </table>
+        </div>
+      </section> : null}
 
       <div className="studiesToolbar" aria-label="Варіанти списку">
         <select value={selectedViewId||""} onChange={(e)=>applyView(Number(e.target.value))} aria-label="Мої варіанти списку">
