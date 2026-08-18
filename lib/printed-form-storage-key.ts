@@ -1,5 +1,5 @@
 export type PrintedFormStorageIdentity={organizationId:number;documentId:number;formType:string;templateVersion:number;documentState:string;sha256:string};
-const FORMS=new Set(["inventory_receipt","inventory_writeoff","payment_receipt","service_act"]);
+const FORMS=new Set(["inventory_receipt","inventory_writeoff","inventory_count","payment_receipt","service_act"]);
 const SHA=/^[a-f0-9]{64}$/;
 function state(value:string){const v=String(value||"unknown").trim().toLowerCase();return /^[a-z0-9_-]{1,32}$/.test(v)?v:"unknown";}
 export function printedFormStorageKey(s:PrintedFormStorageIdentity){
