@@ -89,6 +89,12 @@ test("unified journal exposes service, study performance, study correction, paym
     assert.equal(studyCorrection.state,"posted");
     assert.equal(studyCorrection.relationType,"based_on");
     assert.equal(studyCorrection.sourceDocumentId,performance.id);
+    assert.equal(studyCorrection.bookingId,seeded.bookingId);
+    assert.equal(studyCorrection.bookingCode,"RD-DOC-JOURNAL");
+    assert.equal(studyCorrection.patientName,"Journal Patient");
+    assert.equal(studyCorrection.patientId,performance.patientId);
+    assert.equal(studyCorrection.subject,"КТ ОГК");
+    assert.equal(studyCorrection.amount,0);
     assert.equal(payRow.journalType,"payment");
     assert.equal(refundRow.journalType,"refund");
     assert.equal(refundRow.sourceDocumentId,payment.documentId);
@@ -168,6 +174,13 @@ test("document structure shows canonical parents, children and exact register mo
     ));
     assert.equal(studyCorrectionDetail.document.state,"posted");
     assert.equal(studyCorrectionDetail.document.number,`КВ-${String(correction.document.id).padStart(6,"0")}`);
+    assert.equal(studyCorrectionDetail.document.bookingId,seeded.bookingId);
+    assert.equal(studyCorrectionDetail.document.bookingCode,"RD-DOC-STRUCT");
+    assert.equal(studyCorrectionDetail.document.patientName,"Journal Patient");
+    assert.equal(studyCorrectionDetail.document.patientId,performanceDetail.document.patientId);
+    assert.equal(studyCorrectionDetail.document.subject,"КТ ОГК");
+    assert.equal(studyCorrectionDetail.document.amount,0);
+    assert.equal(studyCorrectionDetail.document.sourceDocumentId,performanceRelation.id);
     assert.equal(studyCorrectionDetail.movements.corrections.length,1);
     assert.equal(studyCorrectionDetail.movements.corrections[0].sourceDocumentId,seeded.serviceDocumentId);
     assert.equal(studyCorrectionDetail.movements.revenue.length,0);
@@ -216,6 +229,15 @@ test("business document journal is tenant isolated for both list and detail",asy
     const foreign=await seedCompleted(db,raw,{organizationId:2,code:"RD-DOC-ORG2",amount:1900});
     const org1=await seedStaffSession(db,{email:"doc-org1@example.com",role:"registrar",organizationId:1});
     const org2=await seedStaffSession(db,{email:"doc-org2@example.com",role:"registrar",organizationId:2});
+    const foreignStorno=await storno(db,org2,foreign.serviceDocumentId);
+    assert.equal(foreignStorno.status,201);
+    const foreignPerformance=raw.prepare(
+      `SELECT id FROM business_documents WHERE organization_id=2 AND document_type='study_performance' AND basis_document_id=? LIMIT 1`,
+    ).get(foreign.serviceDocumentId);
+    const foreignStudyCorrection=raw.prepare(
+      `SELECT id FROM business_documents WHERE organization_id=2 AND document_type='study_correction' AND basis_document_id=? LIMIT 1`,
+    ).get(foreignPerformance.id);
+    assert.ok(foreignStudyCorrection?.id>0);
 
     const list1=await journal(db,org1);
     const body1=await list1.json();
@@ -223,6 +245,18 @@ test("business document journal is tenant isolated for both list and detail",asy
     assert.equal(body1.documents.some(
       row=>row.journalType==="study_performance" && row.sourceDocumentId===foreign.serviceDocumentId,
     ),false);
+    assert.equal(body1.documents.some(row=>row.id===foreignStudyCorrection.id),false);
+
+    const foreignStudyCorrectionDetail=await journal(db,org1,foreignStudyCorrection.id);
+    assert.equal(foreignStudyCorrectionDetail.status,404);
+    const ownStudyCorrectionDetail=await journal(db,org2,foreignStudyCorrection.id);
+    assert.equal(ownStudyCorrectionDetail.status,200);
+    const ownStudyCorrection=await ownStudyCorrectionDetail.json();
+    assert.equal(ownStudyCorrection.document.bookingId,foreign.bookingId);
+    assert.equal(ownStudyCorrection.document.bookingCode,"RD-DOC-ORG2");
+    assert.equal(ownStudyCorrection.document.patientName,"Journal Patient");
+    assert.equal(ownStudyCorrection.document.subject,"КТ ОГК");
+    assert.equal(ownStudyCorrection.document.amount,0);
 
     const foreignDetail=await journal(db,org1,foreign.serviceDocumentId);
     assert.equal(foreignDetail.status,404);
