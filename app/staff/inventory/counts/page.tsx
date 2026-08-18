@@ -15,6 +15,7 @@ type CountDetail={document:CountDoc;lines:CountLine[]};
 type DraftLine={warehouseId:number;lotId:number;itemId:number;itemName:string;lotNumber:string;unit:string;bookQuantity:number;countedQuantity:string;reason:string};
 type InventoryPayload={warehouses:Warehouse[];warehouseBalances:Balance[];lots:Lot[];items:Item[];staff:Staff;canManage:boolean;error?:string};
 type CountsPayload={documents:CountDoc[];staff:Staff;canManage:boolean;error?:string};
+type CountPrintPayload={snapshot?:{id:number};error?:string};
 
 function stateLabel(state:CountState){return state==="draft"?"Чернетка":state==="posted"?"Проведено":state==="cancelled"?"Скасовано":state==="reversed"?"Сторновано":state;}
 function fmt(value:number|undefined){return Number(value||0).toLocaleString("uk-UA",{maximumFractionDigits:3});}
@@ -32,6 +33,7 @@ export default function InventoryCountsPage(){
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   const [busy,setBusy]=useState(false);
+  const [printing,setPrinting]=useState(false);
 
   const load=useCallback(async()=>{
     const [inventoryResponse,countsResponse]=await Promise.all([
@@ -141,6 +143,20 @@ export default function InventoryCountsPage(){
     }finally{setBusy(false);}
   }
 
+  async function downloadPdf(){
+    if(!selected||printing)return;
+    setPrinting(true);setNotice("");
+    try{
+      const response=await fetch("/api/staff/inventory/counts/print",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({documentId:selected.document.id}),
+      });
+      const payload=await response.json().catch(()=>({})) as CountPrintPayload;
+      const snapshotId=Number(payload.snapshot?.id||0);
+      if(!response.ok||!Number.isInteger(snapshotId)||snapshotId<1){setNotice(`⚠ ${payload.error||"Не вдалося сформувати PDF"}`);return;}
+      window.location.assign(`/api/staff/printed-forms/pdf?snapshotId=${snapshotId}`);
+    }finally{setPrinting(false);}
+  }
+
   return <StaffWorkspaceShell active="inventory" title="Інвентаризація" description="Фіксація фактичних залишків із серверним знімком облікового балансу та контрольованим коригуванням при проведенні." staffName={inventory?.staff.displayName||inventory?.staff.email} staffRole={inventory?.staff.role}>
     {error&&<p className="financeError">{error}</p>}
     {!inventory&&!error&&<p className="financeLoading">Завантаження…</p>}
@@ -169,6 +185,7 @@ export default function InventoryCountsPage(){
 
         {selected&&<div className="inventoryOperations"><h3>{selected.document.number} · {stateLabel(selected.document.state)}</h3>
           <p><small>{fmtDate(selected.document.occurredAt)}{selected.document.comment?` · ${selected.document.comment}`:""}</small></p>
+          <div><button disabled={printing} type="button" onClick={()=>void downloadPdf()}>{printing?"Формування PDF…":"Завантажити PDF"}</button></div>
           <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал / партія</th><th>Склад</th><th>Облік</th><th>Факт</th><th>Δ</th></tr></thead><tbody>{selected.lines.map(line=><tr key={line.id}><td><b>{line.itemName}</b><small>{line.lotNumber||`lot #${line.lotId}`} · {line.itemUnit}</small></td><td>{line.warehouseName}</td><td>{fmt(line.bookQuantity)}</td><td>{fmt(line.countedQuantity)}</td><td>{fmt(line.discrepancyQuantity)}</td></tr>)}</tbody></table></div>
           {inventory.canManage&&selected.document.state==="draft"&&<div><button className="primary" disabled={busy} type="button" onClick={()=>void action("post")}>Провести коригування</button><button disabled={busy} type="button" onClick={()=>void action("cancel")}>Скасувати чернетку</button></div>}
         </div>}
