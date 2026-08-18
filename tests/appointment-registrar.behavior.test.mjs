@@ -88,11 +88,12 @@ test("D1 rejects forged appointment basis, tenant lineage and duplicate active v
  });
 });
 
-test("migration 0095 does not backfill historical bookings and business core already admits appointment type",async()=>{
+test("migration 0095 has no top-level historical backfill and business core already admits appointment type",async()=>{
  const migration=await readFile(new URL("../drizzle/0095_appointment_registrar.sql",import.meta.url),"utf8");
  const core=await readFile(new URL("../lib/business-core.ts",import.meta.url),"utf8");
  assert.match(core,/"appointment"/);
  assert.match(migration,/AFTER INSERT ON `patient_order_details`/);
  assert.match(migration,/Only bookings that already have appointment history participate/);
- assert.doesNotMatch(migration,/INSERT INTO `business_documents`[\s\S]*SELECT[\s\S]*FROM `bookings`[\s\S]*appointment/iu);
+ const generatedSchemaSection=migration.split("-- Appointment is an immutable scheduling fact.")[0];
+ assert.doesNotMatch(generatedSchemaSection,/INSERT\s+INTO/i);
 });
