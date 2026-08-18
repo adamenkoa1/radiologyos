@@ -44,6 +44,23 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Dump temporary business-document schema diagnostics
+        shell: bash
+        run: |
+          node --experimental-strip-types --input-type=module <<'NODE'
+          import { writeFileSync } from "node:fs";
+          import { freshDb } from "./tests/helpers/d1.mjs";
+          const { raw, close } = await freshDb();
+          try {
+            const table = raw.prepare("SELECT sql FROM sqlite_schema WHERE type='table' AND name='business_documents'").get();
+            const objects = raw.prepare("SELECT type,name,tbl_name,sql FROM sqlite_schema WHERE tbl_name='business_documents' AND type IN ('index','trigger') AND sql IS NOT NULL ORDER BY type,name").all();
+            const inbound = raw.prepare("SELECT name FROM sqlite_schema WHERE type='table' AND sql LIKE '%REFERENCES `business_documents`%' ORDER BY name").all();
+            writeFileSync('business-doc-schema.json', JSON.stringify({ table, objects, inbound }, null, 2));
+          } finally {
+            close();
+          }
+          NODE
+
       - name: Tests
         shell: bash
         run: |
@@ -68,11 +85,14 @@ jobs:
           fi
 
       - name: Upload temporary behavioral test diagnostics
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: tmp-0093-ci-test-output
-          path: test-output.log
+          path: |
+            test-output.log
+            business-doc-schema.json
+          if-no-files-found: warn
           retention-days: 1
 
       - name: Production release gate
