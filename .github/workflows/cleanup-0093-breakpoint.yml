@@ -1,0 +1,35 @@
+name: Cleanup 0093 breakpoint
+
+on:
+  push:
+    branches: [feature/study-correction-registrar]
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/study-correction-registrar
+      - name: Remove duplicate statement breakpoint
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('drizzle/0093_study_correction_registrar.sql')
+          text = path.read_text(encoding='utf-8')
+          duplicate = '--> statement-breakpoint\n--> statement-breakpoint\nPRAGMA defer_foreign_keys = OFF;'
+          replacement = '--> statement-breakpoint\nPRAGMA defer_foreign_keys = OFF;'
+          assert text.count(duplicate) == 1, 'unexpected 0093 final boundary shape'
+          path.write_text(text.replace(duplicate, replacement, 1), encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add drizzle/0093_study_correction_registrar.sql
+          git diff --cached --check
+          git commit -m 'chore: normalize 0093 statement boundary'
+          git push origin HEAD:feature/study-correction-registrar
