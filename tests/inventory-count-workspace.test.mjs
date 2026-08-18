@@ -45,7 +45,7 @@ test("inventory movement history labels and routes registrar documents by moveme
   assert.match(source,/count_adjustment:\"Інвентаризація\"/);
   assert.match(source,/transfer_out:\"Переміщення: вибуття\"/);
   assert.match(source,/transfer_in:\"Переміщення: надходження\"/);
-  assert.match(source,/\/staff\/inventory\/counts\?id=\$\{movement\.documentId\}/);
+  assert.ok(source.includes('/staff/inventory/counts?id=${movement.documentId}'));
   assert.match(source,/\/staff\/inventory\/transfers/);
   assert.match(source,/MOVEMENT_UK\[m\.movementType\]\|\|m\.movementType/);
 });
