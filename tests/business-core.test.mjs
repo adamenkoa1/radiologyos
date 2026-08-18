@@ -60,10 +60,11 @@ test("posted documents cannot be silently edited or cancelled", () => {
 });
 
 test("posting maps business documents to registers", () => {
-  assert.deepEqual(registersForDocument("payment"), ["cash", "patient_settlements"]);
-  assert.deepEqual(registersForDocument("refund"), ["cash", "patient_settlements"]);
+  assert.deepEqual(registersForDocument("payment"), ["cash", "patient_settlements", "receivables"]);
+  assert.deepEqual(registersForDocument("refund"), ["cash", "patient_settlements", "receivables"]);
   assert.equal(registersForDocument("refund").includes("revenue"), false, "money refund alone must not rewrite revenue");
   assert.ok(registersForDocument("service_delivery").includes("revenue"));
+  assert.ok(registersForDocument("service_delivery").includes("receivables"));
   assert.ok(registersForDocument("service_delivery").includes("equipment_load"));
   assert.ok(registersForDocument("inventory_writeoff").includes("inventory_balance"));
   assert.ok(registersForDocument("study_performance").includes("studies_performed"));
