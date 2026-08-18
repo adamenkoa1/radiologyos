@@ -189,11 +189,19 @@ BEGIN
 END;
 --> statement-breakpoint
 
--- Future issued rows must pass through the signed state. Existing issued protocols are unaffected
--- because creating these triggers does not rewrite historical rows.
+-- New issued rows must pass through the signed state. A narrow compatibility exception permits
+-- rehydrating a legacy protocol only when the booking already carried an issued projection before
+-- the protocol row is inserted. That does not represent a new delivery and therefore creates no
+-- result_delivery registrar. Existing issued protocols remain untouched.
 CREATE TRIGGER `result_delivery_no_direct_issued_insert`
 BEFORE INSERT ON `protocols`
 WHEN NEW.status='issued'
+  AND NOT EXISTS (
+    SELECT 1
+    FROM `bookings` b
+    WHERE b.id=NEW.booking_id AND b.organization_id=NEW.organization_id
+      AND b.protocol_status='issued' AND b.protocol_issued_at<>''
+  )
 BEGIN
   SELECT RAISE(ABORT,'protocol_issue_requires_signed_transition');
 END;
