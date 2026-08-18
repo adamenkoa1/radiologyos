@@ -74,6 +74,7 @@ const businessModules:BusinessModule[]=[
   { key:"inventory",label:"Склад",items:[
     {label:"Складський облік",href:"/staff/inventory",hint:"Залишки, надходження і списання"},
     {label:"Переміщення запасів",href:"/staff/inventory/transfers"},
+    {label:"Інвентаризація",href:"/staff/inventory/counts",hint:"Фактичні залишки та контрольовані коригування"},
     {label:"Склади",href:"/staff/warehouses"},
   ]},
   { key:"purchases",label:"Закупівлі",items:[
