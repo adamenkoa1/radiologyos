@@ -214,6 +214,12 @@ BEGIN SELECT RAISE(ABORT,'inventory_reservation_immutable'); END;
 CREATE TRIGGER `inventory_reserved_stock_floor`
 BEFORE INSERT ON `inventory_movements`
 WHEN NEW.quantity_delta<0 AND NEW.warehouse_id IS NOT NULL
+  AND COALESCE((
+    SELECT SUM(r.quantity_delta) FROM `inventory_reservation_movements` r
+    WHERE r.organization_id=NEW.organization_id
+      AND r.warehouse_id=NEW.warehouse_id
+      AND r.item_id=NEW.item_id
+  ),0) > 0.000001
 BEGIN
   SELECT CASE WHEN (
     COALESCE((
