@@ -38,10 +38,16 @@ const SUMMARY_SELECT=`
            WHEN d.reversed_document_id IS NOT NULL THEN 'reversal_of'
            ELSE ''
          END AS relationType,
-         (SELECT COUNT(*) FROM inventory_document_lines il
-          WHERE il.organization_id=d.organization_id AND il.document_id=d.id) AS lineCount,
-         COALESCE((SELECT SUM(il.quantity) FROM inventory_document_lines il
-          WHERE il.organization_id=d.organization_id AND il.document_id=d.id),0) AS totalQuantity
+         CASE WHEN d.document_type='inventory_count' THEN
+           (SELECT COUNT(*) FROM inventory_count_lines ic WHERE ic.organization_id=d.organization_id AND ic.document_id=d.id)
+         ELSE
+           (SELECT COUNT(*) FROM inventory_document_lines il WHERE il.organization_id=d.organization_id AND il.document_id=d.id)
+         END AS lineCount,
+         CASE WHEN d.document_type='inventory_count' THEN
+           COALESCE((SELECT SUM(ic.counted_quantity) FROM inventory_count_lines ic WHERE ic.organization_id=d.organization_id AND ic.document_id=d.id),0)
+         ELSE
+           COALESCE((SELECT SUM(il.quantity) FROM inventory_document_lines il WHERE il.organization_id=d.organization_id AND il.document_id=d.id),0)
+         END AS totalQuantity
   FROM business_documents d
   LEFT JOIN patient_order_details o
     ON o.document_id=d.id AND o.organization_id=d.organization_id
