@@ -37,6 +37,18 @@ export async function GET(request:Request){
       .bind(ctx.organizationId,id).all(),
   ]);
 
+  await audit(db,{
+    organizationId:ctx.organizationId,
+    actorEmail:ctx.member.email,
+    action:"study_context_viewed",
+    resource:"booking",
+    targetId:id,
+    details:{
+      commentCount:comments.results.length,
+      eventCount:events.results.length,
+      hasStaffNote:Boolean(note),
+    },
+  });
   return Response.json({booking,note:note||null,comments:comments.results,events:events.results,canComment:canWriteNotes(ctx.member.role)},
     {headers:{"cache-control":"no-store"}});
 }
