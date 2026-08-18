@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {readFile} from "node:fs/promises";
 import test from "node:test";
 import {renderPrintedFormHtml} from "../lib/printed-form-render/index.ts";
+import {printedFormStorageKey} from "../lib/printed-form-storage-key.ts";
 
 const read=(path)=>readFile(new URL(`../${path}`,import.meta.url),"utf8");
 const HASH="b".repeat(64);
@@ -20,6 +21,12 @@ test("inventory count renderer is quantity-only and escapes operator-entered tex
   assert.match(html,/Перерахунок &lt;b&gt;факт&lt;\/b&gt;/);
   assert.doesNotMatch(html,/<script>alert\(1\)<\/script>/);
   assert.doesNotMatch(html,/грн|Ціна|Сума|unitCost|lineAmount|totalAmount/i);
+});
+
+test("inventory count PDF storage keys are deterministic and tenant-separated",()=>{
+  const one=printedFormStorageKey(snapshot),same=printedFormStorageKey(snapshot),two=printedFormStorageKey({...snapshot,organizationId:2});
+  assert.equal(one,same);assert.notEqual(one,two);
+  assert.match(one,/^organizations\/1\/printed-forms\/88\/inventory_count\/posted\/v1\/[a-f0-9]{64}\.pdf$/);
 });
 
 test("inventory count snapshot source is tenant-scoped and uses dedicated count lines",async()=>{
