@@ -1,0 +1,39 @@
+name: Build result addendum delivery
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    if: github.event.pull_request.head.ref == 'feature/result-addendum-delivery' && github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          ref: feature/result-addendum-delivery
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+      - name: Patch Drizzle schema and read models
+        run: python .github/scripts/build-result-addendum-delivery.py pre
+      - name: Generate 0094 metadata
+        run: npm run db:generate
+      - name: Finalize 0094 and behavioral coverage
+        run: python .github/scripts/build-result-addendum-delivery.py post
+      - name: Commit generated block
+        shell: bash
+        run: |
+          git diff --check
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add db/schema.ts drizzle/0094_result_addendum_delivery.sql drizzle/meta/0094_snapshot.json drizzle/meta/_journal.json lib/business-document-journal.ts app/staff/documents/page.tsx tests/result-addendum-delivery-registrar.behavior.test.mjs
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: register issued addendum delivery'
+          git push origin HEAD:feature/result-addendum-delivery
