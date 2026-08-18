@@ -24,10 +24,10 @@ const TYPE_UK:Record<string,string>={
   service_correction:"Сторно послуги",payment:"Оплата",refund:"Повернення",
   inventory_receipt:"Надходження на склад",inventory_writeoff:"Списання зі складу",
   inventory_transfer:"Переміщення складу",inventory_count:"Інвентаризація",
-  study_performance:"Виконання дослідження",result_delivery:"Видача результату",
+  study_performance:"Виконання дослідження",study_correction:"Сторно дослідження",result_delivery:"Видача результату",
 };
 const STATE_UK:Record<string,string>={draft:"Чернетка",posted:"Проведено",reversed:"Сторновано",cancelled:"Скасовано"};
-const REL_UK:Record<string,string>={storno_of:"Сторно документа",refund_of:"Повернення за оплатою",reversal_of:"Сторно/реверс",storno:"Документ сторно",refund:"Документ повернення",reversal:"Реверс",source:"Підстава",related:"Пов’язаний"};
+const REL_UK:Record<string,string>={based_on:"На підставі",storno_of:"Сторно документа",refund_of:"Повернення за оплатою",reversal_of:"Сторно/реверс",storno:"Документ сторно",refund:"Документ повернення",reversal:"Реверс",source:"Підстава",related:"Пов’язаний"};
 const REGISTER_UK:Record<string,string>={
   cash:"Гроші",settlement:"Взаєморозрахунки",revenue:"Дохід",services:"Надані послуги",
   corrections:"Корекції послуг",equipment:"Навантаження обладнання",staff:"Виробіток персоналу",inventory:"Склад",
