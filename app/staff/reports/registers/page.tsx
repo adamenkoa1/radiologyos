@@ -62,6 +62,7 @@ export default function RegisterTurnoverPage(){
         <label><span>Від</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
         <label><span>До</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
+        <a className="excelButton" href="/staff/reports/receivables">Дебіторська заборгованість</a>
       </header>
       {error&&<p className="financeError">{error}</p>}
     </section>
