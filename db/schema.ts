@@ -831,8 +831,10 @@ export const inventoryDocumentLines = sqliteTable("inventory_document_lines", {
 	destinationWarehouseName: text("destination_warehouse_name").notNull().default(""),
 	unitCost: integer("unit_cost").notNull().default(0),
 	lineAmount: integer("line_amount").notNull().default(0),
+	reservationMovementId: integer("reservation_movement_id"),
 },
 table => [
+	index("inventory_lines_reservation_idx").on(table.organizationId, table.reservationMovementId, table.documentId, table.lineNo).where(sql.raw("`reservation_movement_id` IS NOT NULL")),
 	index("inventory_lines_destination_warehouse_idx").on(table.organizationId, table.destinationWarehouseId, table.documentId, table.lineNo).where(sql.raw("`destination_warehouse_id` IS NOT NULL")),
 	index("inventory_lines_warehouse_idx").on(table.organizationId, table.warehouseId, table.documentId, table.lineNo).where(sql.raw("`warehouse_id` IS NOT NULL")),
 	index("inventory_document_lines_supplier_idx").on(table.organizationId, table.supplierCounterpartyId, table.documentId).where(sql.raw("`supplier_counterparty_id` IS NOT NULL")),
