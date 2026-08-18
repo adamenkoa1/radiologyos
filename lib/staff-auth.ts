@@ -69,6 +69,13 @@ export function canManageProtocols(role: AccessRole) {
   return role === "admin" || role === "radiologist";
 }
 
+// Delivery is an administrative transition of already-signed immutable content.
+// Registrar gets this narrow authority without inheriting clinical edit/read
+// privileges from canManageProtocols().
+export function canDeliverResults(role: AccessRole) {
+  return role === "admin" || role === "registrar" || role === "radiologist";
+}
+
 // A clinical signature must identify an actual radiologist membership. Legacy
 // `admin` remains able to prepare and issue documents for compatibility, but is
 // deliberately not treated as a clinical signer.
