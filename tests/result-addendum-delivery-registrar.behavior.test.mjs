@@ -4,7 +4,7 @@ import { callWorker,jsonRequest,seedPatientSession,seedStaffSession,withD1 } fro
 
 const PHONE="380501119988";
 
-async function seedBooking(db,{code="RD-ADD-DELIVERY",organizationId=1,patientId="PAT-ADD-DELIVERY",doctor="add-delivery-doctor@example.com"}={}) {
+async function seedBooking(db,{code="RD-260925-1",organizationId=1,patientId="PAT-ADD-DELIVERY",doctor="add-delivery-doctor@example.com"}={}) {
   await db.prepare(`INSERT OR IGNORE INTO patient_profiles
     (patient_id,organization_id,phone_normalized,display_name,updated_by)
     VALUES (?,?,?,'Addendum Delivery Patient','test')`).bind(patientId,organizationId,PHONE).run();
@@ -79,14 +79,14 @@ test("issued addendum atomically creates immutable neutral result-delivery subty
   assert.equal(delivery.signedBy,doctorEmail); assert.equal(delivery.signedAt,signed.signedAt); assert.equal(delivery.deliveredBy,managerEmail); assert.equal(delivery.createdBy,managerEmail); assert.equal(delivery.postedBy,managerEmail); assert.equal(delivery.deliveredAt,delivery.postedAt);
   for(const table of ["cash_movements","patient_settlement_movements","revenue_movements","services_delivered_movements","service_correction_movements","equipment_load_movements","staff_output_movements","inventory_movements"]) assert.equal(movementCount(raw,table,delivery.id),0);
   const jr=await journal(db,registrar); assert.equal(jr.status,200); const list=await jr.json(); const row=list.documents.find(x=>x.id===delivery.id);
-  assert.equal(row.journalType,"result_addendum_delivery"); assert.equal(row.bookingId,bookingId); assert.equal(row.bookingCode,"RD-ADD-DELIVERY"); assert.equal(row.patientName,"Addendum Delivery Patient"); assert.equal(row.patientId,"PAT-ADD-DELIVERY"); assert.equal(row.subject,"КТ ОГК"); assert.equal(row.amount,0); assert.equal(row.sourceDocumentId,base.id); assert.equal(row.relationType,"based_on");
+  assert.equal(row.journalType,"result_addendum_delivery"); assert.equal(row.bookingId,bookingId); assert.equal(row.bookingCode,"RD-260925-1"); assert.equal(row.patientName,"Addendum Delivery Patient"); assert.equal(row.patientId,"PAT-ADD-DELIVERY"); assert.equal(row.subject,"КТ ОГК"); assert.equal(row.amount,0); assert.equal(row.sourceDocumentId,base.id); assert.equal(row.relationType,"based_on");
   const detailResponse=await journal(db,registrar,delivery.id); assert.equal(detailResponse.status,200); const detail=await detailResponse.json(); assert.ok(detail.relations.parent.some(x=>x.id===base.id && x.relationType==="based_on"));
   await assert.rejects(db.prepare("UPDATE result_addendum_delivery_details SET service_title='tamper' WHERE document_id=?").bind(delivery.id).run(),/snapshot_immutable/i);
   await assert.rejects(db.prepare("DELETE FROM result_addendum_delivery_details WHERE document_id=?").bind(delivery.id).run(),/snapshot_immutable/i);
   await assert.rejects(db.prepare("UPDATE business_documents SET state='reversed' WHERE id=?").bind(delivery.id).run(),/result_delivery_document_immutable/i);
   await assert.rejects(db.prepare(`INSERT INTO business_documents (organization_id,document_type,number,occurred_at,state,comment,created_by,posted_by,posted_at,basis_document_id) VALUES (1,'result_delivery',?,CURRENT_TIMESTAMP,'posted','Видача виправлення до протоколу пацієнту',?,?,CURRENT_TIMESTAMP,?)`).bind(delivery.number,managerEmail,managerEmail,base.id).run(),/UNIQUE constraint failed/i);
-  const patient=await seedPatientSession(db,PHONE,1,{kind:"booking",value:"RD-ADD-DELIVERY"},"PAT-ADD-DELIVERY");
-  const pr=await callWorker(jsonRequest("/api/my-protocol",{code:"RD-ADD-DELIVERY"},{method:"POST",headers:{cookie:patient}}),db); assert.equal(pr.status,200); const pb=await pr.json(); assert.equal(pb.protocol.addenda.some(a=>a.id===id),true);
+  const patient=await seedPatientSession(db,PHONE,1,{kind:"booking",value:"RD-260925-1"},"PAT-ADD-DELIVERY");
+  const pr=await callWorker(jsonRequest("/api/my-protocol",{code:"RD-260925-1"},{method:"POST",headers:{cookie:patient}}),db); assert.equal(pr.status,200); const pb=await pr.json(); assert.equal(pb.protocol.addenda.some(a=>a.id===id),true);
  });
 });
 
