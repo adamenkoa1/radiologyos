@@ -26,6 +26,16 @@ function orderFor(raw,organizationId,bookingId){
   ).get(organizationId,bookingId);
 }
 
+function appointmentFor(raw,organizationId,bookingId){
+  return raw.prepare(
+    `SELECT d.id,d.state,a.appointment_version AS version
+     FROM appointment_details a
+     JOIN business_documents d ON d.id=a.document_id AND d.organization_id=a.organization_id
+     WHERE a.organization_id=? AND a.booking_id=? AND d.document_type='appointment' AND d.state='posted'
+     ORDER BY a.appointment_version DESC LIMIT 1`
+  ).get(organizationId,bookingId);
+}
+
 async function pay(db,cookie,bookingId,reference="ORDER-PAY"){
   return callWorker(jsonRequest("/api/staff/payments",{
     bookingId,method:"bank_transfer",providerReference:reference,
@@ -113,7 +123,7 @@ test("draft Patient Order follows commercial booking terms, then payment posts a
   });
 });
 
-test("study completion posts the Patient Order first and service delivery is based on that root",async()=>{
+test("study completion posts the Patient Order and routes execution through the posted Appointment",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-ORDER-SERVICE",amount:3100});
     const draft=orderFor(raw,1,bookingId);
@@ -131,7 +141,9 @@ test("study completion posts the Patient Order first and service delivery is bas
        WHERE d.organization_id=1 AND s.booking_id=? AND d.document_type='service_delivery'`
     ).get(bookingId);
     assert.equal(service.state,"posted");
-    assert.equal(service.basisDocumentId,order.id);
+    const appointment=appointmentFor(raw,1,bookingId); assert.ok(appointment?.id>0);
+    assert.equal(service.basisDocumentId,appointment.id);
+    assert.notEqual(service.basisDocumentId,order.id);
     assert.match(service.number,/^НП-\d{6}$/);
   });
 });
@@ -162,7 +174,8 @@ test("refund and service storno keep immediate basis while Patient Order remains
        FROM business_documents d JOIN service_delivery_details s ON s.document_id=d.id AND s.organization_id=d.organization_id
        WHERE s.organization_id=1 AND s.booking_id=? AND d.document_type='service_delivery'`
     ).get(bookingId);
-    assert.equal(service.basisDocumentId,order.id);
+    const appointment=appointmentFor(raw,1,bookingId); assert.ok(appointment?.id>0);
+    assert.equal(service.basisDocumentId,appointment.id);
 
     const stornoResponse=await storno(db,cookie,service.id);
     assert.equal(stornoResponse.status,201);
@@ -175,7 +188,7 @@ test("refund and service storno keep immediate basis while Patient Order remains
   });
 });
 
-test("unified document structure exposes Patient Order -> payment/service -> refund/storno chain",async()=>{
+test("unified document structure exposes Patient Order -> Appointment -> service while finance stays rooted in the order",async()=>{
   await withD1(async(db,raw)=>{
     const bookingId=await seedBooking(db,{code:"RD-ORDER-JOURNAL",amount:2900});
     const cookie=await seedStaffSession(db,{email:"order-journal@example.com",role:"registrar",organizationId:1});
@@ -191,6 +204,7 @@ test("unified document structure exposes Patient Order -> payment/service -> ref
     ).get(bookingId);
     const stornoResponse=await storno(db,cookie,service.id);const correction=await stornoResponse.json();
     const order=orderFor(raw,1,bookingId);
+    const appointment=appointmentFor(raw,1,bookingId); assert.ok(appointment?.id>0);
 
     const rootResponse=await journal(db,cookie,order.id);
     assert.equal(rootResponse.status,200);
@@ -199,14 +213,19 @@ test("unified document structure exposes Patient Order -> payment/service -> ref
     assert.equal(root.document.bookingCode,"RD-ORDER-JOURNAL");
     assert.equal(root.document.amount,2900);
     assert.ok(root.relations.children.some(row=>row.id===payment.documentId&&row.relationType==="based_on"));
-    assert.ok(root.relations.children.some(row=>row.id===service.id&&row.relationType==="based_on"));
+    assert.ok(root.relations.children.some(row=>row.id===appointment.id&&row.relationType==="based_on"));
+    assert.ok(!root.relations.children.some(row=>row.id===service.id&&row.relationType==="based_on"));
 
     const paymentDetail=await (await journal(db,cookie,payment.documentId)).json();
     assert.ok(paymentDetail.relations.parent.some(row=>row.id===order.id&&row.relationType==="based_on"));
     assert.ok(paymentDetail.relations.children.some(row=>row.id===returned.documentId&&row.relationType==="refund"));
 
+    const appointmentDetail=await (await journal(db,cookie,appointment.id)).json();
+    assert.ok(appointmentDetail.relations.parent.some(row=>row.id===order.id&&row.relationType==="based_on"));
+    assert.ok(appointmentDetail.relations.children.some(row=>row.id===service.id&&row.relationType==="based_on"));
+
     const serviceDetail=await (await journal(db,cookie,service.id)).json();
-    assert.ok(serviceDetail.relations.parent.some(row=>row.id===order.id&&row.relationType==="based_on"));
+    assert.ok(serviceDetail.relations.parent.some(row=>row.id===appointment.id&&row.relationType==="based_on"));
     assert.ok(serviceDetail.relations.children.some(row=>row.id===correction.document.id&&row.relationType==="storno"));
   });
 });
