@@ -47,9 +47,9 @@ async function settlementTurnover(db:D1Database,organizationId:number,period:Reg
   return {opening,increase,decrease,net:increase-decrease,closing};
 }
 
-// Compatibility projection for the canonical studies_performed register. Until the dedicated
-// study_performance registrar owns these facts, performed-study counts are the immutable union
-// of positive service-delivery movements and their explicit storno movements.
+// Canonical studies_performed read model. Historical positives may still reference service_delivery,
+// while new positives are owned by study_performance and new operational storno rows by study_correction.
+// The append-only movement union intentionally spans all three eras without rewriting history.
 async function performedStudyTurnover(db:D1Database,organizationId:number,period:RegisterPeriod) {
   const row=await db.prepare(
     `SELECT

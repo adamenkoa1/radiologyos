@@ -47,7 +47,7 @@ async function journal(db,cookie,id=null) {
   return callWorker(new Request(`http://localhost/api/staff/business-documents${suffix}`,{headers:{cookie}}),db);
 }
 
-test("unified journal exposes service, study performance, payment, refund and storno as one tenant-scoped document stream",async()=>{
+test("unified journal exposes service, study performance, study correction, payment, refund and storno as one tenant-scoped document stream",async()=>{
   await withD1(async(db,raw)=>{
     const seeded=await seedCompleted(db,raw);
     const cookie=await seedStaffSession(db,{email:"doc-journal@example.com",role:"registrar",organizationId:1});
@@ -69,6 +69,7 @@ test("unified journal exposes service, study performance, payment, refund and st
 
     const service=rows.find(row=>row.id===seeded.serviceDocumentId);
     const performance=rows.find(row=>row.journalType==="study_performance" && row.sourceDocumentId===seeded.serviceDocumentId);
+    const studyCorrection=rows.find(row=>row.journalType==="study_correction" && row.sourceDocumentId===performance?.id);
     const payRow=rows.find(row=>row.id===payment.documentId);
     const refundRow=rows.find(row=>row.id===returned.documentId);
     const stornoRow=rows.find(row=>row.id===correction.document.id);
@@ -84,6 +85,10 @@ test("unified journal exposes service, study performance, payment, refund and st
     assert.equal(performance.subject,"КТ ОГК");
     assert.equal(performance.amount,0);
     assert.equal(performance.relationType,"based_on");
+    assert.ok(studyCorrection?.id>0);
+    assert.equal(studyCorrection.state,"posted");
+    assert.equal(studyCorrection.relationType,"based_on");
+    assert.equal(studyCorrection.sourceDocumentId,performance.id);
     assert.equal(payRow.journalType,"payment");
     assert.equal(refundRow.journalType,"refund");
     assert.equal(refundRow.sourceDocumentId,payment.documentId);
@@ -127,6 +132,10 @@ test("document structure shows canonical parents, children and exact register mo
     assert.ok(performanceDetail.relations.parent.some(
       row=>row.id===seeded.serviceDocumentId && row.relationType==="based_on",
     ));
+    const studyCorrectionRelation=performanceDetail.relations.children.find(
+      row=>row.documentType==="study_correction" && row.relationType==="based_on",
+    );
+    assert.ok(studyCorrectionRelation?.id>0);
     assert.equal(performanceDetail.document.state,"reversed");
     assert.equal(performanceDetail.document.bookingId,seeded.bookingId);
     assert.equal(performanceDetail.document.bookingCode,"RD-DOC-STRUCT");
@@ -144,12 +153,28 @@ test("document structure shows canonical parents, children and exact register mo
     assert.equal(correctionDetailResponse.status,200);
     const correctionDetail=await correctionDetailResponse.json();
     assert.ok(correctionDetail.relations.parent.some(row=>row.id===seeded.serviceDocumentId && row.relationType==="storno_of"));
-    assert.equal(correctionDetail.movements.corrections.length,1);
+    assert.equal(correctionDetail.movements.corrections.length,0);
     assert.equal(correctionDetail.movements.revenue[0].amountDelta,-2700);
     assert.equal(correctionDetail.movements.settlement[0].amountDelta,-2700);
-    assert.equal(correctionDetail.movements.equipment[0].minutesDelta,-30);
-    assert.equal(correctionDetail.movements.staff.length,2);
+    assert.equal(correctionDetail.movements.equipment.length,0);
+    assert.equal(correctionDetail.movements.staff.length,0);
     assert.equal(correctionDetail.movements.cash.length,0);
+
+    const studyCorrectionDetailResponse=await journal(db,cookie,studyCorrectionRelation.id);
+    assert.equal(studyCorrectionDetailResponse.status,200);
+    const studyCorrectionDetail=await studyCorrectionDetailResponse.json();
+    assert.ok(studyCorrectionDetail.relations.parent.some(
+      row=>row.id===performanceRelation.id && row.relationType==="based_on",
+    ));
+    assert.equal(studyCorrectionDetail.document.state,"posted");
+    assert.equal(studyCorrectionDetail.document.number,`КВ-${String(correction.document.id).padStart(6,"0")}`);
+    assert.equal(studyCorrectionDetail.movements.corrections.length,1);
+    assert.equal(studyCorrectionDetail.movements.corrections[0].sourceDocumentId,seeded.serviceDocumentId);
+    assert.equal(studyCorrectionDetail.movements.revenue.length,0);
+    assert.equal(studyCorrectionDetail.movements.settlement.length,0);
+    assert.equal(studyCorrectionDetail.movements.equipment[0].minutesDelta,-30);
+    assert.equal(studyCorrectionDetail.movements.staff.length,2);
+    assert.equal(studyCorrectionDetail.movements.cash.length,0);
 
     const paymentDetailResponse=await journal(db,cookie,payment.documentId);
     const paymentDetail=await paymentDetailResponse.json();

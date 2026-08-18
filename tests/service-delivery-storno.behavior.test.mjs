@@ -36,11 +36,16 @@ async function pay(db,cookie,bookingId,reference="STORNO-PAY") {
   },{headers:{cookie}}),db);
 }
 
-test("storno posts a separate correction and nets revenue, settlement, equipment and staff output",async()=>{
+test("storno splits economic and operational correction ownership while netting all registers",async()=>{
   await withD1(async(db,raw)=>{
     const seeded=await seedCompleted(db,raw);
-    const cookie=await seedStaffSession(db,{email:"storno@example.com",role:"registrar",organizationId:1});
+    const performance=raw.prepare(
+      `SELECT id FROM business_documents
+       WHERE organization_id=1 AND document_type='study_performance' AND basis_document_id=? LIMIT 1`
+    ).get(seeded.sourceDocumentId);
+    assert.ok(performance?.id>0);
 
+    const cookie=await seedStaffSession(db,{email:"storno@example.com",role:"registrar",organizationId:1});
     const response=await storno(db,cookie,seeded.sourceDocumentId);
     assert.equal(response.status,201);
     const body=await response.json();
@@ -52,9 +57,19 @@ test("storno posts a separate correction and nets revenue, settlement, equipment
     const correction=raw.prepare(
       "SELECT state,reversed_document_id AS sourceDocumentId FROM business_documents WHERE id=?"
     ).get(body.document.id);
+    const studyCorrection=raw.prepare(
+      `SELECT id,number,state,basis_document_id AS basisDocumentId,reversed_document_id AS reversedDocumentId
+       FROM business_documents
+       WHERE organization_id=1 AND document_type='study_correction' AND basis_document_id=? LIMIT 1`
+    ).get(performance.id);
     assert.equal(source.state,"reversed");
     assert.equal(correction.state,"posted");
     assert.equal(correction.sourceDocumentId,seeded.sourceDocumentId);
+    assert.ok(studyCorrection?.id>0);
+    assert.equal(studyCorrection.number,`КВ-${String(body.document.id).padStart(6,"0")}`);
+    assert.equal(studyCorrection.state,"posted");
+    assert.equal(studyCorrection.basisDocumentId,performance.id);
+    assert.equal(studyCorrection.reversedDocumentId,performance.id);
 
     const revenue=raw.prepare(
       "SELECT COUNT(*) AS n,SUM(amount_delta) AS total FROM revenue_movements WHERE organization_id=1 AND booking_id=?"
@@ -83,11 +98,26 @@ test("storno posts a separate correction and nets revenue, settlement, equipment
     const correctionMovement=raw.prepare(
       `SELECT quantity_delta AS quantityDelta,anatomical_regions_delta AS regionsDelta,reason
        FROM service_correction_movements WHERE organization_id=1 AND document_id=?`
-    ).get(body.document.id);
+    ).get(studyCorrection.id);
     assert.equal(correctionMovement.quantityDelta,-1);
     assert.equal(correctionMovement.regionsDelta,-2);
     assert.match(correctionMovement.reason,/Помилково/);
 
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM service_correction_movements WHERE organization_id=1 AND document_id=?"
+    ).get(body.document.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM equipment_load_movements WHERE organization_id=1 AND document_id=?"
+    ).get(body.document.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM staff_output_movements WHERE organization_id=1 AND document_id=?"
+    ).get(body.document.id).n,0);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM revenue_movements WHERE organization_id=1 AND document_id=?"
+    ).get(body.document.id).n,1);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM patient_settlement_movements WHERE organization_id=1 AND document_id=?"
+    ).get(body.document.id).n,1);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM cash_movements WHERE organization_id=1 AND booking_id=?").get(seeded.bookingId).n,0);
 
     const again=await storno(db,cookie,seeded.sourceDocumentId,"Інша причина не повинна створити другий документ");
@@ -96,6 +126,9 @@ test("storno posts a separate correction and nets revenue, settlement, equipment
     assert.equal(againBody.document.created,false);
     assert.equal(againBody.document.id,body.document.id);
     assert.equal(raw.prepare("SELECT COUNT(*) AS n FROM service_correction_details WHERE organization_id=1 AND source_document_id=?").get(seeded.sourceDocumentId).n,1);
+    assert.equal(raw.prepare(
+      "SELECT COUNT(*) AS n FROM business_documents WHERE organization_id=1 AND document_type='study_correction' AND basis_document_id=?"
+    ).get(performance.id).n,1);
   });
 });
 
@@ -179,8 +212,6 @@ test("tenant and role scope prevent foreign or clinical-only storno",async()=>{
 test("D1 rejects forged negative register movement without a posted correction registrar",async()=>{
   await withD1(async(db,raw)=>{
     const seeded=await seedCompleted(db,raw,{code:"RD-STORNO-FORGE",amount:2700});
-    // The storno precondition is stronger than the generic revenue registrar guard: a negative
-    // correction movement is rejected immediately unless the exact source is already reversed.
     assert.throws(()=>raw.prepare(
       `INSERT INTO revenue_movements
        (organization_id,document_id,booking_id,patient_id,service_code,movement_type,amount_delta,currency,actor_email)
