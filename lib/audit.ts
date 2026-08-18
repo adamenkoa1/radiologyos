@@ -53,6 +53,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   profile_security_update: "Змінено параметри безпеки профілю",
   report_viewed: "Переглянуто звіт",
   report_exported: "Експортовано звіт",
+  service_material_requirement_created: "Створено норму матеріалів",
+  service_material_requirement_deactivated: "Деактивовано норму матеріалів",
 };
 
 export function auditLabel(action: string): string {

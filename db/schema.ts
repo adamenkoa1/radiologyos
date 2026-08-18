@@ -1388,6 +1388,54 @@ table => [
 	check("supplier_payment_allocations_check_1", sql.raw("`amount` > 0")),
 ]);
 
+export const serviceMaterialRequirements = sqliteTable("service_material_requirements", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().references(() => organizations.id),
+	serviceCode: text("service_code").notNull(),
+	itemId: integer("item_id").notNull().references(() => inventoryItems.id),
+	warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+	quantity: real().notNull(),
+	active: integer().notNull().default(1),
+	createdBy: text("created_by").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedBy: text("updated_by").notNull(),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("service_material_requirements_service_idx").on(table.organizationId, table.serviceCode, table.active, table.id),
+	uniqueIndex("service_material_requirements_active_unique").on(table.organizationId, table.serviceCode, table.itemId, table.warehouseId).where(sql.raw("`active` = 1")),
+	check("service_material_requirements_check_1", sql.raw("length(trim(`service_code`)) > 0")),
+	check("service_material_requirements_check_2", sql.raw("`quantity` > 0")),
+	check("service_material_requirements_check_3", sql.raw("`active` IN (0,1)")),
+]);
+
+export const inventoryReservationMovements = sqliteTable("inventory_reservation_movements", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().references(() => organizations.id),
+	appointmentDocumentId: integer("appointment_document_id").notNull(),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	requirementId: integer("requirement_id").notNull().references(() => serviceMaterialRequirements.id),
+	serviceCode: text("service_code").notNull(),
+	itemId: integer("item_id").notNull().references(() => inventoryItems.id),
+	warehouseId: integer("warehouse_id").notNull().references(() => warehouses.id),
+	movementType: text("movement_type").notNull(),
+	quantityDelta: real("quantity_delta").notNull(),
+	actorEmail: text("actor_email").notNull(),
+	occurredAt: text("occurred_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("inventory_reservation_exact_movement_unique").on(table.organizationId, table.appointmentDocumentId, table.requirementId, table.movementType),
+	index("inventory_reservation_balance_idx").on(table.organizationId, table.warehouseId, table.itemId, table.id),
+	index("inventory_reservation_booking_idx").on(table.organizationId, table.bookingId, table.id),
+	foreignKey(() => ({
+		columns: [table.appointmentDocumentId, table.organizationId],
+		foreignColumns: [businessDocuments.id, businessDocuments.organizationId],
+		name: "inventory_reservation_appointment_tenant_fk"
+	})),
+	check("inventory_reservation_movements_check_1", sql.raw("`movement_type` IN ('reserve','release')")),
+	check("inventory_reservation_movements_check_2", sql.raw("(`movement_type`='reserve' AND `quantity_delta` > 0) OR (`movement_type`='release' AND `quantity_delta` < 0)")),
+]);
+
 export const expenseMovements = sqliteTable("expense_movements", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().default(1),
