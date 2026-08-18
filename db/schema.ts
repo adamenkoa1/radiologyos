@@ -1583,3 +1583,22 @@ table => [
 	primaryKey({ columns: [table.organizationId, table.key], name: "organization_integration_settings_organization_id_key_pk"})
 ]);
 
+
+
+export const savedReportViews = sqliteTable("saved_report_views", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull(),
+	reportKey: text("report_key").notNull().default("register_turnover"),
+	name: text().notNull(),
+	configurationJson: text("configuration_json").notNull().default("{}"),
+	createdBy: text("created_by").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedBy: text("updated_by").notNull(),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("saved_report_views_org_report_name_unique").on(table.organizationId, table.reportKey, table.name),
+	index("saved_report_views_org_report_idx").on(table.organizationId, table.reportKey, table.updatedAt, table.id),
+	check("saved_report_views_report_key_check", sql.raw("`report_key` = 'register_turnover'")),
+	check("saved_report_views_name_check", sql.raw("length(trim(`name`)) BETWEEN 1 AND 80")),
+]);
