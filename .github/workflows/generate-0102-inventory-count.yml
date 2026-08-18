@@ -1,0 +1,87 @@
+name: Generate 0102 inventory count metadata
+
+on:
+  push:
+    branches: [feature/inventory-count-registrar]
+    paths: [.github/workflows/generate-0102-inventory-count.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - name: Install dependencies deterministically
+        run: npm run install:ci
+      - name: Add inventory count schema
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs=require('node:fs');
+          const path='db/schema.ts';
+          let source=fs.readFileSync(path,'utf8');
+          if(source.includes('export const inventoryCountLines = sqliteTable')) process.exit(0);
+          const anchor='export const printedFormSnapshots = sqliteTable("printed_form_snapshots", {';
+          if(!source.includes(anchor)) throw new Error('schema anchor not found');
+          const definition=`export const inventoryCountLines = sqliteTable("inventory_count_lines", {
+          \tid: integer().primaryKey({ autoIncrement: true }).notNull(),
+          \torganizationId: integer("organization_id").notNull(),
+          \tdocumentId: integer("document_id").notNull(),
+          \tlineNo: integer("line_no").notNull(),
+          \titemId: integer("item_id").notNull().references(() => inventoryItems.id),
+          \tlotId: integer("lot_id").notNull().references(() => inventoryLots.id),
+          \twarehouseId: integer("warehouse_id").notNull(),
+          \twarehouseCode: text("warehouse_code").notNull().default(""),
+          \twarehouseName: text("warehouse_name").notNull().default(""),
+          \titemName: text("item_name").notNull().default(""),
+          \titemUnit: text("item_unit").notNull().default(""),
+          \tlotNumber: text("lot_number").notNull().default(""),
+          \tbookQuantity: real("book_quantity").notNull(),
+          \tcountedQuantity: real("counted_quantity").notNull(),
+          \treason: text().notNull().default(""),
+          },
+          table => [
+          \tuniqueIndex("inventory_count_lines_doc_line_idx").on(table.organizationId, table.documentId, table.lineNo),
+          \tuniqueIndex("inventory_count_lines_bucket_unique").on(table.organizationId, table.documentId, table.warehouseId, table.lotId),
+          \tindex("inventory_count_lines_warehouse_idx").on(table.organizationId, table.warehouseId, table.itemId, table.documentId),
+          \tforeignKey(() => ({
+          \t\tcolumns: [table.documentId, table.organizationId],
+          \t\tforeignColumns: [businessDocuments.id, businessDocuments.organizationId],
+          \t\tname: "inventory_count_lines_document_id_organization_id_business_documents_id_organization_id_fk"
+          \t})),
+          \tcheck("inventory_count_lines_book_nonnegative", sql.raw("book_quantity >= 0")),
+          \tcheck("inventory_count_lines_counted_nonnegative", sql.raw("counted_quantity >= 0")),
+          ]);`;
+          source=source.replace(anchor,definition+'\n\n'+anchor);
+          fs.writeFileSync(path,source);
+          NODE
+      - name: Generate Drizzle migration and snapshot
+        run: npm run db:generate
+      - name: Canonicalize migration name
+        shell: bash
+        run: |
+          generated="$(find drizzle -maxdepth 1 -type f -name '0102_*.sql' | head -n 1)"
+          test -n "$generated"
+          mv "$generated" drizzle/0102_inventory_count_registrar.sql
+          node <<'NODE'
+          const fs=require('node:fs');
+          const path='drizzle/meta/_journal.json';
+          const journal=JSON.parse(fs.readFileSync(path,'utf8'));
+          journal.entries[journal.entries.length-1].tag='0102_inventory_count_registrar';
+          fs.writeFileSync(path,JSON.stringify(journal,null,2)+'\n');
+          NODE
+      - name: Commit generated schema metadata
+        shell: bash
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add db/schema.ts drizzle/0102_inventory_count_registrar.sql drizzle/meta/0102_snapshot.json drizzle/meta/_journal.json
+          git commit -m "db: add inventory count line schema"
+          git push
