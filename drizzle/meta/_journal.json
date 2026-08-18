@@ -666,6 +666,13 @@
       "when": 1787063921664,
       "tag": "0095_appointment_registrar",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "6",
+      "when": 1787070899234,
+      "tag": "0096_booking_cancellation_terminal",
+      "breakpoints": true
     }
   ]
 }
