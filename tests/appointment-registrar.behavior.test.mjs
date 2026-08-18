@@ -4,6 +4,9 @@ import test from "node:test";
 import { callWorker,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
 async function seedBooking(db,{organizationId=1,code="RD-APT-001",date="2026-10-01",time="10:00",status="confirmed",service="КТ ОГК",serviceCode="ct-chest",equipmentId="ct",duration=30,patientId="PAT-APT"}={}){
+  await db.prepare(`INSERT OR IGNORE INTO patient_profiles
+    (patient_id,organization_id,phone_normalized,display_name,updated_by)
+    VALUES (?,?,?,'Appointment Patient','appointment-test')`).bind(patientId,organizationId,"380501234500").run();
   const result=await db.prepare(`INSERT INTO bookings
     (organization_id,code,name,phone,phone_normalized,patient_id,date_of_birth,service,service_code,equipment_id,
      duration_minutes,desired_date,desired_time,patient_category,payment_status,payment_amount,paid_amount,status,
