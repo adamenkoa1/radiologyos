@@ -19,7 +19,7 @@ export async function GET(request:Request){
     const report=await buildRegisterTurnoverReport(db,ctx.organizationId,period);
     const csv=buildRegisterTurnoverCsv(report,sections);
     await audit(db,{organizationId:ctx.organizationId,actorEmail:ctx.member.email,action:"register_report_exported",resource:"report",details:{reportKey:"register_turnover",from:period.from,to:period.to,format:"csv",sectionCount:sections.length}});
-    return new Response(csv,{headers:{"content-type":"text/csv; charset=utf-8","content-disposition":`attachment; filename="register-turnover-${safeFilenameDate(period.from)}-${safeFilenameDate(period.to)}.csv"`,`cache-control`:"private, no-store"}});
+    return new Response(csv,{headers:{"content-type":"text/csv; charset=utf-8","content-disposition":`attachment; filename="register-turnover-${safeFilenameDate(period.from)}-${safeFilenameDate(period.to)}.csv"`,"cache-control":"private, no-store"}});
   }catch(error){
     const code=error instanceof Error?error.message:String(error);
     if(code==="report_period_too_large")return Response.json({error:"Період звіту не може перевищувати 366 днів"},{status:400});
