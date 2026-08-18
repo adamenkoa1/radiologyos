@@ -50,6 +50,11 @@ export default function InventoryCountsPage(){
     }catch(e){setError(e instanceof Error?e.message:"Не вдалося завантажити інвентаризації");}
   }
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);/* eslint-disable-next-line react-hooks/exhaustive-deps */},[]);
+  useEffect(()=>{
+    const requested=Number(new URL(window.location.href).searchParams.get("id"));
+    if(!Number.isInteger(requested)||requested<=0)return;
+    const timer=window.setTimeout(()=>void openCount(requested),0);return()=>window.clearTimeout(timer);
+  },[]);
 
   const activeWarehouses=useMemo(()=>inventory?.warehouses.filter(w=>w.active)||[],[inventory]);
   const lotMap=useMemo(()=>new Map((inventory?.lots||[]).map(lot=>[lot.id,lot])),[inventory]);
