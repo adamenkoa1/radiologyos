@@ -708,6 +708,13 @@
       "when": 1787082714764,
       "tag": "0101_saved_report_views",
       "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "6",
+      "when": 1787092234804,
+      "tag": "0102_inventory_count_registrar",
+      "breakpoints": true
     }
   ]
 }

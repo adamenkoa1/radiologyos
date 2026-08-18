@@ -850,6 +850,36 @@ table => [
 	check("inventory_document_lines_check_3", sql.raw("`line_amount` >= 0")),
 ]);
 
+export const inventoryCountLines = sqliteTable("inventory_count_lines", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull(),
+	documentId: integer("document_id").notNull(),
+	lineNo: integer("line_no").notNull(),
+	itemId: integer("item_id").notNull().references(() => inventoryItems.id),
+	lotId: integer("lot_id").notNull().references(() => inventoryLots.id),
+	warehouseId: integer("warehouse_id").notNull(),
+	warehouseCode: text("warehouse_code").notNull().default(""),
+	warehouseName: text("warehouse_name").notNull().default(""),
+	itemName: text("item_name").notNull().default(""),
+	itemUnit: text("item_unit").notNull().default(""),
+	lotNumber: text("lot_number").notNull().default(""),
+	bookQuantity: real("book_quantity").notNull(),
+	countedQuantity: real("counted_quantity").notNull(),
+	reason: text().notNull().default(""),
+},
+table => [
+	uniqueIndex("inventory_count_lines_doc_line_idx").on(table.organizationId, table.documentId, table.lineNo),
+	uniqueIndex("inventory_count_lines_bucket_unique").on(table.organizationId, table.documentId, table.warehouseId, table.lotId),
+	index("inventory_count_lines_warehouse_idx").on(table.organizationId, table.warehouseId, table.itemId, table.documentId),
+	foreignKey(() => ({
+		columns: [table.documentId, table.organizationId],
+		foreignColumns: [businessDocuments.id, businessDocuments.organizationId],
+		name: "inventory_count_lines_document_id_organization_id_business_documents_id_organization_id_fk"
+	})),
+	check("inventory_count_lines_book_nonnegative", sql.raw("book_quantity >= 0")),
+	check("inventory_count_lines_counted_nonnegative", sql.raw("counted_quantity >= 0")),
+]);
+
 export const printedFormSnapshots = sqliteTable("printed_form_snapshots", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull(),
