@@ -8,6 +8,14 @@ For all new transitions after migration 0092, `signed -> issued` also creates ex
 
 Historical protocols that were already `issued` before 0092 are not backfilled. No retrospective delivery fact is invented.
 
+## Delivery authority
+
+Clinical authoring and administrative delivery are separate capabilities. `canManageProtocols()` controls clinical protocol access/editing, while `canDeliverResults()` allows `admin`, `registrar`, and `radiologist` to perform only the already-signed `signed -> issued` transition. A radiologist remains assignment-scoped; registrar/admin delivery is tenant-scoped.
+
+The dedicated `/api/staff/result-deliveries` queue deliberately returns only delivery metadata: booking code, patient name, service title, document number/version, signer and signature time. It never returns protocol findings/conclusion/sections or addendum reason/correction text. Granting a registrar delivery authority therefore does not grant clinical read/edit/sign authority.
+
+The delivery endpoint does not create business evidence itself. It changes canonical clinical state only; migrations 0092/0094 remain the sole D1 owners of the atomic immutable `result_delivery` snapshots, so a failed registrar creation rejects the issuance transition.
+
 ## Immutable snapshot
 
 `result_delivery_details` stores the delivery evidence for the exact tenant and booking:
