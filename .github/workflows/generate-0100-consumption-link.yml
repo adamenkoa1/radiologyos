@@ -1,0 +1,61 @@
+name: Generate 0100 consumption link
+
+on:
+  push:
+    branches: [feature/reservation-material-consumption]
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: npm
+      - run: npm run install:ci
+      - name: Add reservation link to inventory lines
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('db/schema.ts');s=p.read_text()
+          start=s.index('export const inventoryDocumentLines = sqliteTable("inventory_document_lines", {')
+          end=s.index('\n]);',start)+4
+          block=s[start:end]
+          assert 'reservationMovementId' not in block
+          field='\tlineAmount: integer("line_amount").notNull().default(0),\n'
+          assert block.count(field)==1
+          block=block.replace(field,field+'\treservationMovementId: integer("reservation_movement_id"),\n')
+          marker='table => [\n'
+          assert block.count(marker)==1
+          block=block.replace(marker,marker+'\tindex("inventory_lines_reservation_idx").on(table.organizationId, table.reservationMovementId, table.documentId, table.lineNo).where(sql.raw("`reservation_movement_id` IS NOT NULL")),\n')
+          p.write_text(s[:start]+block+s[end:])
+          PY
+      - name: Generate Drizzle migration
+        run: npm run db:generate
+      - name: Canonicalize 0100 name
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          files=list(Path('drizzle').glob('0100_*.sql'))
+          assert len(files)==1, files
+          target=Path('drizzle/0100_reservation_material_consumption.sql')
+          files[0].rename(target)
+          p=Path('drizzle/meta/_journal.json');data=json.loads(p.read_text())
+          assert data['entries'][-1]['tag'].startswith('0100_')
+          data['entries'][-1]['tag']='0100_reservation_material_consumption'
+          p.write_text(json.dumps(data,ensure_ascii=False,indent=2)+'\n')
+          PY
+      - name: Commit generated migration and remove helper
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git rm .github/workflows/generate-0100-consumption-link.yml
+          git add db/schema.ts drizzle/0100_reservation_material_consumption.sql drizzle/meta/0100_snapshot.json drizzle/meta/_journal.json
+          git commit -m "feat: add reservation link to inventory writeoff lines"
+          git push
