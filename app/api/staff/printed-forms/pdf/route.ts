@@ -7,7 +7,7 @@ import {canManageFinance,type AccessRole} from "../../../../../lib/staff-auth";
 import {requireOrgContext} from "../../../../../lib/tenant";
 type Row=PrintedFormArtifactSnapshot&{documentType:string};
 const int=(v:unknown)=>{const n=Number(v);return Number.isInteger(n)&&n>0?n:null;};
-function allowed(row:Row,role:AccessRole){if(row.formType==="inventory_receipt"||row.formType==="inventory_writeoff")return row.documentType===row.formType;if(row.formType==="payment_receipt")return canManageFinance(role)&&(row.documentType==="payment"||row.documentType==="refund");if(row.formType==="service_act")return canManageFinance(role)&&row.documentType==="service_delivery";return false;}
+function allowed(row:Row,role:AccessRole){if(row.formType==="inventory_receipt"||row.formType==="inventory_writeoff"||row.formType==="inventory_count")return row.documentType===row.formType;if(row.formType==="payment_receipt")return canManageFinance(role)&&(row.documentType==="payment"||row.documentType==="refund");if(row.formType==="service_act")return canManageFinance(role)&&row.documentType==="service_delivery";return false;}
 export async function GET(request:Request){
  const db=dbBinding();if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
  const ctx=await requireOrgContext(request,db);if(!ctx)return Response.json({error:"Доступ лише для персоналу"},{status:403});
