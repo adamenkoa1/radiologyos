@@ -36,10 +36,14 @@ async function applyFiles(db, items) {
       if (file === "0093_study_correction_registrar.sql") {
         db.exec("BEGIN;");
         try {
+          db.exec("PRAGMA legacy_alter_table = ON;");
           db.exec(sql);
+          db.exec("PRAGMA legacy_alter_table = OFF;");
+          db.exec("PRAGMA defer_foreign_keys = OFF;");
           db.exec("COMMIT;");
         } catch (migrationError) {
           try { db.exec("ROLLBACK;"); } catch {}
+          try { db.exec("PRAGMA legacy_alter_table = OFF;"); } catch {}
           throw migrationError;
         }
       } else {
