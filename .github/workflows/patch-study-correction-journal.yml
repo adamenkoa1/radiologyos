@@ -24,19 +24,21 @@ jobs:
 
           journal = Path('lib/business-document-journal.ts')
           text = journal.read_text(encoding='utf-8')
-          replacements = {
-            "COALESCE(o.booking_id,s.booking_id,sp.booking_id,rd.booking_id,c.booking_id,f.booking_id) AS bookingId,":
-              "COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,c.booking_id,f.booking_id) AS bookingId,",
-            "COALESCE(o.patient_id,s.patient_id,sp.patient_id,rd.patient_id,c.patient_id,f.patient_id,'') AS patientId,":
-              "COALESCE(o.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,c.patient_id,f.patient_id,'') AS patientId,",
-            "COALESCE(o.service_title,s.service_title,sp.service_title,rd.service_title,c.service_title,b.service,'') AS subject,":
-              "COALESCE(o.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,c.service_title,b.service,'') AS subject,",
-            "b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,rd.booking_id,c.booking_id,f.booking_id)`:" if False else "b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,rd.booking_id,c.booking_id,f.booking_id)`: ": "",
-          }
-          # Apply the three projection replacements explicitly.
-          for before, after in list(replacements.items())[:3]:
-            assert text.count(before) == 1, f'unexpected journal projection shape: {before}'
-            text = text.replace(before, after, 1)
+
+          before = "COALESCE(o.booking_id,s.booking_id,sp.booking_id,rd.booking_id,c.booking_id,f.booking_id) AS bookingId,"
+          after = "COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,c.booking_id,f.booking_id) AS bookingId,"
+          assert text.count(before) == 1
+          text = text.replace(before, after, 1)
+
+          before = "COALESCE(o.patient_id,s.patient_id,sp.patient_id,rd.patient_id,c.patient_id,f.patient_id,'') AS patientId,"
+          after = "COALESCE(o.patient_id,s.patient_id,sp.patient_id,sc.patient_id,rd.patient_id,c.patient_id,f.patient_id,'') AS patientId,"
+          assert text.count(before) == 1
+          text = text.replace(before, after, 1)
+
+          before = "COALESCE(o.service_title,s.service_title,sp.service_title,rd.service_title,c.service_title,b.service,'') AS subject,"
+          after = "COALESCE(o.service_title,s.service_title,sp.service_title,sc.service_title,rd.service_title,c.service_title,b.service,'') AS subject,"
+          assert text.count(before) == 1
+          text = text.replace(before, after, 1)
 
           before = """  LEFT JOIN service_delivery_details sp
     ON d.document_type='study_performance'
@@ -57,12 +59,12 @@ jobs:
    AND sc.document_id=scp.basis_document_id
    AND sc.organization_id=d.organization_id
   LEFT JOIN result_delivery_details rd"""
-          assert text.count(before) == 1, 'unexpected study-performance join shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
 
           before = "b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,rd.booking_id,c.booking_id,f.booking_id)`;"
           after = "b.id=COALESCE(o.booking_id,s.booking_id,sp.booking_id,sc.booking_id,rd.booking_id,c.booking_id,f.booking_id)`;"
-          assert text.count(before) == 1, 'unexpected booking join shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
           journal.write_text(text, encoding='utf-8')
 
@@ -70,11 +72,11 @@ jobs:
           text = page.read_text(encoding='utf-8')
           before = '  study_performance:"Виконання дослідження",result_delivery:"Видача результату",'
           after = '  study_performance:"Виконання дослідження",study_correction:"Сторно дослідження",result_delivery:"Видача результату",'
-          assert text.count(before) == 1, 'unexpected document type label shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
           before = 'const REL_UK:Record<string,string>={storno_of:"Сторно документа",refund_of:"Повернення за оплатою",reversal_of:"Сторно/реверс",storno:"Документ сторно",refund:"Документ повернення",reversal:"Реверс",source:"Підстава",related:"Пов’язаний"};'
           after = 'const REL_UK:Record<string,string>={based_on:"На підставі",storno_of:"Сторно документа",refund_of:"Повернення за оплатою",reversal_of:"Сторно/реверс",storno:"Документ сторно",refund:"Документ повернення",reversal:"Реверс",source:"Підстава",related:"Пов’язаний"};'
-          assert text.count(before) == 1, 'unexpected relation label shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
           page.write_text(text, encoding='utf-8')
 
@@ -92,7 +94,7 @@ jobs:
     assert.equal(studyCorrection.patientId,performance.patientId);
     assert.equal(studyCorrection.subject,"КТ ОГК");
     assert.equal(studyCorrection.amount,0);"""
-          assert text.count(before) == 1, 'unexpected study-correction list assertion shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
 
           before = """    assert.equal(studyCorrectionDetail.document.state,"posted");
@@ -108,7 +110,7 @@ jobs:
     assert.equal(studyCorrectionDetail.document.amount,0);
     assert.equal(studyCorrectionDetail.document.sourceDocumentId,performanceRelation.id);
     assert.equal(studyCorrectionDetail.movements.corrections.length,1);"""
-          assert text.count(before) == 1, 'unexpected study-correction detail assertion shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
 
           before = """    const org1=await seedStaffSession(db,{email:"doc-org1@example.com",role:"registrar",organizationId:1});
@@ -128,7 +130,7 @@ jobs:
     assert.ok(foreignStudyCorrection?.id>0);
 
     const list1=await journal(db,org1);"""
-          assert text.count(before) == 1, 'unexpected tenant-test setup shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
 
           before = """    assert.equal(body1.documents.some(
@@ -153,7 +155,7 @@ jobs:
     assert.equal(ownStudyCorrection.document.amount,0);
 
     const foreignDetail=await journal(db,org1,foreign.serviceDocumentId);"""
-          assert text.count(before) == 1, 'unexpected tenant-test assertion shape'
+          assert text.count(before) == 1
           text = text.replace(before, after, 1)
           tests.write_text(text, encoding='utf-8')
           PY
