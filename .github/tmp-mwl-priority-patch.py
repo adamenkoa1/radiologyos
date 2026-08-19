@@ -1,5 +1,6 @@
 from pathlib import Path
 
+# Temporary branch-only patch helper; removed before PR.
 path = Path("app/api/staff/imaging/route.ts")
 text = path.read_text()
 start = text.index("async function checkPacsPatientIdentity(")
