@@ -1,0 +1,86 @@
+name: One-shot D1 FK diagnostics
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/d1-fk-diagnose-once.yml
+
+permissions:
+  contents: read
+
+jobs:
+  diagnose:
+    name: Read-only D1 FK diagnostics
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: production
+    steps:
+      - name: Verify exact diagnostic base
+        env:
+          EXPECTED_BEFORE: cc60c7db5f19c394915429a2a2de795a89aefdc6
+          ACTUAL_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          echo "Expected previous main: $EXPECTED_BEFORE"
+          echo "Actual previous main:   $ACTUAL_BEFORE"
+          test "$ACTUAL_BEFORE" = "$EXPECTED_BEFORE"
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies deterministically
+        run: npm run install:ci
+
+      - name: Inspect production D1 foreign-key structure
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          set -euo pipefail
+
+          echo '=== Applied migrations near 0093 ==='
+          npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+            --command "SELECT name FROM d1_migrations WHERE name >= '0088' ORDER BY name;"
+
+          echo '=== Pre-migration foreign_key_check ==='
+          npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+            --command "PRAGMA foreign_key_check;"
+
+          echo '=== business_documents link counts (aggregate only) ==='
+          npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+            --command "SELECT COUNT(*) AS document_count, SUM(CASE WHEN reversed_document_id IS NOT NULL THEN 1 ELSE 0 END) AS reversed_link_count FROM business_documents;"
+
+          DEP_SQL=$(cat <<'SQL'
+          SELECT name, sql
+          FROM sqlite_schema
+          WHERE type='table'
+            AND instr(lower(sql), 'references `business_documents`') > 0
+          ORDER BY name;
+          SQL
+          )
+
+          echo '=== Tables whose DDL references business_documents ==='
+          npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+            --command "$DEP_SQL" | tee /tmp/business-document-deps.json
+
+          echo '=== Dependent-table row counts and FK metadata (no row contents) ==='
+          jq -r '.[].results[]?.name // empty' /tmp/business-document-deps.json | sort -u | while IFS= read -r table; do
+            test -n "$table" || continue
+            if [[ ! "$table" =~ ^[A-Za-z0-9_]+$ ]]; then
+              echo "Unsafe schema identifier returned: $table" >&2
+              exit 1
+            fi
+            echo "--- $table ---"
+            npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+              --command "SELECT '$table' AS table_name, COUNT(*) AS row_count FROM \"$table\";"
+            npx wrangler d1 execute radiologyos --remote --config wrangler.cloudflare.toml --json \
+              --command "PRAGMA foreign_key_list(\"$table\");"
+          done
