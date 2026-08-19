@@ -1,0 +1,33 @@
+name: Temporary 0104 snapshot generator
+
+on:
+  push:
+    branches:
+      - audit/protocol-revision-derived-history
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate schema-identical 0104 snapshot
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+          const source = 'drizzle/meta/0103_snapshot.json';
+          const target = 'drizzle/meta/0104_snapshot.json';
+          const snapshot = JSON.parse(fs.readFileSync(source, 'utf8'));
+          snapshot.prevId = snapshot.id;
+          snapshot.id = crypto.randomUUID();
+          fs.writeFileSync(target, `${JSON.stringify(snapshot, null, 2)}\n`);
+          NODE
+      - uses: actions/upload-artifact@v4
+        with:
+          name: protocol-0104-snapshot
+          path: drizzle/meta/0104_snapshot.json
+          if-no-files-found: error
