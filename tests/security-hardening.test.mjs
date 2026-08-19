@@ -74,14 +74,18 @@ test("staff authorization scopes sensitive records and exports", async () => {
   assert.match(reports, /canViewReports\(member\.role\)/);
 });
 
-test("protocols use optimistic concurrency and immutable revision history", async () => {
+test("protocols use optimistic concurrency and database-derived immutable revision history", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
   const migration = await read("drizzle/0016_security_hardening.sql");
+  const derived = await read("drizzle/0104_protocol_revision_derived_history.sql");
   assert.match(route, /baseVersion/);
   assert.match(route, /existing\?\.status === "issued"/);
-  assert.match(route, /INSERT INTO protocol_revisions/);
+  assert.match(route, /INSERT OR IGNORE INTO protocol_revisions/);
   assert.match(route, /await db\.batch\(/);
   assert.match(migration, /UNIQUE\(`booking_id`, `version`\)/);
+  assert.match(derived, /protocol_revisions_snapshot_guard_insert/);
+  assert.match(derived, /protocol_revision_snapshot_next/);
+  assert.match(derived, /protocol edits require next version/);
 });
 
 test("server-side integrations block SSRF and oversized responses", async () => {
