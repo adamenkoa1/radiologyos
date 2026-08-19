@@ -31,6 +31,7 @@ export default function MaterialConsumptionControlPage(){
   const [data,setData]=useState<Report|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
+  const exportUrl=`/api/staff/reports/material-consumption-control/export?${new URLSearchParams({from,to}).toString()}`;
 
   async function load(){
     setLoading(true);setError("");
@@ -57,6 +58,7 @@ export default function MaterialConsumptionControlPage(){
         <label><span>Від</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
         <label><span>До</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
+        <a className="excelButton" href={exportUrl}>CSV</a>
         <a className="excelButton" href="/staff/reports/material-margin">Маржинальність</a>
         <a className="excelButton" href="/staff/inventory/material-consumption">Робочий список</a>
         <a className="excelButton" href="/staff/reports">Звіти</a>
