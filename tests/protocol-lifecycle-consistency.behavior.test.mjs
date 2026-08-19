@@ -45,7 +45,7 @@ test("protocol document is the authoritative projection for booking protocol sta
     );
 
     await db.prepare(
-      "UPDATE protocols SET status='ready', number='CT-2026-001', version=2 WHERE booking_id=? AND organization_id=1"
+      "UPDATE protocols SET status='ready', number='CT-2026-001', conclusion='КТ-ознаки без гострої патології.', version=2 WHERE booking_id=? AND organization_id=1"
     ).bind(bookingId).run();
     booking = await db.prepare(`SELECT protocol_status AS status, protocol_number AS number,
       protocol_ready_at AS readyAt, protocol_issued_at AS issuedAt
