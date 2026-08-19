@@ -8,10 +8,17 @@ BEGIN
   SELECT RAISE(ABORT, 'protocol status invalid');
 END;
 --> statement-breakpoint
+-- SQLite executes BEFORE INSERT triggers before resolving ON CONFLICT DO UPDATE.
+-- Therefore finalized input is rejected only when there is no existing protocol
+-- row for this booking. Existing-row UPSERTs then flow through the UPDATE
+-- transition guard below, which enforces the actual old -> new lifecycle edge.
 CREATE TRIGGER `protocols_initial_status_guard`
 BEFORE INSERT ON `protocols`
 FOR EACH ROW
 WHEN NEW.`status` NOT IN ('draft','ready')
+ AND NOT EXISTS (
+   SELECT 1 FROM `protocols` p WHERE p.`booking_id` = NEW.`booking_id`
+ )
 BEGIN
   SELECT RAISE(ABORT, 'protocol must start draft or ready');
 END;
