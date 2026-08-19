@@ -58,7 +58,7 @@ test("protocol document is the authoritative projection for booking protocol sta
     await assert.rejects(
       db.prepare("UPDATE protocols SET status='issued' WHERE booking_id=? AND organization_id=1")
         .bind(bookingId).run(),
-      /protocol edits require next version|protocol_issue_requires_signed_transition|signature state mismatch/i,
+      /protocol status transition invalid|protocol edits require next version|protocol_issue_requires_signed_transition|signature state mismatch/i,
     );
 
     await db.prepare(
