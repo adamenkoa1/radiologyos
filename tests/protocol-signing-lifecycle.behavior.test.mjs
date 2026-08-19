@@ -183,7 +183,7 @@ test("D1 rejects unsigned or unversioned signing and preserves signature metadat
     ).bind(bookingId).run();
 
     await assert.rejects(
-      db.prepare("UPDATE protocols SET status='signed' WHERE organization_id=1 AND booking_id=?")
+      db.prepare("UPDATE protocols SET status='signed', version=4 WHERE organization_id=1 AND booking_id=?")
         .bind(bookingId).run(),
       /protocol signature state mismatch/i,
     );
