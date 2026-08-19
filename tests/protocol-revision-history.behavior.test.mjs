@@ -11,21 +11,51 @@ async function addBooking(db, { organizationId = 1, code = "REV-001", assignedRa
   return Number(result.meta.last_row_id);
 }
 
-async function addRevision(db, organizationId, bookingId, version, conclusion = "Historical conclusion") {
+async function insertProtocol(db, {
+  organizationId = 1,
+  bookingId,
+  version = 1,
+  conclusion = "Historical conclusion",
+  findings = "Historical findings",
+  number = `PR-${version}`,
+  updatedBy = "doctor@example.com",
+} = {}) {
   await db.prepare(
-    `INSERT INTO protocol_revisions
-      (organization_id, booking_id, version, template_key, method, sections_json,
-       findings, conclusion, recommendations, number, status, saved_by)
-     VALUES (?, ?, ?, 'ct_brain', 'Method', '{"brain":{"parenchyma":"Historical field"}}',
-       'Historical findings', ?, 'Historical recommendation', ?, 'ready', 'doctor@example.com')`
-  ).bind(organizationId, bookingId, version, conclusion, `PR-${version}`).run();
+    `INSERT INTO protocols
+      (organization_id, booking_id, template_key, method, sections_json,
+       findings, conclusion, recommendations, number, status, version, author_email, updated_by)
+     VALUES (?, ?, 'ct_brain', 'Method', '{"brain":{"parenchyma":"Historical field"}}',
+       ?, ?, 'Historical recommendation', ?, 'ready', ?, ?, ?)`
+  ).bind(organizationId, bookingId, findings, conclusion, number, version, updatedBy, updatedBy).run();
+}
+
+async function advanceProtocol(db, {
+  organizationId = 1,
+  bookingId,
+  version,
+  conclusion,
+  findings,
+  number,
+  updatedBy = "doctor@example.com",
+}) {
+  await db.prepare(
+    `UPDATE protocols
+     SET conclusion=?, findings=?, number=?, version=?, updated_by=?, updated_at=CURRENT_TIMESTAMP
+     WHERE organization_id=? AND booking_id=?`
+  ).bind(conclusion, findings, number, version, updatedBy, organizationId, bookingId).run();
 }
 
 test("protocol revisions are physically append-only in D1", async () => {
   await withD1(async (db) => {
     const bookingId = await addBooking(db);
-    await addRevision(db, 1, bookingId, 1);
-    await addRevision(db, 1, bookingId, 2, "Corrected conclusion");
+    await insertProtocol(db, { bookingId });
+    await advanceProtocol(db, {
+      bookingId,
+      version:2,
+      conclusion:"Corrected conclusion",
+      findings:"Historical findings",
+      number:"PR-2",
+    });
 
     await assert.rejects(
       db.prepare("UPDATE protocol_revisions SET conclusion='rewritten' WHERE organization_id=1 AND booking_id=? AND version=1")
@@ -52,12 +82,15 @@ test("authorized clinician can read an exact historical snapshot without mutatin
   await withD1(async (db) => {
     const email = "radiologist@example.com";
     const bookingId = await addBooking(db, { assignedRadiologistEmail:email });
-    await addRevision(db, 1, bookingId, 1);
-    await db.prepare(
-      `INSERT INTO protocols
-        (organization_id, booking_id, template_key, findings, conclusion, number, status, version, author_email, updated_by)
-       VALUES (1, ?, 'ct_brain', 'Current findings', 'Current conclusion', 'PR-CURRENT', 'ready', 2, ?, ?)`
-    ).bind(bookingId, email, email).run();
+    await insertProtocol(db, { bookingId, updatedBy:email });
+    await advanceProtocol(db, {
+      bookingId,
+      version:2,
+      conclusion:"Current conclusion",
+      findings:"Current findings",
+      number:"PR-CURRENT",
+      updatedBy:email,
+    });
     const cookie = await seedStaffSession(db, { email, role:"radiologist" });
 
     const response = await callWorker(jsonRequest(
@@ -93,8 +126,13 @@ test("revision endpoint is role, assignment and tenant scoped", async () => {
     await db.prepare("INSERT INTO organizations (id,slug,name,active) VALUES (2,'revision-other','Other',1)").run();
     const ownId = await addBooking(db, { code:"REV-OWN", assignedRadiologistEmail:"assigned@example.com" });
     const foreignId = await addBooking(db, { organizationId:2, code:"REV-FOREIGN", assignedRadiologistEmail:"assigned@example.com" });
-    await addRevision(db, 1, ownId, 1);
-    await addRevision(db, 2, foreignId, 1, "Foreign secret conclusion");
+    await insertProtocol(db, { bookingId:ownId, updatedBy:"assigned@example.com" });
+    await insertProtocol(db, {
+      organizationId:2,
+      bookingId:foreignId,
+      conclusion:"Foreign secret conclusion",
+      updatedBy:"assigned@example.com",
+    });
 
     const registrarCookie = await seedStaffSession(db, { email:"registrar@example.com", role:"registrar" });
     const registrar = await callWorker(jsonRequest(
