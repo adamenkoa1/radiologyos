@@ -3,6 +3,7 @@ import {readFile} from "node:fs/promises";
 import test from "node:test";
 
 const pageUrl=new URL("../app/staff/inventory/material-consumption/page.tsx",import.meta.url);
+const shellUrl=new URL("../app/staff/workspace-shell.tsx",import.meta.url);
 
 test("material consumption workspace uses the canonical queue and current warehouse balances",async()=>{
   const source=await readFile(pageUrl,"utf8");
@@ -36,4 +37,9 @@ test("material consumption UI exposes planned, draft, posted and remaining quant
   assert.match(source,/row\.postedQuantity/);
   assert.match(source,/row\.remainingQuantity/);
   assert.match(source,/statusLabel\(row\.status\)/);
+});
+
+test("inventory business navigation exposes the material consumption worklist",async()=>{
+  const shell=await readFile(shellUrl,"utf8");
+  assert.match(shell,/label:"Фактичне списання",href:"\/staff\/inventory\/material-consumption"/);
 });
