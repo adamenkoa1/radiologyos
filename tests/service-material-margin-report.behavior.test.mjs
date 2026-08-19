@@ -11,11 +11,11 @@ async function seedBooking(db,{organizationId=1,code,serviceCode,serviceTitle}){
   return Number(result.meta.last_row_id);
 }
 
-async function seedDocument(db,{organizationId=1,type="service_delivery",number,occurredAt}){
+async function seedDocument(db,{organizationId=1,number,occurredAt}){
   const result=await db.prepare(`INSERT INTO business_documents
     (organization_id,document_type,number,occurred_at,state,created_by,posted_by,posted_at)
-    VALUES (?,?,?,?, 'posted','margin-test','margin-test',?)`)
-    .bind(organizationId,type,number,occurredAt,occurredAt).run();
+    VALUES (?,'service_delivery',?,?, 'posted','margin-test','margin-test',?)`)
+    .bind(organizationId,number,occurredAt,occurredAt).run();
   return Number(result.meta.last_row_id);
 }
 
@@ -57,7 +57,7 @@ test("service material margin uses posted revenue and booking-linked acquisition
     const military=await seedBooking(db,{code:"MARG03",serviceCode:"ct-head",serviceTitle:"КТ голови"});
 
     const ctDelivery=await seedDocument(db,{number:"M-D-1",occurredAt:"2026-08-10T10:00:00"});
-    const ctCorrection=await seedDocument(db,{type:"service_correction",number:"M-C-1",occurredAt:"2026-08-11T10:00:00"});
+    const ctCorrection=await seedDocument(db,{number:"M-C-1",occurredAt:"2026-08-11T10:00:00"});
     const xrayDelivery=await seedDocument(db,{number:"M-D-2",occurredAt:"2026-08-12T10:00:00"});
     await addRevenue(db,{documentId:ctDelivery,bookingId:ct,serviceCode:"ct-chest",amount:1000,occurredAt:"2026-08-10T10:00:00"});
     await addRevenue(db,{documentId:ctCorrection,bookingId:ct,serviceCode:"ct-chest",amount:-200,occurredAt:"2026-08-11T10:00:00",type:"service_correction"});
