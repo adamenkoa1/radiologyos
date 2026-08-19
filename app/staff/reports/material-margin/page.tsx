@@ -54,6 +54,7 @@ export default function ServiceMaterialMarginPage(){
         <label><span>До</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
         <a className="excelButton" href={exportUrl}>CSV</a>
+        <a className="excelButton" href="/staff/reports/material-consumption-control">План / факт</a>
         <a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a>
         <a className="excelButton" href="/staff/reports">Звіти</a>
       </header>
