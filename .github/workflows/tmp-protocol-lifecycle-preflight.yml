@@ -59,6 +59,14 @@ jobs:
             echo "::error title=Behavioral tests failed::$details"
             exit "$status"
           fi
+      - name: Upload behavioral failure log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protocol-lifecycle-preflight-failure
+          path: preflight-tests.log
+          if-no-files-found: ignore
+          retention-days: 1
       - name: Production release gate
         run: npm run test:production-gate
       - name: Mark preflight success
