@@ -24,55 +24,58 @@ jobs:
             -f description="Fixture alignment running"
       - name: Align addendum base protocol fixture
         run: |
-          node <<'NODE'
-          const fs = require('node:fs');
-          const path = 'tests/protocol-addendum-lifecycle.behavior.test.mjs';
-          let text = fs.readFileSync(path, 'utf8');
-          const start = text.indexOf('function seedProtocol(raw, bookingId, status = "issued") {');
-          const end = text.indexOf('\n\nfunction insertDraftAddendum', start);
-          if (start < 0 || end < 0) throw new Error('seedProtocol fixture not found');
-          const oldFn = text.slice(start, end);
-          if (oldFn.includes("'issued', 1")) {
-            const newFn = `function seedProtocol(raw, bookingId, status = "issued") {
-  if (status === "issued") {
-    raw.prepare(
-      \`INSERT INTO protocols
-        (organization_id, booking_id, number, status, version, author_email, updated_by,
-         findings, conclusion)
-       VALUES (1, ?, 'P-ADD-1', 'ready', 1, 'radiologist@example.com', 'radiologist@example.com',
-         'Основний опис', 'Основний висновок')\`,
-    ).run(bookingId);
-    raw.prepare(
-      \`UPDATE protocols
-       SET status='signed', version=2, updated_by='radiologist@example.com',
-           signed_by='radiologist@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=2
-       WHERE organization_id=1 AND booking_id=?\`,
-    ).run(bookingId);
-    raw.prepare(
-      "UPDATE protocols SET status='issued', updated_by='registrar@example.com' WHERE organization_id=1 AND booking_id=?",
-    ).run(bookingId);
-  } else {
-    raw.prepare(
-      \`INSERT INTO protocols
-        (organization_id, booking_id, number, status, version, author_email, updated_by,
-         findings, conclusion)
-       VALUES (1, ?, 'P-DRAFT-1', 'draft', 1, 'radiologist@example.com', 'radiologist@example.com',
-         'Чернетка', 'Чернетка')\`,
-    ).run(bookingId);
-  }
-}`;
-            text = text.slice(0, start) + newFn + text.slice(end);
-          }
+          python - <<'PY'
+          from pathlib import Path
+          from textwrap import dedent
+
+          path = Path('tests/protocol-addendum-lifecycle.behavior.test.mjs')
+          text = path.read_text()
+          start = text.index('function seedProtocol(raw, bookingId, status = "issued") {')
+          end = text.index('\n\nfunction insertDraftAddendum', start)
+          old_fn = text[start:end]
+          if "'issued', 1" in old_fn:
+              new_fn = dedent('''\
+              function seedProtocol(raw, bookingId, status = "issued") {
+                if (status === "issued") {
+                  raw.prepare(
+                    `INSERT INTO protocols
+                      (organization_id, booking_id, number, status, version, author_email, updated_by,
+                       findings, conclusion)
+                     VALUES (1, ?, 'P-ADD-1', 'ready', 1, 'radiologist@example.com', 'radiologist@example.com',
+                       'Основний опис', 'Основний висновок')`,
+                  ).run(bookingId);
+                  raw.prepare(
+                    `UPDATE protocols
+                     SET status='signed', version=2, updated_by='radiologist@example.com',
+                         signed_by='radiologist@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=2
+                     WHERE organization_id=1 AND booking_id=?`,
+                  ).run(bookingId);
+                  raw.prepare(
+                    "UPDATE protocols SET status='issued', updated_by='registrar@example.com' WHERE organization_id=1 AND booking_id=?",
+                  ).run(bookingId);
+                } else {
+                  raw.prepare(
+                    `INSERT INTO protocols
+                      (organization_id, booking_id, number, status, version, author_email, updated_by,
+                       findings, conclusion)
+                     VALUES (1, ?, 'P-DRAFT-1', 'draft', 1, 'radiologist@example.com', 'radiologist@example.com',
+                       'Чернетка', 'Чернетка')`,
+                  ).run(bookingId);
+                }
+              }
+              ''').rstrip()
+              text = text[:start] + new_fn + text[end:]
+
           text = text.replace(
-            "VALUES (?, 1, ?, 1, 'Уточнення формулювання', ?, 'draft', 1,",
-            "VALUES (?, 1, ?, 2, 'Уточнення формулювання', ?, 'draft', 1,",
-          );
+              "VALUES (?, 1, ?, 1, 'Уточнення формулювання', ?, 'draft', 1,",
+              "VALUES (?, 1, ?, 2, 'Уточнення формулювання', ?, 'draft', 1,",
+          )
           text = text.replace(
-            "VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 1, 'Причина', 'Текст',",
-            "VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 2, 'Причина', 'Текст',",
-          );
-          fs.writeFileSync(path, text);
-          NODE
+              "VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 1, 'Причина', 'Текст',",
+              "VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 2, 'Причина', 'Текст',",
+          )
+          path.write_text(text)
+          PY
       - name: Commit fixture change if needed
         run: |
           if git diff --quiet -- tests/protocol-addendum-lifecycle.behavior.test.mjs; then
