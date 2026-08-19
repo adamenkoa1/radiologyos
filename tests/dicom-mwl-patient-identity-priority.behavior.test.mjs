@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { mwlIdentityKey } from "../lib/mwl-bridge.ts";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
 const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com" };
@@ -38,7 +39,7 @@ async function addMwlIdentity(db, patientId, dicomPatientId = EXPECTED_DICOM_ID)
   await db.prepare(
     `INSERT INTO mwl_patient_ids (organization_id, identity_key, patient_id)
      VALUES (1, ?, ?)`,
-  ).bind(`patient:${patientId}`, dicomPatientId).run();
+  ).bind(mwlIdentityKey(patientId, ""), dicomPatientId).run();
 }
 
 function qidoStudy({ accession, uid, patientId }) {
