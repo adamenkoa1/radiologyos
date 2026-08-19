@@ -7,38 +7,33 @@ on:
 
 permissions:
   contents: write
+  statuses: write
 
 jobs:
   fix:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
+      - name: Expose fixer run id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=pending \
+            -f context="tmp-protocol-lifecycle-fixture-${GITHUB_RUN_ID}" \
+            -f description="Fixture alignment running"
       - name: Align addendum base protocol fixture
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const path = 'tests/protocol-addendum-lifecycle.behavior.test.mjs';
           let text = fs.readFileSync(path, 'utf8');
-          const oldFn = `function seedProtocol(raw, bookingId, status = "issued") {
-  if (status === "issued") {
-    raw.prepare(
-      \`INSERT INTO protocols
-        (organization_id, booking_id, number, status, version, author_email, updated_by,
-         findings, conclusion, signed_by, signed_at, signed_version)
-       VALUES (1, ?, 'P-ADD-1', 'issued', 1, 'radiologist@example.com', 'radiologist@example.com',
-         'Основний опис', 'Основний висновок', 'radiologist@example.com', CURRENT_TIMESTAMP, 1)\`,
-    ).run(bookingId);
-  } else {
-    raw.prepare(
-      \`INSERT INTO protocols
-        (organization_id, booking_id, number, status, version, author_email, updated_by,
-         findings, conclusion)
-       VALUES (1, ?, 'P-DRAFT-1', 'draft', 1, 'radiologist@example.com', 'radiologist@example.com',
-         'Чернетка', 'Чернетка')\`,
-    ).run(bookingId);
-  }
-}`;
-          const newFn = `function seedProtocol(raw, bookingId, status = "issued") {
+          const start = text.indexOf('function seedProtocol(raw, bookingId, status = "issued") {');
+          const end = text.indexOf('\n\nfunction insertDraftAddendum', start);
+          if (start < 0 || end < 0) throw new Error('seedProtocol fixture not found');
+          const oldFn = text.slice(start, end);
+          if (oldFn.includes("'issued', 1")) {
+            const newFn = `function seedProtocol(raw, bookingId, status = "issued") {
   if (status === "issued") {
     raw.prepare(
       \`INSERT INTO protocols
@@ -66,7 +61,8 @@ jobs:
     ).run(bookingId);
   }
 }`;
-          if (text.includes(oldFn)) text = text.replace(oldFn, newFn);
+            text = text.slice(0, start) + newFn + text.slice(end);
+          }
           text = text.replace(
             "VALUES (?, 1, ?, 1, 'Уточнення формулювання', ?, 'draft', 1,",
             "VALUES (?, 1, ?, 2, 'Уточнення формулювання', ?, 'draft', 1,",
