@@ -1,5 +1,6 @@
 import { canAccessBooking, canManageProtocols } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
+import { validateProtocolInputBounds } from "../../../../../lib/protocol-lifecycle";
 import { sanitizeDocument } from "../../../../../lib/protocols";
 import { generateProtocolDraft } from "../../../../../lib/ai";
 import { dbBinding } from "../../../../../lib/db";
@@ -24,8 +25,12 @@ export async function POST(request: Request) {
     return Response.json({ error: "Немає доступу до цього дослідження" }, { status: 403 });
   }
   // Draft from whatever is currently in the editor; force draft status so the
-  // ready/issued validation never blocks generating a suggestion.
-  const parsed = sanitizeDocument({ ...body, status: "draft" });
+  // ready/issued validation never blocks generating a suggestion. Reject input
+  // that would otherwise be silently clipped by the legacy normalizer.
+  const draftInput = { ...body, status: "draft" };
+  const bounds = validateProtocolInputBounds(draftInput);
+  if (!bounds.ok) return Response.json({ error: bounds.error }, { status: 400 });
+  const parsed = sanitizeDocument(draftInput);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
 
   let priorStudies = 0;
