@@ -67,5 +67,13 @@ jobs:
             exit "$status"
           fi
 
+      - name: Upload PR 413 test failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pr413-test-output
+          path: test-output.log
+          retention-days: 1
+
       - name: Production release gate
         run: npm run test:production-gate
