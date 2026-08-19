@@ -15,7 +15,7 @@ test("material consumption control CSV preserves numeric facts and neutralizes s
     ],
   });
   assert.ok(csv.startsWith("\uFEFF"));
-  assert.ok(csv.includes('"Планових позицій","2"'));
+  assert.ok(csv.includes('"Планові позиції","2"'));
   assert.ok(csv.includes('"ct-control","КТ контроль","CTRL","Контраст"'));
   assert.ok(csv.includes('"\'=SUM(A1:A2)","\'+unsafe service","\'@unsafe-sku","\'-unsafe material"'));
   assert.ok(csv.includes('"\'=WH","\'+unsafe warehouse"'));
