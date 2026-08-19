@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { buildServiceMaterialMarginCsv } from "../lib/service-material-margin-csv.ts";
 
-test("service material margin CSV preserves report facts and neutralizes spreadsheet formulas",()=>{
+test("service material margin CSV preserves numeric facts and neutralizes spreadsheet formulas",()=>{
   const csv=buildServiceMaterialMarginCsv({
     period:{from:"2026-08-01",to:"2026-08-31"},
     generatedAt:"2026-08-19T17:00:00.000Z",
@@ -17,6 +17,6 @@ test("service material margin CSV preserves report facts and neutralizes spreads
   assert.ok(csv.includes('"Чистий дохід","1300"'));
   assert.ok(csv.includes('"ct-chest","КТ ОГК"'));
   assert.ok(csv.includes('"\'=SUM(A1:A2)","\'+unsafe title"'));
-  assert.ok(csv.includes('"-150"')===false,"negative numeric values must also be neutralized for spreadsheet safety");
-  assert.ok(csv.includes('"\'-150"'));
+  assert.ok(csv.includes('"-150"'),"negative numeric facts must remain numeric for spreadsheet analysis");
+  assert.ok(!csv.includes('"\'-150"'));
 });
