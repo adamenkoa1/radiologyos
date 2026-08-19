@@ -17,6 +17,8 @@ const BASE=`SELECT r.id AS reservationId,r.booking_id AS bookingId,b.code AS boo
   COALESCE(SUM(CASE WHEN d.state='draft' THEN l.quantity ELSE 0 END),0) AS draftQuantity,
   COALESCE(SUM(CASE WHEN d.state='posted' THEN l.quantity ELSE 0 END),0) AS postedQuantity
 FROM inventory_reservation_movements r
+JOIN business_documents appointment ON appointment.id=r.appointment_document_id AND appointment.organization_id=r.organization_id
+  AND appointment.document_type='appointment' AND appointment.state='posted'
 JOIN bookings b ON b.id=r.booking_id AND b.organization_id=r.organization_id
 JOIN inventory_items i ON i.id=r.item_id AND i.organization_id=r.organization_id
 JOIN warehouses w ON w.id=r.warehouse_id AND w.organization_id=r.organization_id
