@@ -12,6 +12,7 @@ type Detail={document:TransferDoc;lines:TransferLine[]};
 
 type InventoryPayload={warehouses:Warehouse[];warehouseBalances:Balance[];staff:Staff;canManage:boolean;error?:string};
 type TransferPayload={documents:TransferDoc[];staff:Staff;canManage:boolean;error?:string};
+type TransferPrintPayload={snapshot?:{id:number};error?:string};
 
 function stateLabel(state:string){return state==="draft"?"Чернетка":state==="posted"?"Проведено":state==="cancelled"?"Скасовано":state==="reversed"?"Сторновано":state;}
 
@@ -28,6 +29,7 @@ export default function InventoryTransfersPage(){
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
   const [busy,setBusy]=useState(false);
+  const [printing,setPrinting]=useState(false);
 
   const load=useCallback(async()=>{
     const [invRes,docRes]=await Promise.all([
@@ -99,6 +101,20 @@ export default function InventoryTransfersPage(){
     }finally{setBusy(false);}
   }
 
+  async function downloadPdf(){
+    if(!selected||printing)return;
+    setPrinting(true);setNotice("");
+    try{
+      const response=await fetch("/api/staff/inventory/transfers/print",{
+        method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({documentId:selected.document.id}),
+      });
+      const payload=await response.json().catch(()=>({})) as TransferPrintPayload;
+      const snapshotId=Number(payload.snapshot?.id||0);
+      if(!response.ok||!Number.isInteger(snapshotId)||snapshotId<1){setNotice(`⚠ ${payload.error||"Не вдалося сформувати PDF"}`);return;}
+      window.location.assign(`/api/staff/printed-forms/pdf?snapshotId=${snapshotId}`);
+    }finally{setPrinting(false);}
+  }
+
   return <StaffWorkspaceShell active="inventory" title="Переміщення запасів" description="BAS-документ: списання зі складу-відправника і одночасне оприбуткування тієї самої партії на склад-одержувач." staffName={inventory?.staff.displayName||inventory?.staff.email} staffRole={inventory?.staff.role}>
     {error&&<p className="financeError">{error}</p>}
     {!inventory&&!error&&<p className="financeLoading">Завантаження…</p>}
@@ -126,6 +142,7 @@ export default function InventoryTransfersPage(){
 
         {selected&&<div className="inventoryOperations"><h3>{selected.document.number} · {stateLabel(selected.document.state)}</h3>
           {selected.lines.map(line=><p key={line.id}><b>{line.itemName}</b> · партія {line.lotNumber||line.lotId} · {line.quantity} {line.unit}<br/><small>{line.sourceWarehouseName} → {line.destinationWarehouseName} · {line.reason}</small></p>)}
+          <div><button disabled={printing} type="button" onClick={()=>void downloadPdf()}>{printing?"Формування PDF…":"PDF"}</button></div>
           {inventory.canManage&&selected.document.state==="draft"&&<div><button className="primary" disabled={busy} type="button" onClick={()=>void action("post")}>Провести</button><button disabled={busy} type="button" onClick={()=>void action("cancel")}>Скасувати чернетку</button></div>}
         </div>}
       </section>
