@@ -36,7 +36,7 @@ test("db:generate stays guarded and is a no-op after Drizzle metadata rebaseline
   assert.match(`${result.stdout}\n${result.stderr}`, /No schema changes, nothing to migrate/i);
 });
 
-test("production deploy applies committed SQL migrations directly instead of generating schema", async () => {
+test("production deploy applies committed SQL migrations through the controlled preparer instead of generating schema", async () => {
   const [deploy, migrationExecutor] = await Promise.all([
     read("scripts/deploy-cloudflare.sh"),
     read("scripts/apply-d1-migrations-remote.sh"),
@@ -47,8 +47,13 @@ test("production deploy applies committed SQL migrations directly instead of gen
   );
   assert.match(
     migrationExecutor,
-    /cat \"\$\{MIGRATIONS_DIR\}\/\$\{name\}\" > \"\$\{IMPORT_FILE\}\"/,
-    "the executor must import committed migration SQL files directly",
+    /node scripts\/prepare-d1-migration-remote\.mjs/,
+    "the executor must route committed migration SQL through the controlled preparer",
+  );
+  assert.match(
+    migrationExecutor,
+    /"\$\{MIGRATIONS_DIR\}\/\$\{name\}" "\$\{IMPORT_FILE\}" "\$\{name\}"/,
+    "the preparer must receive the committed migration, import path, and exact migration name",
   );
   assert.match(
     migrationExecutor,

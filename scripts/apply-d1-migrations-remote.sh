@@ -52,7 +52,8 @@ for name in "${MIGRATIONS[@]}"; do
 
   echo "Applying D1 migration via file import: ${name}"
   IMPORT_FILE="${TMP_DIR}/${name}"
-  cat "${MIGRATIONS_DIR}/${name}" > "${IMPORT_FILE}"
+  node scripts/prepare-d1-migration-remote.mjs \
+    "${MIGRATIONS_DIR}/${name}" "${IMPORT_FILE}" "${name}"
 
   # D1 keeps foreign_keys enabled for every migration. A migration may temporarily defer
   # those checks while rebuilding a referenced table, but it must finish with all

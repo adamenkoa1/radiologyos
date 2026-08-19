@@ -39,20 +39,23 @@ test("local deploy uses valid remote D1 command contracts", async () => {
   );
 });
 
-test("remote D1 migration executor keeps migration tracking in the imported SQL file", async () => {
+test("remote D1 migration executor keeps migration tracking in the prepared SQL file", async () => {
   const script = await read("scripts/apply-d1-migrations-remote.sh");
-  const copySql = script.indexOf('cat "${MIGRATIONS_DIR}/${name}" > "${IMPORT_FILE}"');
+  const prepareSql = script.indexOf("node scripts/prepare-d1-migration-remote.mjs");
+  const preparedInput = script.indexOf('"${MIGRATIONS_DIR}/${name}" "${IMPORT_FILE}" "${name}"');
   const tracking = script.indexOf("INSERT INTO d1_migrations (name) VALUES ('%s');");
   const executeFile = script.indexOf('--file "${IMPORT_FILE}"');
   const verifyRegistry = script.indexOf("SELECT COUNT(*) AS applied FROM d1_migrations WHERE name='${name}';");
 
-  assert.notEqual(copySql, -1, "migration SQL must be copied unchanged into the import file");
+  assert.notEqual(prepareSql, -1, "committed migration SQL must pass through the controlled remote preparer");
+  assert.notEqual(preparedInput, -1, "the preparer must receive the committed migration, import path, and exact migration name");
   assert.notEqual(tracking, -1, "migration registry insert must be appended to the import file");
-  assert.notEqual(executeFile, -1, "the combined SQL file must be sent through --file");
+  assert.notEqual(executeFile, -1, "the prepared SQL file must be sent through --file");
   assert.notEqual(verifyRegistry, -1, "the registry must be verified after each imported migration");
-  assert.ok(copySql < tracking && tracking < executeFile && executeFile < verifyRegistry);
+  assert.ok(prepareSql <= preparedInput && preparedInput < tracking && tracking < executeFile && executeFile < verifyRegistry);
   assert.match(script, /Unsafe D1 migration filename/);
   assert.match(script, /still unapplied/);
+  assert.doesNotMatch(script, /db:generate|drizzle-kit generate/);
 });
 
 test("remote D1 migration executor has valid bash syntax", () => {

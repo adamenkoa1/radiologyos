@@ -7,18 +7,18 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
 test("remote D1 runner explicitly finalizes deferred foreign keys before migration tracking", async () => {
   const script = await read("scripts/apply-d1-migrations-remote.sh");
-  const copySql = script.indexOf('cat "${MIGRATIONS_DIR}/${name}" > "${IMPORT_FILE}"');
+  const prepareSql = script.indexOf("node scripts/prepare-d1-migration-remote.mjs");
   const detectDeferred = script.indexOf("PRAGMA[[:space:]]+defer_foreign_keys");
   const finalizeDeferred = script.indexOf("PRAGMA defer_foreign_keys = OFF;");
   const tracking = script.indexOf("INSERT INTO d1_migrations (name) VALUES ('%s');");
   const executeFile = script.indexOf('--file "${IMPORT_FILE}"');
 
-  assert.notEqual(copySql, -1);
+  assert.notEqual(prepareSql, -1);
   assert.notEqual(detectDeferred, -1);
   assert.notEqual(finalizeDeferred, -1);
   assert.notEqual(tracking, -1);
   assert.notEqual(executeFile, -1);
-  assert.ok(copySql < detectDeferred);
+  assert.ok(prepareSql < detectDeferred);
   assert.ok(detectDeferred < finalizeDeferred);
   assert.ok(finalizeDeferred < tracking);
   assert.ok(tracking < executeFile);
