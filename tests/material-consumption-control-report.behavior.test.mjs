@@ -64,9 +64,9 @@ async function writeoffLine(db,raw,{reservationId,bookingId,itemId,lotId,warehou
   const lineId=Number(line.meta.last_row_id);
   if(state==='posted'){
     await db.prepare(`INSERT INTO inventory_movements
-      (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email,occurred_at,document_id,document_line_id)
-      VALUES (1,?,?,?,?,?,'writeoff',?,'control','control-test',?,?,?)`)
-      .bind(itemId,lotId,warehouse.id,warehouse.code,warehouse.name,-quantity,occurredAt,documentId,lineId).run();
+      (organization_id,item_id,lot_id,warehouse_id,warehouse_code,warehouse_name,movement_type,quantity_delta,reason,actor_email,document_id,document_line_id)
+      VALUES (1,?,?,?,?,?,'writeoff',?,'control','control-test',?,?)`)
+      .bind(itemId,lotId,warehouse.id,warehouse.code,warehouse.name,-quantity,documentId,lineId).run();
   }
   return {documentId,lineId};
 }
