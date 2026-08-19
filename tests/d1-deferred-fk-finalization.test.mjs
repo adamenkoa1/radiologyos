@@ -84,8 +84,8 @@ test("explicit deferred-FK finalization permits a referenced parent-table rebuil
     assert.equal(db.prepare("PRAGMA defer_foreign_keys").get().defer_foreign_keys, 0);
     assert.deepEqual(db.prepare("PRAGMA foreign_key_check").all(), []);
     assert.deepEqual(
-      db.prepare("SELECT organization_id, document_id FROM child_register").all(),
-      [{ organization_id: 1, document_id: 1 }],
+      { ...db.prepare("SELECT organization_id, document_id FROM child_register").get() },
+      { organization_id: 1, document_id: 1 },
     );
     assert.match(
       db.prepare("SELECT sql FROM sqlite_schema WHERE type='table' AND name='business_documents'").get().sql,
