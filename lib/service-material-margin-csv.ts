@@ -3,6 +3,7 @@ import type { buildServiceMaterialMarginReport } from "./service-material-margin
 type Report=Awaited<ReturnType<typeof buildServiceMaterialMarginReport>>;
 
 function safeValue(value:unknown){
+  if(typeof value==="number"&&Number.isFinite(value))return `"${value}"`;
   let text=value===null||value===undefined?"":String(value);
   if(/^[\s]*[=+\-@]/.test(text)||/^[\t\r]/.test(text))text=`'${text}`;
   return `"${text.replaceAll('"','""')}"`;
