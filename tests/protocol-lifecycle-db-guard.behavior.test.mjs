@@ -3,12 +3,12 @@ import test from "node:test";
 import { withD1 } from "./helpers/d1.mjs";
 
 // Exercise the lifecycle through raw D1 writes so API validation cannot mask a DB bypass.
-async function addBooking(db, code) {
+async function addBooking(db, code, time = "10:00") {
   const result = await db.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, service, desired_date, desired_time)
-     VALUES (1, ?, 'Lifecycle Guard Patient', '+380501110099', '380501110099', 'КТ', '2026-08-20', '10:00')`,
-  ).bind(code).run();
+     VALUES (1, ?, 'Lifecycle Guard Patient', '+380501110099', '380501110099', 'КТ', '2026-08-20', ?)`,
+  ).bind(code, time).run();
   return Number(result.meta.last_row_id);
 }
 
@@ -33,19 +33,19 @@ function insertProtocol(db, bookingId, status, version = 1) {
 
 test("D1 rejects direct finalized protocol inserts and unknown statuses", async () => {
   await withD1(async (db) => {
-    const signedBooking = await addBooking(db, "LIFE-INSERT-SIGNED");
+    const signedBooking = await addBooking(db, "LIFE-INSERT-SIGNED", "10:00");
     await assert.rejects(
       insertProtocol(db, signedBooking, "signed"),
       /protocol must start draft or ready/i,
     );
 
-    const issuedBooking = await addBooking(db, "LIFE-INSERT-ISSUED");
+    const issuedBooking = await addBooking(db, "LIFE-INSERT-ISSUED", "11:00");
     await assert.rejects(
       insertProtocol(db, issuedBooking, "issued"),
       /protocol must start draft or ready/i,
     );
 
-    const invalidBooking = await addBooking(db, "LIFE-INSERT-INVALID");
+    const invalidBooking = await addBooking(db, "LIFE-INSERT-INVALID", "12:00");
     await assert.rejects(
       insertProtocol(db, invalidBooking, "forged"),
       /protocol status invalid|protocol must start draft or ready/i,
