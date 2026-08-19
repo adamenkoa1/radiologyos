@@ -1,7 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getMaterialConsumption,listMaterialConsumption } from "../lib/material-consumption.ts";
-import { withD1 } from "./helpers/d1.mjs";
+import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
+
+async function api(db,url,cookie,body,method="POST"){
+  return callWorker(jsonRequest(url,body,{method,headers:{cookie}}),db);
+}
+async function get(db,url,cookie){
+  return callWorker(new Request(`http://localhost${url}`,{headers:{cookie}}),db);
+}
 
 async function seedStock(db,raw){
   const itemResult=await db.prepare(`INSERT INTO inventory_items
@@ -56,6 +62,7 @@ function reserve(raw,bookingId,appointmentDocumentId){
 
 test("rescheduled completed booking exposes only current Appointment reservation and D1 rejects stale reserve",async()=>{
   await withD1(async(db,raw)=>{
+    const manager=await seedStaffSession(db,{email:"current-materials@example.com",role:"admin",organizationId:1});
     const stock=await seedStock(db,raw);
     const bookingId=await seedBooking(db,stock);
 
@@ -77,11 +84,15 @@ test("rescheduled completed booking exposes only current Appointment reservation
       [v2.documentId,"reserve",2],[v2.documentId,"release",-2],
     ]);
 
-    assert.equal(await getMaterialConsumption(db,1,Number(oldReserve.id)),null,"superseded Appointment reserve must not be executable");
-    const current=await getMaterialConsumption(db,1,Number(currentReserve.id));assert.ok(current);assert.equal(current.reservationId,Number(currentReserve.id));
-    const listed=await listMaterialConsumption(db,1);
-    assert.equal(listed.some(row=>row.reservationId===Number(oldReserve.id)),false);
-    assert.equal(listed.some(row=>row.reservationId===Number(currentReserve.id)),true);
+    const queueResponse=await get(db,"/api/staff/material-consumption",manager);assert.equal(queueResponse.status,200);
+    const queue=await queueResponse.json();
+    assert.equal(queue.rows.some(row=>row.reservationId===Number(oldReserve.id)),false,"superseded Appointment reserve must not be listed");
+    assert.equal(queue.rows.some(row=>row.reservationId===Number(currentReserve.id)),true,"current Appointment reserve must remain executable");
+
+    const staleApi=await api(db,"/api/staff/material-consumption",manager,{
+      reservationId:Number(oldReserve.id),allocations:[{lotId:stock.lotId,quantity:1}],
+    });
+    assert.equal(staleApi.status,404,"superseded Appointment reserve must fail before draft creation");
 
     const staleDoc=raw.prepare(`INSERT INTO business_documents
       (organization_id,document_type,number,occurred_at,state,comment,created_by)
