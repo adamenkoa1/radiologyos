@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   snapshot:
@@ -31,3 +32,12 @@ jobs:
           name: protocol-0104-snapshot
           path: drizzle/meta/0104_snapshot.json
           if-no-files-found: error
+      - name: Publish temporary run locator
+        if: always()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -f state=success \
+            -f context="tmp-snapshot-run-${GITHUB_RUN_ID}" \
+            -f description="snapshot artifact run ${GITHUB_RUN_ID}"
