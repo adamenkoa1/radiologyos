@@ -67,14 +67,5 @@ jobs:
             exit "$status"
           fi
 
-      - name: Upload behavioral test diagnostics
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr416-test-output
-          path: test-output.log
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Production release gate
         run: npm run test:production-gate
