@@ -16,6 +16,7 @@ test("protocol migration creates the document table and backfills existing proto
 
   const journal = JSON.parse(await read("drizzle/meta/_journal.json"));
   assert.ok(journal.entries.some((entry) => entry.tag === "0005_protocol_documents"));
+  assert.ok(journal.entries.some((entry) => entry.tag === "0104_protocol_revision_derived_history"));
 
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const protocols = sqliteTable\("protocols"/);
@@ -60,6 +61,7 @@ test("template pool covers the department's high-volume studies", async () => {
 
 test("protocol API guards writes, signing and delivery without runtime DDL", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
+  const derivedHistory = await read("drizzle/0104_protocol_revision_derived_history.sql");
   assert.match(route, /requireOrgContext\(request, db\)/);
   assert.match(route, /canManageProtocols\(member\.role\)/);
   assert.match(route, /canSignProtocols\(member\.role\)/);
@@ -67,8 +69,10 @@ test("protocol API guards writes, signing and delivery without runtime DDL", asy
   assert.match(route, /existing\.status !== "signed"/);
   assert.match(route, /protocol_signed/);
   assert.match(route, /protocol_issued/);
-  assert.match(route, /INSERT INTO protocol_revisions/);
+  assert.match(route, /INSERT OR IGNORE INTO protocol_revisions/);
   assert.match(route, /protocol_document_saved/);
+  assert.match(derivedHistory, /protocols_revision_current_snapshot_guard/);
+  assert.match(derivedHistory, /protocol_revision_snapshot_next/);
   assert.doesNotMatch(route, /CREATE\s+TABLE/i);
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
 });

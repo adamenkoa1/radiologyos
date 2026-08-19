@@ -171,7 +171,7 @@ test("legacy admin may prepare and issue, but cannot become the clinical signer"
   });
 });
 
-test("D1 rejects unsigned signing and preserves signature metadata through signed to issued", async () => {
+test("D1 rejects unsigned or unversioned signing and preserves signature metadata through signed to issued", async () => {
   await withD1(async (db) => {
     const bookingId = await addBooking(db, { code:"SIGN-D1" });
     await db.prepare(
@@ -183,14 +183,25 @@ test("D1 rejects unsigned signing and preserves signature metadata through signe
     ).bind(bookingId).run();
 
     await assert.rejects(
-      db.prepare("UPDATE protocols SET status='signed' WHERE organization_id=1 AND booking_id=?")
+      db.prepare("UPDATE protocols SET status='signed', version=4 WHERE organization_id=1 AND booking_id=?")
         .bind(bookingId).run(),
       /protocol signature state mismatch/i,
     );
 
+    await assert.rejects(
+      db.prepare(
+        `UPDATE protocols
+         SET status='signed', signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP,
+             signed_version=version
+         WHERE organization_id=1 AND booking_id=?`
+      ).bind(bookingId).run(),
+      /protocol edits require next version/i,
+    );
+
     await db.prepare(
       `UPDATE protocols
-       SET status='signed', signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=version
+       SET status='signed', version=4, signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP,
+           signed_version=4, updated_by='doctor@example.com'
        WHERE organization_id=1 AND booking_id=?`
     ).bind(bookingId).run();
 
@@ -199,12 +210,22 @@ test("D1 rejects unsigned signing and preserves signature metadata through signe
        FROM protocols WHERE organization_id=1 AND booking_id=?`
     ).bind(bookingId).first();
     assert.equal(signed.status, "signed");
+    assert.equal(signed.version, 4);
     assert.equal(signed.signedBy, "doctor@example.com");
     assert.ok(signed.signedAt);
-    assert.equal(signed.signedVersion, 3);
+    assert.equal(signed.signedVersion, 4);
+
+    const signedRevision = await db.prepare(
+      `SELECT status, saved_by AS savedBy FROM protocol_revisions
+       WHERE organization_id=1 AND booking_id=? AND version=4`
+    ).bind(bookingId).first();
+    assert.deepEqual(Object.fromEntries(Object.entries(signedRevision)), {
+      status: "signed",
+      savedBy: "doctor@example.com",
+    });
 
     await assert.rejects(
-      db.prepare("UPDATE protocols SET version=4 WHERE organization_id=1 AND booking_id=?")
+      db.prepare("UPDATE protocols SET version=5 WHERE organization_id=1 AND booking_id=?")
         .bind(bookingId).run(),
       /signed protocol content is immutable|signature state mismatch/i,
     );
@@ -221,7 +242,7 @@ test("D1 rejects unsigned signing and preserves signature metadata through signe
        FROM protocols WHERE organization_id=1 AND booking_id=?`
     ).bind(bookingId).first();
     assert.equal(issued.status, "issued");
-    assert.equal(issued.version, 3);
+    assert.equal(issued.version, 4);
     assert.equal(issued.signedBy, signed.signedBy);
     assert.equal(issued.signedAt, signed.signedAt);
     assert.equal(issued.signedVersion, signed.signedVersion);

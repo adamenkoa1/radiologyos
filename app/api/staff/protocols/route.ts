@@ -304,7 +304,7 @@ export async function PUT(request: Request) {
         version, authorEmail, member.email, signedBy, signedAt, signedVersion,
       ),
       db.prepare(
-        `INSERT INTO protocol_revisions
+        `INSERT OR IGNORE INTO protocol_revisions
            (organization_id, booking_id, version, template_key, method, sections_json, findings, conclusion,
             recommendations, number, status, saved_by)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
