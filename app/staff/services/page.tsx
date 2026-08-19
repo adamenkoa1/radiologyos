@@ -121,7 +121,8 @@ export default function ServiceAssignmentsPage() {
       });
       const payload=await response.json().catch(()=>({})) as {requirement?:MaterialRequirement;error?:string};
       if(!response.ok||!payload.requirement){setMaterialError(payload.error||"Не вдалося створити норму матеріалу");return;}
-      setRequirements(current=>[...current,payload.requirement!].sort((a,b)=>`${a.serviceCode}-${1-a.active}-${a.id}`.localeCompare(`${b.serviceCode}-${1-b.active}-${b.id}`))));
+      const created=payload.requirement;
+      setRequirements(current=>[...current,created].sort((a,b)=>`${a.serviceCode}-${1-a.active}-${a.id}`.localeCompare(`${b.serviceCode}-${1-b.active}-${b.id}`)));
       setMaterialForm(current=>({...current,itemId:"",quantity:"1"}));
       setMaterialNotice("Норму матеріалу додано. Вона застосовуватиметься до нової історії записів; наявні записи не перераховуються заднім числом.");
     }finally{setMaterialBusy(false);}
@@ -136,7 +137,8 @@ export default function ServiceAssignmentsPage() {
       });
       const payload=await response.json().catch(()=>({})) as {requirement?:MaterialRequirement;error?:string};
       if(!response.ok||!payload.requirement){setMaterialError(payload.error||"Не вдалося вимкнути норму");return;}
-      setRequirements(current=>current.map(item=>item.id===payload.requirement!.id?payload.requirement!:item));
+      const updated=payload.requirement;
+      setRequirements(current=>current.map(item=>item.id===updated.id?updated:item));
       setMaterialNotice("Норму вимкнено. Історичні резервації та рухи залишаються незмінними.");
     }finally{setMaterialBusy(false);}
   }
