@@ -12,7 +12,7 @@ test("protocol document, revisions and booking mutations are tenant scoped", asy
   assert.match(route, /FROM protocol_revisions WHERE booking_id = \? AND organization_id = \?/);
   assert.match(route, /WHERE organization_id = \? AND number = \? AND booking_id != \?/);
   assert.match(route, /\(organization_id, booking_id, template_key/);
-  assert.match(route, /INSERT INTO protocol_revisions[\s\S]*\(organization_id, booking_id, version/);
+  assert.match(route, /INSERT OR IGNORE INTO protocol_revisions[\s\S]*\(organization_id, booking_id, version/);
   assert.match(route, /WHERE id = \? AND organization_id = \?/);
   assert.match(route, /INSERT INTO booking_events \(organization_id, booking_id/);
 });
@@ -31,9 +31,17 @@ test("D1 physically rejects cross-tenant protocol documents and revisions", asyn
 
     await db.prepare(`INSERT INTO protocols
       (organization_id,booking_id,updated_by) VALUES (1,?,'doctor@one')`).bind(bookingOne).run();
-    await db.prepare(`INSERT INTO protocol_revisions
-      (organization_id,booking_id,version,template_key,saved_by)
-      VALUES (1,?,1,'generic','doctor@one')`).bind(bookingOne).run();
+
+    const derivedRevision = await db.prepare(
+      `SELECT organization_id AS organizationId, booking_id AS bookingId, version, saved_by AS savedBy
+       FROM protocol_revisions WHERE organization_id=1 AND booking_id=? AND version=1`
+    ).bind(bookingOne).first();
+    assert.deepEqual(Object.fromEntries(Object.entries(derivedRevision)), {
+      organizationId:1,
+      bookingId:bookingOne,
+      version:1,
+      savedBy:"doctor@one",
+    });
 
     await assert.rejects(
       db.prepare(`INSERT INTO protocols
@@ -44,7 +52,7 @@ test("D1 physically rejects cross-tenant protocol documents and revisions", asyn
       db.prepare(`INSERT INTO protocol_revisions
         (organization_id,booking_id,version,template_key,saved_by)
         VALUES (1,?,1,'generic','doctor@one')`).bind(bookingTwo).run(),
-      /tenant mismatch/i,
+      /tenant mismatch|revision must match current document/i,
     );
     await assert.rejects(
       db.prepare("UPDATE protocols SET organization_id=2 WHERE booking_id=?").bind(bookingOne).run(),
@@ -93,6 +101,12 @@ test("migration repairs protocol ownership and tenant-scopes immutable revisions
   assert.match(signing, /signed_at/);
   assert.match(signing, /signed_version/);
   assert.match(signing, /protocols_signed_content_immutable/);
+
+  const derivedHistory = await read("drizzle/0104_protocol_revision_derived_history.sql");
+  assert.match(derivedHistory, /protocol_revisions_snapshot_guard_insert/);
+  assert.match(derivedHistory, /protocols_revision_version_step_guard/);
+  assert.match(derivedHistory, /protocol_revision_snapshot_initial/);
+  assert.match(derivedHistory, /protocol_revision_snapshot_next/);
 
   const schema = await read("db/schema.ts");
   assert.match(schema, /export const protocolRevisions[\s\S]*organizationId: integer\("organization_id"\)/);
