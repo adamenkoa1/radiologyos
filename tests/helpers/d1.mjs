@@ -63,11 +63,12 @@ function wrapAsD1(db) {
   };
 }
 
-export async function applyMigrations(db) {
+export async function applyMigrations(db, { beforeMigration } = {}) {
   const files = (await readdir(fileURLToPath(DRIZZLE_DIR)))
     .filter((f) => f.endsWith(".sql"))
     .sort();
   for (const file of files) {
+    if (beforeMigration) await beforeMigration({ db, file });
     const sql = await readFile(new URL(file, DRIZZLE_DIR), "utf8");
     try {
       if (file === "0093_study_correction_registrar.sql") {
@@ -88,16 +89,16 @@ export async function applyMigrations(db) {
   }
 }
 
-export async function freshDb() {
+export async function freshDb(options = {}) {
   const raw = new DatabaseSync(":memory:");
   raw.exec("PRAGMA foreign_keys = ON;");
-  await applyMigrations(raw);
+  await applyMigrations(raw, options);
   const db = wrapAsD1(raw);
   return { db, raw, close: () => raw.close() };
 }
 
-export async function withD1(fn) {
-  const { db, raw, close } = await freshDb();
+export async function withD1(fn, options = {}) {
+  const { db, raw, close } = await freshDb(options);
   const key = "__RADIOLOGY_DB__";
   const previous = globalThis[key];
   globalThis[key] = db;
