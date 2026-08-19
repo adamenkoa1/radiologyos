@@ -1,0 +1,53 @@
+name: Temporary protocol lifecycle metadata
+
+on:
+  push:
+    branches:
+      - audit/protocol-lifecycle-db-guard
+
+permissions:
+  contents: write
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Generate 0105 Drizzle metadata
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const crypto = require('node:crypto');
+
+          const previousPath = 'drizzle/meta/0104_snapshot.json';
+          const nextPath = 'drizzle/meta/0105_snapshot.json';
+          if (!fs.existsSync(nextPath)) {
+            const previous = JSON.parse(fs.readFileSync(previousPath, 'utf8'));
+            const next = { ...previous, id: crypto.randomUUID(), prevId: previous.id };
+            fs.writeFileSync(nextPath, JSON.stringify(next, null, 2) + '\n');
+          }
+
+          const journalPath = 'drizzle/meta/_journal.json';
+          const journal = JSON.parse(fs.readFileSync(journalPath, 'utf8'));
+          if (!journal.entries.some((entry) => entry.idx === 105)) {
+            journal.entries.push({
+              idx: 105,
+              version: '6',
+              when: Date.now(),
+              tag: '0105_protocol_lifecycle_db_guard',
+              breakpoints: true,
+            });
+            fs.writeFileSync(journalPath, JSON.stringify(journal, null, 2) + '\n');
+          }
+          NODE
+      - name: Commit generated metadata when needed
+        run: |
+          if git diff --quiet -- drizzle/meta/0105_snapshot.json drizzle/meta/_journal.json; then
+            echo "Metadata already present"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/meta/0105_snapshot.json drizzle/meta/_journal.json
+          git commit -m "Add 0105 Drizzle metadata"
+          git push
