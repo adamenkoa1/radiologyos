@@ -48,6 +48,7 @@ export default function ReceivablesPage(){
         <label><span>Дата</span><input type="date" value={asOf} onChange={e=>setAsOf(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
         <a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a>
+        <a className="excelButton" href="/staff/reports/material-margin">Матеріальна маржа</a>
       </header>
       {error&&<p className="financeError">{error}</p>}
       {data?.truncated&&<p className="financeError">Показано перші 2000 ненульових сальдо. Для повної відомості звузьте контур даних або використайте експорт після його додавання.</p>}
