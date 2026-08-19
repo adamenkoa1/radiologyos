@@ -44,8 +44,9 @@ test("protocol document is the authoritative projection for booking protocol sta
       /projection mismatch/i,
     );
 
-    await db.prepare("UPDATE protocols SET status='ready', number='CT-2026-001' WHERE booking_id=? AND organization_id=1")
-      .bind(bookingId).run();
+    await db.prepare(
+      "UPDATE protocols SET status='ready', number='CT-2026-001', version=2 WHERE booking_id=? AND organization_id=1"
+    ).bind(bookingId).run();
     booking = await db.prepare(`SELECT protocol_status AS status, protocol_number AS number,
       protocol_ready_at AS readyAt, protocol_issued_at AS issuedAt
       FROM bookings WHERE id=? AND organization_id=1`).bind(bookingId).first();
@@ -57,12 +58,13 @@ test("protocol document is the authoritative projection for booking protocol sta
     await assert.rejects(
       db.prepare("UPDATE protocols SET status='issued' WHERE booking_id=? AND organization_id=1")
         .bind(bookingId).run(),
-      /protocol_issue_requires_signed_transition|signature state mismatch/i,
+      /protocol edits require next version|protocol_issue_requires_signed_transition|signature state mismatch/i,
     );
 
     await db.prepare(
       `UPDATE protocols
-       SET status='signed', signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=version
+       SET status='signed', version=3, signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP,
+           signed_version=3, updated_by='doctor@example.com'
        WHERE booking_id=? AND organization_id=1`
     ).bind(bookingId).run();
     booking = await db.prepare(`SELECT protocol_status AS status, protocol_number AS number,
