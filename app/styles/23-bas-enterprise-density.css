@@ -1,0 +1,428 @@
+/* ============================================================
+   RadiologyOS — BAS enterprise density layer.
+   Keeps RadiologyOS identity and clinical semantics, but applies a
+   compact BAS-like information density to every staff screen.
+   ============================================================ */
+
+.basWorkspaceShell{
+  --workspace-sidebar:224px;
+  --bas-topbar:48px;
+  --bas-modules:34px;
+  --bas-commands:38px;
+  --bas-control:30px;
+  --bas-row:32px;
+  --bas-radius:3px;
+  --bas-line:#cfd8d5;
+  --bas-line-soft:#e4e9e7;
+  --bas-bg:#eef1ef;
+  --bas-panel:#fff;
+  --bas-head:#f5f7f6;
+  --bas-text:#18322f;
+  --bas-muted:#677873;
+  --bas-accent:#0d5b50;
+  --fs-display:30px;
+  --fs-h1:20px;
+  --fs-h2:17px;
+  --fs-h3:14px;
+  --fs-lg:14px;
+  --fs-base:12px;
+  --fs-sm:11px;
+  --fs-xs:10px;
+  --r-xs:2px;
+  --r-sm:3px;
+  --r-md:4px;
+  --r-lg:5px;
+  --r-xl:6px;
+  --ws-radius-sm:3px;
+  --ws-radius-md:4px;
+  --ws-shadow-sm:0 1px 2px rgba(18,45,41,.05);
+  --ws-shadow-md:0 3px 10px rgba(18,45,41,.07);
+  background:var(--bas-bg);
+  font-size:12px;
+  line-height:1.35;
+}
+
+/* Left BAS rail: compact, persistent and scan-friendly. */
+.basWorkspaceShell .workspaceSidebar{
+  width:var(--workspace-sidebar);
+  background:linear-gradient(180deg,#164a43 0%,#123e39 100%);
+  border-right:1px solid #0d342f;
+  box-shadow:none;
+}
+.basWorkspaceShell .workspaceBrand{
+  height:var(--bas-topbar);
+  min-height:var(--bas-topbar);
+  gap:8px;
+  padding:0 11px;
+}
+.basWorkspaceShell .workspaceBrandMark{
+  width:28px;
+  height:28px;
+  flex-basis:28px;
+  border-radius:3px;
+  font-size:15px;
+  box-shadow:none;
+}
+.basWorkspaceShell .workspaceBrandMark::after{width:7px;height:7px;right:-2px;bottom:-2px}
+.basWorkspaceShell .workspaceBrandCopy b{font-family:var(--font-sans);font-size:13px;font-weight:800}
+.basWorkspaceShell .workspaceBrandCopy small{margin-top:1px;font-size:8px;letter-spacing:.045em}
+.basWorkspaceShell .workspaceNavigation{padding:7px 6px 8px}
+.basWorkspaceShell .workspaceNavigation>p,
+.basWorkspaceShell .workspaceSidebar .workspaceNavigation>p:nth-of-type(2){
+  margin:11px 7px 4px;
+  font-size:8px;
+  letter-spacing:.11em;
+}
+.basWorkspaceShell .workspaceModuleLink{
+  min-height:30px;
+  margin:1px 0;
+  padding:0 8px;
+  gap:7px;
+  border-radius:2px;
+  font-size:11px;
+  font-weight:650;
+}
+.basWorkspaceShell .workspaceModuleLink:hover{transform:none;background:rgba(255,255,255,.075)}
+.basWorkspaceShell .workspaceModuleLink.active{
+  background:#f7faf9;
+  color:#104e46;
+  box-shadow:inset 3px 0 0 #f0b24b;
+}
+.basWorkspaceShell .workspaceModuleLink.active::before{display:none}
+.basWorkspaceShell .workspaceModuleLink>span[aria-hidden="true"]{
+  width:15px;
+  height:15px;
+  flex-basis:15px;
+  -webkit-mask-size:15px 15px;
+  mask-size:15px 15px;
+}
+.basWorkspaceShell .workspaceNavigation .processStep+.processStep::before{left:15px;top:-2px;height:3px}
+.basWorkspaceShell .workspaceSidebarFoot{
+  min-height:42px;
+  margin:0;
+  padding:7px 10px;
+  gap:7px;
+}
+.basWorkspaceShell .workspaceSidebarFoot b{font-size:9.5px}
+.basWorkspaceShell .workspaceSidebarFoot small{margin-top:1px;font-size:8px}
+.basWorkspaceShell .systemPulse{width:7px;height:7px;flex-basis:7px;box-shadow:0 0 0 3px rgba(101,216,164,.12)}
+
+/* Main chrome: BAS-like stacked command area. */
+.basWorkspaceShell .workspaceMain{margin-left:var(--workspace-sidebar);background:var(--bas-bg)}
+.basWorkspaceShell .workspaceTopbar{
+  height:var(--bas-topbar);
+  min-height:var(--bas-topbar);
+  gap:10px;
+  padding:0 12px;
+  background:#fff;
+  border-bottom:1px solid var(--bas-line);
+  box-shadow:none;
+  backdrop-filter:none;
+}
+.basWorkspaceShell .workspaceTopbar::before{height:2px}
+.basWorkspaceShell .workspaceMenuButton{
+  width:30px;
+  height:30px;
+  border-radius:2px;
+  border-color:var(--bas-line);
+}
+.basWorkspaceShell .workspaceMenuButton span{width:14px;height:1.5px}
+.basWorkspaceShell .workspaceTopTitle b{font-size:11.5px}
+.basWorkspaceShell .workspaceTopTitle small{margin-top:1px;font-size:8.5px}
+.basWorkspaceShell .workspaceClock{gap:6px;padding-right:10px}
+.basWorkspaceShell .workspaceClock b{font-size:12px}
+.basWorkspaceShell .workspaceClock span{font-size:8.5px}
+.basWorkspaceShell .workspaceOnline{gap:5px;font-size:8.5px;letter-spacing:.035em}
+.basWorkspaceShell .workspaceOnline i{width:6px;height:6px;box-shadow:0 0 0 3px rgba(57,183,125,.12)}
+.basWorkspaceShell .workspaceProfile summary{min-width:164px;gap:7px;padding:3px 5px;border-radius:2px}
+.basWorkspaceShell .workspaceAvatar{width:28px;height:28px;flex-basis:28px;font-size:10px}
+.basWorkspaceShell .workspaceProfile b{font-size:9.5px}
+.basWorkspaceShell .workspaceProfile small{margin-top:1px;font-size:8px}
+.basWorkspaceShell .workspaceProfile>div{top:36px;width:198px;padding:4px;border-radius:3px;box-shadow:0 8px 22px rgba(18,61,58,.14)}
+.basWorkspaceShell .workspaceProfile>div a,.basWorkspaceShell .workspaceLogout{padding:7px 8px;border-radius:2px;font-size:10px}
+
+.basWorkspaceShell .workspaceBusinessBar{top:var(--bas-topbar);box-shadow:none;border-bottom:1px solid var(--bas-line)}
+.basWorkspaceShell .workspaceBusinessModules{
+  min-height:var(--bas-modules);
+  height:var(--bas-modules);
+  gap:0;
+  padding:0 10px;
+  border-bottom:1px solid var(--bas-line);
+  background:#f4f6f5;
+}
+.basWorkspaceShell .workspaceBusinessModules button{
+  min-height:var(--bas-modules);
+  height:var(--bas-modules);
+  padding:0 9px;
+  border-left:1px solid transparent;
+  border-right:1px solid transparent;
+  border-radius:0;
+  font-size:9.5px;
+  font-weight:700;
+}
+.basWorkspaceShell .workspaceBusinessModules button:hover{background:#e9efed}
+.basWorkspaceShell .workspaceBusinessModules button.selected{
+  background:#fff;
+  border-left-color:var(--bas-line);
+  border-right-color:var(--bas-line);
+  box-shadow:none;
+}
+.basWorkspaceShell .workspaceBusinessModules button.current::after{left:0;right:0;height:2px;border-radius:0;background:#e7a638}
+.basWorkspaceShell .workspaceBusinessModules button i{width:5px;height:5px;box-shadow:none}
+.basWorkspaceShell .workspaceBusinessCommands{
+  min-height:var(--bas-commands);
+  height:var(--bas-commands);
+  gap:8px;
+  padding:3px 12px;
+  border-bottom:1px solid var(--bas-line);
+}
+.basWorkspaceShell .workspaceBusinessContext{min-width:112px;padding-right:9px}
+.basWorkspaceShell .workspaceBusinessContext b{font-size:9.5px}
+.basWorkspaceShell .workspaceBusinessContext small{margin-top:0;font-size:7.5px}
+.basWorkspaceShell .workspaceBusinessLinks{gap:1px}
+.basWorkspaceShell .workspaceBusinessLinks a,
+.basWorkspaceShell .workspaceBusinessReturn{
+  min-height:27px;
+  height:27px;
+  padding:0 8px;
+  border-radius:2px;
+  font-size:9.5px;
+}
+
+/* Page canvas: less decoration, more usable data per viewport. */
+.basWorkspaceShell .workspacePage{
+  min-height:calc(100vh - var(--bas-topbar) - var(--bas-modules) - var(--bas-commands));
+  padding:10px 14px 28px;
+}
+.basWorkspaceShell .workspacePageHead,
+.basWorkspaceShell.workspaceWide .workspacePageHead{
+  max-width:none;
+  min-height:48px;
+  margin:0 0 8px;
+  padding:0 0 8px;
+  align-items:flex-end;
+  gap:14px;
+}
+.basWorkspaceShell .workspaceBreadcrumb{margin:0 0 3px!important;font-size:8.5px!important;letter-spacing:.035em;text-transform:none}
+.basWorkspaceShell .workspaceBreadcrumb span{margin:0 4px}
+.basWorkspaceShell .workspacePageHead h1{font-size:20px;line-height:1.15;font-weight:700;letter-spacing:-.012em}
+.basWorkspaceShell .workspacePageHead>div:first-child>p:last-child,
+.basWorkspaceShell .workspacePageHead>div>p:not(.workspaceBreadcrumb){
+  max-width:96ch;
+  margin:3px 0 0;
+  font-size:10px;
+  line-height:1.35;
+}
+.basWorkspaceShell .workspacePageActions{gap:4px}
+.basWorkspaceShell .workspacePageActions a,.basWorkspaceShell .workspacePageActions button{
+  min-height:var(--bas-control);
+  height:var(--bas-control);
+  padding:0 10px;
+  border-radius:2px;
+  font-size:9.5px;
+  font-weight:700;
+}
+
+/* Universal BAS form controls. */
+.basWorkspaceShell :where(input,select,textarea){
+  min-height:var(--bas-control);
+  border-radius:2px!important;
+  border-color:var(--bas-line)!important;
+  padding:5px 7px;
+  font-family:inherit;
+  font-size:10.5px;
+  line-height:1.2;
+  box-shadow:none!important;
+}
+.basWorkspaceShell textarea{min-height:62px}
+.basWorkspaceShell :where(input,select,textarea):focus{
+  outline:1px solid #4f8d84;
+  outline-offset:0;
+  border-color:#4f8d84!important;
+}
+.basWorkspaceShell :where(button,a)[class*="Btn"],
+.basWorkspaceShell :where(button,a)[class*="Button"],
+.basWorkspaceShell .excelButton{
+  min-height:28px;
+  border-radius:2px!important;
+  padding:0 8px;
+  font-size:9.5px;
+  box-shadow:none!important;
+}
+
+/* Universal BAS table geometry. */
+.basWorkspaceShell table{width:100%;border-collapse:collapse;border-spacing:0;font-size:10.5px}
+.basWorkspaceShell table thead th{
+  position:sticky;
+  top:0;
+  z-index:2;
+  height:28px;
+  padding:5px 7px;
+  background:#edf1ef;
+  border:1px solid var(--bas-line);
+  color:#344c48;
+  font-size:9px;
+  font-weight:750;
+  letter-spacing:.015em;
+  text-transform:none;
+  white-space:nowrap;
+}
+.basWorkspaceShell table tbody td{
+  min-height:var(--bas-row);
+  padding:5px 7px;
+  border:1px solid #dde4e1;
+  vertical-align:middle;
+}
+.basWorkspaceShell table tbody tr:nth-child(even){background:#fafbfa}
+.basWorkspaceShell table tbody tr:hover{background:#eef6f3}
+.basWorkspaceShell table td small{display:block;margin-top:1px;font-size:8.5px;line-height:1.25;color:var(--bas-muted)}
+.basWorkspaceShell table td b{font-size:10.5px}
+.basWorkspaceShell table td button,.basWorkspaceShell table td a{
+  min-height:25px;
+  padding:0 7px;
+  border-radius:2px;
+  font-size:9px;
+}
+
+/* Existing finance/report primitives become BAS journals everywhere. */
+.basWorkspaceShell .financeSummary{
+  max-width:none;
+  margin:0 0 7px;
+  gap:5px;
+}
+.basWorkspaceShell .financeSummary article,
+.basWorkspaceShell .reportStats article,
+.basWorkspaceShell .staffStats article{
+  min-height:68px;
+  padding:8px 10px;
+  border:1px solid var(--bas-line);
+  border-radius:2px;
+  box-shadow:none;
+  background:#fff;
+}
+.basWorkspaceShell .financeSummary article span,
+.basWorkspaceShell .reportStats article span,
+.basWorkspaceShell .staffStats article span{font-size:8.5px;letter-spacing:.025em}
+.basWorkspaceShell .financeSummary article b,
+.basWorkspaceShell .reportStats article b,
+.basWorkspaceShell .staffStats article b{margin-top:3px;font-size:16px;line-height:1.1}
+.basWorkspaceShell .financeSummary article small,
+.basWorkspaceShell .reportStats article small,
+.basWorkspaceShell .staffStats article small{margin-top:2px;font-size:8.5px;line-height:1.2}
+.basWorkspaceShell .financeJournal,
+.basWorkspaceShell .reportPanel,
+.basWorkspaceShell .reportBuilder,
+.basWorkspaceShell .equipmentAdmin,
+.basWorkspaceShell .staffAdmin,
+.basWorkspaceShell .bookingRow,
+.basWorkspaceShell .ds-card{
+  max-width:none;
+  margin-top:7px;
+  border:1px solid var(--bas-line);
+  border-radius:2px;
+  box-shadow:none;
+  background:#fff;
+}
+.basWorkspaceShell .financeToolbar,
+.basWorkspaceShell .staffTools{
+  min-height:40px;
+  gap:6px;
+  padding:5px 7px;
+  border-radius:0;
+  background:#f4f6f5;
+  color:var(--bas-text);
+  border-bottom:1px solid var(--bas-line);
+}
+.basWorkspaceShell .financeToolbar>div{min-width:180px;flex:1}
+.basWorkspaceShell .financeToolbar b{font-size:10.5px}
+.basWorkspaceShell .financeToolbar small{margin-top:1px;font-size:8.5px;line-height:1.2;color:var(--bas-muted)}
+.basWorkspaceShell .financeToolbar label span{margin-bottom:2px;font-size:8px}
+.basWorkspaceShell .financeTableWrap{border-radius:0;box-shadow:none}
+.basWorkspaceShell .financeTable{margin:0}
+.basWorkspaceShell .financePrintDetails{gap:4px;padding:6px}
+.basWorkspaceShell .financePrintDetails p{min-height:44px;margin:0;padding:7px 8px;border:1px solid var(--bas-line-soft);border-radius:2px}
+.basWorkspaceShell .financePrintDetails p span{font-size:8px}
+.basWorkspaceShell .financePrintDetails p b{margin-top:2px;font-size:10px}
+.basWorkspaceShell .financeState{padding:2px 5px;border-radius:2px;font-size:8.5px}
+.basWorkspaceShell .financeError,.basWorkspaceShell .financeLoading,.basWorkspaceShell .financeEmpty{margin:6px;padding:7px 8px;border-radius:2px;font-size:10px}
+
+/* Generic dashboard/card collections use the same dense rhythm. */
+.basWorkspaceShell .workspaceQuickGrid{
+  max-width:none;
+  margin:0 0 7px;
+  grid-template-columns:1.2fr repeat(3,1fr);
+  gap:5px;
+}
+.basWorkspaceShell .workspaceQuickGrid>a{
+  min-height:72px;
+  padding:9px 10px;
+  border-radius:2px;
+  box-shadow:none;
+}
+.basWorkspaceShell .workspaceQuickGrid>a:hover{transform:none;box-shadow:none}
+.basWorkspaceShell .workspaceQuickGrid a>b{margin-top:5px;font-size:10.5px}
+.basWorkspaceShell .workspaceQuickGrid a>small{margin-top:2px;font-size:8.5px}
+.basWorkspaceShell .workspaceTodayCard>strong{margin-top:5px;font-size:21px}
+.basWorkspaceShell .quickGlyph{width:22px;height:22px;border-radius:2px;font-size:12px}
+.basWorkspaceShell .ds-card{padding:9px}
+.basWorkspaceShell .ds-card.pad-lg{padding:11px}
+.basWorkspaceShell .ds-section-label{font-size:8.5px;letter-spacing:.04em}
+.basWorkspaceShell .ds-h1{font-size:20px}.basWorkspaceShell .ds-h2{font-size:17px}.basWorkspaceShell .ds-h3{font-size:14px}
+
+/* Dark theme keeps the same BAS geometry. */
+.basWorkspaceShell.themeDark{
+  --bas-bg:#11181c;
+  --bas-panel:#151f24;
+  --bas-head:#1a252a;
+  --bas-line:#334047;
+  --bas-line-soft:#29363c;
+  --bas-text:#d9e6e3;
+  --bas-muted:#8fa29e;
+}
+.basWorkspaceShell.themeDark .workspaceTopbar,
+.basWorkspaceShell.themeDark .workspaceBusinessCommands,
+.basWorkspaceShell.themeDark .financeJournal,
+.basWorkspaceShell.themeDark .reportPanel,
+.basWorkspaceShell.themeDark .reportBuilder,
+.basWorkspaceShell.themeDark .financeSummary article,
+.basWorkspaceShell.themeDark .reportStats article,
+.basWorkspaceShell.themeDark .staffStats article,
+.basWorkspaceShell.themeDark .ds-card{background:var(--bas-panel);border-color:var(--bas-line)}
+.basWorkspaceShell.themeDark .workspaceBusinessModules,
+.basWorkspaceShell.themeDark .financeToolbar,
+.basWorkspaceShell.themeDark .staffTools,
+.basWorkspaceShell.themeDark table thead th{background:var(--bas-head);border-color:var(--bas-line);color:#c5d5d1}
+.basWorkspaceShell.themeDark table tbody td{border-color:var(--bas-line-soft)}
+.basWorkspaceShell.themeDark table tbody tr:nth-child(even){background:#131d21}
+.basWorkspaceShell.themeDark table tbody tr:hover{background:#1a2a2d}
+
+/* Responsive: preserve information density on tablets, switch to drawer on phone. */
+@media(max-width:1180px){
+  .basWorkspaceShell{--workspace-sidebar:198px}
+  .basWorkspaceShell .workspaceNavigation{padding-left:4px;padding-right:4px}
+  .basWorkspaceShell .workspaceBusinessModules button{padding:0 7px;font-size:9px}
+  .basWorkspaceShell .workspaceBusinessLinks a{padding:0 6px;font-size:9px}
+}
+@media(max-width:820px){
+  .basWorkspaceShell{--workspace-sidebar:58px}
+  .basWorkspaceShell .workspaceBrand{padding:0 15px}
+  .basWorkspaceShell .workspaceBrandMark{width:28px;height:28px;flex-basis:28px}
+  .basWorkspaceShell .workspaceNavigation a{justify-content:center;padding:0}
+  .basWorkspaceShell .workspaceModuleLink>span[aria-hidden="true"]{width:16px;height:16px;flex-basis:16px}
+  .basWorkspaceShell .workspacePage{padding-left:9px;padding-right:9px}
+  .basWorkspaceShell .workspaceQuickGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .basWorkspaceShell{--workspace-sidebar:0px}
+  .basWorkspaceShell.workspaceCollapsed{--workspace-sidebar:224px}
+  .basWorkspaceShell.workspaceCollapsed .workspaceSidebar{width:224px}
+  .basWorkspaceShell .workspaceTopbar{padding:0 8px}
+  .basWorkspaceShell .workspaceBusinessBar{top:var(--bas-topbar)}
+  .basWorkspaceShell .workspaceBusinessModules{padding:0 5px}
+  .basWorkspaceShell .workspaceBusinessCommands{padding:3px 6px}
+  .basWorkspaceShell .workspacePage{padding:8px 6px 20px}
+  .basWorkspaceShell .workspacePageHead{align-items:flex-start;gap:6px}
+  .basWorkspaceShell .workspacePageHead h1{font-size:18px}
+  .basWorkspaceShell .financeSummary{grid-template-columns:1fr 1fr}
+  .basWorkspaceShell .workspaceQuickGrid{grid-template-columns:1fr}
+}
