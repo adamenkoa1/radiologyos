@@ -254,16 +254,16 @@ test("D1 requires signed-to-issued transition and rejects cross-tenant result-de
 
     await assert.rejects(
       db.prepare(
-        `UPDATE protocols SET status='issued',signed_by='doctor@example.com',
-          signed_at=CURRENT_TIMESTAMP,signed_version=version
+        `UPDATE protocols SET status='issued',version=2,signed_by='doctor@example.com',
+          signed_at=CURRENT_TIMESTAMP,signed_version=2
          WHERE organization_id=1 AND booking_id=?`
       ).bind(bookingId).run(),
       /protocol_issue_requires_signed_transition|signed protocol/i,
     );
 
     await db.prepare(
-      `UPDATE protocols SET status='signed',signed_by='doctor@example.com',
-        signed_at=CURRENT_TIMESTAMP,signed_version=version
+      `UPDATE protocols SET status='signed',version=2,signed_by='doctor@example.com',
+        signed_at=CURRENT_TIMESTAMP,signed_version=2,updated_by='doctor@example.com'
        WHERE organization_id=1 AND booking_id=?`
     ).bind(bookingId).run();
     await db.prepare(
