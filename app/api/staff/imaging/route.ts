@@ -121,6 +121,11 @@ async function recordRejected(
   ).bind(organizationId, bookingId, action, `PACS verification · ${reason}`, actor).run();
 }
 
+function isSignedImagingIdentityLock(error:unknown) {
+  const message = error instanceof Error ? error.message : String(error);
+  return /signed protocol imaging identity is immutable/i.test(message);
+}
+
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
@@ -299,7 +304,8 @@ export async function POST(request: Request) {
     ? seriesResult.series.reduce((sum, item) => sum + item.instances, 0)
     : match.instancesCount;
 
-  await db.prepare(
+  try {
+    await db.prepare(
     `INSERT INTO imaging_studies
       (organization_id, booking_id, accession_number, study_instance_uid, modality,
        series_count, instances_count, study_status, study_datetime, source, updated_by, updated_at)
@@ -319,7 +325,16 @@ export async function POST(request: Request) {
   ).bind(
     ctx.organizationId, bookingId, accessionNumber, match.studyInstanceUid, match.modality,
     seriesCount, instancesCount, match.studyDatetime, member.email,
-  ).run();
+    ).run();
+  } catch (error) {
+  if (!isSignedImagingIdentityLock(error)) throw error;
+  await recordRejected(db, ctx.organizationId, bookingId, "imaging_relink_rejected", "signed_protocol_identity_locked", member.email);
+  return Response.json({
+    ok:false,
+    status:"locked",
+    reason:"signed_protocol_identity_locked",
+  }, { status:409 });
+}
 
   await db.prepare(
     `INSERT INTO booking_events (organization_id, booking_id, action, details, actor)
@@ -449,7 +464,8 @@ export async function PUT(request: Request) {
     source = "qido_uid_manual";
   }
 
-  await db.prepare(
+  try {
+    await db.prepare(
     `INSERT INTO imaging_studies
        (organization_id, booking_id, accession_number, study_instance_uid, modality,
         series_count, instances_count, study_status, study_datetime, source, updated_by, updated_at)
@@ -469,7 +485,16 @@ export async function PUT(request: Request) {
   ).bind(
     ctx.organizationId, bookingId, accessionNumber, studyInstanceUid, modality,
     seriesCount, instancesCount, studyStatus, studyDatetime, source, member.email,
-  ).run();
+    ).run();
+  } catch (error) {
+  if (!isSignedImagingIdentityLock(error)) throw error;
+  await recordRejected(db, ctx.organizationId, bookingId, "imaging_relink_rejected", "signed_protocol_identity_locked", member.email);
+  return Response.json({
+    ok:false,
+    status:"locked",
+    reason:"signed_protocol_identity_locked",
+  }, { status:409 });
+}
 
   await db.prepare(
     "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'imaging_linked', ?, ?)"
