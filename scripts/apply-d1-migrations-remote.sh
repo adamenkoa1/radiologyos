@@ -53,6 +53,15 @@ for name in "${MIGRATIONS[@]}"; do
   echo "Applying D1 migration via file import: ${name}"
   IMPORT_FILE="${TMP_DIR}/${name}"
   cat "${MIGRATIONS_DIR}/${name}" > "${IMPORT_FILE}"
+
+  # D1 keeps foreign_keys enabled for every migration. A migration may temporarily defer
+  # those checks while rebuilding a referenced table, but it must finish with all
+  # relationships valid. Force an explicit validation boundary before the registry insert
+  # so a schema migration cannot be marked applied while deferred FK work is unresolved.
+  if grep -Eiq '^[[:space:]]*PRAGMA[[:space:]]+defer_foreign_keys[[:space:]]*=[[:space:]]*(ON|TRUE|1)[[:space:]]*;?[[:space:]]*$' "${MIGRATIONS_DIR}/${name}"; then
+    printf '\nPRAGMA defer_foreign_keys = OFF;\n' >> "${IMPORT_FILE}"
+  fi
+
   printf "\nINSERT INTO d1_migrations (name) VALUES ('%s');\n" "${name}" >> "${IMPORT_FILE}"
 
   # --file uses Wrangler's remote D1 import path rather than the /query path used
