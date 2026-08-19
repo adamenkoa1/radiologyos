@@ -67,14 +67,5 @@ jobs:
             exit "$status"
           fi
 
-      - name: Upload second failing test output
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: pr412-test-output-2
-          path: test-output.log
-          if-no-files-found: error
-          retention-days: 1
-
       - name: Production release gate
         run: npm run test:production-gate
