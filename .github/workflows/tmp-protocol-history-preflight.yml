@@ -31,8 +31,19 @@ jobs:
       - name: Build
         run: npm run build
       - name: Tests
-        run: node --experimental-strip-types --test tests/*.test.mjs
+        shell: bash
+        run: |
+          set -o pipefail
+          node --experimental-strip-types --test tests/*.test.mjs 2>&1 | tee preflight-tests.log
+      - name: Upload failed test log
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: protocol-history-preflight-failure
+          path: preflight-tests.log
+          if-no-files-found: error
       - name: Production release gate
+        if: success()
         run: npm run test:production-gate
       - name: Publish temporary run locator
         if: always()
