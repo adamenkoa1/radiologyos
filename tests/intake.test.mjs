@@ -68,8 +68,8 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(css, /\.intakeHistory\b/); // стилі identity-safe handoff секції
   assert.match(css, /\.intakeFacts\b/);   // сітка фактів
   const shell = await read("app/staff/workspace-shell.tsx");
-  // Intake remains reachable from the operational rail and belongs to the stable BAS Registry module.
+  // Intake remains reachable from the operational rail and belongs to the BAS Patients module.
   assert.match(shell, /label:"Прийом", href:"\/staff\/intake", section:"intake"/);
-  assert.match(shell, /key:"registry",label:"Реєстратура"/);
+  assert.match(shell, /key:"patients",label:"Пацієнти"/);
   assert.match(shell, /\{label:"Прийом пацієнтів",href:"\/staff\/intake"\}/);
 });

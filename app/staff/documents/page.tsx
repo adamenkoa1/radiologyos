@@ -61,6 +61,8 @@ export default function BusinessDocumentsPage(){
   const [detail,setDetail]=useState<Detail|null>(null);
   const [selectedId,setSelectedId]=useState<number|null>(null);
   const [query,setQuery]=useState("");
+  const [typeFilter,setTypeFilter]=useState("");
+  const [stateFilter,setStateFilter]=useState("");
   const [error,setError]=useState("");
   const [loadingDetail,setLoadingDetail]=useState(false);
 
@@ -73,7 +75,15 @@ export default function BusinessDocumentsPage(){
     }catch(e){setError(e instanceof Error?e.message:"Не вдалося завантажити журнал документів");}
   },[]);
 
-  useEffect(()=>{const timer=window.setTimeout(()=>{void load();},0);return()=>window.clearTimeout(timer);},[load]);
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>{
+      const params=new URLSearchParams(window.location.search);
+      setTypeFilter(params.get("type")||"");
+      setStateFilter(params.get("state")||"");
+      void load();
+    },0);
+    return()=>window.clearTimeout(timer);
+  },[load]);
 
   async function openDocument(id:number){
     setSelectedId(id);setLoadingDetail(true);setError("");
@@ -89,39 +99,44 @@ export default function BusinessDocumentsPage(){
   const q=query.trim().toLowerCase();
   const rows=useMemo(()=>{
     const source=data?.documents||[];
-    if(!q)return source;
-    return source.filter((row)=>`${row.number} ${TYPE_UK[row.journalType]||row.journalType} ${row.bookingCode} ${row.patientName} ${row.subject} ${row.comment}`.toLowerCase().includes(q));
-  },[data,q]);
+    return source.filter((row)=>{
+      if(typeFilter&&row.journalType!==typeFilter)return false;
+      if(stateFilter&&row.state!==stateFilter)return false;
+      if(!q)return true;
+      return `${row.number} ${TYPE_UK[row.journalType]||row.journalType} ${row.bookingCode} ${row.patientName} ${row.subject} ${row.comment}`.toLowerCase().includes(q);
+    });
+  },[data,q,typeFilter,stateFilter]);
 
-  const totals=useMemo(()=>{
-    const source=data?.documents||[];
-    return {
-      all:source.length,
-      posted:source.filter(row=>row.state==="posted").length,
-      reversed:source.filter(row=>row.state==="reversed"||row.journalType==="service_correction").length,
-      types:new Set(source.map(row=>row.journalType)).size,
-    };
-  },[data]);
+  const totals=useMemo(()=>({
+    all:rows.length,
+    posted:rows.filter(row=>row.state==="posted").length,
+    reversed:rows.filter(row=>row.state==="reversed"||row.journalType==="service_correction").length,
+    types:new Set(rows.map(row=>row.journalType)).size,
+  }),[rows]);
 
   const movementGroups=detail?Object.entries(detail.movements).filter(([,items])=>items.length>0):[];
 
   return <StaffWorkspaceShell
-    active="finance"
+    active="documents"
     title="Журнал документів"
-    description="Єдиний BAS-журнал: документ, підстава, похідні документи, рухи по регістрах і друковані форми."
+    description="Єдиний BAS-журнал: реєстратор, підстава, похідні документи, рухи по регістрах і незмінні друковані форми."
   >
     <section className="financeSummary" aria-label="Підсумок журналу документів">
-      <article><span>Документів</span><b>{totals.all}</b><small>в одному журналі</small></article>
+      <article><span>Відібрано</span><b>{totals.all}</b><small>документів за поточним відбором</small></article>
       <article><span>Проведено</span><b>{totals.posted}</b><small>активних registrar-фактів</small></article>
       <article><span>Сторно / реверс</span><b>{totals.reversed}</b><small>історія не видаляється</small></article>
-      <article><span>Типів</span><b>{totals.types}</b><small>єдине business core</small></article>
+      <article><span>Типів</span><b>{totals.types}</b><small>у поточному відборі</small></article>
     </section>
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Усі бізнес-документи</b><small>Сортування за датою документа. Журнал не створює нових даних — це read-model канонічних реєстраторів.</small></div>
-        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Пошук: НП, СТ, ОП, пацієнт, послуга…" aria-label="Пошук у журналі документів"/>
+        <div><b>Єдиний журнал реєстраторів</b><small>Документи не дублюються в журналі: він читає канонічні business_documents і пов’язані registrar-факти.</small></div>
+        <label><span>Тип документа</span><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="">Усі типи</option>{Object.entries(TYPE_UK).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+        <label><span>Стан</span><select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Усі стани</option>{Object.entries(STATE_UK).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+        <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Пошук: номер, пацієнт, послуга…" aria-label="Пошук у журналі документів"/>
+        <button type="button" onClick={()=>{setTypeFilter("");setStateFilter("");setQuery("");}}>Скинути</button>
         <button type="button" onClick={()=>void load()}>Оновити</button>
+        <a className="excelButton" href="/staff/registers">Регістри</a>
       </header>
       {error&&<p className="financeError">{error}</p>}
       {!data&&!error&&<p className="financeLoading">Завантаження журналу…</p>}
@@ -141,7 +156,7 @@ export default function BusinessDocumentsPage(){
     </section>
 
     {(loadingDetail||detail)&&<section className="financeJournal">
-      <header className="financeToolbar"><div><b>Структура підпорядкованості</b><small>{loadingDetail?"Завантаження…":detail?`${TYPE_UK[detail.document.journalType]||detail.document.journalType} ${detail.document.number}`:""}</small></div></header>
+      <header className="financeToolbar"><div><b>Ланцюжок документа</b><small>{loadingDetail?"Завантаження…":detail?`${TYPE_UK[detail.document.journalType]||detail.document.journalType} ${detail.document.number}`:""}</small></div><a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a></header>
       {detail&&!loadingDetail&&<>
         <div className="financePrintDetails">
           <p><span>Документ</span><b>{detail.document.number}</b></p>

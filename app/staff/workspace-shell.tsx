@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases" | "documents" | "registers" | "directories";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -32,11 +32,11 @@ const processRail: NavLink[] = [
 
 const quickRail:NavLink[]=[
   { label:"Пацієнти",href:"/staff/patients",section:"patients",icon:"👥" },
-  { label:"DICOM / PACS",href:"/staff/imaging",section:"imaging",icon:"🩻" },
+  { label:"Документи",href:"/staff/documents",section:"documents",icon:"▤" },
+  { label:"Регістри",href:"/staff/registers",section:"registers",icon:"≡" },
   { label:"Склад",href:"/staff/inventory",section:"inventory",icon:"▣" },
   { label:"Фінанси",href:"/staff/finance",section:"finance",icon:"₴" },
-  { label:"Звіти",href:"/staff/reports",section:"reports",icon:"▤" },
-  { label:"Налаштування",href:"/staff/settings",section:"settings",icon:"⚙" },
+  { label:"Звіти",href:"/staff/reports",section:"reports",icon:"⌁" },
 ];
 
 const businessModules:BusinessModule[]=[
@@ -48,15 +48,13 @@ const businessModules:BusinessModule[]=[
   ]},
   { key:"patients",label:"Пацієнти",items:[
     {label:"Картки пацієнтів",href:"/staff/patients"},
-    {label:"Чат із пацієнтами",href:"/staff/chat"},
-  ]},
-  { key:"registry",label:"Реєстратура",shortLabel:"Реєстратура",items:[
+    {label:"Замовлення пацієнтів",href:"/staff/documents?type=patient_order",hint:"Канонічні Patient Order у єдиному журналі документів"},
     {label:"Календар і записи",href:"/staff/appointments"},
     {label:"Прийом пацієнтів",href:"/staff/intake"},
-    {label:"Дошка досліджень",href:"/staff/board"},
-    {label:"Завдання",href:"/staff/tasks"},
+    {label:"Чат із пацієнтами",href:"/staff/chat"},
   ]},
   { key:"medicine",label:"Медицина",items:[
+    {label:"Дошка досліджень",href:"/staff/board"},
     {label:"DICOM / PACS",href:"/staff/imaging"},
     {label:"Протоколи",href:"/staff/protocols"},
     {label:"Видача результатів",href:"/staff/studies"},
@@ -65,29 +63,55 @@ const businessModules:BusinessModule[]=[
   ]},
   { key:"services",label:"Послуги",items:[
     {label:"Послуги кабінетів",href:"/staff/services"},
+    {label:"Надані послуги",href:"/staff/finance/services",hint:"Проведені та скориговані service-delivery документи"},
     {label:"Тарифи",href:"/staff/tariffs"},
-  ]},
-  { key:"finance",label:"Фінанси",items:[
-    {label:"Фінансові документи",href:"/staff/finance"},
-    {label:"Контрагенти",href:"/staff/counterparties"},
+    {label:"Матеріальні норми",href:"/staff/services",hint:"Норми матеріалів зберігаються у картці послуги"},
   ]},
   { key:"inventory",label:"Склад",items:[
-    {label:"Складський облік",href:"/staff/inventory",hint:"Залишки, надходження і списання"},
+    {label:"Залишки і номенклатура",href:"/staff/inventory",hint:"Залишки, партії, надходження і списання"},
+    {label:"Надходження / списання",href:"/staff/inventory"},
     {label:"Переміщення запасів",href:"/staff/inventory/transfers"},
     {label:"Інвентаризація",href:"/staff/inventory/counts",hint:"Фактичні залишки та контрольовані коригування"},
-    {label:"Фактичне списання",href:"/staff/inventory/material-consumption",hint:"Завершені послуги, резервації та вибір фактичних партій"},
+    {label:"Фактичне списання",href:"/staff/inventory/material-consumption",hint:"Резервації та вибір фактичних партій"},
     {label:"Склади",href:"/staff/warehouses"},
   ]},
   { key:"purchases",label:"Закупівлі",items:[
-    {label:"Кредиторка і оплати",href:"/staff/supplier-payables",hint:"Оцінка надходжень, борги та оплати постачальникам"},
+    {label:"Кредиторка і оплати",href:"/staff/supplier-payables",hint:"Борги та оплати постачальникам"},
     {label:"Постачальники",href:"/staff/counterparties",hint:"Довідник контрагентів"},
     {label:"Надходження на склад",href:"/staff/inventory",hint:"Документи оприбуткування"},
+  ]},
+  { key:"finance",label:"Фінанси",items:[
+    {label:"Фінансові документи",href:"/staff/finance"},
+    {label:"Каси і рахунки",href:"/staff/cash-accounts"},
+    {label:"Взаєморозрахунки",href:"/staff/finance"},
+    {label:"Дебіторська заборгованість",href:"/staff/reports/receivables"},
+    {label:"Контрагенти",href:"/staff/counterparties"},
+  ]},
+  { key:"documents",label:"Документи",items:[
+    {label:"Усі документи",href:"/staff/documents",hint:"Єдиний BAS-журнал усіх канонічних реєстраторів"},
+    {label:"Замовлення пацієнтів",href:"/staff/documents?type=patient_order"},
+    {label:"Записи",href:"/staff/documents?type=appointment"},
+    {label:"Надані послуги",href:"/staff/documents?type=service_delivery"},
+    {label:"Оплати",href:"/staff/documents?type=payment"},
+    {label:"Повернення",href:"/staff/documents?type=refund"},
+    {label:"Складські документи",href:"/staff/inventory"},
+  ]},
+  { key:"registers",label:"Регістри",items:[
+    {label:"Карта регістрів",href:"/staff/registers",hint:"Документ → рух → регістр → звіт"},
+    {label:"Обороти і залишки",href:"/staff/reports/registers"},
+    {label:"Гроші / взаєморозрахунки",href:"/staff/finance"},
+    {label:"Надані послуги",href:"/staff/finance/services"},
+    {label:"Складські рухи",href:"/staff/inventory"},
   ]},
   { key:"reports",label:"Звіти",items:[
     {label:"Звіти відділення",href:"/staff/reports"},
     {label:"Обороти регістрів",href:"/staff/reports/registers"},
+    {label:"Дебіторська заборгованість",href:"/staff/reports/receivables"},
+    {label:"Маржинальність послуг",href:"/staff/reports/material-margin"},
+    {label:"План / факт матеріалів",href:"/staff/reports/material-consumption-control"},
   ]},
   { key:"directories",label:"Довідники",items:[
+    {label:"Карта довідників",href:"/staff/directories"},
     {label:"Обладнання",href:"/staff/equipment"},
     {label:"Послуги",href:"/staff/services"},
     {label:"Тарифи",href:"/staff/tariffs"},
@@ -107,14 +131,13 @@ const businessModules:BusinessModule[]=[
 ];
 
 const moduleBySection:Record<WorkspaceSection,string>={
-  dashboard:"home",overview:"home",
-  patients:"patients",chat:"patients",
-  appointments:"registry",intake:"registry",board:"registry",tasks:"registry",
+  dashboard:"home",overview:"home",board:"home",tasks:"home",
+  patients:"patients",chat:"patients",appointments:"patients",intake:"patients",
   protocols:"medicine",imaging:"medicine",studies:"medicine",
   services:"services",tariffs:"services",
-  finance:"finance",counterparties:"finance",
+  finance:"finance",counterparties:"directories",
   inventory:"inventory",purchases:"purchases",
-  reports:"reports",
+  documents:"documents",registers:"registers",reports:"reports",directories:"directories",
   equipment:"directories",schedule:"directories",
   settings:"admin",organization:"admin",site:"admin",whatsapp:"admin",structure:"admin",audit:"admin",
 };
@@ -126,6 +149,7 @@ const sectionLabels:Record<WorkspaceSection,string>={
   appointments:"Календар записів",whatsapp:"WhatsApp",chat:"Чат з пацієнтами",schedule:"Графік кабінетів",
   equipment:"Обладнання",services:"Послуги",structure:"Структура відділення",audit:"Журнал дій",
   intake:"Прийом",board:"Дошка досліджень",tasks:"Завдання",inventory:"Склад",purchases:"Кредиторка постачальників",
+  documents:"Журнал документів",registers:"Регістри",directories:"Довідники",
 };
 
 function formatDateTime(value:Date) {
@@ -177,13 +201,13 @@ export default function StaffWorkspaceShell({
     window.location.assign("/staff/login");
   }
 
-  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory" || active === "finance" || active === "counterparties" || active === "purchases";
+  const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory" || active === "finance" || active === "counterparties" || active === "purchases" || active === "documents" || active === "registers" || active === "directories";
   return <div className={`workspaceShell basWorkspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
     <CommandPalette />
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff/dashboard" aria-label="RadiologyOS — головний пульт">
         <span className="workspaceBrandMark">R</span>
-        <span className="workspaceBrandCopy"><b>RadiologyOS</b><small>Бізнес-ядро + медицина</small></span>
+        <span className="workspaceBrandCopy"><b>RadiologyOS</b><small>Документи · регістри · медицина</small></span>
       </Link>
 
       <nav className="workspaceNavigation" aria-label="Робочий процес">
@@ -194,7 +218,7 @@ export default function StaffWorkspaceShell({
           aria-current={active === o.section ? "page":undefined}
           title={collapsed ? o.label:undefined} data-step={i + 1}
         ><span aria-hidden="true">{o.icon}</span><b>{o.label}</b></Link>)}
-        <p>Швидкий доступ</p>
+        <p>BAS-контур</p>
         {quickRail.map((o)=><Link
           key={o.href} href={o.href}
           className={`workspaceModuleLink${active === o.section ? " active":""}`}
@@ -230,7 +254,9 @@ export default function StaffWorkspaceShell({
             <span><b>{identity}</b><small>{staffRole || "Персонал відділення"}</small></span>
           </summary>
           <div>
-            <Link href="/staff/appointments">Календар і заявки</Link>
+            <Link href="/staff/documents">Документи</Link>
+            <Link href="/staff/registers">Регістри</Link>
+            <Link href="/staff/appointments">Календар і записи</Link>
             <Link href="/staff/finance">Фінанси</Link>
             <Link href="/staff/inventory">Склад</Link>
             <Link href="/staff/reports">Звіти відділення</Link>
@@ -269,9 +295,11 @@ export default function StaffWorkspaceShell({
             <p>{description}</p>
           </div>
           <div className="workspacePageActions">
-            {active === "reports"
-              ? <Link href="/staff/dashboard">На головний пульт</Link>
-              : <><Link href="/staff/dashboard">Головне</Link><Link className="primary" href="/staff/reports">Звіти</Link></>}
+            {active === "documents"
+              ? <><Link href="/staff/dashboard">Головне</Link><Link className="primary" href="/staff/registers">Регістри</Link></>
+              : active === "registers"
+                ? <><Link href="/staff/documents">Документи</Link><Link className="primary" href="/staff/reports/registers">Обороти</Link></>
+                : <><Link href="/staff/dashboard">Головне</Link><Link className="primary" href="/staff/documents">Документи</Link></>}
           </div>
         </header>
         {children}
