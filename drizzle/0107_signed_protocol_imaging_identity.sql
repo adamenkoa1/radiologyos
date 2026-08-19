@@ -1,6 +1,7 @@
 -- A signed/issued report is immutable clinical evidence. Its DICOM study link
 -- must therefore not be silently created, removed, moved, or relinked after
--- signing. Operational PACS facts (counts/status/provenance) remain refreshable.
+-- signing. Operational PACS facts (counts/status/provenance) remain refreshable
+-- because they do not change which clinical image study the report describes.
 
 CREATE TRIGGER `imaging_studies_signed_protocol_insert_guard`
 BEFORE INSERT ON `imaging_studies`
