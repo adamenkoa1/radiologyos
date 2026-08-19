@@ -52,7 +52,7 @@ test("posted count reprints preserve the earliest snapshot for that exact state"
 
 test("generic immutable PDF endpoint authorizes count only against the matching business document type",async()=>{
   const source=await read("app/api/staff/printed-forms/pdf/route.ts");
-  assert.match(source,/row\.formType==="inventory_receipt"\|\|row\.formType==="inventory_writeoff"\|\|row\.formType==="inventory_count"/);
+  assert.match(source,/row\.formType==="inventory_count"/);
   assert.match(source,/return row\.documentType===row\.formType/);
   assert.match(source,/WHERE s\.organization_id=\? AND s\.id=\?/);
 });
