@@ -1,4 +1,5 @@
--- Enforce the canonical protocol lifecycle in D1.
+-- Enforce the canonical protocol lifecycle in D1. Existing historical rows are
+-- preserved; only new inserts and future state transitions are constrained.
 CREATE TRIGGER `protocols_status_domain_guard_insert`
 BEFORE INSERT ON `protocols`
 FOR EACH ROW
