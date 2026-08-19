@@ -7,6 +7,7 @@
 
 import { DatabaseSync } from "node:sqlite";
 import { readFile, readdir } from "node:fs/promises";
+import { statSync, readdirSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { createHash, randomBytes } from "node:crypto";
 
@@ -118,11 +119,76 @@ export function jsonRequest(url, body, { method = "POST", headers = {}, ip = "20
   });
 }
 
+// Поведінкові тести імпортують ЗІБРАНИЙ воркер (dist/server/index.js), а не .ts.
+// Якщо запустити `node --test` на застарілому dist, отримаємо привидні падіння,
+// що не мають стосунку до змін. Тому перед завантаженням воркера перевіряємо
+// свіжість збірки: dist має існувати й бути новішим за джерела. `npm test`
+// збирає перед запуском, тож у нормальному потоці ця перевірка мовчазна.
+const WORKER_DIST = new URL("../../dist/server/index.js", import.meta.url);
+const SOURCE_DIRS = ["app", "lib", "worker", "db"];
+const SOURCE_EXT = new Set([".ts", ".tsx", ".css", ".html", ".js", ".mjs"]);
+// Джерела читаються перед записом dist, тож можуть бути на частки секунди
+// «новішими» через гранулярність mtime — допуск прибирає хибні спрацювання.
+const FRESHNESS_TOLERANCE_MS = 2000;
+const IGNORED_DIRS = new Set(["node_modules", "dist", ".next", ".git", ".wrangler"]);
+
+function newestSourceMtime() {
+  const root = fileURLToPath(new URL("../../", import.meta.url));
+  let newest = 0;
+  const walk = (dir) => {
+    let entries;
+    try {
+      entries = readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name.startsWith(".") && entry.name !== ".") continue;
+      const full = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (IGNORED_DIRS.has(entry.name)) continue;
+        walk(full);
+      } else if (entry.isFile()) {
+        const dot = entry.name.lastIndexOf(".");
+        if (dot < 0 || !SOURCE_EXT.has(entry.name.slice(dot))) continue;
+        const m = statSync(full).mtimeMs;
+        if (m > newest) newest = m;
+      }
+    }
+  };
+  for (const d of SOURCE_DIRS) walk(`${root}${d}`);
+  return newest;
+}
+
+let freshnessChecked = false;
+function assertFreshDist() {
+  if (freshnessChecked) return;
+  freshnessChecked = true;
+  const distPath = fileURLToPath(WORKER_DIST);
+  let distMtime;
+  try {
+    distMtime = statSync(distPath).mtimeMs;
+  } catch {
+    throw new Error(
+      "dist/server/index.js не знайдено. Поведінкові тести імпортують зібраний " +
+      "воркер — спершу запустіть `npm run build` (або `npm test`, який збирає сам).",
+    );
+  }
+  const newest = newestSourceMtime();
+  if (newest > distMtime + FRESHNESS_TOLERANCE_MS) {
+    throw new Error(
+      "dist застарілий: джерела новіші за dist/server/index.js. Поведінкові тести " +
+      "виконують саме зібраний воркер, тож без свіжого білду падіння будуть привидні. " +
+      "Запустіть `npm run build` (або `npm test`, який збирає перед тестами).",
+    );
+  }
+}
+
 let workerPromise = null;
 function loadWorker() {
   if (!workerPromise) {
-    const url = new URL("../../dist/server/index.js", import.meta.url);
-    workerPromise = import(url.href).then((m) => m.default);
+    assertFreshDist();
+    workerPromise = import(WORKER_DIST.href).then((m) => m.default);
   }
   return workerPromise;
 }
