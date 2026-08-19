@@ -76,6 +76,9 @@ test("material consumption control uses current Appointment plan and physical po
     dropInsertGuards(raw,"inventory_reservation_movements");
     dropInsertGuards(raw,"inventory_document_lines");
     dropInsertGuards(raw,"inventory_movements");
+    // This is a read-model fixture: Appointment lifecycle integrity is covered separately.
+    // Here we need both historical reversed and current posted snapshots without synthesizing a reschedule.
+    raw.exec("DROP TRIGGER IF EXISTS appointment_document_integrity_insert");
 
     const admin=await seedStaffSession(db,{email:"control-admin@example.com",role:"admin",organizationId:1});
     const registrar=await seedStaffSession(db,{email:"control-registrar@example.com",role:"registrar",organizationId:1});
