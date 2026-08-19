@@ -29,9 +29,18 @@ function seedProtocol(raw, bookingId, status = "issued") {
     raw.prepare(
       `INSERT INTO protocols
         (organization_id, booking_id, number, status, version, author_email, updated_by,
-         findings, conclusion, signed_by, signed_at, signed_version)
-       VALUES (1, ?, 'P-ADD-1', 'issued', 1, 'radiologist@example.com', 'radiologist@example.com',
-         'Основний опис', 'Основний висновок', 'radiologist@example.com', CURRENT_TIMESTAMP, 1)`,
+         findings, conclusion)
+       VALUES (1, ?, 'P-ADD-1', 'ready', 1, 'radiologist@example.com', 'radiologist@example.com',
+         'Основний опис', 'Основний висновок')`,
+    ).run(bookingId);
+    raw.prepare(
+      `UPDATE protocols
+       SET status='signed', version=2, updated_by='radiologist@example.com',
+           signed_by='radiologist@example.com', signed_at=CURRENT_TIMESTAMP, signed_version=2
+       WHERE organization_id=1 AND booking_id=?`,
+    ).run(bookingId);
+    raw.prepare(
+      "UPDATE protocols SET status='issued', updated_by='registrar@example.com' WHERE organization_id=1 AND booking_id=?",
     ).run(bookingId);
   } else {
     raw.prepare(
@@ -49,7 +58,7 @@ function insertDraftAddendum(raw, bookingId, id = ADDENDUM, text = "Початк
     `INSERT INTO protocol_addenda
       (id, organization_id, booking_id, base_protocol_version, reason, correction_text,
        status, version, author_email, updated_by)
-     VALUES (?, 1, ?, 1, 'Уточнення формулювання', ?, 'draft', 1,
+     VALUES (?, 1, ?, 2, 'Уточнення формулювання', ?, 'draft', 1,
        'radiologist@example.com', 'radiologist@example.com')`,
   ).run(id, bookingId, text);
 }
@@ -77,7 +86,7 @@ test("D1 enforces addendum base, lifecycle, immutable identity and append-only r
         `INSERT INTO protocol_addenda
           (id, organization_id, booking_id, base_protocol_version, reason, correction_text,
            status, version, author_email, updated_by, signed_by, signed_at, signed_version)
-         VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 1, 'Причина', 'Текст',
+         VALUES ('dddddddddddddddddddddddddddddddd', 1, ?, 2, 'Причина', 'Текст',
            'issued', 1, 'radiologist@example.com', 'radiologist@example.com',
            'radiologist@example.com', CURRENT_TIMESTAMP, 1)`,
       ).run(bookingId);

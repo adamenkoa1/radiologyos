@@ -91,13 +91,18 @@ test("issued addendum atomically creates immutable neutral result-delivery subty
 });
 
 test("legacy issued protocol without base delivery creates addendum delivery with null basis",async()=>{
+ const doctorEmail="legacy-add-doctor@example.com";
+ let bookingId=0;
  await withD1(async(db,raw)=>{
-  const doctorEmail="legacy-add-doctor@example.com";
+  assert.ok(bookingId>0);
   const doctor=await seedStaffSession(db,{email:doctorEmail,role:"radiologist",organizationId:1});
   const manager=await seedStaffSession(db,{email:"legacy-add-admin@example.com",role:"admin",organizationId:1});
-  const bookingId=seedLegacyIssuedProtocol(raw,{doctor:doctorEmail});
   assert.equal(baseDelivery(raw,bookingId),undefined);
   const {id}=await createAndIssueAddendum(db,doctor,manager,bookingId); const delivery=addendumDelivery(raw,id); assert.ok(delivery?.id>0); assert.equal(delivery.basisDocumentId,null); assert.equal(delivery.baseProtocolVersion,1);
+ },{
+  beforeMigration:({db:raw,file})=>{
+   if(file==="0105_protocol_lifecycle_db_guard.sql") bookingId=seedLegacyIssuedProtocol(raw,{doctor:doctorEmail});
+  },
  });
 });
 

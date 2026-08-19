@@ -241,7 +241,7 @@ test("D1 requires signed-to-issued transition and rejects cross-tenant result-de
          VALUES (1,?,'generic','Method','Findings','Conclusion','DIRECT-ISSUED','issued',1,
            'doctor@example.com','doctor@example.com','doctor@example.com',CURRENT_TIMESTAMP,1)`
       ).bind(bookingId).run(),
-      /protocol_issue_requires_signed_transition/i,
+      /protocol must start draft or ready|protocol_issue_requires_signed_transition/i,
     );
 
     await db.prepare(
@@ -258,7 +258,7 @@ test("D1 requires signed-to-issued transition and rejects cross-tenant result-de
           signed_at=CURRENT_TIMESTAMP,signed_version=2
          WHERE organization_id=1 AND booking_id=?`
       ).bind(bookingId).run(),
-      /protocol_issue_requires_signed_transition|signed protocol/i,
+      /protocol status transition invalid|protocol_issue_requires_signed_transition|signed protocol/i,
     );
 
     await db.prepare(
