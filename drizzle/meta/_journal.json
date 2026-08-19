@@ -743,6 +743,13 @@
       "when": 1787178043176,
       "tag": "0106_protocol_clinical_completeness",
       "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "6",
+      "when": 1787179061327,
+      "tag": "0107_signed_protocol_imaging_identity",
+      "breakpoints": true
     }
   ]
 }
