@@ -3,6 +3,7 @@ import test from "node:test";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
 const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com" };
+const PHONE = "380501110055";
 const EXPECTED_DICOM_ID = "ROS-AAAAAAAAAAAAAAAAAAAA";
 const WRONG_DICOM_ID = "ROS-BBBBBBBBBBBBBBBBBBBB";
 
@@ -21,15 +22,15 @@ async function addBooking(db, { code, time, patientId = "" }) {
       `INSERT INTO patient_profiles
         (patient_id, organization_id, phone_normalized, display_name, updated_by)
        VALUES (?, 1, ?, ?, 'test')`,
-    ).bind(patientId, `38050${time.replace(":", "")}01`, `Пацієнт ${code}`).run();
+    ).bind(patientId, PHONE, `Пацієнт ${code}`).run();
   }
   const result = await db.prepare(
     `INSERT INTO bookings
       (organization_id, code, name, phone, phone_normalized, patient_id,
        service, service_code, equipment_id, desired_date, desired_time, status)
-     VALUES (1, ?, ?, '+380501110055', '380501110055', ?,
+     VALUES (1, ?, ?, ?, ?, ?,
        'КТ ОГК', '403', 'ct', '2026-08-20', ?, 'confirmed')`,
-  ).bind(code, `Пацієнт ${code}`, patientId, time).run();
+  ).bind(code, `Пацієнт ${code}`, `+${PHONE}`, PHONE, patientId, time).run();
   return Number(result.meta.last_row_id);
 }
 
