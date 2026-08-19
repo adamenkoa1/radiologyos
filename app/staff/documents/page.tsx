@@ -76,10 +76,12 @@ export default function BusinessDocumentsPage(){
   },[]);
 
   useEffect(()=>{
-    const params=new URLSearchParams(window.location.search);
-    setTypeFilter(params.get("type")||"");
-    setStateFilter(params.get("state")||"");
-    const timer=window.setTimeout(()=>{void load();},0);
+    const timer=window.setTimeout(()=>{
+      const params=new URLSearchParams(window.location.search);
+      setTypeFilter(params.get("type")||"");
+      setStateFilter(params.get("state")||"");
+      void load();
+    },0);
     return()=>window.clearTimeout(timer);
   },[load]);
 
