@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { withD1 } from "./helpers/d1.mjs";
 
+// Exercise the lifecycle through raw D1 writes so API validation cannot mask a DB bypass.
 async function addBooking(db, code) {
   const result = await db.prepare(
     `INSERT INTO bookings
