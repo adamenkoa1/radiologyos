@@ -97,7 +97,6 @@ export async function buildMaterialConsumptionControlReport(
     FROM facts
     GROUP BY serviceCode,itemId,warehouseId
     ORDER BY (SUM(plannedQuantity)-SUM(postedQuantity)) DESC,serviceCode,itemName,warehouseName
-    LIMIT 500
   `).bind(organizationId,period.from,period.to,organizationId).all<RawRow>();
 
   const rows:MaterialConsumptionControlRow[]=result.results.map(raw=>{
