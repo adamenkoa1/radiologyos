@@ -6,7 +6,7 @@ on:
       - audit/protocol-revision-derived-history
 
 permissions:
-  contents: read
+  contents: write
   statuses: write
 
 jobs:
@@ -14,9 +14,13 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Generate schema-identical 0104 snapshot
+      - name: Generate and commit schema-identical 0104 snapshot once
         shell: bash
         run: |
+          if [ -f drizzle/meta/0104_snapshot.json ]; then
+            echo "0104 snapshot already committed"
+            exit 0
+          fi
           node <<'NODE'
           const fs = require('node:fs');
           const crypto = require('node:crypto');
@@ -27,11 +31,11 @@ jobs:
           snapshot.id = crypto.randomUUID();
           fs.writeFileSync(target, `${JSON.stringify(snapshot, null, 2)}\n`);
           NODE
-      - uses: actions/upload-artifact@v4
-        with:
-          name: protocol-0104-snapshot
-          path: drizzle/meta/0104_snapshot.json
-          if-no-files-found: error
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/meta/0104_snapshot.json
+          git commit -m "Add 0104 Drizzle snapshot metadata"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
       - name: Publish temporary run locator
         if: always()
         env:
@@ -40,4 +44,4 @@ jobs:
           gh api --method POST "repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
             -f state=success \
             -f context="tmp-snapshot-run-${GITHUB_RUN_ID}" \
-            -f description="snapshot artifact run ${GITHUB_RUN_ID}"
+            -f description="snapshot generator run ${GITHUB_RUN_ID}"
