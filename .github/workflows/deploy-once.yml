@@ -18,7 +18,7 @@ jobs:
     steps:
       - name: Verify exact trigger base
         env:
-          EXPECTED_BEFORE: 0c9d13b3f02f4c819103d3927cc45d01c951ca6a
+          EXPECTED_BEFORE: b4648f8698214ab826bdff9185356f6e6d2e7efd
           ACTUAL_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
@@ -51,7 +51,7 @@ jobs:
           done
           test -n "$RUN_ID"
           printf '{"run_id":%s,"head_sha":"%s","approved_application_sha":"%s"}\n' \
-            "$RUN_ID" "$GITHUB_SHA" "0c9d13b3f02f4c819103d3927cc45d01c951ca6a" > /tmp/dispatched.json
+            "$RUN_ID" "$GITHUB_SHA" "b4648f8698214ab826bdff9185356f6e6d2e7efd" > /tmp/dispatched.json
           ENCODED="$(base64 -w0 /tmp/dispatched.json)"
           gh api --method PUT "/repos/${GITHUB_REPOSITORY}/contents/.github/deploy-status/dispatched-${GITHUB_RUN_ID}.json" \
             -f message="ops: record canonical production deploy run" \
