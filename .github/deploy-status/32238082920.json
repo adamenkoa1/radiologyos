@@ -1,0 +1,17 @@
+{
+  "run_id": "32238082920",
+  "trigger_sha": "fa3fd870456e762280b229fa8d05cf850df2e50e",
+  "approved_application_base_sha": "96d055b1acb9c4763c0fd995d5ed8383faee1a90",
+  "job_status": "failure",
+  "verify_base": "success",
+  "install": "success",
+  "audit": "success",
+  "production_gate": "success",
+  "build": "success",
+  "r2": "success",
+  "recovery": "success",
+  "migrations": "failure",
+  "admin_guard": "skipped",
+  "deploy": "skipped",
+  "smoke": "skipped"
+}
