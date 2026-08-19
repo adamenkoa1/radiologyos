@@ -722,6 +722,13 @@
       "when": 1787161338553,
       "tag": "0103_material_consumption_current_appointment",
       "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "6",
+      "when": 1787174034821,
+      "tag": "0104_protocol_revision_derived_history",
+      "breakpoints": true
     }
   ]
 }
