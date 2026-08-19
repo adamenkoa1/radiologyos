@@ -23,11 +23,15 @@ async function seedFamilyBooking(db, { code, name, dob, time, amount }) {
 async function issueProtocol(db, bookingId, number, conclusion) {
   await db.prepare(
     `INSERT INTO protocols
-      (organization_id, booking_id, number, status, findings, conclusion, version,
-       updated_by, signed_by, signed_at, signed_version)
-     VALUES (1, ?, ?, 'signed', 'Опис', ?, 1,
-       'doctor@example.com', 'doctor@example.com', CURRENT_TIMESTAMP, 1)`
+      (organization_id, booking_id, number, status, findings, conclusion, version, updated_by)
+     VALUES (1, ?, ?, 'ready', 'Опис', ?, 1, 'doctor@example.com')`
   ).bind(bookingId, number, conclusion).run();
+  await db.prepare(
+    `UPDATE protocols
+     SET status='signed', version=2, signed_by='doctor@example.com', signed_at=CURRENT_TIMESTAMP,
+         signed_version=2, updated_by='doctor@example.com'
+     WHERE organization_id=1 AND booking_id=? AND status='ready'`
+  ).bind(bookingId).run();
   await db.prepare(
     "UPDATE protocols SET status='issued' WHERE organization_id=1 AND booking_id=? AND status='signed'"
   ).bind(bookingId).run();
