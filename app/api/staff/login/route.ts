@@ -35,20 +35,6 @@ export async function POST(request: Request) {
     return Response.json({ error: "Вкажіть номер телефону і PIN-код" }, { status: 400 });
   }
 
-  // Окремий hashed account bucket не дає обходити 6-значний PIN через
-  // distributed brute-force з багатьох IP. Невідомі акаунти лімітуються так само,
-  // тому відповідь не створює account-enumeration oracle.
-  const loginIdentifier = phone ? `phone:${phone}` : `email:${email}`;
-  if (await isIdentifierRateLimited(
-    db,
-    "staff-login-account",
-    loginIdentifier,
-    STAFF_LOGIN_LIMIT,
-    STAFF_LOGIN_WINDOW_MINUTES,
-  )) {
-    return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
-  }
-
   // Вхід за номером телефону (основний) або email (сумісність).
   const member = phone
     ? await db.prepare(
@@ -58,13 +44,29 @@ export async function POST(request: Request) {
         "SELECT email, display_name AS displayName, role, password_hash AS passwordHash FROM staff_members WHERE email = ? AND active = 1 LIMIT 1"
       ).bind(email).first<{ email: string; displayName: string; role: string; passwordHash: string }>();
 
+  // Known accounts are always throttled by one canonical account key, regardless
+  // of whether the caller supplied phone or email. Unknown identifiers still get
+  // their own hashed failure bucket, so raw phone/email values never reach
+  // request_limits and repeated guesses for a nonexistent identifier are bounded.
+  const submittedIdentifier = phone ? `phone:${phone}` : `email:${email}`;
+  const accountIdentifier = member ? `account:${member.email.toLowerCase()}` : submittedIdentifier;
+  if (await isIdentifierRateLimited(
+    db,
+    "staff-login-account",
+    accountIdentifier,
+    STAFF_LOGIN_LIMIT,
+    STAFF_LOGIN_WINDOW_MINUTES,
+  )) {
+    return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
+  }
+
   const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
   const ok = member && !compromised ? await verifyPassword(password, member.passwordHash) : false;
   if (!member || !ok) {
     await recordIdentifierRateLimitFailure(
       db,
       "staff-login-account",
-      loginIdentifier,
+      accountIdentifier,
       STAFF_LOGIN_LIMIT,
       STAFF_LOGIN_WINDOW_MINUTES,
     );
@@ -81,7 +83,7 @@ export async function POST(request: Request) {
     }, { status: 401 });
   }
 
-  await clearIdentifierRateLimit(db, "staff-login-account", loginIdentifier);
+  await clearIdentifierRateLimit(db, "staff-login-account", accountIdentifier);
 
   if (passwordHashNeedsUpgrade(member.passwordHash)) {
     await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
