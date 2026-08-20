@@ -50,6 +50,13 @@ test("login and logout endpoints verify credentials, rate-limit and manage the c
   assert.match(logout, /clearedSessionCookie\(/);
 });
 
+test("disabling the final active staff membership revokes existing sessions", async () => {
+  const members = await read("app/api/staff/members/route.ts");
+  assert.match(members, /existing && existing\.active === 1 && active === 0 && !hasOtherActiveMembership/);
+  assert.match(members, /ORDER BY active DESC/);
+  assert.match(members, /DELETE FROM staff_sessions WHERE email = \?/);
+});
+
 test("no ChatGPT sign-in remains anywhere in the app", async () => {
   for (const file of [
     "app/page.tsx", "app/layout.tsx", "app/robots.ts", "app/sitemap.ts",
