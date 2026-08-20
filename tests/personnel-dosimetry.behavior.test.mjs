@@ -128,6 +128,7 @@ test("dosimetry API is manager-only, audited without dose values and independent
   assert.match(api, /measurementStatus === "below_detection"/);
   assert.doesNotMatch(api, /export async function (PUT|PATCH|DELETE)/);
   assert.doesNotMatch(api, /imaging_studies|pacs_settings|bookings|canManageImaging/);
+  assert.doesNotMatch(api, /dose <= 100000/);
   assert.doesNotMatch(api, /details:\s*\{[^}]*hp(?:10|007|3)/is);
 });
 
@@ -137,6 +138,8 @@ test("dosimetry UI distinguishes missing and below-detection results from zero d
   assert.match(page, /Hp\(0\.07\)/);
   assert.match(page, /Hp\(3\)/);
   assert.match(page, /doseDisplay/);
+  assert.match(page, /step="any"/);
+  assert.doesNotMatch(page, /max="100000"/);
   assert.match(page, /Нижче межі визначення/);
   assert.match(page, /Результат відсутній/);
   assert.match(page, /alerts і автоматичне обмеження роботи будуть окремим compliance-блоком/);

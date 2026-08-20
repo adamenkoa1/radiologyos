@@ -36,7 +36,7 @@ function statusLabel(code:string){ return STATUSES.find(([value])=>value===code)
 function doseDisplay(status:string,value:number){
   if(status==="missing") return "—";
   if(status==="below_detection") return "< межі визначення";
-  return `${Number(value || 0).toFixed(3)} mSv`;
+  return `${String(Number(value || 0))} mSv`;
 }
 
 export default function PersonnelDosimetryPage(){
@@ -158,9 +158,9 @@ export default function PersonnelDosimetryPage(){
         <label>Кінець періоду<input name="periodEnd" type="date" required /></label>
         <label>Статус<select name="measurementStatus" defaultValue="measured">{STATUSES.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
         <label>Код дозиметра<input name="dosimeterCode" maxLength={120} /></label>
-        <label>Hp(10), mSv<input name="hp10Msv" type="number" min="0" max="100000" step="0.001" defaultValue="0" /></label>
-        <label>Hp(0.07), mSv<input name="hp007Msv" type="number" min="0" max="100000" step="0.001" defaultValue="0" /></label>
-        <label>Hp(3), mSv<input name="hp3Msv" type="number" min="0" max="100000" step="0.001" defaultValue="0" /></label>
+        <label>Hp(10), mSv<input name="hp10Msv" type="number" min="0" step="any" defaultValue="0" /></label>
+        <label>Hp(0.07), mSv<input name="hp007Msv" type="number" min="0" step="any" defaultValue="0" /></label>
+        <label>Hp(3), mSv<input name="hp3Msv" type="number" min="0" step="any" defaultValue="0" /></label>
         <label>Лабораторія / провайдер<input name="providerName" maxLength={200} /></label>
         <label>№ звіту<input name="reportNumber" maxLength={120} /></label>
         <label>Дата звіту<input name="reportDate" type="date" /></label>

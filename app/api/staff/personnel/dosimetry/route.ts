@@ -19,7 +19,7 @@ function validDate(value: string) {
 
 function finiteDose(value: unknown) {
   const dose = Number(value ?? 0);
-  return Number.isFinite(dose) && dose >= 0 && dose <= 100000 ? dose : NaN;
+  return Number.isFinite(dose) && dose >= 0 ? dose : NaN;
 }
 
 async function requireDosimetryManager(request: Request, db: D1Database) {
