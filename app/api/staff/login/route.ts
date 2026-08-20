@@ -61,7 +61,10 @@ export async function POST(request: Request) {
   }
 
   const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
-  const ok = member && !compromised ? await verifyPassword(password, member.passwordHash) : false;
+  // Always run PBKDF2 after the limiter. For unknown or deliberately blocked
+  // accounts verifyPassword receives an empty hash and performs dummy KDF work,
+  // removing the large timing difference that would reveal account existence.
+  const ok = await verifyPassword(password, member && !compromised ? member.passwordHash : "");
   if (!member || !ok) {
     await recordIdentifierRateLimitFailure(
       db,
@@ -76,11 +79,7 @@ export async function POST(request: Request) {
       action: "login_failed", resource: "auth",
       details: { reason: compromised ? "compromised" : member ? "wrong_password" : "unknown_account" },
     });
-    return Response.json({
-      error: compromised
-        ? "Початковий PIN заблоковано. Зверніться до адміністратора для безпечної заміни."
-        : "Невірний номер телефону або PIN-код",
-    }, { status: 401 });
+    return Response.json({ error: "Невірний номер телефону або PIN-код" }, { status: 401 });
   }
 
   await clearIdentifierRateLimit(db, "staff-login-account", accountIdentifier);

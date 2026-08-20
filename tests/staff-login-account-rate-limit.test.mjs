@@ -32,6 +32,14 @@ test("phone and email aliases share one known-account failure key", async () => 
   assert.doesNotMatch(login, /clearIdentifierRateLimit\([^\n]*loginIdentifier/);
 });
 
+test("unknown and blocked staff accounts do not expose an enumeration oracle", async () => {
+  const login = await read("app/api/staff/login/route.ts");
+
+  assert.match(login, /const ok = await verifyPassword\(password, member && !compromised \? member\.passwordHash : ""\)/);
+  assert.match(login, /return Response\.json\(\{ error: "Невірний номер телефону або PIN-код" \}, \{ status: 401 \}\)/);
+  assert.doesNotMatch(login, /Початковий PIN заблоковано/);
+});
+
 test("account rate-limit keys are hashed and never stored as raw identifiers", async () => {
   const limiter = await read("lib/rate-limit.ts");
 
