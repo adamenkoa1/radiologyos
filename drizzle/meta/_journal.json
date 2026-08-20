@@ -750,6 +750,13 @@
       "when": 1787179061327,
       "tag": "0107_signed_protocol_imaging_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "6",
+      "when": 1787266380000,
+      "tag": "0108_personnel_directory",
+      "breakpoints": true
     }
   ]
 }
