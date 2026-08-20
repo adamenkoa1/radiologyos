@@ -38,6 +38,10 @@ export async function PUT(request: Request) {
   if (settings.dicomwebBaseUrl && !safeOutboundUrl(settings.dicomwebBaseUrl)) {
     return Response.json({ error: "Адреса DICOMweb заборонена політикою зовнішніх підключень" }, { status: 400 });
   }
+  const viewerPolicyUrl = settings.viewerBaseUrl.replace(/\{study\}/g, "0");
+  if (settings.viewerBaseUrl && !safeOutboundUrl(viewerPolicyUrl)) {
+    return Response.json({ error: "Адреса переглядача заборонена політикою зовнішніх підключень" }, { status: 400 });
+  }
 
   await db.prepare(
     `INSERT INTO pacs_settings
