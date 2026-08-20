@@ -73,29 +73,17 @@
 .basWorkspaceShell .columnChecks label:has(input:checked){background:var(--rp-tint);border-color:transparent;color:var(--rp-accent)}
 .basWorkspaceShell .columnChecks input{width:13px;height:13px;accent-color:var(--rp-accent)}
 
-/* попередній перегляд — чиста таблиця */
-.basWorkspaceShell .reportPreview{border:1px solid var(--rp-line);border-radius:10px;margin-top:16px;overflow:hidden;background:var(--rp-panel)}
-.basWorkspaceShell .reportPreviewHead{background:var(--rp-panel);border-bottom:1px solid var(--rp-line-soft)}
+/* попередній перегляд — заголовок над спільною журнальною таблицею
+   (.financeTableWrap / .financeTable дають єдиний вигляд із Журналом документів) */
+.basWorkspaceShell .reportPreview{border:0;background:transparent;margin-top:16px}
+.basWorkspaceShell .reportPreviewHead{background:transparent;padding:0 0 10px;border-bottom:0}
 .basWorkspaceShell .reportPreviewHead span{color:var(--rp-faint)}
-.basWorkspaceShell .reportTableScroll th{
-  background:var(--rp-head);color:var(--rp-faint);text-transform:uppercase;
-  font-size:11px;font-weight:800;letter-spacing:.04em;border-bottom:1px solid var(--rp-line);
-}
-.basWorkspaceShell .reportTableScroll td{color:var(--rp-ink);border-bottom-color:var(--rp-line-soft)}
-.basWorkspaceShell .reportTableScroll tr:nth-child(even) td{background:transparent}
 
-/* KPI — одна hairline-смуга замість важких карток */
-.basWorkspaceShell .reportStats{
-  grid-template-columns:repeat(6,1fr);gap:0;margin-top:16px;
-  border:1px solid var(--rp-line);border-radius:10px;overflow:hidden;background:var(--rp-panel);
-}
-.basWorkspaceShell .reportStats article{
-  border:0;border-right:1px solid var(--rp-line-soft);border-radius:0;padding:15px 16px;min-height:0;box-shadow:none;background:transparent;
-}
-.basWorkspaceShell .reportStats article:last-child{border-right:0}
-.basWorkspaceShell .reportStats article span{font-size:11px;letter-spacing:.03em;color:var(--rp-faint)}
-.basWorkspaceShell .reportStats article b{font-family:var(--font-sans);font-size:23px;margin:8px 0 3px;font-weight:750;letter-spacing:-.5px;line-height:1;color:var(--rp-ink)}
-.basWorkspaceShell .reportStats article small{font-size:11px;color:var(--rp-faint)}
+/* KPI та таблиця беруть спільний журнальний стиль (.financeSummary/.financeTable),
+   тож бespоke-правила тут не потрібні — єдина дизайн-система.
+   Звіти мають 6 показників (журнал — 4), тож даємо адаптивну сітку,
+   щоб усі стали рівно в один ряд у тому самому картковому стилі. */
+.basWorkspaceShell .reportContent .financeSummary{grid-template-columns:repeat(auto-fit,minmax(148px,1fr))}
 
 /* панелі */
 .basWorkspaceShell .reportPanel{border:1px solid var(--rp-line);border-radius:10px;background:var(--rp-panel);padding:17px 18px;box-shadow:none}
