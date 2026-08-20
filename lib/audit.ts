@@ -2,7 +2,7 @@
 // подій; читає лише адміністратор. Записи скоупляться за організацією.
 
 export type AuditEvent = {
-  organizationId?: number; // за замовчуванням 1 (єдина організація)
+  organizationId: number;
   actorEmail: string;
   action: string;   // машинний код події, напр. "login", "booking_confirm"
   resource: string; // домен, напр. "auth", "booking", "settings", "staff"
@@ -62,13 +62,17 @@ export function auditLabel(action: string): string {
 }
 
 export async function logSecurityEvent(db: D1Database, event: AuditEvent): Promise<void> {
+  const organizationId = Number(event.organizationId);
+  if (!Number.isInteger(organizationId) || organizationId <= 0) {
+    throw new Error("security audit requires a valid organizationId");
+  }
   const details = JSON.stringify(event.details || {}).slice(0, 4000);
   await db.prepare(
     `INSERT INTO security_audit_log
        (organization_id, actor_email, action, resource, target_id, details_json)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).bind(
-    event.organizationId || 1,
+    organizationId,
     String(event.actorEmail || "").slice(0, 254),
     event.action.slice(0, 80),
     event.resource.slice(0, 80),
