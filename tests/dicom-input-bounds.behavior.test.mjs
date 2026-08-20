@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { sanitizeImagingStudy, sanitizePacsSettings } from "../lib/dicom.ts";
 
+// Exact boundaries remain accepted; only over-limit values fail closed.
 test("DICOM identity inputs fail closed instead of being silently truncated", () => {
   const overlongAccession = "A".repeat(65);
   const accession = sanitizeImagingStudy({
