@@ -5,6 +5,7 @@ const directories=[
   {name:"Персонал",description:"Кадрові картки працівників: підрозділ, посада, контакти, адреса та зв’язок з обліковим записом.",href:"/staff/personnel"},
   {name:"ВЛК персоналу",description:"Окрема захищена append-only історія рішень ВЛК, прив’язана до стабільного personnelId.",href:"/staff/personnel/vlk"},
   {name:"Допуск до ДІВ",description:"Append-only історія кадрових рішень щодо робіт з джерелами іонізуючого випромінювання.",href:"/staff/personnel/radiation-clearance"},
+  {name:"Радіаційна безпека",description:"Навчання, перевірки знань та інструктажі з окремою історією сертифікатів і строків дії.",href:"/staff/personnel/radiation-training"},
   {name:"Обладнання",description:"Апарати, кабінети та технічні атрибути, що використовуються в записах і виконанні.",href:"/staff/equipment"},
   {name:"Послуги",description:"Канонічний каталог послуг, тривалість, правила і матеріальні норми.",href:"/staff/services"},
   {name:"Тарифи",description:"Ціни та правила оплати, які використовуються при формуванні замовлення і послуги.",href:"/staff/tariffs"},

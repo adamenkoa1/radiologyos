@@ -58,6 +58,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   personnel_vlk_recorded: "Додано рішення ВЛК працівника",
   personnel_radiation_clearance_viewed: "Переглянуто історію допусків працівника до ДІВ",
   personnel_radiation_clearance_recorded: "Додано рішення щодо допуску працівника до ДІВ",
+  personnel_radiation_training_viewed: "Переглянуто історію навчання працівника з радіаційної безпеки",
+  personnel_radiation_training_recorded: "Додано запис навчання працівника з радіаційної безпеки",
   report_viewed: "Переглянуто звіт",
   report_exported: "Експортовано звіт",
   service_material_requirement_created: "Створено норму матеріалів",
