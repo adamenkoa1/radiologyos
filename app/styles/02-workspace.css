@@ -277,9 +277,9 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .dashPendingHead{display:flex;flex-wrap:wrap;align-items:baseline;gap:10px;margin-bottom:10px}
 /* Пакетне підтвердження: панель у заголовку + чекбокси на картках. */
 .dashPendingTools{margin-left:auto;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-.dashSelAll{border:1px solid #d7e1e1;background:#fff;border-radius:var(--r-sm);padding:6px 10px;font-size:11.5px;font-weight:700;color:#355b57;cursor:pointer}
+.dashSelAll{display:inline-flex;align-items:center;justify-content:center;min-height:30px;border:1px solid #d7e1e1;background:#fff;border-radius:var(--r-sm);padding:0 11px;font-size:12px;font-weight:700;color:#355b57;cursor:pointer}
 .dashSelAll:hover{border-color:#9ebbb3}
-.dashBatchBtn{border:0;border-radius:var(--r-sm);padding:6px 12px;font-size:11.5px;font-weight:800;background:var(--ws-brand,#123d3a);color:#fff;cursor:pointer;transition:opacity var(--dur-fast) var(--ease)}
+.dashBatchBtn{display:inline-flex;align-items:center;justify-content:center;min-height:30px;border:0;border-radius:var(--r-sm);padding:0 13px;font-size:12px;font-weight:800;background:var(--ws-brand,#123d3a);color:#fff;cursor:pointer;transition:opacity var(--dur-fast) var(--ease)}
 .dashBatchBtn:disabled{opacity:.45;cursor:default}
 .dashCardPick{display:inline-flex;align-items:center;cursor:pointer}
 .dashCardPick input{width:17px;height:17px;accent-color:var(--ws-brand,#123d3a);cursor:pointer}
@@ -324,7 +324,7 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .dashAgenda>li:first-child .dashAgendaRow{border-top:0}
 /* Швидкі відмітки прибуття/неявки просто з розкладу */
 .dashAgendaActs{display:flex;align-items:center;gap:6px;padding-right:10px}
-.dashMark{border:1px solid #d8e0dd;background:#fff;border-radius:7px;padding:5px 9px;font-size:11.5px;font-weight:700;color:#355b57;cursor:pointer;white-space:nowrap}
+.dashMark{display:inline-flex;align-items:center;justify-content:center;min-height:30px;border:1px solid #d8e0dd;background:#fff;border-radius:7px;padding:0 11px;font-size:12px;font-weight:700;color:#355b57;cursor:pointer;white-space:nowrap}
 .dashMark:hover:not(:disabled){border-color:#bcc9c4}
 .dashMark.no{color:#9a3b26;border-color:#e6cabf}
 .dashMark:disabled{opacity:.5;cursor:progress}
