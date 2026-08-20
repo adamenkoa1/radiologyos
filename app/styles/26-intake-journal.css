@@ -1,0 +1,41 @@
+/* ============================================================
+   RadiologyOS — Прийом (/staff/intake) у єдиному журнальному стилі (крок 3).
+   /staff (реєстр) уже на щільнісному журнальному шарі (23). Прийом має власні
+   .intake* компоненти: світлі, але з великими радіусами (14/8px) і бірюзовим
+   акцентом (#0c7a85) замість зеленого. Зводимо до журнальної щільності —
+   тонкі рамки, щільний радіус, зелений акцент. Токени --rp-* із 24, --r-sm із 23.
+   Per-side border longhand, щоб не затерти кольорові статус-рейки карток.
+   ============================================================ */
+.basWorkspaceShell .intakeQueue,
+.basWorkspaceShell .intakeDetail{
+  border-color:var(--rp-line);
+  border-radius:var(--r-sm,4px);
+}
+.basWorkspaceShell .intakeQueueTop{border-bottom-color:var(--rp-line-soft)}
+.basWorkspaceShell .intakeQueueTop input{border-color:var(--rp-line);border-radius:var(--r-sm,4px)}
+.basWorkspaceShell .intakeQueueTop input:focus{outline:2px solid var(--rp-accent);outline-offset:-1px;border-color:var(--rp-accent)}
+
+/* сегментований перемикач — зелений акцент, щільний радіус */
+.basWorkspaceShell .intakeSeg{background:var(--rp-line-soft);border-radius:var(--r-sm,4px)}
+.basWorkspaceShell .intakeSeg button{color:var(--rp-muted);border-radius:calc(var(--r-sm,4px) - 1px)}
+.basWorkspaceShell .intakeSeg button.on{background:var(--rp-panel);color:var(--rp-accent);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+
+/* «нова заявка» — зелений пунктир */
+.basWorkspaceShell .intakeNew{border-color:var(--rp-accent);background:var(--rp-tint);color:var(--rp-accent);border-radius:var(--r-sm,4px)}
+
+/* картки черги — тонка рамка, щільний радіус; лівий статус-акцент збережено */
+.basWorkspaceShell .intakeCard{
+  border-top-color:var(--rp-line-soft);
+  border-right-color:var(--rp-line-soft);
+  border-bottom-color:var(--rp-line-soft);
+  border-radius:var(--r-sm,4px);
+  background:var(--rp-panel);
+}
+.basWorkspaceShell .intakeCard:hover{background:var(--rp-head)}
+.basWorkspaceShell .intakeCard.active{
+  border-top-color:var(--rp-accent);
+  border-right-color:var(--rp-accent);
+  border-bottom-color:var(--rp-accent);
+  border-left-color:var(--rp-accent);
+  background:var(--rp-tint);
+}
