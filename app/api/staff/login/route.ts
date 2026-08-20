@@ -7,15 +7,23 @@ import {
   SESSION_TTL_SECONDS,
   verifyPassword,
 } from "../../../../lib/auth";
-import { isRateLimited } from "../../../../lib/rate-limit";
+import {
+  clearIdentifierRateLimit,
+  isIdentifierRateLimited,
+  isRateLimited,
+  recordIdentifierRateLimitFailure,
+} from "../../../../lib/rate-limit";
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
 
+const STAFF_LOGIN_LIMIT = 10;
+const STAFF_LOGIN_WINDOW_MINUTES = 15;
+
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
-  if (await isRateLimited(db, request, "staff-login", 10, 15)) {
+  if (await isRateLimited(db, request, "staff-login", STAFF_LOGIN_LIMIT, STAFF_LOGIN_WINDOW_MINUTES)) {
     return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
   }
 
@@ -25,6 +33,20 @@ export async function POST(request: Request) {
   const password = String(body.password || "");
   if ((!phone && !email) || !password) {
     return Response.json({ error: "Вкажіть номер телефону і PIN-код" }, { status: 400 });
+  }
+
+  // Окремий hashed account bucket не дає обходити 6-значний PIN через
+  // distributed brute-force з багатьох IP. Невідомі акаунти лімітуються так само,
+  // тому відповідь не створює account-enumeration oracle.
+  const loginIdentifier = phone ? `phone:${phone}` : `email:${email}`;
+  if (await isIdentifierRateLimited(
+    db,
+    "staff-login-account",
+    loginIdentifier,
+    STAFF_LOGIN_LIMIT,
+    STAFF_LOGIN_WINDOW_MINUTES,
+  )) {
+    return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
   }
 
   // Вхід за номером телефону (основний) або email (сумісність).
@@ -39,6 +61,13 @@ export async function POST(request: Request) {
   const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
   const ok = member && !compromised ? await verifyPassword(password, member.passwordHash) : false;
   if (!member || !ok) {
+    await recordIdentifierRateLimitFailure(
+      db,
+      "staff-login-account",
+      loginIdentifier,
+      STAFF_LOGIN_LIMIT,
+      STAFF_LOGIN_WINDOW_MINUTES,
+    );
     await audit(db, {
       organizationId: 1,
       actorEmail: member?.email || phone || email || "невідомо",
@@ -51,6 +80,8 @@ export async function POST(request: Request) {
         : "Невірний номер телефону або PIN-код",
     }, { status: 401 });
   }
+
+  await clearIdentifierRateLimit(db, "staff-login-account", loginIdentifier);
 
   if (passwordHashNeedsUpgrade(member.passwordHash)) {
     await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
