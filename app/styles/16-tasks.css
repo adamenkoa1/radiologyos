@@ -15,7 +15,7 @@
 }
 .workspaceShell .taskSegments button { border:0; background:transparent; color:var(--ws-muted); padding:0 11px; }
 .workspaceShell .taskSegments button.on { background:var(--ws-accent-soft); color:var(--ws-accent); }
-.workspaceShell .taskMine { display:inline-flex; align-items:center; gap:6px; color:var(--ws-muted); font-size:12px; font-weight:700; }
+.workspaceShell .taskMine { display:inline-flex; align-items:center; gap:6px; color:var(--ws-muted); font-size:var(--fs-base); font-weight:700; }
 .workspaceShell .taskNew { margin-left:auto; }
 
 .workspaceShell .taskCreate {
@@ -23,13 +23,13 @@
   background:color-mix(in srgb,var(--ws-accent-soft) 45%,var(--ws-surface));
 }
 .workspaceShell .taskCreate label { display:grid; gap:4px; }
-.workspaceShell .taskCreate label>span { color:var(--ws-muted); font-size:10px; font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
+.workspaceShell .taskCreate label>span { color:var(--ws-muted); font-size:var(--fs-xs); font-weight:800; letter-spacing:.05em; text-transform:uppercase; }
 .workspaceShell .taskCreate :where(input,select,textarea) { width:100%; border:1px solid var(--ws-line); background:var(--ws-surface); color:var(--ws-ink); }
 .workspaceShell .taskCreateRow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:9px; }
 .workspaceShell .taskSave { justify-self:start; }
 
 .workspaceShell .taskSummary { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; }
-.workspaceShell .taskSummary span { display:flex; align-items:center; gap:9px; min-height:46px; padding:8px 11px; border:1px solid var(--ws-line); border-radius:9px; background:var(--ws-surface); color:var(--ws-muted); font-size:11px; font-weight:700; }
+.workspaceShell .taskSummary span { display:flex; align-items:center; gap:9px; min-height:46px; padding:8px 11px; border:1px solid var(--ws-line); border-radius:9px; background:var(--ws-surface); color:var(--ws-muted); font-size:var(--fs-sm); font-weight:700; }
 .workspaceShell .taskSummary b { font-size:20px; color:var(--ws-ink); font-variant-numeric:tabular-nums; }
 .workspaceShell .taskSummary .warn b { color:#b45309; }
 
@@ -44,16 +44,16 @@
 .workspaceShell .taskCard.priority-low::before { background:#64748b; }
 .workspaceShell .taskCard.overdue { border-color:rgba(217,119,6,.34); }
 .workspaceShell .taskCardTop { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.workspaceShell .taskPriority,.workspaceShell .taskOverdue,.workspaceShell .taskAuto { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:9px; font-weight:800; }
+.workspaceShell .taskPriority,.workspaceShell .taskOverdue,.workspaceShell .taskAuto { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:var(--fs-xs); font-weight:800; }
 .workspaceShell .taskPriority { background:rgba(148,163,184,.12); color:var(--ws-muted); }
 .workspaceShell .taskPriority.high { background:rgba(220,38,38,.1); color:#b91c1c; }
 .workspaceShell .taskPriority.normal { background:rgba(37,99,235,.1); color:#2563eb; }
 .workspaceShell .taskOverdue { background:rgba(217,119,6,.11); color:#b45309; }
 .workspaceShell .taskAuto { background:rgba(8,145,178,.11); color:#0e7490; }
-.workspaceShell .taskAutoDone { color:var(--ws-muted); font-size:10px; font-weight:700; white-space:nowrap; }
-.workspaceShell .taskCard h2 { margin:5px 0 0; color:var(--ws-ink); font-size:14px; letter-spacing:-.01em; }
-.workspaceShell .taskCard p { margin:5px 0 0; color:var(--ws-muted); font-size:11px; line-height:1.45; white-space:pre-wrap; }
-.workspaceShell .taskMeta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--ws-muted); font-size:10px; }
+.workspaceShell .taskAutoDone { color:var(--ws-muted); font-size:var(--fs-xs); font-weight:700; white-space:nowrap; }
+.workspaceShell .taskCard h2 { margin:5px 0 0; color:var(--ws-ink); font-size:var(--fs-lg); letter-spacing:-.01em; }
+.workspaceShell .taskCard p { margin:5px 0 0; color:var(--ws-muted); font-size:var(--fs-sm); line-height:1.45; white-space:pre-wrap; }
+.workspaceShell .taskMeta { display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; color:var(--ws-muted); font-size:var(--fs-xs); }
 .workspaceShell .taskMeta a { color:var(--ws-accent); font-weight:700; }
 .workspaceShell .taskActions button { white-space:nowrap; }
 .workspaceShell .taskEmpty { padding:36px 14px; border:1px dashed var(--ws-line); border-radius:var(--ws-radius-md); color:var(--ws-muted); text-align:center; }

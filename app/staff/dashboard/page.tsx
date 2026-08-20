@@ -204,6 +204,13 @@ export default function DashboardPage() {
     .sort((a, b) => (b.code || "").localeCompare(a.code || "")),
   [bookings, today]);
 
+  // Прострочено: час дослідження на сьогодні вже минув, а заявку ще не
+  // опрацьовано (не прибув / не виконано / не скасовано). Такі — не «нові»,
+  // а неактуальні: позначаємо, а не ховаємо, бо потребують рішення.
+  const isOverdue = (b:CalBooking) =>
+    b.desiredDate === today && !!b.desiredTime && (minsUntil(b.desiredTime, nowMin) ?? 0) < 0;
+  const stillWaiting = (s:string) => s === "new" || s === "rescheduled" || s === "confirmed";
+
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
 
   // Одне підтвердження: мутує стан заявки, повертає підсумок (без тосту),
@@ -261,6 +268,25 @@ export default function DashboardPage() {
     if (failed) parts.push(`${failed} без сповіщення — у списку дзвінків`);
     if (errors) parts.push(`${errors} з помилкою`);
     setToast((failed || errors ? "⚠ " : "✓ ") + parts.join(" · "));
+  }
+
+  // Відмітка прибуття / неявки прямо з Пульта (arrived / no_show).
+  async function setStatus(id:number, status:string, label:string) {
+    setBusyId(id); setToast("");
+    try {
+      const res = await fetch("/api/staff/bookings", {
+        method:"PATCH", headers:{"content-type":"application/json"},
+        body:JSON.stringify({ id, status }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?:string };
+      if (!res.ok) { setToast(data.error || "Не вдалося змінити стан"); return; }
+      setBookings(cur => cur.map(b => b.id === id ? { ...b, status } : b));
+      setToast(`✓ ${label}`);
+    } catch {
+      setToast("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBusyId(null);
+    }
   }
 
   async function rescheduleBooking(id:number, date:string, time:string) {
@@ -382,13 +408,14 @@ export default function DashboardPage() {
           ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
           : <div className="dashCards">
               {pending.map(b => (
-                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}${selected.has(b.id) ? " picked" : ""}`}>
+                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}${selected.has(b.id) ? " picked" : ""}${isOverdue(b) ? " overdue" : ""}`}>
                   <div className="dashCardTop">
                     {canManage &&
                       <label className="dashCardPick" title="Обрати для пакетного підтвердження">
                         <input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleSel(b.id)} />
                       </label>}
                     <span className={`dashCardTag ${b.status}`}>{b.status === "rescheduled" ? "Перенесено" : "Нова"}</span>
+                    {isOverdue(b) && <span className="dashCardFlag overdue">Прострочено</span>}
                     {isContrast(b) && <span className="dashCardFlag">Контраст</span>}
                     {needsPay(b) && <span className="dashCardFlag pay">Оплата</span>}
                   </div>
@@ -436,17 +463,27 @@ export default function DashboardPage() {
                 const active = b.status !== "completed" && b.status !== "performed" && b.status !== "issued";
                 const when = active ? whenLabel(minsUntil(b.desiredTime, nowMin)) : null;
                 const doc = doctorShort(b.assignedRadiologistEmail);
+                const overdue = isOverdue(b) && stillWaiting(b.status);
+                const canMark = canManage && (b.status === "new" || b.status === "confirmed" || b.status === "rescheduled");
                 return <li key={b.id}>
-                  <button type="button" className={`dashAgendaRow ${modClass(b.equipmentId)}`} onClick={()=>setOpenId(b.id)}>
-                    <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
-                    <div className="dashAgendaWho">
-                      <b>{b.name || "Без імені"}</b>
-                      <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
-                    </div>
-                    {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
-                    {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
-                    <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
-                  </button>
+                  <div className={`dashAgendaRow ${modClass(b.equipmentId)}${overdue ? " overdue" : ""}`}>
+                    <button type="button" className="dashAgendaMain" onClick={()=>setOpenId(b.id)}>
+                      <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
+                      <div className="dashAgendaWho">
+                        <b>{b.name || "Без імені"}</b>
+                        <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
+                      </div>
+                      {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
+                      {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
+                      <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{b.status === "arrived" ? "прибув" : STATUS_UK[b.status] || b.status}</span>
+                    </button>
+                    {canMark
+                      ? <span className="dashAgendaActs">
+                          <button type="button" className="dashMark ok" disabled={busyId===b.id} onClick={()=>void setStatus(b.id, "arrived", "Позначено: пацієнт прибув")} title="Пацієнт прибув">Прибув</button>
+                          <button type="button" className="dashMark no" disabled={busyId===b.id} onClick={()=>void setStatus(b.id, "no_show", "Позначено: неявка")} title="Пацієнт не з'явився">Не з’явився</button>
+                        </span>
+                      : null}
+                  </div>
                 </li>;
               })}
             </ul>}

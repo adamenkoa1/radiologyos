@@ -1,23 +1,23 @@
 /* ================= «Записи» — таби, групи по днях, керування ================= */
 .apptTabs{max-width:var(--dash-w);margin:0 auto 12px;display:flex;flex-wrap:wrap;gap:6px}
-.apptTab{display:inline-flex;align-items:center;gap:7px;border:1px solid #dce4e3;background:#fff;color:#41544f;font:inherit;font-size:12.5px;font-weight:700;padding:7px 13px;border-radius:999px;cursor:pointer;transition:.15s}
+.apptTab{display:inline-flex;align-items:center;gap:7px;border:1px solid #dce4e3;background:#fff;color:#41544f;font:inherit;font-size:var(--fs-base);font-weight:700;padding:7px 13px;border-radius:999px;cursor:pointer;transition:.15s}
 .apptTab:hover{border-color:var(--green);color:var(--green)}
 .apptTab.active{background:var(--green);border-color:var(--green);color:#fff}
-.apptTabCount{font-family:var(--font-sans);font-size:11px;font-weight:800;background:rgba(20,45,43,.08);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
+.apptTabCount{font-family:var(--font-sans);font-size:var(--fs-sm);font-weight:800;background:rgba(20,45,43,.08);border-radius:999px;padding:1px 7px;min-width:20px;text-align:center;font-variant-numeric:tabular-nums}
 .apptTab.active .apptTabCount{background:rgba(255,255,255,.24)}
 .apptDay{max-width:var(--dash-w);margin:0 auto 16px}
 .apptDayHead{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:2px 4px 8px;margin-bottom:8px;border-bottom:1px solid #e0e7ea}
-.apptDayHead b{font-size:14.5px;font-weight:750;letter-spacing:-.01em}
-.apptDayHead span{font-size:11px;font-weight:700;color:#6c7c86;text-transform:uppercase;letter-spacing:.05em}
+.apptDayHead b{font-size:var(--fs-lg);font-weight:750;letter-spacing:-.01em}
+.apptDayHead span{font-size:var(--fs-sm);font-weight:700;color:#6c7c86;text-transform:uppercase;letter-spacing:.05em}
 .apptManage{grid-column:1/-1;border-top:1px solid #e1ded6;margin-top:6px;padding-top:4px}
-.apptManage>summary{cursor:pointer;color:var(--green);font-size:12px;font-weight:800;padding:6px 0;list-style:none}
+.apptManage>summary{cursor:pointer;color:var(--green);font-size:var(--fs-base);font-weight:800;padding:6px 0;list-style:none}
 .apptManage>summary::-webkit-details-marker{display:none}
 .apptManage>summary::before{content:"▸ "}
 .apptManage[open]>summary::before{content:"▾ "}
 .apptEmpty{max-width:760px;margin:34px auto;display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:48px 30px;background:#fff;border:1px solid #e7ece9;border-radius:16px;box-shadow:0 8px 24px rgba(23,54,52,.04)}
 .apptEmptyIcon{font-size:34px;opacity:.65}
 .apptEmpty b{font-size:16px}
-.apptEmpty p{margin:0;color:#6c7c86;font-size:13px;max-width:44ch;line-height:1.5}
+.apptEmpty p{margin:0;color:#6c7c86;font-size:var(--fs-base);max-width:44ch;line-height:1.5}
 @media print{.apptTabs,.staffTools .toolButtons{display:none!important}}
 /* Темна тема */
 .themeDark .apptTab{background:#121a20;border-color:#26333d;color:#aebeca}

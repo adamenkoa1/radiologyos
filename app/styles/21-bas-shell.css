@@ -37,7 +37,7 @@
   background:transparent;
   color:#536d68;
   font:inherit;
-  font-size:11px;
+  font-size:var(--fs-sm);
   font-weight:800;
   letter-spacing:.005em;
   white-space:nowrap;
@@ -77,8 +77,8 @@
   border-right:1px solid #e0e7e5;
 }
 .basWorkspaceShell .workspaceBusinessContext b,.basWorkspaceShell .workspaceBusinessContext small{display:block;white-space:nowrap}
-.basWorkspaceShell .workspaceBusinessContext b{color:#173f3a;font-size:11px}
-.basWorkspaceShell .workspaceBusinessContext small{margin-top:2px;color:#82928f;font-size:8.5px;text-transform:uppercase;letter-spacing:.07em}
+.basWorkspaceShell .workspaceBusinessContext b{color:#173f3a;font-size:var(--fs-sm)}
+.basWorkspaceShell .workspaceBusinessContext small{margin-top:2px;color:#82928f;font-size:var(--fs-xs);text-transform:uppercase;letter-spacing:.07em}
 .basWorkspaceShell .workspaceBusinessLinks{
   min-width:0;
   flex:1;
@@ -98,7 +98,7 @@
   border:1px solid transparent;
   border-radius:5px;
   color:#405f5a;
-  font-size:10.5px;
+  font-size:var(--fs-xs);
   font-weight:750;
   white-space:nowrap;
   transition:background var(--dur-fast) var(--ease),border-color var(--dur-fast) var(--ease),color var(--dur-fast) var(--ease);
@@ -112,7 +112,7 @@
   border-radius:5px;
   background:#f7faf9;
   color:#41645e;
-  font-size:9.5px;
+  font-size:var(--fs-xs);
   font-weight:800;
   cursor:pointer;
 }
@@ -136,9 +136,9 @@
 .basWorkspaceShell.themeDark .workspaceBusinessReturn{background:#182429;border-color:#314047;color:#a9bbb8}
 
 @media(max-width:1280px){
-  .basWorkspaceShell .workspaceBusinessModules button{padding-left:9px;padding-right:9px;font-size:10px}
+  .basWorkspaceShell .workspaceBusinessModules button{padding-left:9px;padding-right:9px;font-size:var(--fs-xs)}
   .basWorkspaceShell .workspaceBusinessContext{min-width:112px}
-  .basWorkspaceShell .workspaceBusinessLinks a{padding-left:8px;padding-right:8px;font-size:10px}
+  .basWorkspaceShell .workspaceBusinessLinks a{padding-left:8px;padding-right:8px;font-size:var(--fs-xs)}
 }
 @media(max-width:900px){
   .basWorkspaceShell .workspaceBusinessCommands{gap:9px;padding-left:14px;padding-right:14px}
