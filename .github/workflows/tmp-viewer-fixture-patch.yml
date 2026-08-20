@@ -1,0 +1,27 @@
+name: Temporary viewer fixture patch
+
+on:
+  push:
+    branches:
+      - audit/dicom-viewer-host-policy
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - name: Apply viewer fixture patch
+        run: python .github/tmp-viewer-fixture-patch.py
+      - name: Commit patch
+        run: |
+          if git diff --quiet -- tests/dicom-accession.behavior.test.mjs; then
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add tests/dicom-accession.behavior.test.mjs
+          git commit -m "Allowlist viewer host in DICOM accession fixture"
+          git push
