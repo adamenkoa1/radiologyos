@@ -26,6 +26,74 @@ type TenantAccessState = {
   activeOrgCount: number;
 };
 
+type AuditOrganizationRow = { organizationId: number };
+
+async function authAuditOrganizationIds(
+  db: D1Database,
+  memberEmail: string | null,
+  { activeOnly, allowSingleOrgFallback }: { activeOnly: boolean; allowSingleOrgFallback: boolean },
+): Promise<number[]> {
+  if (memberEmail) {
+    const activeClause = activeOnly ? "AND m.active = 1 AND o.active = 1" : "";
+    const linked = await db.prepare(
+      `SELECT DISTINCT m.organization_id AS organizationId
+       FROM memberships m
+       JOIN organizations o ON o.id = m.organization_id
+       WHERE m.member_email = ? ${activeClause}
+       ORDER BY m.organization_id`
+    ).bind(memberEmail).all<AuditOrganizationRow>();
+    const ids = linked.results
+      .map((row) => Number(row.organizationId))
+      .filter((id) => Number.isInteger(id) && id > 0);
+    if (ids.length > 0) return ids;
+  }
+
+  // Unknown identifiers have no tenant identity. In a true single-org deployment
+  // the sole active organization is the only meaningful audit owner; in multi-org
+  // installations we deliberately avoid attributing the guess to an arbitrary
+  // tenant. The same fallback supports the legacy empty-membership bootstrap.
+  if (!allowSingleOrgFallback) return [];
+  const activeOrganizations = await db.prepare(
+    "SELECT id AS organizationId FROM organizations WHERE active = 1 ORDER BY id LIMIT 2"
+  ).all<AuditOrganizationRow>();
+  if (activeOrganizations.results.length !== 1) return [];
+  const organizationId = Number(activeOrganizations.results[0]?.organizationId);
+  return Number.isInteger(organizationId) && organizationId > 0 ? [organizationId] : [];
+}
+
+async function auditAuthEvent(
+  db: D1Database,
+  {
+    memberEmail,
+    actorEmail,
+    action,
+    details,
+    activeOnly = false,
+    allowSingleOrgFallback = false,
+  }: {
+    memberEmail: string | null;
+    actorEmail: string;
+    action: "login" | "login_failed";
+    details: Record<string, unknown>;
+    activeOnly?: boolean;
+    allowSingleOrgFallback?: boolean;
+  },
+): Promise<void> {
+  const organizationIds = await authAuditOrganizationIds(db, memberEmail, {
+    activeOnly,
+    allowSingleOrgFallback,
+  });
+  for (const organizationId of organizationIds) {
+    await audit(db, {
+      organizationId,
+      actorEmail,
+      action,
+      resource: "auth",
+      details,
+    });
+  }
+}
+
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
@@ -108,10 +176,11 @@ export async function POST(request: Request) {
         STAFF_LOGIN_WINDOW_MINUTES,
       );
     }
-    await audit(db, {
-      organizationId: 1,
+    await auditAuthEvent(db, {
+      memberEmail: member?.email || null,
       actorEmail: member?.email || phone || email || "невідомо",
-      action: "login_failed", resource: "auth",
+      action: "login_failed",
+      allowSingleOrgFallback: !member || Number(accessState?.membershipCount) === 0,
       details: {
         reason: compromised
           ? "compromised"
@@ -132,9 +201,13 @@ export async function POST(request: Request) {
       .bind(await hashPassword(password), member.email).run();
   }
 
-  await audit(db, {
-    organizationId: 1, actorEmail: member.email,
-    action: "login", resource: "auth", details: { via: phone ? "phone" : "email" },
+  await auditAuthEvent(db, {
+    memberEmail: member.email,
+    actorEmail: member.email,
+    action: "login",
+    activeOnly: true,
+    allowSingleOrgFallback: Number(accessState?.membershipCount) === 0,
+    details: { via: phone ? "phone" : "email" },
   });
   const rawToken = await createSession(db, member.email);
   return Response.json(
