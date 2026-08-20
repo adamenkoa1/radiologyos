@@ -89,7 +89,8 @@ export default function PersonnelVlkPage(){
   async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
     if(!personnelId) return;
-    const form=new FormData(event.currentTarget);
+    const formElement=event.currentTarget;
+    const form=new FormData(formElement);
     const payload={
       personnelId,
       examinationDate:String(form.get("examinationDate") || ""),
@@ -109,7 +110,7 @@ export default function PersonnelVlkPage(){
       });
       const body=await response.json().catch(()=>({})) as {ok?:boolean;error?:string};
       if(!response.ok || !body.ok) throw new Error(body.error || "Не вдалося зберегти рішення ВЛК");
-      event.currentTarget.reset();
+      formElement.reset();
       setSupersedesId(null);
       setNotice(payload.supersedesId ? "Виправлення ВЛК додано без зміни попереднього запису." : "Рішення ВЛК додано до історії.");
       await loadVlk(personnelId);
