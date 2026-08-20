@@ -1,0 +1,42 @@
+name: Fix PR439 snapshot metadata
+
+on:
+  push:
+    branches:
+      - feature/personnel-directory-foundation
+
+permissions:
+  contents: write
+
+jobs:
+  fix-snapshot:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/personnel-directory-foundation
+          fetch-depth: 0
+      - name: Repair 0108 snapshot lineage
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = 'drizzle/meta/0108_snapshot.json';
+          const snapshot = JSON.parse(fs.readFileSync(path, 'utf8'));
+          const parentId = '0852c763-5457-4c61-834e-40c75b30687f';
+          const nextId = '0c815c71-9713-4d3d-bf8a-573db42e1cb6';
+          snapshot.id = nextId;
+          snapshot.prevId = parentId;
+          fs.writeFileSync(path, JSON.stringify(snapshot, null, 2) + '\n');
+          NODE
+      - name: Commit repaired snapshot
+        run: |
+          if git diff --quiet -- drizzle/meta/0108_snapshot.json; then
+            echo "Snapshot metadata already repaired"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add drizzle/meta/0108_snapshot.json
+          git commit -m "Fix Drizzle snapshot lineage for personnel migration"
+          git push origin HEAD:feature/personnel-directory-foundation
