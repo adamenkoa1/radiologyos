@@ -40,10 +40,17 @@ async function loadPacs(db:D1Database, organizationId:number):Promise<PacsRow> {
   return row || { dicomwebBaseUrl:"", viewerBaseUrl:"", aeTitle:"", enabled:0 };
 }
 
+function trustedViewerBaseUrl(pacs:PacsRow):string {
+  const base = String(pacs.viewerBaseUrl || "").trim();
+  if (!base) return "";
+  const policyUrl = base.replace(/\{study\}/g, "0");
+  return safeOutboundUrl(policyUrl) ? base : "";
+}
+
 function publicSettings(pacs:PacsRow) {
   return {
     enabled:!!pacs.enabled,
-    viewerBaseUrl:pacs.viewerBaseUrl,
+    viewerBaseUrl:trustedViewerBaseUrl(pacs),
     aeTitle:pacs.aeTitle,
     dicomwebConfigured:!!pacs.dicomwebBaseUrl,
   };
@@ -184,7 +191,7 @@ export async function GET(request: Request) {
       study:publicStudy,
       series,
       pacsReachable:reachable,
-      viewerUrl:viewerUrl(pacs.viewerBaseUrl, trustedUid),
+      viewerUrl:viewerUrl(trustedViewerBaseUrl(pacs), trustedUid),
       linkVerificationRequired,
       settings:publicSettings(pacs),
       staff:member,
@@ -356,7 +363,7 @@ export async function POST(request: Request) {
       studyDatetime:match.studyDatetime,
       source:"qido_accession",
     },
-    viewerUrl:viewerUrl(pacs.viewerBaseUrl, match.studyInstanceUid),
+    viewerUrl:viewerUrl(trustedViewerBaseUrl(pacs), match.studyInstanceUid),
     pacsReachable:seriesResult.reachable,
   }, { headers:{ "cache-control":"no-store" } });
 }
