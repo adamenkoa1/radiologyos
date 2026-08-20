@@ -171,6 +171,7 @@ export default function ReportsPage() {
             onClick={()=>chooseTemplate(item.key)}
           ><b>{item.label}</b><span>{item.description}</span></button>)}
         </div>
+        <p className="reportActiveDesc"><b>{currentTemplate.label}.</b> {currentTemplate.description}</p>
 
         <form className="reportFilterGrid" onSubmit={event=>{event.preventDefault();void load();}}>
           <label><span>Від</span><input type="date" value={from} onChange={event=>setFrom(event.target.value)} required/></label>

@@ -1,0 +1,113 @@
+/* ============================================================
+   RadiologyOS — мінімалістичний вигляд екрана «Звіти».
+   Завантажується останнім, тож перекриває базові (01), щільнісні (23)
+   і темні (08) правила саме для конструктора звітів. Один набір правил
+   на обидві теми — через локальні --rp-* токени.
+   ============================================================ */
+.basWorkspaceShell{
+  --rp-panel:#fff; --rp-ink:#16302d; --rp-muted:#63756f; --rp-faint:#8a9995;
+  --rp-line:#e2e8e5; --rp-line-soft:#eef2f0; --rp-tint:#e6f1ee; --rp-head:#f7faf9;
+  --rp-accent:#0d5b50; --rp-accent-deep:#0a4b42;
+}
+.basWorkspaceShell.themeDark{
+  --rp-panel:#141d1a; --rp-ink:#e7efec; --rp-muted:#93a49e; --rp-faint:#6d7f79;
+  --rp-line:#243330; --rp-line-soft:#1a2724; --rp-tint:#16302b; --rp-head:#0e151a;
+  --rp-accent:#57c9b4; --rp-accent-deep:#43b7a2;
+}
+
+/* конструктор — без важкої картки */
+.basWorkspaceShell .reportBuilder{background:transparent;border:0;padding:0;margin:0 0 6px}
+.basWorkspaceShell .reportBuilderHead h2{font-size:18px}
+.basWorkspaceShell .reportBuilderHead>p{color:var(--rp-muted)}
+
+/* реєстри — компактні таби замість карток */
+.basWorkspaceShell .reportTemplateTabs{
+  display:flex;grid-template-columns:none;gap:2px;flex-wrap:wrap;
+  margin:24px 0 0;border-bottom:1px solid var(--rp-line);
+}
+.basWorkspaceShell .reportTemplateTabs button{
+  min-height:0;padding:11px 15px 13px;text-align:left;border:0;border-radius:0;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  background:transparent;color:var(--rp-muted);transition:color .12s;
+}
+.basWorkspaceShell .reportTemplateTabs button:hover{background:transparent;border-color:transparent;border-bottom-color:transparent;color:var(--rp-ink)}
+.basWorkspaceShell .reportTemplateTabs button.active{background:transparent;border-color:transparent;border-bottom-color:var(--rp-accent);color:var(--rp-accent)}
+.basWorkspaceShell .reportTemplateTabs button b{font-family:var(--font-sans);font-size:13px;font-weight:600}
+.basWorkspaceShell .reportTemplateTabs button.active b{font-weight:700}
+.basWorkspaceShell .reportTemplateTabs button span{display:none}
+.basWorkspaceShell .reportActiveDesc{margin:14px 0 0;color:var(--rp-muted);font-size:12px}
+.basWorkspaceShell .reportActiveDesc b{color:var(--rp-ink);font-weight:600}
+
+/* фільтри — один охайний ряд, світлі поля (не темно-зелений блок) */
+.basWorkspaceShell .reportFilterGrid{background:transparent;color:var(--rp-ink);padding:22px 0 0;gap:13px 15px}
+.basWorkspaceShell .reportFilterGrid label>span{color:var(--rp-faint);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;margin-bottom:5px}
+.basWorkspaceShell .reportFilterGrid input,
+.basWorkspaceShell .reportFilterGrid select{
+  background:var(--rp-panel);color:var(--rp-ink);border:1px solid var(--rp-line);
+  border-radius:7px;height:36px;padding:0 10px;
+}
+.basWorkspaceShell .reportFilterGrid input:focus,
+.basWorkspaceShell .reportFilterGrid select:focus{outline:2px solid var(--rp-accent);outline-offset:-1px;border-color:var(--rp-accent)}
+.basWorkspaceShell .advancedReportFilters{border-top:1px solid var(--rp-line-soft);padding-top:14px}
+.basWorkspaceShell .advancedReportFilters summary{color:var(--rp-muted);font-weight:600}
+
+/* дії: зелений primary + ghost-експорт (замість помаранчевого) */
+.basWorkspaceShell .reportFormActions{align-items:center;gap:12px;margin-top:2px}
+.basWorkspaceShell .reportFormActions button{background:var(--rp-accent);color:#fff;border:0;border-radius:7px;height:36px;padding:0 16px;font-weight:700}
+.basWorkspaceShell .reportFormActions button:hover:not(:disabled){background:var(--rp-accent-deep)}
+.basWorkspaceShell .excelButton{background:transparent;border:1px solid var(--rp-line);color:var(--rp-accent);border-radius:7px;height:36px;padding:0 16px;font-weight:700}
+.basWorkspaceShell .excelButton:hover{border-color:var(--rp-accent);background:var(--rp-tint)}
+
+/* колонки — легкі чіпи-перемикачі */
+.basWorkspaceShell .reportColumns{background:transparent;border:0;padding:20px 0 0;margin-top:24px;border-top:1px solid var(--rp-line-soft)}
+.basWorkspaceShell .reportColumns>div:first-child b{font-size:13px}
+.basWorkspaceShell .reportColumns>div:first-child span{color:var(--rp-faint)}
+.basWorkspaceShell .columnActions button{border:0;background:transparent;color:var(--rp-muted);font-size:11px;font-weight:700;padding:0}
+.basWorkspaceShell .columnActions button:hover{color:var(--rp-accent)}
+.basWorkspaceShell .columnChecks{gap:7px}
+.basWorkspaceShell .columnChecks label{
+  background:var(--rp-panel);border:1px solid var(--rp-line);border-radius:999px;
+  padding:5px 11px 5px 9px;font-size:11px;font-weight:600;color:var(--rp-muted);gap:6px;transition:.12s;
+}
+.basWorkspaceShell .columnChecks label:hover{border-color:var(--rp-faint)}
+.basWorkspaceShell .columnChecks label:has(input:checked){background:var(--rp-tint);border-color:transparent;color:var(--rp-accent)}
+.basWorkspaceShell .columnChecks input{width:13px;height:13px;accent-color:var(--rp-accent)}
+
+/* попередній перегляд — чиста таблиця */
+.basWorkspaceShell .reportPreview{border:1px solid var(--rp-line);border-radius:10px;margin-top:16px;overflow:hidden;background:var(--rp-panel)}
+.basWorkspaceShell .reportPreviewHead{background:var(--rp-panel);border-bottom:1px solid var(--rp-line-soft)}
+.basWorkspaceShell .reportPreviewHead span{color:var(--rp-faint)}
+.basWorkspaceShell .reportTableScroll th{
+  background:var(--rp-head);color:var(--rp-faint);text-transform:uppercase;
+  font-size:11px;font-weight:800;letter-spacing:.04em;border-bottom:1px solid var(--rp-line);
+}
+.basWorkspaceShell .reportTableScroll td{color:var(--rp-ink);border-bottom-color:var(--rp-line-soft)}
+.basWorkspaceShell .reportTableScroll tr:nth-child(even) td{background:transparent}
+
+/* KPI — одна hairline-смуга замість важких карток */
+.basWorkspaceShell .reportStats{
+  grid-template-columns:repeat(6,1fr);gap:0;margin-top:16px;
+  border:1px solid var(--rp-line);border-radius:10px;overflow:hidden;background:var(--rp-panel);
+}
+.basWorkspaceShell .reportStats article{
+  border:0;border-right:1px solid var(--rp-line-soft);border-radius:0;padding:15px 16px;min-height:0;box-shadow:none;background:transparent;
+}
+.basWorkspaceShell .reportStats article:last-child{border-right:0}
+.basWorkspaceShell .reportStats article span{font-size:11px;letter-spacing:.03em;color:var(--rp-faint)}
+.basWorkspaceShell .reportStats article b{font-family:var(--font-sans);font-size:23px;margin:8px 0 3px;font-weight:750;letter-spacing:-.5px;line-height:1;color:var(--rp-ink)}
+.basWorkspaceShell .reportStats article small{font-size:11px;color:var(--rp-faint)}
+
+/* панелі */
+.basWorkspaceShell .reportPanel{border:1px solid var(--rp-line);border-radius:10px;background:var(--rp-panel);padding:17px 18px;box-shadow:none}
+.basWorkspaceShell .reportPanelHead{border-bottom:0;padding-bottom:0;margin-bottom:14px}
+.basWorkspaceShell .reportPanelHead h2{font-family:var(--font-serif);font-size:15px;font-weight:600;color:var(--rp-ink)}
+.basWorkspaceShell .reportPanelHead span{color:var(--rp-faint)}
+.basWorkspaceShell .reportBarTrack{background:var(--rp-line-soft)}
+.basWorkspaceShell .reportBarTrack span,
+.basWorkspaceShell .reportBarTrack i{background:var(--rp-accent)}
+.basWorkspaceShell .dayReportRow,
+.basWorkspaceShell .rankRow,
+.basWorkspaceShell .routeSummary>div,
+.basWorkspaceShell .exportHistory>div{border-bottom-color:var(--rp-line-soft)}
+.basWorkspaceShell .routeSummary dd,
+.basWorkspaceShell .rankRow>b{color:var(--rp-ink)}
