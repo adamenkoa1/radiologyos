@@ -20,6 +20,12 @@ import { audit } from "../../../../lib/audit";
 const STAFF_LOGIN_LIMIT = 10;
 const STAFF_LOGIN_WINDOW_MINUTES = 15;
 
+type TenantAccessState = {
+  activeMembershipCount: number;
+  membershipCount: number;
+  activeOrgCount: number;
+};
+
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
@@ -60,24 +66,61 @@ export async function POST(request: Request) {
     return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
   }
 
+  // Authentication is identity-level, but a session must only be issued when the
+  // identity still has usable tenant access. Otherwise a user whose final
+  // membership was disabled could immediately log in again and keep a fresh token
+  // that would become usable if the membership were re-enabled before expiry.
+  // Preserve the legacy bootstrap path only for a genuinely empty, single-org
+  // installation, matching resolveOrgContext() exactly.
+  const accessState = member
+    ? await db.prepare(
+        `SELECT
+           (SELECT COUNT(*)
+              FROM memberships m
+              JOIN organizations o ON o.id = m.organization_id AND o.active = 1
+             WHERE m.member_email = ? AND m.active = 1) AS activeMembershipCount,
+           (SELECT COUNT(*) FROM memberships) AS membershipCount,
+           (SELECT COUNT(*) FROM organizations WHERE active = 1) AS activeOrgCount`
+      ).bind(member.email).first<TenantAccessState>()
+    : null;
+  const hasTenantAccess = Boolean(
+    member && accessState && (
+      Number(accessState.activeMembershipCount) > 0 ||
+      (Number(accessState.membershipCount) === 0 && Number(accessState.activeOrgCount) === 1)
+    )
+  );
+
   const compromised = member ? isCompromisedPasswordHash(member.passwordHash) : false;
   // Always run PBKDF2 after the limiter. For unknown or deliberately blocked
   // accounts verifyPassword receives an empty hash and performs dummy KDF work,
   // removing the large timing difference that would reveal account existence.
   const ok = await verifyPassword(password, member && !compromised ? member.passwordHash : "");
-  if (!member || !ok) {
-    await recordIdentifierRateLimitFailure(
-      db,
-      "staff-login-account",
-      accountIdentifier,
-      STAFF_LOGIN_LIMIT,
-      STAFF_LOGIN_WINDOW_MINUTES,
-    );
+  if (!member || !ok || !hasTenantAccess) {
+    // A correct credential for a membership-disabled identity is an authorization
+    // denial, not a credential failure, so it must not consume the account's
+    // password-failure bucket. The response stays identical to prevent enumeration.
+    if (!member || !ok) {
+      await recordIdentifierRateLimitFailure(
+        db,
+        "staff-login-account",
+        accountIdentifier,
+        STAFF_LOGIN_LIMIT,
+        STAFF_LOGIN_WINDOW_MINUTES,
+      );
+    }
     await audit(db, {
       organizationId: 1,
       actorEmail: member?.email || phone || email || "невідомо",
       action: "login_failed", resource: "auth",
-      details: { reason: compromised ? "compromised" : member ? "wrong_password" : "unknown_account" },
+      details: {
+        reason: compromised
+          ? "compromised"
+          : member && ok && !hasTenantAccess
+            ? "no_active_membership"
+            : member
+              ? "wrong_password"
+              : "unknown_account",
+      },
     });
     return Response.json({ error: "Невірний номер телефону або PIN-код" }, { status: 401 });
   }
