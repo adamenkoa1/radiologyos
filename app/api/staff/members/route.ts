@@ -147,6 +147,13 @@ export async function POST(request: Request) {
     ).bind(ctx.organizationId, email, role, active),
   );
 
+  // Membership deactivation is an account-security boundary. Revoke all current
+  // sessions immediately so an already issued (or stolen) token cannot become
+  // usable again merely because this membership is re-enabled before it expires.
+  if (existing && existing.active === 1 && active === 0) {
+    statements.push(db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email));
+  }
+
   if (password) {
     statements.push(
       db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
