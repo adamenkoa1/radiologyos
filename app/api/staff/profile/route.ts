@@ -9,6 +9,44 @@ function clean(value: unknown, max = 120) {
   return String(value || "").trim().replace(/\s+/g, " ").slice(0, max);
 }
 
+type AuditOrganizationRow = { organizationId: number };
+
+async function profileSecurityAuditOrganizationIds(
+  db: D1Database,
+  memberEmail: string,
+  fallbackOrganizationId: number,
+): Promise<number[]> {
+  const linked = await db.prepare(
+    `SELECT DISTINCT m.organization_id AS organizationId
+     FROM memberships m
+     JOIN organizations o ON o.id = m.organization_id
+     WHERE m.member_email = ? AND m.active = 1 AND o.active = 1
+     ORDER BY m.organization_id`
+  ).bind(memberEmail).all<AuditOrganizationRow>();
+  const ids = linked.results
+    .map((row) => Number(row.organizationId))
+    .filter((id) => Number.isInteger(id) && id > 0);
+  if (ids.length > 0) return ids;
+
+  // Self-service normally requires an active membership. The only safe fallback
+  // is the legacy bootstrap state where memberships have never existed at all and
+  // the resolved context is the sole active organization. Never attribute a
+  // detached/disabled identity to an arbitrary tenant.
+  const membershipCount = await db.prepare("SELECT COUNT(*) AS n FROM memberships").first<{ n: number }>();
+  if (Number(membershipCount?.n || 0) !== 0) return [];
+
+  const activeOrganizations = await db.prepare(
+    "SELECT id AS organizationId FROM organizations WHERE active = 1 ORDER BY id LIMIT 2"
+  ).all<AuditOrganizationRow>();
+  if (activeOrganizations.results.length !== 1) return [];
+  const organizationId = Number(activeOrganizations.results[0]?.organizationId);
+  return Number.isInteger(organizationId)
+    && organizationId > 0
+    && organizationId === fallbackOrganizationId
+    ? [organizationId]
+    : [];
+}
+
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
@@ -120,14 +158,19 @@ export async function PATCH(request: Request) {
     await db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(staff.email).run();
   }
 
-  await audit(db, {
-    organizationId: ctx.organizationId,
-    actorEmail: staff.email,
-    action: securityChange ? "profile_security_update" : "profile_update",
-    resource: "staff",
-    targetId: staff.email,
-    details: { phoneChanged, pinChanged: wantsPinChange },
-  });
+  const auditOrganizationIds = securityChange
+    ? await profileSecurityAuditOrganizationIds(db, staff.email, ctx.organizationId)
+    : [ctx.organizationId];
+  for (const organizationId of auditOrganizationIds) {
+    await audit(db, {
+      organizationId,
+      actorEmail: staff.email,
+      action: securityChange ? "profile_security_update" : "profile_update",
+      resource: "staff",
+      targetId: staff.email,
+      details: { phoneChanged, pinChanged: wantsPinChange },
+    });
+  }
 
   return Response.json({ ok: true, signedOut: securityChange });
 }
