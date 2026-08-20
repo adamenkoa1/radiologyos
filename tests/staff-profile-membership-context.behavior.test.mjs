@@ -44,6 +44,11 @@ test("system and management roles can update only their own shared profile throu
     const email = "profile-update@example.com";
     const cookie = await seedStaffSession(db, { email, role:"admin", displayName:"Before" });
     await setMembershipRole(db, email, "organization_admin");
+    // Phone is the primary login identifier. Keep it unchanged in this ordinary
+    // profile-edit regression; rebinding it is a separate security operation that
+    // requires the current PIN and revokes sessions.
+    await db.prepare("UPDATE staff_members SET phone = ? WHERE email = ?")
+      .bind("380501234567", email).run();
 
     const response = await callWorker(
       jsonRequest("/api/staff/profile", {
