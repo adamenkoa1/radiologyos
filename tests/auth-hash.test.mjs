@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 import test from "node:test";
 import {
   hashPassword, verifyPassword, passwordHashNeedsUpgrade,
@@ -34,6 +35,12 @@ test("verifyPassword rejects malformed or empty hashes without throwing", async 
   assert.equal(await verifyPassword("x", "pbkdf2$sha256$999$c2FsdA==$ZGVyaXZlZA=="), false); // ітерацій < 1000
   assert.equal(await verifyPassword("x", "md5$sha256$100000$c2FsdA==$ZGVyaXZlZA=="), false); // не pbkdf2
   assert.equal(await verifyPassword("x", "pbkdf2$sha256$100000$@@@$@@@"), false); // невалідний base64
+});
+
+test("empty password hashes still burn the normal PBKDF2 work factor", async () => {
+  const source = await readFile(new URL("../lib/auth.ts", import.meta.url), "utf8");
+  assert.match(source, /const DUMMY_PASSWORD_SALT = new Uint8Array/);
+  assert.match(source, /if \(!encoded\) \{[\s\S]*await pbkdf2\(password, DUMMY_PASSWORD_SALT, PBKDF2_ITERATIONS\);[\s\S]*return false;/);
 });
 
 test("verifyPassword honours the iteration count stored in the hash", async () => {
