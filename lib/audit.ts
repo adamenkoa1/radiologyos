@@ -56,6 +56,8 @@ export const AUDIT_LABELS: Record<string, string> = {
   personnel_updated: "Оновлено кадрову картку",
   personnel_vlk_viewed: "Переглянуто історію ВЛК працівника",
   personnel_vlk_recorded: "Додано рішення ВЛК працівника",
+  personnel_radiation_clearance_viewed: "Переглянуто історію допусків працівника до ДІВ",
+  personnel_radiation_clearance_recorded: "Додано рішення щодо допуску працівника до ДІВ",
   report_viewed: "Переглянуто звіт",
   report_exported: "Експортовано звіт",
   service_material_requirement_created: "Створено норму матеріалів",
