@@ -764,6 +764,13 @@
       "when": 1787268000000,
       "tag": "0109_personnel_vlk_history",
       "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "6",
+      "when": 1787271600000,
+      "tag": "0110_personnel_radiation_clearance",
+      "breakpoints": true
     }
   ]
 }
