@@ -2,6 +2,7 @@ import Link from "next/link";
 import StaffWorkspaceShell from "../workspace-shell";
 
 const directories=[
+  {name:"Персонал",description:"Кадрові картки працівників: підрозділ, посада, контакти, адреса та зв’язок з обліковим записом.",href:"/staff/personnel"},
   {name:"Обладнання",description:"Апарати, кабінети та технічні атрибути, що використовуються в записах і виконанні.",href:"/staff/equipment"},
   {name:"Послуги",description:"Канонічний каталог послуг, тривалість, правила і матеріальні норми.",href:"/staff/services"},
   {name:"Тарифи",description:"Ціни та правила оплати, які використовуються при формуванні замовлення і послуги.",href:"/staff/tariffs"},
@@ -9,7 +10,7 @@ const directories=[
   {name:"Контрагенти",description:"Постачальники та інші сторони господарських операцій.",href:"/staff/counterparties"},
   {name:"Графік кабінетів",description:"Робочі інтервали, що визначають доступність запису.",href:"/staff/schedule"},
   {name:"Графік змін персоналу",description:"Циклічні зміни, бригади та персональні корекції.",href:"/staff/shifts"},
-  {name:"Персонал і ролі",description:"Користувачі, ролі та права доступу в межах організації.",href:"/staff#staff-admin"},
+  {name:"Облікові записи і ролі",description:"Доступ до RadiologyOS: користувачі, ролі та права. Обліковий запис не є кадровою карткою.",href:"/staff#staff-admin"},
 ];
 
 export default function DirectoriesPage(){
