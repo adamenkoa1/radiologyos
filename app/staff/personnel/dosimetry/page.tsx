@@ -33,7 +33,11 @@ const STATUSES:[string,string][] = [
 ];
 
 function statusLabel(code:string){ return STATUSES.find(([value])=>value===code)?.[1] || code; }
-function dose(value:number){ return Number(value || 0).toFixed(3); }
+function doseDisplay(status:string,value:number){
+  if(status==="missing") return "—";
+  if(status==="below_detection") return "< межі визначення";
+  return `${Number(value || 0).toFixed(3)} mSv`;
+}
 
 export default function PersonnelDosimetryPage(){
   const [personnel,setPersonnel]=useState<PersonnelRecord[]>([]);
@@ -173,9 +177,9 @@ export default function PersonnelDosimetryPage(){
         <tbody>{records.map((record)=><tr key={record.id}>
           <td><b>{record.periodStart}</b><br/><small>до {record.periodEnd}</small></td>
           <td><b>{statusLabel(record.measurementStatus)}</b><br/><small>{record.dosimeterCode || "Дозиметр не вказано"}</small></td>
-          <td>{dose(record.hp10Msv)} mSv</td>
-          <td>{dose(record.hp007Msv)} mSv</td>
-          <td>{dose(record.hp3Msv)} mSv</td>
+          <td>{doseDisplay(record.measurementStatus,record.hp10Msv)}</td>
+          <td>{doseDisplay(record.measurementStatus,record.hp007Msv)}</td>
+          <td>{doseDisplay(record.measurementStatus,record.hp3Msv)}</td>
           <td>{record.reportNumber || "—"}{record.reportDate && <><br/><small>{record.reportDate}</small></>}{record.providerName && <><br/><small>{record.providerName}</small></>}{record.note && <><br/><small>{record.note}</small></>}</td>
           <td><span className={`statusPill ${record.superseded ? "" : "ok"}`}>{record.superseded ? "Виправлено" : "Актуальна версія"}</span></td>
           <td>{record.superseded ? null : <button className="button secondary" type="button" onClick={()=>setSupersedesId(record.id)}>Виправити</button>}</td>

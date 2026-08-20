@@ -130,6 +130,10 @@ export async function POST(request: Request) {
   if (![hp10Msv, hp007Msv, hp3Msv].every(Number.isFinite)) {
     return Response.json({ error:"Значення дози мають бути невід’ємними числами" }, { status:400 });
   }
+  const doseValues = [hp10Msv, hp007Msv, hp3Msv];
+  if ((measurementStatus === "missing" || measurementStatus === "below_detection") && doseValues.some((value) => value !== 0)) {
+    return Response.json({ error:"Для відсутнього або нижче межі визначення результату числові дози мають бути нульовими" }, { status:400 });
+  }
   if (reportDate && !validDate(reportDate)) {
     return Response.json({ error:"Перевірте дату звіту" }, { status:400 });
   }

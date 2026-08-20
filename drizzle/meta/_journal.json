@@ -778,6 +778,13 @@
       "when": 1787275200000,
       "tag": "0111_personnel_radiation_training",
       "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "6",
+      "when": 1787278800000,
+      "tag": "0112_personnel_dosimetry",
+      "breakpoints": true
     }
   ]
 }

@@ -23,7 +23,8 @@ CREATE TABLE personnel_dosimetry_records (
   CHECK (period_end >= period_start),
   CHECK (hp10_msv >= 0),
   CHECK (hp007_msv >= 0),
-  CHECK (hp3_msv >= 0)
+  CHECK (hp3_msv >= 0),
+  CHECK (measurement_status IN ('measured', 'other') OR (hp10_msv = 0 AND hp007_msv = 0 AND hp3_msv = 0))
 );
 --> statement-breakpoint
 CREATE INDEX personnel_dosimetry_org_personnel_idx
