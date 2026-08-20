@@ -83,8 +83,15 @@ export default function PersonnelVlkPage(){
     } finally { setLoading(false); }
   }
 
-  useEffect(()=>{ void loadPersonnel(); },[]);
-  useEffect(()=>{ if(personnelId) void loadVlk(personnelId); },[personnelId]);
+  useEffect(()=>{
+    const timer=window.setTimeout(()=>{ void loadPersonnel(); },0);
+    return ()=>window.clearTimeout(timer);
+  },[]);
+  useEffect(()=>{
+    if(!personnelId) return;
+    const timer=window.setTimeout(()=>{ void loadVlk(personnelId); },0);
+    return ()=>window.clearTimeout(timer);
+  },[personnelId]);
 
   async function save(event:FormEvent<HTMLFormElement>){
     event.preventDefault();
