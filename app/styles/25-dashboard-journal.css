@@ -1,0 +1,38 @@
+/* ============================================================
+   RadiologyOS — Пульт у єдиному журнальному стилі (крок 2).
+   KPI-смуга дня (.dashMcItem) отримує той самий картковий вигляд, що й
+   .financeSummary у Журналі документів: підпис малими капітелями зверху,
+   помітне число знизу, тонка рамка, щільний радіус. Колір-семантику
+   (червоний/оранж/зелений/синій/фіолет) збережено тонким лівим акцентом,
+   клік-навігацію — теж. Токени --rp-* визначені в 24 на .basWorkspaceShell
+   (світла й темна теми), тож перевикористовуємо їх тут.
+   Per-side longhand навмисно: щоб не затерти border-left-color кольорових
+   класів shorthand-ом.
+   ============================================================ */
+.basWorkspaceShell .dashMcItem{
+  background:var(--rp-panel);
+  border-top-color:var(--rp-line);
+  border-right-color:var(--rp-line);
+  border-bottom-color:var(--rp-line);
+  border-left-width:3px;
+  border-radius:var(--r-sm,4px);
+  padding:13px 15px;
+  gap:6px;
+  flex-direction:column-reverse; /* підпис зверху, число знизу — як у журналі */
+  align-items:flex-start;
+  box-shadow:none;
+}
+.basWorkspaceShell .dashMcItem:hover{
+  border-top-color:var(--rp-faint);
+  border-right-color:var(--rp-faint);
+  border-bottom-color:var(--rp-faint);
+  transform:none;
+}
+.basWorkspaceShell .dashMcItem>b{
+  font-size:22px;font-weight:750;letter-spacing:-.4px;line-height:1;
+  color:var(--rp-ink);font-variant-numeric:tabular-nums;
+}
+.basWorkspaceShell .dashMcItem>span{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;
+  color:var(--rp-faint);
+}
