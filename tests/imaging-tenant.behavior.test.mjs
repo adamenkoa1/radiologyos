@@ -42,7 +42,7 @@ test("PACS settings are isolated by organization", async () => {
       enabled: true,
       notes: "org one",
     }, { method: "PUT", headers: { cookie: cookie1 } }), db, {
-      OUTBOUND_ALLOWED_HOSTS: "pacs-one.example.com",
+      OUTBOUND_ALLOWED_HOSTS: "pacs-one.example.com,viewer-one.example.com",
     });
     assert.equal(put1.status, 200);
 
@@ -53,7 +53,7 @@ test("PACS settings are isolated by organization", async () => {
       enabled: true,
       notes: "org two",
     }, { method: "PUT", headers: { cookie: cookie2 } }), db, {
-      OUTBOUND_ALLOWED_HOSTS: "pacs-two.example.com",
+      OUTBOUND_ALLOWED_HOSTS: "pacs-two.example.com,viewer-two.example.com",
     });
     assert.equal(put2.status, 200);
 
