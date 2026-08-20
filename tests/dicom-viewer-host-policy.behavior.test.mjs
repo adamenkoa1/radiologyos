@@ -16,6 +16,8 @@ async function saveSettings(db, cookie, viewerBaseUrl, env = ALLOWED_ENV) {
   }, { method: "PUT", headers: { cookie } }), db, env);
 }
 
+// Browser deep-links carry StudyInstanceUID, so the viewer host follows the same
+// explicit HTTPS allowlist boundary as server-side DICOMweb calls.
 test("PACS viewer URL must use HTTPS and an explicitly allowlisted host", async () => {
   await withD1(async (db) => {
     const cookie = await seedStaffSession(db, {
