@@ -47,13 +47,14 @@ export async function PATCH(request: Request) {
   };
 
   const current = await db.prepare(
-    `SELECT email, password_hash AS passwordHash FROM staff_members
+    `SELECT email, phone, password_hash AS passwordHash FROM staff_members
      WHERE email = ? AND active = 1 LIMIT 1`
-  ).bind(staff.email).first<{ email: string; passwordHash: string }>();
+  ).bind(staff.email).first<{ email: string; phone: string | null; passwordHash: string }>();
   if (!current) return Response.json({ error: "Обліковий запис не знайдено" }, { status: 404 });
 
   const phone = body.phone == null ? null : normalizeUkrainianPhone(body.phone);
   if (body.phone != null && !phone) return Response.json({ error: "Перевірте номер телефону" }, { status: 400 });
+  const phoneChanged = body.phone != null && phone !== (current.phone || "");
 
   const firstName = body.firstName == null ? null : clean(body.firstName, 60);
   const lastName = body.lastName == null ? null : clean(body.lastName, 60);
@@ -76,6 +77,14 @@ export async function PATCH(request: Request) {
   if (wantsPinChange) {
     const problem = passwordProblem(body.newPin || "");
     if (problem) return Response.json({ error: problem }, { status: 400 });
+  }
+
+  // Phone is the primary login identifier. Changing it is therefore a credential
+  // boundary just like changing the PIN: a stolen session must not be enough to
+  // re-bind the account to an attacker's number. Require the current PIN for any
+  // real phone change, then revoke every identity-level session after success.
+  const securityChange = wantsPinChange || phoneChanged;
+  if (securityChange) {
     if (!body.currentPin || !(await verifyPassword(body.currentPin, current.passwordHash))) {
       return Response.json({ error: "Поточний PIN-код невірний" }, { status: 401 });
     }
@@ -106,17 +115,19 @@ export async function PATCH(request: Request) {
   if (wantsPinChange) {
     await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
       .bind(await hashPassword(body.newPin || ""), staff.email).run();
+  }
+  if (securityChange) {
     await db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(staff.email).run();
   }
 
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: staff.email,
-    action: wantsPinChange ? "profile_security_update" : "profile_update",
+    action: securityChange ? "profile_security_update" : "profile_update",
     resource: "staff",
     targetId: staff.email,
-    details: { phoneChanged: body.phone != null, pinChanged: wantsPinChange },
+    details: { phoneChanged, pinChanged: wantsPinChange },
   });
 
-  return Response.json({ ok: true, signedOut: wantsPinChange });
+  return Response.json({ ok: true, signedOut: securityChange });
 }
