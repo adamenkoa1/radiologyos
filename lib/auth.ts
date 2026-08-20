@@ -11,6 +11,14 @@
 const PBKDF2_ITERATIONS = 100000;
 const PBKDF2_KEYLEN = 32;
 
+// Missing accounts must still perform the same expensive KDF class as valid
+// accounts; otherwise remote callers can enumerate staff identifiers by timing
+// the login response. This salt is not a credential and never leaves the worker.
+const DUMMY_PASSWORD_SALT = new Uint8Array([
+  0x72, 0x61, 0x64, 0x69, 0x6f, 0x6c, 0x6f, 0x67,
+  0x79, 0x6f, 0x73, 0x2d, 0x61, 0x75, 0x74, 0x68,
+]);
+
 export const SESSION_COOKIE = "rid_session";
 export const SESSION_TTL_SECONDS = 60 * 60 * 12; // 12 hours
 
@@ -55,7 +63,10 @@ export async function hashPassword(password: string): Promise<string> {
 }
 
 export async function verifyPassword(password: string, encoded: string): Promise<boolean> {
-  if (!encoded) return false;
+  if (!encoded) {
+    await pbkdf2(password, DUMMY_PASSWORD_SALT, PBKDF2_ITERATIONS);
+    return false;
+  }
   const parts = encoded.split("$");
   if (parts.length !== 5 || parts[0] !== "pbkdf2" || parts[1] !== "sha256") return false;
   const iterations = Number(parts[2]);
