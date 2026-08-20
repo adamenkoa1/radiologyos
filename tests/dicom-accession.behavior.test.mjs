@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
-const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com" };
+const PACS_ENV = { OUTBOUND_ALLOWED_HOSTS: "pacs.example.com,viewer.example.com" };
 
 async function seedAdmin(db) {
   const email = "imaging-admin@example.com";
