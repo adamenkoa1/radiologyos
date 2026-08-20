@@ -54,6 +54,7 @@ export default function StaffProfilePage() {
       headers:{ "content-type":"application/json" },
       body:JSON.stringify({
         phone:String(form.get("phone") || ""),
+        currentPin:String(form.get("currentPin") || ""),
         lastName:String(form.get("lastName") || ""),
         firstName:String(form.get("firstName") || ""),
         patronymic:String(form.get("patronymic") || ""),
@@ -62,9 +63,13 @@ export default function StaffProfilePage() {
         positionTitle:String(form.get("positionTitle") || ""),
       }),
     });
-    const data = await response.json().catch(()=>({})) as { error?:string };
+    const data = await response.json().catch(()=>({})) as { error?:string; signedOut?:boolean };
     setSaving(false);
     if (!response.ok) { setError(data.error || "Не вдалося зберегти профіль"); return; }
+    if (data.signedOut) {
+      window.location.assign("/staff/login?returnTo=%2Fstaff%2Fprofile&changed=1");
+      return;
+    }
     setSuccess("Профіль оновлено");
     await load();
   }
@@ -110,10 +115,11 @@ export default function StaffProfilePage() {
           <label>Ім’я<input name="firstName" defaultValue={profile.firstName || ""}/></label>
           <label>По батькові<input name="patronymic" defaultValue={profile.patronymic || ""}/></label>
           <label>Телефон<input name="phone" inputMode="tel" defaultValue={profile.phone || ""}/></label>
+          <label>Поточний PIN для зміни телефону<input name="currentPin" type="password" inputMode="numeric" autoComplete="current-password" placeholder="Потрібен лише якщо змінюєте телефон"/></label>
           <label>Контактний e-mail<input name="contactEmail" type="email" defaultValue={profile.contactEmail || ""}/></label>
           <label>Військове звання<input name="militaryRank" defaultValue={profile.militaryRank || ""}/></label>
           <label>Посада<input name="positionTitle" defaultValue={profile.positionTitle || ""}/></label>
-          <div><small>Роль у системі: <b>{roleLabelUk(profile.role)}</b></small></div>
+          <div><small>Роль у системі: <b>{roleLabelUk(profile.role)}</b>. Зміна номера входу потребує поточного PIN і завершить усі активні сеанси.</small></div>
           <div><button className="button" type="submit" disabled={saving}>{saving ? "Зберігаємо…":"Зберегти профіль"}</button></div>
         </form>
       </section>
