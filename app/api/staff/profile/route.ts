@@ -240,6 +240,19 @@ export async function PATCH(request: Request) {
   const auditOrganizationIds = securityChange
     ? await profileSecurityAuditOrganizationIds(db, staff.email, ctx.organizationId)
     : [ctx.organizationId];
+  const auditDetails = securityChange
+    ? {
+        phoneChanged,
+        pinChanged: wantsPinChange,
+      }
+    : {
+        phoneChanged,
+        pinChanged: wantsPinChange,
+        dateOfBirthChanged,
+        nameChanged,
+        contactEmailChanged,
+        personnelLinked: Boolean(personnel),
+      };
   for (const organizationId of auditOrganizationIds) {
     await audit(db, {
       organizationId,
@@ -247,14 +260,7 @@ export async function PATCH(request: Request) {
       action: securityChange ? "profile_security_update" : "profile_update",
       resource: "staff",
       targetId: staff.email,
-      details: {
-        phoneChanged,
-        pinChanged: wantsPinChange,
-        dateOfBirthChanged,
-        nameChanged,
-        contactEmailChanged,
-        personnelLinked: Boolean(personnel),
-      },
+      details: auditDetails,
     });
   }
 
