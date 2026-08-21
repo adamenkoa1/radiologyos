@@ -66,8 +66,8 @@ SELECT d.`organization_id`, d.`id`,
        END,
        CASE
          WHEN d.`name` = 'Відділення променевої діагностики' THEN 'department'
-         WHEN d.`name` LIKE '%кабінет%' OR d.`name` LIKE '%Кабінет%' THEN 'cabinet'
          WHEN d.`name` LIKE '%ПРК%' OR d.`name` LIKE '%УЗД%' THEN 'subdivision'
+         WHEN d.`name` LIKE '%кабінет%' OR d.`name` LIKE '%Кабінет%' THEN 'cabinet'
          ELSE 'unit'
        END
 FROM `departments` d;
