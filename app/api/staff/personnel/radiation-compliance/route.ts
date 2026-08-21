@@ -4,7 +4,10 @@ import {
   classifyDosimetry,
   classifyRadiationClearance,
   classifyRadiationTraining,
+  mergeRadiationReviewReasons,
+  radiationPolicyReviewReasons,
   radiationReviewReasons,
+  type RadiationReviewPolicy,
 } from "../../../../../lib/personnel-radiation-compliance";
 import type { AccessRole } from "../../../../../lib/staff-auth";
 import { requireSelfServiceOrgContext } from "../../../../../lib/tenant";
@@ -18,6 +21,18 @@ function isIsoDate(value: string) {
   const parsed = new Date(`${value}T00:00:00Z`);
   return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === value;
 }
+
+type RawPolicyRow = {
+  id:string;
+  effectiveFrom:string;
+  enabled:number;
+  requireClearanceValidUntil:number;
+  trainingMaxAgeDays:number | null;
+  knowledgeCheckMaxAgeDays:number | null;
+  dosimetryMaxAgeDays:number | null;
+  sourceTitle:string;
+  sourceReference:string;
+};
 
 type RawComplianceRow = {
   personnelId: string;
@@ -56,6 +71,35 @@ export async function GET(request: Request) {
   if (!isIsoDate(asOf)) {
     return Response.json({ error: "Дата зрізу має бути у форматі РРРР-ММ-ДД" }, { status: 400 });
   }
+
+  // Effective-dated policy selection deliberately does NOT filter superseded rows.
+  // A future revision may supersede today's leaf but must not take effect before
+  // its own effective_from. For the requested date we pick the latest revision
+  // that had already become effective, using created_at/id to resolve same-date corrections.
+  const rawPolicy = await db.prepare(
+    `SELECT r.id, r.effective_from AS effectiveFrom, r.enabled,
+       r.require_clearance_valid_until AS requireClearanceValidUntil,
+       r.training_max_age_days AS trainingMaxAgeDays,
+       r.knowledge_check_max_age_days AS knowledgeCheckMaxAgeDays,
+       r.dosimetry_max_age_days AS dosimetryMaxAgeDays,
+       r.source_title AS sourceTitle, r.source_reference AS sourceReference
+     FROM personnel_radiation_review_policy_revisions r
+     WHERE r.organization_id = ? AND r.effective_from <= ?
+     ORDER BY r.effective_from DESC, r.created_at DESC, r.id DESC
+     LIMIT 1`,
+  ).bind(ctx.organizationId, asOf).first<RawPolicyRow>();
+
+  const policy: RadiationReviewPolicy | null = rawPolicy ? {
+    id:rawPolicy.id,
+    effectiveFrom:rawPolicy.effectiveFrom,
+    enabled:Boolean(rawPolicy.enabled),
+    requireClearanceValidUntil:Boolean(rawPolicy.requireClearanceValidUntil),
+    trainingMaxAgeDays:rawPolicy.trainingMaxAgeDays,
+    knowledgeCheckMaxAgeDays:rawPolicy.knowledgeCheckMaxAgeDays,
+    dosimetryMaxAgeDays:rawPolicy.dosimetryMaxAgeDays,
+    sourceTitle:rawPolicy.sourceTitle,
+    sourceReference:rawPolicy.sourceReference,
+  } : null;
 
   const rows = await db.prepare(
     `WITH clearance_ranked AS (
@@ -184,12 +228,21 @@ export async function GET(request: Request) {
     const trainingState = classifyRadiationTraining(trainingRecord, asOf);
     const knowledgeCheckState = classifyRadiationTraining(knowledgeRecord, asOf);
     const dosimetryState = classifyDosimetry(dosimetryRecord);
-    const reviewReasons = radiationReviewReasons({
+    const baseReviewReasons = radiationReviewReasons({
       clearance: clearanceState,
       training: trainingState,
       knowledgeCheck: knowledgeCheckState,
       dosimetry: dosimetryState,
     });
+    const policyReviewReasons = radiationPolicyReviewReasons({
+      policy,
+      asOf,
+      clearanceValidUntil:row.clearanceValidUntil,
+      trainingDate:row.trainingDate,
+      knowledgeDate:row.knowledgeDate,
+      dosimetryPeriodEnd:row.dosimetryPeriodEnd,
+    });
+    const reviewReasons = mergeRadiationReviewReasons(baseReviewReasons, policyReviewReasons);
 
     return {
       ...row,
@@ -197,22 +250,41 @@ export async function GET(request: Request) {
       trainingState,
       knowledgeCheckState,
       dosimetryState,
+      baseReviewReasons,
+      policyReviewReasons,
       reviewReasons,
       summaryState: reviewReasons.length ? "review" : "recorded",
     };
   });
 
   const reviewCount = records.filter((record) => record.summaryState === "review").length;
+  const policyReviewCount = records.filter((record) => record.policyReviewReasons.length > 0).length;
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: ctx.member.email,
     action: "personnel_radiation_compliance_viewed",
     resource: "personnel_radiation_compliance",
-    details: { asOf, recordCount: records.length, reviewCount },
+    details: {
+      asOf,
+      recordCount: records.length,
+      reviewCount,
+      policyId: policy?.id || "",
+      policyReviewCount,
+    },
   });
 
   return Response.json(
-    { asOf, records, summary: { total: records.length, reviewCount, recordedCount: records.length - reviewCount } },
+    {
+      asOf,
+      policy,
+      records,
+      summary: {
+        total: records.length,
+        reviewCount,
+        recordedCount: records.length - reviewCount,
+        policyReviewCount,
+      },
+    },
     { headers: { "cache-control": "no-store" } },
   );
 }
