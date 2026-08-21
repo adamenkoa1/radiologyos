@@ -22,6 +22,18 @@ export type DosimetryState =
   | "review"
   | "missing";
 
+export type RadiationReviewPolicy = {
+  id:string;
+  effectiveFrom:string;
+  enabled:boolean;
+  requireClearanceValidUntil:boolean;
+  trainingMaxAgeDays:number | null;
+  knowledgeCheckMaxAgeDays:number | null;
+  dosimetryMaxAgeDays:number | null;
+  sourceTitle:string;
+  sourceReference:string;
+};
+
 export function classifyRadiationClearance(
   record: { decisionCode?: string | null; validUntil?: string | null } | null,
   asOf: string,
@@ -87,4 +99,60 @@ export function radiationReviewReasons(input: {
   if (input.dosimetry === "review") reasons.push("Останній дозиметричний запис потребує ручної перевірки");
 
   return reasons;
+}
+
+function ageDays(recordDate: string | null, asOf: string): number | null {
+  if (!recordDate) return null;
+  const start = Date.parse(`${recordDate}T00:00:00Z`);
+  const end = Date.parse(`${asOf}T00:00:00Z`);
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return null;
+  return Math.floor((end - start) / 86_400_000);
+}
+
+export function radiationPolicyReviewReasons(input: {
+  policy: RadiationReviewPolicy | null;
+  asOf:string;
+  clearanceValidUntil:string | null;
+  trainingDate:string | null;
+  knowledgeDate:string | null;
+  dosimetryPeriodEnd:string | null;
+}): string[] {
+  const policy = input.policy;
+  if (!policy?.enabled) return [];
+
+  const reasons: string[] = [];
+  if (policy.requireClearanceValidUntil && !input.clearanceValidUntil) {
+    reasons.push("У допуску до ДІВ не вказано строк дії");
+  }
+
+  if (policy.trainingMaxAgeDays != null && input.trainingDate) {
+    const age = ageDays(input.trainingDate, input.asOf);
+    if (age != null && age > policy.trainingMaxAgeDays) {
+      reasons.push(`За політикою review: від навчання минуло ${age} дн. (критерій ${policy.trainingMaxAgeDays} дн.)`);
+    }
+  }
+
+  if (policy.knowledgeCheckMaxAgeDays != null) {
+    if (!input.knowledgeDate) {
+      reasons.push("За політикою review: немає запису перевірки знань");
+    } else {
+      const age = ageDays(input.knowledgeDate, input.asOf);
+      if (age != null && age > policy.knowledgeCheckMaxAgeDays) {
+        reasons.push(`За політикою review: від перевірки знань минуло ${age} дн. (критерій ${policy.knowledgeCheckMaxAgeDays} дн.)`);
+      }
+    }
+  }
+
+  if (policy.dosimetryMaxAgeDays != null && input.dosimetryPeriodEnd) {
+    const age = ageDays(input.dosimetryPeriodEnd, input.asOf);
+    if (age != null && age > policy.dosimetryMaxAgeDays) {
+      reasons.push(`За політикою review: від кінця останнього дозиметричного періоду минуло ${age} дн. (критерій ${policy.dosimetryMaxAgeDays} дн.)`);
+    }
+  }
+
+  return reasons;
+}
+
+export function mergeRadiationReviewReasons(...groups: string[][]): string[] {
+  return [...new Set(groups.flat())];
 }
