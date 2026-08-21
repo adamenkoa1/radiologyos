@@ -37,6 +37,7 @@ function renderCart() {
     ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small>Код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
     : '<div class="cart-empty">Ви ще не додали жодної послуги.</div>';
   document.getElementById('cartTotal').textContent = money(cart.reduce((s, x) => s + x.price, 0));
+  refreshSlotPicker();
 }
 
 function openCart() {

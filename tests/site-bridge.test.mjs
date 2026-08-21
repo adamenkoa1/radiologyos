@@ -133,14 +133,19 @@ test("the payment QR renders on the site and in the cabinet; button only for rea
   assert.match(cabinet, /isPayUrl\(payLink\)/);
 });
 
-test("the public request does not force patients to choose a slot", async () => {
+test("civilian public request offers an optional preferred-time picker (not forced)", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /const desiredDate = ''/);
-  assert.match(bridge, /const desiredTime = ''/);
-  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+  // Submit is never blocked on a chosen slot: desiredDate/desiredTime fall back to ''.
+  assert.match(bridge, /desiredTime = \(typeof pickedSlot[^\n]*pickedSlot\.time\) \? pickedSlot\.time : ''/);
+  // Civilian booking pages expose the optional slot picker (patient suggests a time,
+  // registrar confirms). Wiring lives in cart.js -> refreshSlotPicker().
+  for (const page of ["public/site/index.html", "public/site/price.html"]) {
     const html = await read(page);
-    assert.doesNotMatch(html, /id="(?:mil)?[Ss]lotPicker"/);
+    assert.match(html, /id="slotPicker"/);
   }
+  // Military referral form stays slot-free — scheduling is by referral, not self-service.
+  const military = await read("public/site/military.html");
+  assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
 });
 
 test("the military free-booking form saves to D1 as category 'military'", async () => {
