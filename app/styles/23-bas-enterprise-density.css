@@ -412,6 +412,66 @@
   .basWorkspaceShell .workspacePage{padding-left:9px;padding-right:9px}
   .basWorkspaceShell .workspaceQuickGrid{grid-template-columns:1fr 1fr}
 }
+/* Tablets & touch: the BAS density is tuned for a mouse + a close monitor.
+   On a tablet the 10-12px workstation type reads too small and the 32px rows
+   are hard to tap, so scale the type and hit targets up without abandoning the
+   dense journal layout. Keyed on a coarse pointer, so a desktop mouse keeps the
+   compact workstation sizes untouched. */
+@media(pointer:coarse){
+  .basWorkspaceShell{
+    --fs-display:34px;
+    --fs-h1:23px;
+    --fs-h2:19px;
+    --fs-h3:16px;
+    --fs-lg:16px;
+    --fs-base:15px;
+    --fs-sm:13px;
+    --fs-xs:12px;
+    --bas-modules:42px;
+    --bas-commands:46px;
+    --bas-control:40px;
+    --bas-row:44px;
+    font-size:15px;
+  }
+  .basWorkspaceShell .workspacePageHead h1{font-size:24px}
+  .basWorkspaceShell .workspaceBusinessModules button{font-size:13px;padding:0 12px}
+  .basWorkspaceShell .workspaceBusinessLinks a,
+  .basWorkspaceShell .workspaceBusinessReturn{min-height:36px;height:36px;font-size:13px;padding:0 11px}
+  .basWorkspaceShell .workspaceBusinessContext b{font-size:13px}
+  .basWorkspaceShell .workspaceBusinessContext small{font-size:10.5px}
+  .basWorkspaceShell table{font-size:14px}
+  .basWorkspaceShell table thead th{height:38px;font-size:12px;padding:8px 9px}
+  .basWorkspaceShell table tbody td{padding:9px 9px}
+  .basWorkspaceShell table td b{font-size:14px}
+  .basWorkspaceShell table td small{font-size:12px}
+  .basWorkspaceShell table td button,.basWorkspaceShell table td a{min-height:34px;font-size:12.5px;padding:0 11px}
+  /* Shared journal primitives reused on every staff tab (KPI cards, toolbars,
+     journal rows, report/dashboard labels): their 8.5-11px micro-type escapes
+     the token bump because sizes are hardcoded, so lift them here too. */
+  .basWorkspaceShell .financeSummary article span,
+  .basWorkspaceShell .reportStats article span,
+  .basWorkspaceShell .staffStats article span,
+  .basWorkspaceShell .financeSummary article small,
+  .basWorkspaceShell .reportStats article small,
+  .basWorkspaceShell .staffStats article small{font-size:11.5px}
+  .basWorkspaceShell .financeSummary article b,
+  .basWorkspaceShell .reportStats article b,
+  .basWorkspaceShell .staffStats article b{font-size:18px}
+  .basWorkspaceShell .financeToolbar b,.basWorkspaceShell .staffTools b{font-size:13px}
+  .basWorkspaceShell .financeToolbar small,.basWorkspaceShell .staffTools small{font-size:11.5px}
+  .basWorkspaceShell .financeToolbar label span{font-size:11px}
+  .basWorkspaceShell .financeState{font-size:11px;padding:3px 7px}
+  .basWorkspaceShell .financePrintDetails p span{font-size:11px}
+  .basWorkspaceShell .financePrintDetails p b{font-size:13px}
+  .basWorkspaceShell .financeTable td{font-size:14px}
+  .basWorkspaceShell .financeTable td b{font-size:14px}
+  .basWorkspaceShell .financeTable td small{font-size:12px}
+  .basWorkspaceShell .financeTable th{font-size:12px}
+  .basWorkspaceShell .financeTabs button{font-size:13px}
+  .basWorkspaceShell .reportFilterGrid label>span{font-size:12.5px}
+  .basWorkspaceShell .columnActions button{font-size:12.5px}
+  .basWorkspaceShell .dashMcItem>span{font-size:12px}
+}
 @media(max-width:560px){
   .basWorkspaceShell{--workspace-sidebar:0px}
   .basWorkspaceShell.workspaceCollapsed{--workspace-sidebar:224px}
