@@ -45,6 +45,19 @@ BEGIN
   SELECT RAISE(ABORT, 'personnel_radiation_review_policy_supersedes_scope');
 END;
 --> statement-breakpoint
+CREATE TRIGGER personnel_radiation_review_policy_effective_order_insert
+BEFORE INSERT ON personnel_radiation_review_policy_revisions
+FOR EACH ROW
+WHEN NEW.supersedes_id IS NOT NULL AND EXISTS (
+  SELECT 1 FROM personnel_radiation_review_policy_revisions previous
+  WHERE previous.id = NEW.supersedes_id
+    AND previous.organization_id = NEW.organization_id
+    AND previous.effective_from > NEW.effective_from
+)
+BEGIN
+  SELECT RAISE(ABORT, 'personnel_radiation_review_policy_effective_order');
+END;
+--> statement-breakpoint
 CREATE TRIGGER personnel_radiation_review_policy_append_only_update
 BEFORE UPDATE ON personnel_radiation_review_policy_revisions
 FOR EACH ROW
