@@ -10,6 +10,7 @@ const directories=[
   {name:"Контингент радіаційного контролю",description:"Явний append-only організаційний scope персоналу для радіаційного review без автоматичної правової категоризації.",href:"/staff/personnel/radiation-monitoring-scope"},
   {name:"Дозове зведення",description:"Read-only subtotal тільки виміряних Hp(10), Hp(0.07) та Hp(3) за період; ненумеричні статуси не трактуються як нуль.",href:"/staff/personnel/radiation-dose-summary"},
   {name:"Зведення ДІВ",description:"Read-only проекція допуску, навчання, перевірок знань і стану дозиметрії без автоматичного блокування роботи.",href:"/staff/personnel/radiation-compliance"},
+  {name:"Черга review ДІВ",description:"Read-only робочий список детермінованих review-причин зі зведення ДІВ без alerts, дозових порогів або operational enforcement.",href:"/staff/personnel/radiation-review-queue"},
   {name:"Політика ДІВ",description:"Append-only організаційні критерії review без прихованих нормативів, дозових лімітів або operational enforcement.",href:"/staff/personnel/radiation-review-policy"},
   {name:"Обладнання",description:"Апарати, кабінети та технічні атрибути, що використовуються в записах і виконанні.",href:"/staff/equipment"},
   {name:"Послуги",description:"Канонічний каталог послуг, тривалість, правила і матеріальні норми.",href:"/staff/services"},
