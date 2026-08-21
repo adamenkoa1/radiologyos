@@ -22,6 +22,12 @@ export type DosimetryState =
   | "review"
   | "missing";
 
+export type RadiationMonitoringScopeState =
+  | "in_scope"
+  | "out_of_scope"
+  | "review"
+  | "unclassified";
+
 export type RadiationReviewPolicy = {
   id:string;
   effectiveFrom:string;
@@ -33,6 +39,21 @@ export type RadiationReviewPolicy = {
   sourceTitle:string;
   sourceReference:string;
 };
+
+export function classifyRadiationMonitoringScope(
+  record: { scopeStatus?: string | null } | null,
+): RadiationMonitoringScopeState {
+  if (!record) return "unclassified";
+  if (record.scopeStatus === "in_scope") return "in_scope";
+  if (record.scopeStatus === "out_of_scope") return "out_of_scope";
+  return "review";
+}
+
+export function radiationScopeReviewReasons(scope: RadiationMonitoringScopeState): string[] {
+  if (scope === "unclassified") return ["Не визначено контур радіаційного контролю"];
+  if (scope === "review") return ["Організаційний контур радіаційного контролю потребує уточнення"];
+  return [];
+}
 
 export function classifyRadiationClearance(
   record: { decisionCode?: string | null; validUntil?: string | null } | null,

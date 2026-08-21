@@ -10,7 +10,7 @@ const directories = fs.readFileSync("app/staff/directories/page.tsx", "utf8");
 const audit = fs.readFileSync("lib/audit.ts", "utf8");
 
 function projectionSql() {
-  const match = route.match(/db\.prepare\(\s*`(WITH clearance_ranked[\s\S]*?ORDER BY p\.last_name, p\.first_name, p\.patronymic, p\.id)`\s*,?\s*\)\.bind/);
+  const match = route.match(/db\.prepare\(\s*`(WITH monitoring_scope_ranked[\s\S]*?ORDER BY p\.last_name, p\.first_name, p\.patronymic, p\.id)`\s*,?\s*\)\.bind/);
   assert.ok(match, "projection SQL must remain extractable for behavioral coverage");
   return match[1];
 }
@@ -19,6 +19,17 @@ function effectivePolicySql() {
   const match = route.match(/rawPolicy = await db\.prepare\(\s*`(SELECT r\.id,[\s\S]*?LIMIT 1)`\s*,?\s*\)\.bind/);
   assert.ok(match, "effective policy SQL must remain extractable for behavioral coverage");
   return match[1];
+}
+
+function projectionRows(db, asOf) {
+  return db.prepare(projectionSql()).all(
+    1, asOf, asOf,
+    1, asOf,
+    1, asOf,
+    1, asOf,
+    1, asOf,
+    1,
+  );
 }
 
 function baselineDb() {
@@ -48,7 +59,9 @@ function baselineDb() {
       (id, organization_id, display_name, position_title, department_id, active, last_name, first_name)
     VALUES
       ('p1', 1, 'Тест Один', 'Лікар', 10, 1, 'Тест', 'Один'),
-      ('p2', 1, 'Тест Неактивний', 'Лікар', 10, 0, 'Тест', 'Неактивний'),
+      ('p2', 1, 'Тест Два', 'Адміністратор', 10, 1, 'Тест', 'Два'),
+      ('p4', 1, 'Тест Чотири', 'Працівник', 10, 1, 'Тест', 'Чотири'),
+      ('p5', 1, 'Тест Пʼять', 'Працівник', 10, 1, 'Тест', 'Пʼять'),
       ('p3', 2, 'Інший Tenant', 'Лікар', 20, 1, 'Інший', 'Tenant');
   `);
   for (const migration of [
@@ -56,14 +69,23 @@ function baselineDb() {
     "drizzle/0111_personnel_radiation_training.sql",
     "drizzle/0112_personnel_dosimetry.sql",
     "drizzle/0113_personnel_radiation_review_policy.sql",
+    "drizzle/0114_personnel_radiation_monitoring_scope.sql",
   ]) db.exec(fs.readFileSync(migration, "utf8"));
   return db;
 }
 
-test("compliance projection selects current unsuperseded tenant-scoped facts", () => {
+test("compliance projection selects monitoring scope and current tenant-scoped safety facts", () => {
   const db = baselineDb();
 
   db.exec(`
+    INSERT INTO personnel_radiation_monitoring_scope_records
+      (id, organization_id, personnel_id, effective_date, scope_status, scope_text, note)
+    VALUES
+      ('scope-p1', 1, 'p1', '2026-01-01', 'in_scope', 'КТ', ''),
+      ('scope-p2', 1, 'p2', '2026-01-01', 'out_of_scope', '', ''),
+      ('scope-p5', 1, 'p5', '2026-01-01', 'other', '', 'Потребує уточнення'),
+      ('scope-p3', 2, 'p3', '2026-01-01', 'in_scope', 'КТ', '');
+
     INSERT INTO personnel_radiation_clearance_records
       (id, organization_id, personnel_id, effective_date, decision_code, scope_text, valid_until)
     VALUES ('c-old', 1, 'p1', '2026-01-10', 'authorized', 'КТ', '2026-12-31');
@@ -89,14 +111,43 @@ test("compliance projection selects current unsuperseded tenant-scoped facts", (
       ('d-other-tenant', 2, 'p3', '2026-06-01', '2026-06-30', 'measured', 1, 0, 0);
   `);
 
-  const asOf = "2026-08-21";
-  const rows = db.prepare(projectionSql()).all(1, asOf, 1, asOf, 1, asOf, 1, asOf, 1);
-  assert.equal(rows.length, 1);
-  assert.equal(rows[0].personnelId, "p1");
-  assert.equal(rows[0].clearanceDecisionCode, "revoked");
-  assert.equal(rows[0].trainingResultCode, "completed");
-  assert.equal(rows[0].knowledgeResultCode, "failed");
-  assert.equal(rows[0].dosimetryMeasurementStatus, "measured");
+  const rows = projectionRows(db, "2026-08-21");
+  assert.equal(rows.length, 4);
+
+  const p1 = rows.find((row) => row.personnelId === "p1");
+  const p2 = rows.find((row) => row.personnelId === "p2");
+  const p4 = rows.find((row) => row.personnelId === "p4");
+  const p5 = rows.find((row) => row.personnelId === "p5");
+  assert.equal(p1.monitoringScopeStatus, "in_scope");
+  assert.equal(p1.clearanceDecisionCode, "revoked");
+  assert.equal(p1.trainingResultCode, "completed");
+  assert.equal(p1.knowledgeResultCode, "failed");
+  assert.equal(p1.dosimetryMeasurementStatus, "measured");
+  assert.equal(p2.monitoringScopeStatus, "out_of_scope");
+  assert.equal(p2.clearanceDecisionCode, null);
+  assert.equal(p4.monitoringScopeStatus, null);
+  assert.equal(p5.monitoringScopeStatus, "other");
+  assert.equal(rows.some((row) => row.personnelId === "p3"), false);
+});
+
+test("future scope correction does not erase current scope before its effective date", () => {
+  const db = baselineDb();
+  db.exec(`
+    INSERT INTO personnel_radiation_monitoring_scope_records
+      (id, organization_id, personnel_id, effective_date, scope_status, scope_text)
+    VALUES ('scope-current', 1, 'p1', '2026-01-01', 'in_scope', 'КТ');
+    INSERT INTO personnel_radiation_monitoring_scope_records
+      (id, organization_id, personnel_id, effective_date, scope_status, supersedes_id)
+    VALUES ('scope-future-correction', 1, 'p1', '2027-01-01', 'out_of_scope', 'scope-current');
+  `);
+
+  const before = projectionRows(db, "2026-08-21").find((row) => row.personnelId === "p1");
+  assert.equal(before.monitoringScopeStatus, "in_scope");
+  assert.equal(before.monitoringScopeEffectiveDate, "2026-01-01");
+
+  const after = projectionRows(db, "2027-01-02").find((row) => row.personnelId === "p1");
+  assert.equal(after.monitoringScopeStatus, "out_of_scope");
+  assert.equal(after.monitoringScopeEffectiveDate, "2027-01-01");
 });
 
 test("effective policy selection keeps current revision until future successor takes effect", () => {
@@ -125,44 +176,48 @@ test("effective policy selection keeps current revision until future successor t
   assert.doesNotMatch(sql, /supersedes_id|NOT EXISTS/i);
 });
 
-test("projection endpoint is read-only, manager-only and does not duplicate dose values", () => {
+test("scope helper prevents false safety review outside explicit in-scope population", () => {
+  assert.match(helper, /RadiationMonitoringScopeState/);
+  assert.match(helper, /classifyRadiationMonitoringScope/);
+  assert.match(helper, /scopeStatus === "in_scope"/);
+  assert.match(helper, /scopeStatus === "out_of_scope"/);
+  assert.match(helper, /return "unclassified"/);
+  assert.match(helper, /Не визначено контур радіаційного контролю/);
+  assert.match(helper, /Організаційний контур радіаційного контролю потребує уточнення/);
+  assert.match(route, /monitoringScopeState === "in_scope" \? radiationReviewReasons/);
+  assert.match(route, /monitoringScopeState === "in_scope" \? radiationPolicyReviewReasons/);
+  assert.match(route, /monitoringScopeState === "out_of_scope"[\s\S]*?"out_of_scope"/);
+});
+
+test("projection endpoint remains read-only, tenant-scoped and has no operational enforcement", () => {
   assert.match(route, /role === "admin" \|\| role === "department_head"/);
-  assert.match(route, /personnel_radiation_compliance_viewed/);
+  assert.match(route, /WITH monitoring_scope_ranked AS/);
+  assert.match(route, /correction\.effective_date <= \?/);
+  assert.match(route, /LEFT JOIN monitoring_scope_ranked ms/);
   assert.match(route, /p\.organization_id = \? AND p\.active = 1/);
   assert.match(route, /effective_from <= \?/);
-  assert.match(route, /ORDER BY r\.effective_from DESC, r\.created_at DESC, r\.id DESC/);
   assert.match(route, /radiationPolicyReviewReasons/);
-  assert.match(route, /policyReviewCount/);
-  assert.match(route, /training_kind = 'radiation_safety'/);
-  assert.match(route, /training_kind = 'knowledge_check'/);
-  assert.match(route, /period_end <= \?/);
+  assert.match(route, /scopeReviewCount/);
+  assert.match(route, /outOfScopeCount/);
+  assert.match(route, /personnel_radiation_compliance_viewed/);
   assert.doesNotMatch(route, /export async function (POST|PUT|PATCH|DELETE)/);
   assert.doesNotMatch(route, /hp10_msv|hp007_msv|hp3_msv/);
-  assert.doesNotMatch(route, /pacs_settings|imaging_studies|bookings/);
+  assert.doesNotMatch(route, /pacs_settings|imaging_studies|bookings|work_lock|access_denied/);
 });
 
-test("policy review helper adds configured age reasons without legal compliance claims", () => {
-  assert.match(helper, /radiationPolicyReviewReasons/);
-  assert.match(helper, /age > policy\.trainingMaxAgeDays/);
-  assert.match(helper, /age > policy\.knowledgeCheckMaxAgeDays/);
-  assert.match(helper, /age > policy\.dosimetryMaxAgeDays/);
-  assert.match(helper, /немає запису перевірки знань/);
-  assert.match(helper, /mergeRadiationReviewReasons/);
-  assert.match(helper, /authorized_unknown_expiry/);
-  assert.match(helper, /Останній дозиметричний результат відсутній/);
-  assert.doesNotMatch(helper, /compliant|noncompliant|doseLimit|annualLimit/i);
-});
-
-test("overview UI exposes applied policy but remains informational", () => {
-  assert.match(page, /майбутні policy revisions не включаються/);
-  assert.match(page, /не автоматичне рішення про допуск до роботи/);
+test("overview UI shows scope separately and masks safety statuses outside in-scope", () => {
+  assert.match(page, /monitoringScopeState/);
+  assert.match(page, /У контурі/);
+  assert.match(page, /Поза контуром/);
+  assert.match(page, /Не визначено/);
+  assert.match(page, /const evaluate=record\.monitoringScopeState==="in_scope"/);
+  assert.match(page, /Не оцінюється/);
+  assert.match(page, /не генерує фальшивих «відсутній допуск\/дозиметрія»/);
+  assert.match(page, /це тільки організаційна класифікація RadiologyOS/);
+  assert.match(page, /не юридичне чи медичне звільнення/);
   assert.match(page, /не створює alerts/);
   assert.match(page, /не блокує PACS, КТ, рентген або запис пацієнтів/);
-  assert.match(page, /Застосована policy revision/);
-  assert.match(page, /policyReviewCount/);
-  assert.match(page, /Історія політики/);
-  assert.match(page, /Без очевидних зауважень/);
+  assert.match(page, /\/staff\/personnel\/radiation-monitoring-scope/);
   assert.match(directories, /Зведення ДІВ/);
-  assert.match(directories, /\/staff\/personnel\/radiation-compliance/);
   assert.match(audit, /personnel_radiation_compliance_viewed/);
 });

@@ -3,10 +3,12 @@ import { dbBinding } from "../../../../../lib/db";
 import {
   classifyDosimetry,
   classifyRadiationClearance,
+  classifyRadiationMonitoringScope,
   classifyRadiationTraining,
   mergeRadiationReviewReasons,
   radiationPolicyReviewReasons,
   radiationReviewReasons,
+  radiationScopeReviewReasons,
   type RadiationReviewPolicy,
 } from "../../../../../lib/personnel-radiation-compliance";
 import type { AccessRole } from "../../../../../lib/staff-auth";
@@ -39,6 +41,10 @@ type RawComplianceRow = {
   displayName: string;
   positionTitle: string;
   departmentName: string | null;
+  monitoringScopeStatus: string | null;
+  monitoringScopeEffectiveDate: string | null;
+  monitoringScopeText: string | null;
+  monitoringScopeBasisTitle: string | null;
   clearanceDecisionCode: string | null;
   clearanceEffectiveDate: string | null;
   clearanceValidUntil: string | null;
@@ -102,7 +108,25 @@ export async function GET(request: Request) {
   } : null;
 
   const rows = await db.prepare(
-    `WITH clearance_ranked AS (
+    `WITH monitoring_scope_ranked AS (
+       SELECT r.personnel_id, r.scope_status, r.effective_date,
+              r.scope_text, r.basis_title,
+              ROW_NUMBER() OVER (
+                PARTITION BY r.personnel_id
+                ORDER BY r.effective_date DESC, r.created_at DESC, r.id DESC
+              ) AS rn
+       FROM personnel_radiation_monitoring_scope_records r
+       WHERE r.organization_id = ?
+         AND r.effective_date <= ?
+         AND NOT EXISTS (
+           SELECT 1 FROM personnel_radiation_monitoring_scope_records correction
+           WHERE correction.supersedes_id = r.id
+             AND correction.organization_id = r.organization_id
+             AND correction.personnel_id = r.personnel_id
+             AND correction.effective_date <= ?
+         )
+     ),
+     clearance_ranked AS (
        SELECT r.personnel_id, r.decision_code, r.effective_date, r.valid_until,
               r.document_number,
               ROW_NUMBER() OVER (
@@ -174,6 +198,10 @@ export async function GET(request: Request) {
      )
      SELECT p.id AS personnelId, p.display_name AS displayName,
             p.position_title AS positionTitle, d.name AS departmentName,
+            ms.scope_status AS monitoringScopeStatus,
+            ms.effective_date AS monitoringScopeEffectiveDate,
+            ms.scope_text AS monitoringScopeText,
+            ms.basis_title AS monitoringScopeBasisTitle,
             c.decision_code AS clearanceDecisionCode,
             c.effective_date AS clearanceEffectiveDate,
             c.valid_until AS clearanceValidUntil,
@@ -193,6 +221,7 @@ export async function GET(request: Request) {
      FROM personnel_records p
      LEFT JOIN departments d
        ON d.id = p.department_id AND d.organization_id = p.organization_id
+     LEFT JOIN monitoring_scope_ranked ms ON ms.personnel_id = p.id AND ms.rn = 1
      LEFT JOIN clearance_ranked c ON c.personnel_id = p.id AND c.rn = 1
      LEFT JOIN training_ranked t ON t.personnel_id = p.id AND t.rn = 1
      LEFT JOIN knowledge_ranked k ON k.personnel_id = p.id AND k.rn = 1
@@ -200,6 +229,7 @@ export async function GET(request: Request) {
      WHERE p.organization_id = ? AND p.active = 1
      ORDER BY p.last_name, p.first_name, p.patronymic, p.id`,
   ).bind(
+    ctx.organizationId, asOf, asOf,
     ctx.organizationId, asOf,
     ctx.organizationId, asOf,
     ctx.organizationId, asOf,
@@ -208,6 +238,9 @@ export async function GET(request: Request) {
   ).all<RawComplianceRow>();
 
   const records = rows.results.map((row) => {
+    const monitoringScopeState = classifyRadiationMonitoringScope(
+      row.monitoringScopeStatus ? { scopeStatus:row.monitoringScopeStatus } : null,
+    );
     const clearanceRecord = row.clearanceDecisionCode ? {
       decisionCode: row.clearanceDecisionCode,
       validUntil: row.clearanceValidUntil,
@@ -228,37 +261,55 @@ export async function GET(request: Request) {
     const trainingState = classifyRadiationTraining(trainingRecord, asOf);
     const knowledgeCheckState = classifyRadiationTraining(knowledgeRecord, asOf);
     const dosimetryState = classifyDosimetry(dosimetryRecord);
-    const baseReviewReasons = radiationReviewReasons({
+    const scopeReviewReasons = radiationScopeReviewReasons(monitoringScopeState);
+
+    const baseReviewReasons = monitoringScopeState === "in_scope" ? radiationReviewReasons({
       clearance: clearanceState,
       training: trainingState,
       knowledgeCheck: knowledgeCheckState,
       dosimetry: dosimetryState,
-    });
-    const policyReviewReasons = radiationPolicyReviewReasons({
+    }) : [];
+    const policyReviewReasons = monitoringScopeState === "in_scope" ? radiationPolicyReviewReasons({
       policy,
       asOf,
       clearanceValidUntil:row.clearanceValidUntil,
       trainingDate:row.trainingDate,
       knowledgeDate:row.knowledgeDate,
       dosimetryPeriodEnd:row.dosimetryPeriodEnd,
-    });
-    const reviewReasons = mergeRadiationReviewReasons(baseReviewReasons, policyReviewReasons);
+    }) : [];
+    const reviewReasons = mergeRadiationReviewReasons(
+      scopeReviewReasons,
+      baseReviewReasons,
+      policyReviewReasons,
+    );
+    const summaryState = monitoringScopeState === "out_of_scope"
+      ? "out_of_scope"
+      : reviewReasons.length ? "review" : "recorded";
 
     return {
       ...row,
+      monitoringScopeState,
       clearanceState,
       trainingState,
       knowledgeCheckState,
       dosimetryState,
+      scopeReviewReasons,
       baseReviewReasons,
       policyReviewReasons,
       reviewReasons,
-      summaryState: reviewReasons.length ? "review" : "recorded",
+      summaryState,
     };
   });
 
+  const inScopeCount = records.filter((record) => record.monitoringScopeState === "in_scope").length;
+  const outOfScopeCount = records.filter((record) => record.monitoringScopeState === "out_of_scope").length;
+  const scopeReviewCount = records.filter(
+    (record) => record.monitoringScopeState === "review" || record.monitoringScopeState === "unclassified",
+  ).length;
   const reviewCount = records.filter((record) => record.summaryState === "review").length;
+  const recordedCount = records.filter((record) => record.summaryState === "recorded").length;
   const policyReviewCount = records.filter((record) => record.policyReviewReasons.length > 0).length;
+
   await audit(db, {
     organizationId: ctx.organizationId,
     actorEmail: ctx.member.email,
@@ -267,6 +318,9 @@ export async function GET(request: Request) {
     details: {
       asOf,
       recordCount: records.length,
+      inScopeCount,
+      outOfScopeCount,
+      scopeReviewCount,
       reviewCount,
       policyId: policy?.id || "",
       policyReviewCount,
@@ -280,8 +334,11 @@ export async function GET(request: Request) {
       records,
       summary: {
         total: records.length,
+        inScopeCount,
+        outOfScopeCount,
+        scopeReviewCount,
         reviewCount,
-        recordedCount: records.length - reviewCount,
+        recordedCount,
         policyReviewCount,
       },
     },
