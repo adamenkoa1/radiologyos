@@ -4,6 +4,18 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
 
+type AppliedPolicy = {
+  id:string;
+  effectiveFrom:string;
+  enabled:boolean;
+  requireClearanceValidUntil:boolean;
+  trainingMaxAgeDays:number | null;
+  knowledgeCheckMaxAgeDays:number | null;
+  dosimetryMaxAgeDays:number | null;
+  sourceTitle:string;
+  sourceReference:string;
+};
+
 type ComplianceRecord = {
   personnelId:string;
   displayName:string;
@@ -25,14 +37,17 @@ type ComplianceRecord = {
   dosimetryPeriodStart:string | null;
   dosimetryPeriodEnd:string | null;
   dosimetryReportNumber:string | null;
+  baseReviewReasons:string[];
+  policyReviewReasons:string[];
   reviewReasons:string[];
   summaryState:"recorded" | "review";
 };
 
 type ComplianceResponse = {
   asOf?:string;
+  policy?:AppliedPolicy | null;
   records?:ComplianceRecord[];
-  summary?:{total:number;reviewCount:number;recordedCount:number};
+  summary?:{total:number;reviewCount:number;recordedCount:number;policyReviewCount:number};
   error?:string;
 };
 
@@ -40,6 +55,10 @@ function localIsoDate(){
   const now=new Date();
   const local=new Date(now.getTime()-now.getTimezoneOffset()*60_000);
   return local.toISOString().slice(0,10);
+}
+
+function policyCriterion(value:number | null,label:string){
+  return value==null ? `${label}: не налаштовано` : `${label}: ${value} дн.`;
 }
 
 const CLEARANCE_LABELS:Record<string,string>={
@@ -80,8 +99,9 @@ function Status({kind,state}:{kind:"clearance"|"training"|"dosimetry";state:stri
 
 export default function RadiationCompliancePage(){
   const [asOf,setAsOf]=useState("");
+  const [policy,setPolicy]=useState<AppliedPolicy | null>(null);
   const [records,setRecords]=useState<ComplianceRecord[]>([]);
-  const [summary,setSummary]=useState({total:0,reviewCount:0,recordedCount:0});
+  const [summary,setSummary]=useState({total:0,reviewCount:0,recordedCount:0,policyReviewCount:0});
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState("");
 
@@ -91,8 +111,9 @@ export default function RadiationCompliancePage(){
       const response=await fetch(`/api/staff/personnel/radiation-compliance?asOf=${encodeURIComponent(date)}`,{cache:"no-store"});
       const data=await response.json() as ComplianceResponse;
       if(!response.ok) throw new Error(data.error || "Не вдалося завантажити зведення");
+      setPolicy(data.policy || null);
       setRecords(data.records || []);
-      setSummary(data.summary || {total:0,reviewCount:0,recordedCount:0});
+      setSummary(data.summary || {total:0,reviewCount:0,recordedCount:0,policyReviewCount:0});
     }catch(value){
       setError(value instanceof Error?value.message:"Не вдалося завантажити зведення");
     }finally{ setLoading(false); }
@@ -118,18 +139,21 @@ export default function RadiationCompliancePage(){
       <article><span>Активний персонал</span><b>{summary.total}</b><small>у кадровому довіднику</small></article>
       <article><span>Без очевидних зауважень</span><b>{summary.recordedCount}</b><small>за наявними даними</small></article>
       <article><span>Потребує перевірки</span><b>{summary.reviewCount}</b><small>не означає автоматичну заборону</small></article>
-      <article><span>Дата зрізу</span><b>{asOf || "—"}</b><small>локальна дата користувача</small></article>
+      <article><span>За policy-критеріями</span><b>{summary.policyReviewCount}</b><small>інформаційний review, не alert</small></article>
     </section>
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Дата зрізу</b><small>Майбутні записи не включаються. Нормативна періодичність дозиметрії тут не розраховується.</small></div>
+        <div><b>Дата зрізу</b><small>Майбутні кадрові записи й майбутні policy revisions не включаються.</small></div>
         <div className="shiftPlannerToolbar">
           <input aria-label="Дата зрізу" type="date" value={asOf} onChange={(event)=>setAsOf(event.target.value)} />
           <button className="button secondary" type="button" disabled={!asOf || loading} onClick={()=>void load(asOf)}>{loading?"Оновлення…":"Оновити"}</button>
         </div>
       </header>
-      <p className="notice">Це інформаційне зведення, а не автоматичне рішення про допуск до роботи. Воно не застосовує нормативні пороги дози, не визначає періодичність контролю та не блокує PACS, КТ, рентген або запис пацієнтів.</p>
+      <p className="notice">Це інформаційне зведення, а не автоматичне рішення про допуск до роботи. Воно не застосовує дозові пороги, не створює alerts і не блокує PACS, КТ, рентген або запис пацієнтів.</p>
+      {policy ? <p className="notice">
+        Застосована policy revision від <b>{policy.effectiveFrom}</b>: {policy.enabled?"увімкнена":"вимкнена"}. {policy.sourceTitle || "Джерело не вказано"}. {policy.requireClearanceValidUntil?"Строк дії допуску — критерій review. ":""}{policyCriterion(policy.trainingMaxAgeDays,"Навчання")} · {policyCriterion(policy.knowledgeCheckMaxAgeDays,"Перевірка знань")} · {policyCriterion(policy.dosimetryMaxAgeDays,"Дозиметрія")}. <Link href="/staff/personnel/radiation-review-policy">Історія політики</Link>
+      </p> : <p className="notice">Станом на {asOf || "обрану дату"} policy revision ще не набула чинності. Застосовуються лише базові детерміновані safety-signals. <Link href="/staff/personnel/radiation-review-policy">Політика ДІВ</Link></p>}
     </section>
 
     <section className="financeJournal">
@@ -142,7 +166,7 @@ export default function RadiationCompliancePage(){
           <td><Status kind="training" state={record.trainingState}/><br/><small>{record.trainingDate || "—"}{record.trainingValidUntil?` → ${record.trainingValidUntil}`:""}{record.trainingCourseTitle?` · ${record.trainingCourseTitle}`:""}</small><br/><Link href="/staff/personnel/radiation-training">Історія</Link></td>
           <td><Status kind="training" state={record.knowledgeCheckState}/><br/><small>{record.knowledgeDate || "—"}{record.knowledgeValidUntil?` → ${record.knowledgeValidUntil}`:""}{record.knowledgeCourseTitle?` · ${record.knowledgeCourseTitle}`:""}</small></td>
           <td><Status kind="dosimetry" state={record.dosimetryState}/><br/><small>{record.dosimetryPeriodStart && record.dosimetryPeriodEnd?`${record.dosimetryPeriodStart} → ${record.dosimetryPeriodEnd}`:"—"}{record.dosimetryReportNumber?` · звіт № ${record.dosimetryReportNumber}`:""}</small><br/><Link href="/staff/personnel/dosimetry">Історія</Link></td>
-          <td>{record.reviewReasons.length ? <><span className="statusPill">Потребує перевірки</span><br/><small>{record.reviewReasons.join("; ")}</small></> : <><span className="statusPill ok">Без очевидних зауважень</span><br/><small>Лише за даними реєстрів, без нормативного enforcement.</small></>}</td>
+          <td>{record.reviewReasons.length ? <><span className="statusPill">Потребує перевірки</span><br/><small>{record.reviewReasons.join("; ")}</small>{record.policyReviewReasons.length>0 && <><br/><small><b>Policy review:</b> {record.policyReviewReasons.join("; ")}</small></>}</> : <><span className="statusPill ok">Без очевидних зауважень</span><br/><small>Лише за даними реєстрів і налаштованих review-критеріїв, без enforcement.</small></>}</td>
         </tr>)}</tbody>
       </table>{!records.length && <p className="notice">Активних кадрових карток немає.</p>}</div>}
     </section>

@@ -15,6 +15,12 @@ function projectionSql() {
   return match[1];
 }
 
+function effectivePolicySql() {
+  const match = route.match(/rawPolicy = await db\.prepare\(\s*`(SELECT r\.id,[\s\S]*?LIMIT 1)`\s*,?\s*\)\.bind/);
+  assert.ok(match, "effective policy SQL must remain extractable for behavioral coverage");
+  return match[1];
+}
+
 function baselineDb() {
   const db = new DatabaseSync(":memory:");
   db.exec(`
@@ -49,6 +55,7 @@ function baselineDb() {
     "drizzle/0110_personnel_radiation_clearance.sql",
     "drizzle/0111_personnel_radiation_training.sql",
     "drizzle/0112_personnel_dosimetry.sql",
+    "drizzle/0113_personnel_radiation_review_policy.sql",
   ]) db.exec(fs.readFileSync(migration, "utf8"));
   return db;
 }
@@ -92,12 +99,40 @@ test("compliance projection selects current unsuperseded tenant-scoped facts", (
   assert.equal(rows[0].dosimetryMeasurementStatus, "measured");
 });
 
+test("effective policy selection keeps current revision until future successor takes effect", () => {
+  const db = baselineDb();
+  db.exec(`
+    INSERT INTO personnel_radiation_review_policy_revisions
+      (id, organization_id, effective_from, enabled, training_max_age_days, source_title)
+    VALUES ('policy-current', 1, '2026-01-01', 1, 180, 'Policy current');
+    INSERT INTO personnel_radiation_review_policy_revisions
+      (id, organization_id, effective_from, enabled, training_max_age_days, source_title, supersedes_id)
+    VALUES ('policy-future', 1, '2027-01-01', 0, NULL, 'Policy future', 'policy-current');
+  `);
+
+  const sql = effectivePolicySql();
+  const before = db.prepare(sql).get(1, "2026-08-21");
+  assert.equal(before.id, "policy-current");
+  assert.equal(before.enabled, 1);
+  assert.equal(before.trainingMaxAgeDays, 180);
+
+  const after = db.prepare(sql).get(1, "2027-01-02");
+  assert.equal(after.id, "policy-future");
+  assert.equal(after.enabled, 0);
+
+  const otherTenant = db.prepare(sql).get(2, "2027-01-02");
+  assert.equal(otherTenant, undefined);
+  assert.doesNotMatch(sql, /supersedes_id|NOT EXISTS/i);
+});
+
 test("projection endpoint is read-only, manager-only and does not duplicate dose values", () => {
   assert.match(route, /role === "admin" \|\| role === "department_head"/);
   assert.match(route, /personnel_radiation_compliance_viewed/);
   assert.match(route, /p\.organization_id = \? AND p\.active = 1/);
-  assert.match(route, /NOT EXISTS/);
-  assert.match(route, /effective_date <= \?/);
+  assert.match(route, /effective_from <= \?/);
+  assert.match(route, /ORDER BY r\.effective_from DESC, r\.created_at DESC, r\.id DESC/);
+  assert.match(route, /radiationPolicyReviewReasons/);
+  assert.match(route, /policyReviewCount/);
   assert.match(route, /training_kind = 'radiation_safety'/);
   assert.match(route, /training_kind = 'knowledge_check'/);
   assert.match(route, /period_end <= \?/);
@@ -106,17 +141,26 @@ test("projection endpoint is read-only, manager-only and does not duplicate dose
   assert.doesNotMatch(route, /pacs_settings|imaging_studies|bookings/);
 });
 
-test("classifiers avoid legal compliance claims and keep unknown expiry explicit", () => {
+test("policy review helper adds configured age reasons without legal compliance claims", () => {
+  assert.match(helper, /radiationPolicyReviewReasons/);
+  assert.match(helper, /age > policy\.trainingMaxAgeDays/);
+  assert.match(helper, /age > policy\.knowledgeCheckMaxAgeDays/);
+  assert.match(helper, /age > policy\.dosimetryMaxAgeDays/);
+  assert.match(helper, /немає запису перевірки знань/);
+  assert.match(helper, /mergeRadiationReviewReasons/);
   assert.match(helper, /authorized_unknown_expiry/);
-  assert.match(helper, /unknown_expiry/);
   assert.match(helper, /Останній дозиметричний результат відсутній/);
   assert.doesNotMatch(helper, /compliant|noncompliant|doseLimit|annualLimit/i);
 });
 
-test("overview UI clearly remains informational and is linked from directories", () => {
+test("overview UI exposes applied policy but remains informational", () => {
+  assert.match(page, /майбутні policy revisions не включаються/);
   assert.match(page, /не автоматичне рішення про допуск до роботи/);
+  assert.match(page, /не створює alerts/);
   assert.match(page, /не блокує PACS, КТ, рентген або запис пацієнтів/);
-  assert.match(page, /Нормативна періодичність дозиметрії тут не розраховується/);
+  assert.match(page, /Застосована policy revision/);
+  assert.match(page, /policyReviewCount/);
+  assert.match(page, /Історія політики/);
   assert.match(page, /Без очевидних зауважень/);
   assert.match(directories, /Зведення ДІВ/);
   assert.match(directories, /\/staff\/personnel\/radiation-compliance/);
