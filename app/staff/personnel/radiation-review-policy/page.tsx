@@ -123,17 +123,17 @@ export default function RadiationReviewPolicyPage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{currentLeaf?"Нова ревізія політики":"Перша ревізія політики"}</b><small>{canManage?"Створення нової версії не змінює старі записи.":"Перегляд доступний; змінювати організаційну політику може лише адміністратор."}</small></div></header>
+      <header className="financeToolbar"><div><b>{currentLeaf?"Нова ревізія політики":"Перша ревізія політики"}</b><small>{canManage?"Форма успадковує поточні значення; змініть лише потрібне. Старі записи не переписуються.":"Перегляд доступний; змінювати організаційну політику може лише адміністратор."}</small></div></header>
       {canManage ? <form className="formGrid" onSubmit={save} key={currentLeaf?.id || "root"}>
         <label>Дата набрання чинності<input name="effectiveFrom" type="date" required defaultValue={nextEffectiveFrom} min={currentLeaf?.effectiveFrom || undefined}/></label>
-        <label><input name="enabled" type="checkbox"/> Увімкнути критерії review</label>
-        <label><input name="requireClearanceValidUntil" type="checkbox"/> Вимагати вказаний строк дії допуску до ДІВ</label>
-        <label>Навчання: review після, днів<input name="trainingMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано"/></label>
-        <label>Перевірка знань: review після, днів<input name="knowledgeCheckMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано"/></label>
-        <label>Дозиметрія: review після останнього періоду, днів<input name="dosimetryMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано"/></label>
-        <label>Назва джерела / внутрішнього документа<input name="sourceTitle" maxLength={240} placeholder="обов’язково, якщо політика увімкнена"/></label>
-        <label>Посилання / реквізити джерела<input name="sourceReference" maxLength={500}/></label>
-        <label>Примітка<input name="note" maxLength={1000}/></label>
+        <label><input name="enabled" type="checkbox" defaultChecked={Boolean(currentLeaf?.enabled)}/> Увімкнути критерії review</label>
+        <label><input name="requireClearanceValidUntil" type="checkbox" defaultChecked={Boolean(currentLeaf?.requireClearanceValidUntil)}/> Вимагати вказаний строк дії допуску до ДІВ</label>
+        <label>Навчання: review після, днів<input name="trainingMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано" defaultValue={currentLeaf?.trainingMaxAgeDays ?? ""}/></label>
+        <label>Перевірка знань: review після, днів<input name="knowledgeCheckMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано" defaultValue={currentLeaf?.knowledgeCheckMaxAgeDays ?? ""}/></label>
+        <label>Дозиметрія: review після останнього періоду, днів<input name="dosimetryMaxAgeDays" type="number" min="1" max="36500" step="1" placeholder="не налаштовано" defaultValue={currentLeaf?.dosimetryMaxAgeDays ?? ""}/></label>
+        <label>Назва джерела / внутрішнього документа<input name="sourceTitle" maxLength={240} placeholder="обов’язково, якщо політика увімкнена" defaultValue={currentLeaf?.sourceTitle || ""}/></label>
+        <label>Посилання / реквізити джерела<input name="sourceReference" maxLength={500} defaultValue={currentLeaf?.sourceReference || ""}/></label>
+        <label>Примітка<input name="note" maxLength={1000} defaultValue={currentLeaf?.note || ""}/></label>
         <div><button className="button primary" type="submit" disabled={saving}>{saving?"Зберігаємо…":"Додати ревізію"}</button></div>
       </form> : <p className="notice">Для створення нової ревізії потрібна роль адміністратора.</p>}
     </section>
