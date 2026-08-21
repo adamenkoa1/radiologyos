@@ -18,6 +18,9 @@ type DoseSummaryRow = {
   displayName:string;
   positionTitle:string;
   departmentName:string | null;
+  monitoringScopeStatus:string | null;
+  monitoringScopeText:string | null;
+  monitoringScopeEffectiveDate:string | null;
   firstPeriodStart:string | null;
   lastPeriodEnd:string | null;
   measuredCount:number;
@@ -72,9 +75,29 @@ export async function GET(request: Request) {
               SUM(CASE WHEN measurement_status = 'measured' THEN hp3_msv ELSE 0 END) AS hp3_measured_subtotal
        FROM current_records
        GROUP BY personnel_id
+     ),
+     monitoring_scope_ranked AS (
+       SELECT r.personnel_id, r.scope_status, r.scope_text, r.effective_date,
+              ROW_NUMBER() OVER (
+                PARTITION BY r.personnel_id
+                ORDER BY r.effective_date DESC, r.created_at DESC, r.id DESC
+              ) AS rn
+       FROM personnel_radiation_monitoring_scope_records r
+       WHERE r.organization_id = ?
+         AND r.effective_date <= ?
+         AND NOT EXISTS (
+           SELECT 1 FROM personnel_radiation_monitoring_scope_records correction
+           WHERE correction.supersedes_id = r.id
+             AND correction.organization_id = r.organization_id
+             AND correction.personnel_id = r.personnel_id
+             AND correction.effective_date <= ?
+         )
      )
      SELECT p.id AS personnelId, p.display_name AS displayName,
             p.position_title AS positionTitle, d.name AS departmentName,
+            ms.scope_status AS monitoringScopeStatus,
+            ms.scope_text AS monitoringScopeText,
+            ms.effective_date AS monitoringScopeEffectiveDate,
             a.first_period_start AS firstPeriodStart,
             a.last_period_end AS lastPeriodEnd,
             COALESCE(a.measured_count, 0) AS measuredCount,
@@ -87,15 +110,21 @@ export async function GET(request: Request) {
      FROM personnel_records p
      LEFT JOIN departments d
        ON d.id = p.department_id AND d.organization_id = p.organization_id
+     LEFT JOIN monitoring_scope_ranked ms ON ms.personnel_id = p.id AND ms.rn = 1
      LEFT JOIN aggregated a ON a.personnel_id = p.id
      WHERE p.organization_id = ? AND p.active = 1
      ORDER BY p.last_name, p.first_name, p.patronymic, p.id`,
-  ).bind(ctx.organizationId, from, to, ctx.organizationId).all<DoseSummaryRow>();
+  ).bind(
+    ctx.organizationId, from, to,
+    ctx.organizationId, to, to,
+    ctx.organizationId,
+  ).all<DoseSummaryRow>();
 
   const records = rows.results.map((row) => {
     const recordCount = row.measuredCount + row.belowDetectionCount + row.missingCount + row.otherCount;
     return {
       ...row,
+      monitoringScopeState: row.monitoringScopeStatus || "unclassified",
       recordCount,
       hasNonMeasuredRecords: row.belowDetectionCount + row.missingCount + row.otherCount > 0,
       numericSubtotalAvailable: row.measuredCount > 0,
@@ -104,6 +133,9 @@ export async function GET(request: Request) {
 
   const personnelWithRecords = records.filter((record) => record.recordCount > 0).length;
   const personnelWithNonMeasuredRecords = records.filter((record) => record.hasNonMeasuredRecords).length;
+  const inScopeCount = records.filter((record) => record.monitoringScopeState === "in_scope").length;
+  const outOfScopeCount = records.filter((record) => record.monitoringScopeState === "out_of_scope").length;
+  const scopeReviewCount = records.length - inScopeCount - outOfScopeCount;
 
   await audit(db, {
     organizationId:ctx.organizationId,
@@ -116,12 +148,16 @@ export async function GET(request: Request) {
       personnelCount:records.length,
       personnelWithRecords,
       personnelWithNonMeasuredRecords,
+      inScopeCount,
+      outOfScopeCount,
+      scopeReviewCount,
     },
   });
 
   return Response.json({
     from,
     to,
+    scopeAsOf:to,
     rangeBasis:"period_end",
     subtotalBasis:"measured_only",
     records,
@@ -130,6 +166,9 @@ export async function GET(request: Request) {
       personnelWithRecords,
       personnelWithoutRecords:records.length - personnelWithRecords,
       personnelWithNonMeasuredRecords,
+      inScopeCount,
+      outOfScopeCount,
+      scopeReviewCount,
     },
   }, { headers:{ "cache-control":"no-store" } });
 }
