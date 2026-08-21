@@ -62,6 +62,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   personnel_radiation_training_recorded: "Додано запис навчання працівника з радіаційної безпеки",
   personnel_dosimetry_viewed: "Переглянуто індивідуальну дозиметрію працівника",
   personnel_dosimetry_recorded: "Додано результат індивідуальної дозиметрії працівника",
+  personnel_radiation_dose_summary_viewed: "Переглянуто дозове зведення індивідуальної дозиметрії",
   personnel_radiation_compliance_viewed: "Переглянуто зведення радіаційної безпеки персоналу",
   personnel_radiation_review_policy_viewed: "Переглянуто політику review радіаційної безпеки",
   personnel_radiation_review_policy_recorded: "Додано ревізію політики review радіаційної безпеки",
