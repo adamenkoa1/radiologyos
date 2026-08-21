@@ -254,6 +254,7 @@ export default function StaffWorkspaceShell({
             <span><b>{identity}</b><small>{staffRole || "Персонал відділення"}</small></span>
           </summary>
           <div>
+            <Link href="/staff/profile">Особистий кабінет</Link>
             <Link href="/staff/documents">Документи</Link>
             <Link href="/staff/registers">Регістри</Link>
             <Link href="/staff/appointments">Календар і записи</Link>
