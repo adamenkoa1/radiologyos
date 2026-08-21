@@ -792,6 +792,13 @@
       "when": 1787282400000,
       "tag": "0113_personnel_radiation_review_policy",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "6",
+      "when": 1787286000000,
+      "tag": "0114_personnel_radiation_monitoring_scope",
+      "breakpoints": true
     }
   ]
 }
