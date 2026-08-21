@@ -71,7 +71,7 @@
 
 .workspaceShell .studyBoardToolbar button:hover,
 .workspaceShell .studyBoardToolbar a:hover {
-  border-color: rgba(37,99,235,.3);
+  border-color: rgba(13,91,80,.3);
   background: var(--ws-accent-soft);
   color: var(--ws-accent);
 }
@@ -206,7 +206,7 @@
 .workspaceShell .studyKanbanCard.mod-fluoro::before { background: #0891b2; }
 
 .workspaceShell .studyKanbanCard:hover {
-  border-color: rgba(37,99,235,.35);
+  border-color: rgba(13,91,80,.35);
   box-shadow: 0 5px 16px rgba(16,24,40,.09);
   transform: translateY(-1px);
 }
