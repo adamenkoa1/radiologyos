@@ -59,17 +59,6 @@ test("compliance projection selects current unsuperseded tenant-scoped facts", (
   db.exec(`
     INSERT INTO personnel_radiation_clearance_records
       (id, organization_id, personnel_id, effective_date, decision_code, scope_text, valid_until)
-    VALUES
-      ('c-old', 1, 'p1', '2026-01-10', 'authorized', 'КТ', '2026-12-31'),
-      ('c-correction', 1, 'p1', '2026-01-10', 'revoked', '', '', '');
-  `);
-  db.prepare("UPDATE personnel_radiation_clearance_records SET supersedes_id = ? WHERE id = ?");
-
-  // Append-only tables cannot be updated, so create the correction with supersedes_id directly.
-  db.exec("DELETE FROM personnel_radiation_clearance_records;");
-  db.exec(`
-    INSERT INTO personnel_radiation_clearance_records
-      (id, organization_id, personnel_id, effective_date, decision_code, scope_text, valid_until)
     VALUES ('c-old', 1, 'p1', '2026-01-10', 'authorized', 'КТ', '2026-12-31');
     INSERT INTO personnel_radiation_clearance_records
       (id, organization_id, personnel_id, effective_date, decision_code, supersedes_id)
