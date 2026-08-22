@@ -2,11 +2,18 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 import test from "node:test";
 
-test("catalog contains 38 unique services across all equipment types", async () => {
+test("catalog mirrors the 27 official services of Наказ в/ч А3120 №265, Додаток 2", async () => {
   const source = await readFile(new URL("../lib/catalog.ts", import.meta.url), "utf8");
   const codes = [...source.matchAll(/\{\s*code:"(\d+)"/g)].map(match => match[1]);
-  assert.equal(codes.length, 38);
-  assert.equal(new Set(codes).size, 38);
+  // Exactly the codes approved by the order: 101; 201–205; 301–302; 401–412; 501–504; 601–603.
+  const official = [
+    "101", "201", "202", "203", "204", "205", "301", "302",
+    "401", "402", "403", "404", "405", "406", "407", "408", "409", "410", "411", "412",
+    "501", "502", "503", "504", "601", "602", "603",
+  ];
+  assert.equal(codes.length, official.length);
+  assert.deepEqual(codes, official);
+  assert.equal(new Set(codes).size, official.length);
   for (const equipmentId of ["ct", "xray", "fluoro"]) {
     assert.match(source, new RegExp(`equipmentId:"${equipmentId}"`));
   }
