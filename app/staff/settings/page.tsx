@@ -10,6 +10,7 @@ type Settings = {
   calendarConfigured: boolean; calendarToken?: string; externalIcsUrl: string;
   remindersEnabled: boolean; reminderLeadHours: string; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
   emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
+  bookingNotifyEmail: string;
 };
 
 export default function StaffSettingsPage() {
@@ -29,6 +30,7 @@ export default function StaffSettingsPage() {
   const [emailGatewayUrl, setEmailGatewayUrl] = useState("");
   const [emailGatewayAuth, setEmailGatewayAuth] = useState("");
   const [emailGatewayFrom, setEmailGatewayFrom] = useState("");
+  const [bookingNotifyEmail, setBookingNotifyEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
   const [smsTestTo, setSmsTestTo] = useState("");
@@ -54,6 +56,7 @@ export default function StaffSettingsPage() {
         setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
         setEmailGatewayUrl(data.settings.emailGatewayUrl || "");
         setEmailGatewayFrom(data.settings.emailGatewayFrom || "");
+        setBookingNotifyEmail(data.settings.bookingNotifyEmail || "");
       }
       if (data.staff) setStaff(data.staff);
     })();
@@ -70,6 +73,7 @@ export default function StaffSettingsPage() {
           telegramBotToken: token, telegramChatId: chatId, payLink,
           liqpayPublicKey, liqpayPrivateKey, externalIcsUrl,
           remindersEnabled, reminderLeadHours, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
+          bookingNotifyEmail,
         }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
@@ -263,6 +267,10 @@ export default function StaffSettingsPage() {
         <label><span>Адреса відправника e-mail</span>
           <input value={emailGatewayFrom} onChange={(e) => setEmailGatewayFrom(e.target.value)} placeholder="noreply@likarnya.example" autoComplete="off" inputMode="email" />
         </label>
+        <label><span>E-mail для нових заявок</span>
+          <input value={bookingNotifyEmail} onChange={(e) => setBookingNotifyEmail(e.target.value)} placeholder="reyestratura@likarnya.example" autoComplete="off" inputMode="email" />
+        </label>
+        <p className="settingsHint">Кожна нова онлайн-заявка одразу надсилається на цю адресу (потрібен налаштований e-mail-шлюз вище).</p>
         <label><span>Перевірка e-mail-шлюзу</span>
           <input value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} placeholder="admin@likarnya.example" autoComplete="off" inputMode="email" />
           <small>Введіть адресу й натисніть «Тест», щоб надіслати пробний лист через збережений шлюз.</small>

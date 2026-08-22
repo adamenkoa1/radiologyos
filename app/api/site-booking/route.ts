@@ -5,6 +5,7 @@ import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { bookingMessage, sendTelegram } from "../../../lib/telegram";
+import { sendBookingEmail } from "../../../lib/booking-email";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
@@ -250,6 +251,15 @@ export async function POST(request: Request) {
       desiredDate: appointments[0].date,
       desiredTime: appointments[0].time,
     }), PUBLIC_ORGANIZATION_ID).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
+
+    // E-mail the registrar when an e-mail gateway + recipient are configured.
+    await sendBookingEmail(db, PUBLIC_ORGANIZATION_ID, {
+      codes, name, phone, category, comment,
+      items: services.map((service, index) => ({
+        code: service!.code, title: service!.title,
+        date: appointments[index].date, time: appointments[index].time,
+      })),
+    });
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {
