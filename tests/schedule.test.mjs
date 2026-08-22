@@ -97,3 +97,24 @@ test("schedule editor and admin API are tenant-scoped and guarded", async () => 
   const shell = await read("app/staff/workspace-shell.tsx");
   assert.match(shell, /href:"\/staff\/schedule"/);
 });
+
+test("the schedule calendar can block a specific time interval (equipment_blocks)", async () => {
+  // Backend: availability already excludes blocked intervals.
+  const availability = await read("app/api/availability/route.ts");
+  assert.match(availability, /FROM equipment_blocks/);
+  assert.match(availability, /const blocked = blocks\.results\.some/);
+
+  // Admin-only CRUD for blocks.
+  const equip = await read("app/api/staff/equipment/route.ts");
+  assert.match(equip, /INSERT INTO equipment_blocks/);
+  assert.match(equip, /DELETE FROM equipment_blocks WHERE organization_id = \? AND id = \?/);
+  assert.match(equip, /ctx\.role !== "admin"/);
+
+  // Schedule page exposes the block controls wired to /api/staff/equipment.
+  const page = await read("app/staff/schedule/page.tsx");
+  assert.match(page, /function addBlock/);
+  assert.match(page, /function removeBlock/);
+  assert.match(page, /fetch\("\/api\/staff\/equipment"/);
+  assert.match(page, /Заблокувати час/);
+  assert.match(page, /blockedDate: selectedDate/);
+});
