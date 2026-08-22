@@ -190,6 +190,20 @@ test("site-payment builds a signed LiqPay checkout with a server-side amount, or
   assert.match(lib, /SHA-1/);
 });
 
+test("the booking form caches the patient's details and prefills them next time", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  // Details are persisted across visits in localStorage on submit…
+  assert.match(bridge, /const PATIENT_CACHE_KEY = 'radiologyos_patient_v1'/);
+  assert.match(bridge, /localStorage\.setItem\(PATIENT_CACHE_KEY/);
+  assert.match(bridge, /rememberPatient\(phone, dob, name\)/);
+  // …and prefilled back into the form (before the DOB dropdowns are built).
+  assert.match(bridge, /function prefillPatientForm/);
+  assert.match(bridge, /prefillPatientForm\(\);\s*\n\s*prepareIdentityFields/);
+  // The cabinet login prefills phone + DOB from the same cache.
+  const cabinet = await read("public/site/cabinet.html");
+  assert.match(cabinet, /localStorage\.getItem\('radiologyos_patient_v1'\)/);
+});
+
 test("the military free-booking form saves to D1 as category 'military'", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('militaryRequestForm'\)/);

@@ -131,16 +131,39 @@
     }
   }
 
-  function rememberPatient(phone, dob) {
+  // Persist the patient's own details so the next visit prefills automatically.
+  // sessionStorage carries the cabinet auto-enter hint; localStorage keeps the
+  // details across sessions on this device.
+  const PATIENT_CACHE_KEY = 'radiologyos_patient_v1';
+  function rememberPatient(phone, dob, name) {
+    const phone9 = String(phone).replace(/\D/g, '').slice(-9);
     try {
-      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify({
-        phone: String(phone).replace(/\D/g, '').slice(-9),
-        dob: String(dob || ''),
-        autoEnter: true,
-      }));
+      sessionStorage.setItem(PATIENT_PREFILL_KEY, JSON.stringify({ phone: phone9, dob: String(dob || ''), autoEnter: true }));
     } catch (e) { /* приватний режим може блокувати storage */ }
+    try {
+      localStorage.setItem(PATIENT_CACHE_KEY, JSON.stringify({ name: String(name || '').trim(), phone: phone9, dob: String(dob || '') }));
+    } catch (e) { /* ignore */ }
   }
 
+  function readPatientCache() {
+    try { return JSON.parse(localStorage.getItem(PATIENT_CACHE_KEY) || 'null') || {}; }
+    catch (e) { return {}; }
+  }
+
+  // Prefill the booking form from the cached details (only empty fields).
+  // Must run before prepareIdentityFields so the date-of-birth dropdowns pick
+  // up the saved value.
+  function prefillPatientForm() {
+    const c = readPatientCache();
+    const phone9 = String(c.phone || '').replace(/\D/g, '').slice(-9);
+    const dob = /^\d{4}-\d{2}-\d{2}$/.test(String(c.dob || '')) ? c.dob : '';
+    const set = (id, value) => { const el = document.getElementById(id); if (el && value && !el.value) el.value = value; };
+    set('patientName', c.name); set('militaryPatientName', c.name);
+    set('patientPhone', phone9); set('militaryPatientPhone', phone9);
+    set('patientDob', dob); set('militaryPatientDob', dob);
+  }
+
+  prefillPatientForm();
   prepareIdentityFields('patientName', 'patientDob');
   prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
@@ -279,7 +302,7 @@
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        rememberPatient(phone, dob);
+        rememberPatient(phone, dob, name);
         try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
         showCivilSuccess(result);
       } catch (error) {
@@ -324,7 +347,7 @@
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        rememberPatient(phone, dob);
+        rememberPatient(phone, dob, name);
         try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
         window.location.assign('/site/cabinet.html?new=1');
       } catch (error) {
