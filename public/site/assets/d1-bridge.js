@@ -165,33 +165,10 @@
     return data;
   }
 
-  // Fill the confirmation screen's payment block from the department pay link.
-  async function populatePayBlock() {
-    const block = document.getElementById('payBlock');
-    if (!block) return;
-    try {
-      const res = await fetch('/api/pay-link', { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
-      const link = (data && data.payLink) || '';
-      if (!link) { block.hidden = true; return; }
-      const btn = document.getElementById('payBtn');
-      // The button must be a real link; a raw bank-QR payload is scan-only.
-      if (btn) {
-        if (/^https?:\/\//i.test(link)) { btn.href = link; btn.hidden = false; }
-        else { btn.removeAttribute('href'); btn.hidden = true; }
-      }
-      const qrBox = document.getElementById('payQr');
-      if (qrBox && typeof qrcode === 'function') {
-        try { const qr = qrcode(0, 'M'); qr.addData(link); qr.make(); qrBox.innerHTML = qr.createImgTag(4, 6); }
-        catch (e) { qrBox.innerHTML = ''; }
-      }
-      block.hidden = false;
-    } catch (e) { /* leave hidden on failure */ }
-  }
-
   // Civilian confirmation stays inside the drawer and offers payment right here:
-  // the pay button/QR redirect to the department PrivatBank link (see /api/pay-link).
-  // The cabinet remains one tap away for the exact amount and status.
+  // the pay button/QR go through /api/site-payment (LiqPay checkout with the exact
+  // amount when keys are set, static PrivatBank QR otherwise). The cabinet remains
+  // one tap away for the exact amount and status.
   function showCivilSuccess(result) {
     const panel = document.getElementById('successPanel');
     const form = document.getElementById('requestForm');
@@ -212,8 +189,30 @@
     if (totalRow) totalRow.style.display = 'none';
     const itemsBox = document.getElementById('cartItems');
     if (itemsBox) itemsBox.style.display = 'none';
-    populatePayBlock();
+    const codes = (result && Array.isArray(result.codes) && result.codes.length)
+      ? result.codes
+      : (result && result.code ? [result.code] : []);
+    wirePayButton(codes);
     try { if (typeof saveCart === 'function') { cart = []; saveCart(); } } catch (e) {}
+  }
+
+  // Point the confirmation's pay button/QR at /api/site-payment for these codes:
+  // it serves the LiqPay checkout with the exact amount when keys are set, or
+  // redirects to the department's static PrivatBank QR otherwise.
+  function wirePayButton(codes) {
+    const block = document.getElementById('payBlock');
+    if (!block) return;
+    const list = (codes || []).filter(Boolean).map(String);
+    if (!list.length) { block.hidden = true; return; }
+    const payUrl = location.origin + '/api/site-payment?codes=' + encodeURIComponent(list.join(','));
+    const btn = document.getElementById('payBtn');
+    if (btn) { btn.href = payUrl; btn.hidden = false; }
+    const qrBox = document.getElementById('payQr');
+    if (qrBox && typeof qrcode === 'function') {
+      try { const qr = qrcode(0, 'M'); qr.addData(payUrl); qr.make(); qrBox.innerHTML = qr.createImgTag(4, 6); }
+      catch (e) { qrBox.innerHTML = ''; }
+    }
+    block.hidden = false;
   }
 
   async function applyPublicServiceAvailability() {
