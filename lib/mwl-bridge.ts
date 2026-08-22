@@ -1,4 +1,4 @@
-const RF_SERVICE_CODES = new Set(["301", "302", "303"]);
+const RF_SERVICE_CODES = new Set(["301", "302"]);
 
 export type MwlFeedItem = {
   scheduledProcedureStepId: string;
