@@ -42,7 +42,21 @@ export async function sendBookingEmail(
     const cfg = await getOrganizationIntegrationSettings(db, organizationId, [
       "email_gateway_url", "email_gateway_auth", "email_gateway_from", "booking_notify_email",
     ]);
-    const to = cfg.booking_notify_email || "";
+    // Explicit recipient wins; otherwise fall back to the organization's active
+    // administrators ("send it to me, the admin") so it works with no extra setup.
+    let to = (cfg.booking_notify_email || "").trim();
+    if (!to) {
+      const admins = await db.prepare(
+        `SELECT m.member_email AS email FROM memberships m
+         JOIN staff_members s ON s.email = m.member_email
+         WHERE m.organization_id = ? AND m.role = 'admin' AND m.active = 1 AND s.active = 1
+         ORDER BY m.member_email LIMIT 5`,
+      ).bind(organizationId).all<{ email: string }>();
+      to = (admins.results || [])
+        .map((row) => (row.email || "").trim())
+        .filter((email) => /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email))
+        .join(", ");
+    }
     if (!cfg.email_gateway_url || !to) return false;
     const messaging = createMessagingProvider({
       sms: { url: "", auth: "" },

@@ -8,6 +8,8 @@ test("a new public booking e-mails the registrar when a gateway + recipient are 
   const lib = await read("lib/booking-email.ts");
   // Gated on both the e-mail gateway and a recipient; never throws.
   assert.match(lib, /"email_gateway_url", "email_gateway_auth", "email_gateway_from", "booking_notify_email"/);
+  // Falls back to the org's active administrators when no recipient is set.
+  assert.match(lib, /m\.role = 'admin' AND m\.active = 1 AND s\.active = 1/);
   assert.match(lib, /if \(!cfg\.email_gateway_url \|\| !to\) return false/);
   assert.match(lib, /messaging\.sendEmail\(to, subject, text\)/);
   assert.match(lib, /catch \(error\)/);

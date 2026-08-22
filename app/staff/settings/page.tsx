@@ -270,7 +270,7 @@ export default function StaffSettingsPage() {
         <label><span>E-mail для нових заявок</span>
           <input value={bookingNotifyEmail} onChange={(e) => setBookingNotifyEmail(e.target.value)} placeholder="reyestratura@likarnya.example" autoComplete="off" inputMode="email" />
         </label>
-        <p className="settingsHint">Кожна нова онлайн-заявка одразу надсилається на цю адресу (потрібен налаштований e-mail-шлюз вище).</p>
+        <p className="settingsHint">Кожна нова онлайн-заявка одразу надсилається на цю адресу. Якщо поле порожнє — лист іде на пошту адміністратора(ів). Потрібен налаштований e-mail-шлюз вище.</p>
         <label><span>Перевірка e-mail-шлюзу</span>
           <input value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} placeholder="admin@likarnya.example" autoComplete="off" inputMode="email" />
           <small>Введіть адресу й натисніть «Тест», щоб надіслати пробний лист через збережений шлюз.</small>
