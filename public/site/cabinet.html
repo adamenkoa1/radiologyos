@@ -73,6 +73,7 @@ function clearError(){errorBox.textContent='';errorBox.classList.remove('show')}
 function adultDobLimit(){const today=new Date();const limit=new Date(today.getFullYear()-18,today.getMonth(),today.getDate());return `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,'0')}-${String(limit.getDate()).padStart(2,'0')}`}
 document.getElementById('gateDob').max=adultDobLimit();
 try{const saved=JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY)||'null');if(saved&&/^\d{9}$/.test(String(saved.phone||'')))document.getElementById('gatePhone').value=saved.phone;if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob||'')))document.getElementById('gateDob').value=saved.dob}catch(e){}
+try{const p=JSON.parse(localStorage.getItem('radiologyos_patient_v1')||'null');if(p){const ph=String(p.phone||'').replace(/\D/g,'').slice(-9);if(ph&&/^\d{9}$/.test(ph)&&!document.getElementById('gatePhone').value)document.getElementById('gatePhone').value=ph;if(/^\d{4}-\d{2}-\d{2}$/.test(String(p.dob||''))&&!document.getElementById('gateDob').value)document.getElementById('gateDob').value=p.dob}}catch(e){}
 try{const last=JSON.parse(sessionStorage.getItem('radiologyos_last_booking_v1')||'null');const c=last&&(Array.isArray(last.codes)&&last.codes.length?last.codes[0]:last.code);if(c&&!document.getElementById('gateCode').value)document.getElementById('gateCode').value=String(c)}catch(e){}
 
 function cardHtml(b){
