@@ -148,6 +148,27 @@ test("civilian public request offers an optional preferred-time picker (not forc
   assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
 });
 
+test("a civilian booking offers PrivatBank payment right in the drawer, not only in the cabinet", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  // Civilian submit shows the in-drawer success/pay step instead of a blind cabinet redirect.
+  assert.match(bridge, /showCivilSuccess\(result\)/);
+  assert.match(bridge, /function showCivilSuccess/);
+  // That step reveals the pay block, which pulls the PrivatBank link from /api/pay-link.
+  assert.match(bridge, /populatePayBlock\(\)/);
+  assert.match(bridge, /\/api\/pay-link/);
+  // The pay button is a real https link (redirects to PrivatBank) and there is a QR fallback.
+  assert.match(bridge, /if \(\/\^https\?:/);
+  // The default destination is a real Privat24 pay link.
+  const route = await read("app/api/pay-link/route.ts");
+  assert.match(route, /privatbank\.ua/);
+  // The confirmation markup carries the PrivatBank pay button on both civilian pages.
+  for (const page of ["public/site/index.html", "public/site/price.html"]) {
+    const html = await read(page);
+    assert.match(html, /id="payBtn"[\s\S]*ПриватБанк/);
+    assert.match(html, /id="payBlock"/);
+  }
+});
+
 test("the military free-booking form saves to D1 as category 'military'", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('militaryRequestForm'\)/);

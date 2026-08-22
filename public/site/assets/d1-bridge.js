@@ -189,6 +189,33 @@
     } catch (e) { /* leave hidden on failure */ }
   }
 
+  // Civilian confirmation stays inside the drawer and offers payment right here:
+  // the pay button/QR redirect to the department PrivatBank link (see /api/pay-link).
+  // The cabinet remains one tap away for the exact amount and status.
+  function showCivilSuccess(result) {
+    const panel = document.getElementById('successPanel');
+    const form = document.getElementById('requestForm');
+    if (!panel || !form) { window.location.assign('/site/cabinet.html?new=1'); return; }
+    const totalText = (document.getElementById('cartTotal') || {}).textContent || '';
+    const summary = document.getElementById('successSummary');
+    if (summary) {
+      const codes = (result && Array.isArray(result.codes) && result.codes.length)
+        ? result.codes.join(', ')
+        : ((result && result.code) || '');
+      summary.innerHTML =
+        (codes ? `<div>Номер заявки: <strong>${codes}</strong></div>` : '') +
+        (totalText ? `<div style="margin-top:4px">До сплати: <strong>${totalText}</strong></div>` : '');
+    }
+    form.hidden = true;
+    panel.hidden = false;
+    const totalRow = document.querySelector('.cart-total');
+    if (totalRow) totalRow.style.display = 'none';
+    const itemsBox = document.getElementById('cartItems');
+    if (itemsBox) itemsBox.style.display = 'none';
+    populatePayBlock();
+    try { if (typeof saveCart === 'function') { cart = []; saveCart(); } } catch (e) {}
+  }
+
   async function applyPublicServiceAvailability() {
     try {
       const response = await fetch('/api/public-services', { cache: 'no-store' });
@@ -255,7 +282,7 @@
         if (submitBtn) delete submitBtn.dataset.idempotencyKey;
         rememberPatient(phone, dob);
         try { sessionStorage.setItem('radiologyos_last_booking_v1', JSON.stringify(result)); } catch (e) {}
-        window.location.assign('/site/cabinet.html?new=1');
+        showCivilSuccess(result);
       } catch (error) {
         if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
         alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');
