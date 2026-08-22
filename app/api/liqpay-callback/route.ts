@@ -73,7 +73,7 @@ export async function POST(request: Request) {
         actor: "online:liqpay",
       });
       await recordAnalyticsEvent(db, {
-        eventName: "payment_settled",
+        eventName: "payment_completed",
         organizationId: PUBLIC_ORGANIZATION_ID,
         serviceCode: row.serviceCode,
         patientCategory: "civilian",
