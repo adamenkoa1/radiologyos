@@ -24,11 +24,12 @@ header{padding:0 14px;margin-bottom:18px}.header-row{width:min(760px,100%);margi
   <div class="card gate" id="gate">
     <div id="identityStep">
       <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-      <p>Вкажіть номер телефону та дату народження. Після цього ми надішлемо одноразовий SMS-код.</p>
+      <p>Вкажіть номер телефону, дату народження та номер заявки (RD-…), який ви отримали після запису.</p>
       <div class="phone-wrap"><span class="phone-prefix">+380</span><input id="gatePhone" inputmode="numeric" maxlength="9" autocomplete="tel-national" placeholder="97 000 00 00" aria-label="Номер телефону"/></div>
       <div class="field"><label for="gateDob">Дата народження</label><input id="gateDob" type="date" min="1900-01-01" autocomplete="bday"/></div>
-      <button class="btn" id="requestOtpBtn" type="button">Отримати код</button>
-      <div class="gate-note">Медичні результати не відкриваються лише за номером телефону, датою народження або номером заявки.</div>
+      <div class="field"><label for="gateCode">Номер заявки</label><input id="gateCode" autocomplete="off" placeholder="RD-000000-000" aria-label="Номер заявки"/></div>
+      <button class="btn" id="requestOtpBtn" type="button">Увійти до кабінету</button>
+      <div class="gate-note">Номер заявки знають лише ви — це підтвердження, що запис справді ваш. Медичні результати не відкриваються лише за номером телефону чи датою народження.</div>
     </div>
     <div class="otp-step" id="otpStep" hidden>
       <h1 style="margin:0;font-size:20px">Підтвердження номера</h1>
@@ -54,6 +55,7 @@ const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
 const PROTOCOL_API = '/api/my-protocol';
 const OTP_API = '/api/patient-otp';
+const LOGIN_API = '/api/patient-login';
 const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 const statusMeta = {
   new:{badge:'new',label:'Заявку отримано'},requested:{badge:'new',label:'Заявка'},needs_verification:{badge:'new',label:'Потребує перевірки'},scheduled:{badge:'booked',label:'Заплановано'},confirmed:{badge:'booked',label:'Підтверджена'},rescheduled:{badge:'booked',label:'Перенесена'},arrived:{badge:'booked',label:'Прибуття'},queued:{badge:'booked',label:'У черзі'},in_progress:{badge:'booked',label:'Виконується'},performed:{badge:'booked',label:'Виконано'},images_ready:{badge:'booked',label:'Зображення готові'},reporting:{badge:'booked',label:'Готуємо висновок'},protocol_ready:{badge:'done',label:'Протокол готовий'},issued:{badge:'done',label:'Видано'},completed:{badge:'done',label:'Виконана'},cancelled:{badge:'cancelled',label:'Скасована'},no_show:{badge:'cancelled',label:'Неявка'}
@@ -71,6 +73,7 @@ function clearError(){errorBox.textContent='';errorBox.classList.remove('show')}
 function adultDobLimit(){const today=new Date();const limit=new Date(today.getFullYear()-18,today.getMonth(),today.getDate());return `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,'0')}-${String(limit.getDate()).padStart(2,'0')}`}
 document.getElementById('gateDob').max=adultDobLimit();
 try{const saved=JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY)||'null');if(saved&&/^\d{9}$/.test(String(saved.phone||'')))document.getElementById('gatePhone').value=saved.phone;if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob||'')))document.getElementById('gateDob').value=saved.dob}catch(e){}
+try{const last=JSON.parse(sessionStorage.getItem('radiologyos_last_booking_v1')||'null');const c=last&&(Array.isArray(last.codes)&&last.codes.length?last.codes[0]:last.code);if(c&&!document.getElementById('gateCode').value)document.getElementById('gateCode').value=String(c)}catch(e){}
 
 function cardHtml(b){
   const meta=statusMeta[b.status]||{badge:'new',label:b.status};
@@ -97,8 +100,8 @@ async function loadBookings(){
 }
 
 async function requestOtp(){
-  clearError();const digits=document.getElementById('gatePhone').value.replace(/\D/g,'');const dob=document.getElementById('gateDob').value.trim();if(digits.length!==9){showError('Введіть 9 цифр номера');return}if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)){showError('Вкажіть дату народження');return}
-  const btn=document.getElementById('requestOtpBtn');btn.disabled=true;phoneDigits=digits;dobValue=dob;try{const res=await fetch(OTP_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone:'+380'+digits,dob})});const data=await res.json().catch(()=>({}));if(!res.ok){showError(data.error||'Не вдалося надіслати код');return}challengeId=data.challengeId||'';if(!challengeId){showError('Не вдалося створити перевірку');return}identityStep.hidden=true;otpStep.hidden=false;document.getElementById('otpMessage').textContent=data.message||'Введіть 6 цифр із SMS. Код діє 5 хвилин.';document.getElementById('otpCode').focus()}catch(e){showError('Помилка мережі — спробуйте ще раз.')}finally{btn.disabled=false}
+  clearError();const digits=document.getElementById('gatePhone').value.replace(/\D/g,'');const dob=document.getElementById('gateDob').value.trim();const code=document.getElementById('gateCode').value.trim().toUpperCase();if(digits.length!==9){showError('Введіть 9 цифр номера');return}if(!/^\d{4}-\d{2}-\d{2}$/.test(dob)){showError('Вкажіть дату народження');return}if(!code){showError('Вкажіть номер заявки (RD-…)');return}
+  const btn=document.getElementById('requestOtpBtn');btn.disabled=true;phoneDigits=digits;dobValue=dob;try{const res=await fetch(LOGIN_API,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phone:'+380'+digits,dob,bookingCode:code})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){showError(data.error||'Не вдалося увійти');return}document.getElementById('cabPhone').textContent='+380 '+digits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');const loaded=await loadBookings();if(loaded){gate.hidden=true;cabinet.hidden=false;document.getElementById('tgConnect').hidden=false;try{sessionStorage.setItem(PATIENT_PREFILL_KEY,JSON.stringify({phone:digits,dob,autoEnter:false}))}catch(e){}}}catch(e){showError('Помилка мережі — спробуйте ще раз.')}finally{btn.disabled=false}
 }
 async function verifyOtp(){
   clearError();const code=document.getElementById('otpCode').value.replace(/\D/g,'');if(code.length!==6){showError('Введіть 6 цифр коду підтвердження');return}const btn=document.getElementById('verifyOtpBtn');btn.disabled=true;try{const res=await fetch(OTP_API,{method:'PATCH',headers:{'content-type':'application/json'},body:JSON.stringify({phone:'+380'+phoneDigits,challengeId,code})});const data=await res.json().catch(()=>({}));if(!res.ok||!data.ok){showError(data.error||'Не вдалося підтвердити код');return}document.getElementById('cabPhone').textContent='+380 '+phoneDigits.replace(/(\d{2})(\d{3})(\d{2})(\d{2})/,'$1 $2 $3 $4');const loaded=await loadBookings();if(loaded){gate.hidden=true;cabinet.hidden=false;document.getElementById('tgConnect').hidden=false;try{sessionStorage.setItem(PATIENT_PREFILL_KEY,JSON.stringify({phone:phoneDigits,dob:dobValue,autoEnter:false}))}catch(e){}}}finally{btn.disabled=false}
