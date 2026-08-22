@@ -8,7 +8,15 @@ export type ServiceConfigRecord = {
   military: boolean;
   civilian: boolean;
   requiresBooking: boolean;
+  // Optional per-service overrides of the catalog wording. Absent/empty ⇒ the
+  // catalog default (from Наказ №265) is used. Present ⇒ shown everywhere the
+  // effective service is resolved (booking, cabinet, public price sync).
+  title?: string;
+  description?: string;
 };
+
+const TITLE_MAX = 120;
+const DESCRIPTION_MAX = 400;
 
 export type ConfiguredService = Service & Omit<ServiceConfigRecord, "code">;
 
@@ -51,6 +59,12 @@ export function validateServiceConfig(input: unknown): string {
         return `Некоректна тривалість для послуги ${code}`;
       }
     }
+    if (row.title != null && (typeof row.title !== "string" || row.title.length > TITLE_MAX)) {
+      return `Некоректна назва для послуги ${code}`;
+    }
+    if (row.description != null && (typeof row.description !== "string" || row.description.length > DESCRIPTION_MAX)) {
+      return `Некоректний опис для послуги ${code}`;
+    }
   }
   return "";
 }
@@ -61,6 +75,10 @@ export function sanitizeServiceConfig(input: unknown): ServiceConfigRecord[] {
     const source = rows.find((row) => row && typeof row === "object" && String((row as { code?: unknown }).code || "") === base.code) as Partial<ServiceConfigRecord> | undefined;
     const equipmentId = EQUIPMENT_IDS.has(source?.equipmentId as EquipmentType) ? source!.equipmentId as EquipmentType : base.equipmentId;
     const duration = Number(source?.durationMinutes);
+    // Keep title/description only when a non-empty override is provided, so an
+    // empty field cleanly falls back to the catalog wording.
+    const title = typeof source?.title === "string" ? source.title.trim().slice(0, TITLE_MAX) : "";
+    const description = typeof source?.description === "string" ? source.description.trim().slice(0, DESCRIPTION_MAX) : "";
     return {
       code: base.code,
       equipmentId,
@@ -69,6 +87,8 @@ export function sanitizeServiceConfig(input: unknown): ServiceConfigRecord[] {
       military: typeof source?.military === "boolean" ? source.military : base.military,
       civilian: typeof source?.civilian === "boolean" ? source.civilian : base.civilian,
       requiresBooking: typeof source?.requiresBooking === "boolean" ? source.requiresBooking : base.requiresBooking,
+      ...(title ? { title } : {}),
+      ...(description ? { description } : {}),
     };
   });
 }

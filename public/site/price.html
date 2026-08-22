@@ -534,15 +534,21 @@ body{background:#f3f6f8}
 (function(){
   var fmt=new Intl.NumberFormat('uk-UA');
   fetch('/api/tariffs',{cache:'no-store'}).then(function(r){return r.json();}).then(function(d){
-    var prices=(d&&d.prices)||{};
-    if(!prices||!Object.keys(prices).length)return;
+    var prices=(d&&d.prices)||{},titles=(d&&d.titles)||{},descs=(d&&d.descriptions)||{};
+    if(!Object.keys(prices).length&&!Object.keys(titles).length)return;
     document.querySelectorAll('table tr').forEach(function(tr){
       var codeCell=tr.querySelector('td.code');if(!codeCell)return;
       var code=codeCell.textContent.trim();
+      // Effective wording (name / "що входить") from the staff Тарифи panel.
+      var titleEl=tr.querySelector('.service-title');if(titleEl&&titles[code])titleEl.textContent=titles[code];
+      var helpEl=tr.querySelector('.service-help');if(helpEl&&descs[code])helpEl.textContent=descs[code];
       if(prices[code]==null)return;
       var cells=[].slice.call(tr.querySelectorAll('td'));
       var priceCell=cells.filter(function(td){return /грн/.test(td.textContent);})[0];
       if(priceCell)priceCell.textContent=fmt.format(prices[code])+' грн';
+      // Keep the add-to-cart button (drawer label + estimate) in sync.
+      var btn=tr.querySelector('button.row-add');
+      if(btn){var t=titles[code]||(titleEl?titleEl.textContent:code);btn.setAttribute('onclick','addToCart(\''+code+'\','+JSON.stringify(t)+','+prices[code]+')');}
     });
   }).catch(function(){});
 })();
