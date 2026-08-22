@@ -119,7 +119,8 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /assets\/notify\.js/);
   const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /До сплати/);
+  // One clear pay CTA showing the amount, plus the exact transfer purpose.
+  assert.match(cabinet, /Сплатити \$\{esc\(money\(b\.paymentAmount\)\)\} грн/);
   assert.match(cabinet, /const paymentPurpose = `Сплата за медичні послуги, заявка \$\{b\.code\}/);
 });
 
@@ -130,9 +131,10 @@ test("the payment QR renders on the site and in the cabinet, pointing at /api/si
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  // The cabinet QR and card button pay through the auto-amount endpoint for the booking code.
-  assert.match(cabinet, /payQrImg\(location\.origin\+'\/api\/site-payment\?codes='/);
-  assert.match(cabinet, /data-open-payment data-url="\$\{esc\(location\.origin\+'\/api\/site-payment\?codes='/);
+  // The cabinet QR and pay button both go through the auto-amount endpoint (payUrl).
+  assert.match(cabinet, /const payUrl = location\.origin\+'\/api\/site-payment\?codes='\+encodeURIComponent\(b\.code\)/);
+  assert.match(cabinet, /payQrImg\(payUrl\)/);
+  assert.match(cabinet, /data-open-payment data-url="\$\{esc\(payUrl\)\}"/);
 });
 
 test("civilian public request offers an optional preferred-time picker (not forced)", async () => {

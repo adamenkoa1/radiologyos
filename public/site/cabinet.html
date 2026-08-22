@@ -24,12 +24,12 @@ header{padding:0 14px;margin-bottom:18px}.header-row{width:min(760px,100%);margi
   <div class="card gate" id="gate">
     <div id="identityStep">
       <h1 style="margin:0;font-size:20px">Вхід до кабінету</h1>
-      <p>Вкажіть номер телефону, дату народження та номер заявки (RD-…), який ви отримали після запису.</p>
+      <p>Вхід за номером телефону, датою народження та номером заявки (RD-…).</p>
       <div class="phone-wrap"><span class="phone-prefix">+380</span><input id="gatePhone" inputmode="numeric" maxlength="9" autocomplete="tel-national" placeholder="97 000 00 00" aria-label="Номер телефону"/></div>
       <div class="field"><label for="gateDob">Дата народження</label><input id="gateDob" type="date" min="1900-01-01" autocomplete="bday"/></div>
       <div class="field"><label for="gateCode">Номер заявки</label><input id="gateCode" autocomplete="off" placeholder="RD-000000-000" aria-label="Номер заявки"/></div>
       <button class="btn" id="requestOtpBtn" type="button">Увійти до кабінету</button>
-      <div class="gate-note">Номер заявки знають лише ви — це підтвердження, що запис справді ваш. Медичні результати не відкриваються лише за номером телефону чи датою народження.</div>
+      <div class="gate-note">Номер заявки знаєте лише ви — це підтвердження, що запис ваш.</div>
     </div>
     <div class="otp-step" id="otpStep" hidden>
       <h1 style="margin:0;font-size:20px">Підтвердження номера</h1>
@@ -84,9 +84,10 @@ function cardHtml(b){
   const awaitingPayment=b.paymentStatus==='pending'&&Number(b.paymentAmount)>0&&b.status!=='cancelled'&&b.status!=='completed';
   const serviceWithCode=[b.serviceCode,b.service].filter(Boolean).join(' · ');
   const paymentPurpose = `Сплата за медичні послуги, заявка ${b.code}${b.serviceCode ? ', код ' + b.serviceCode : ''}: ${b.service}`;
+  const payUrl = location.origin+'/api/site-payment?codes='+encodeURIComponent(b.code);
   return `<div class="card app-card" id="card-${esc(b.code)}"><div class="app-top"><div><div class="app-study">${esc(b.service)}</div><div class="app-meta"><b>№ заявки: ${esc(b.code)}</b>${org}${when?' · '+when:''}</div></div><span class="badge ${meta.badge}">${esc(badgeLabel)}</span></div>
   ${(b.status!=='cancelled'&&b.status!=='completed')?`<div class="bring-note">🪪 Візьміть із собою: ${b.category === 'military' ? 'направлення та ' : ''}документ, що посвідчує особу.</div>`:''}
-  ${awaitingPayment?`<div class="pay-row">💳 До сплати: <strong>${esc(money(b.paymentAmount))} грн</strong></div><button class="btn secondary" type="button" data-pay-toggle="${esc(b.code)}">Сплатити</button><div class="payment-panel" id="payment-${esc(b.code)}" hidden><div class="payment-detail"><span>Послуга</span><b>${esc(serviceWithCode)}</b><button class="copy-one" data-copy-value="${esc(serviceWithCode)}">Копіювати</button></div><div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div><div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div><div class="pay-qr" style="text-align:center;margin:12px 0 8px">${payQrImg(location.origin+'/api/site-payment?codes='+encodeURIComponent(b.code))}</div><button class="btn" type="button" data-open-payment data-url="${esc(location.origin+'/api/site-payment?codes='+encodeURIComponent(b.code))}">Сплатити карткою будь-якого банку</button></div>`:''}
+  ${awaitingPayment?`<button class="btn" type="button" data-open-payment data-url="${esc(payUrl)}">💳 Сплатити ${esc(money(b.paymentAmount))} грн</button><button class="btn secondary" type="button" data-pay-toggle="${esc(b.code)}">Оплата переказом / QR</button><div class="payment-panel" id="payment-${esc(b.code)}" hidden><div class="pay-qr" style="text-align:center;margin:0 0 12px">${payQrImg(payUrl)}</div><div class="payment-detail"><span>Сума</span><b>${esc(money(b.paymentAmount))} грн</b><button class="copy-one" data-copy-value="${esc(money(b.paymentAmount))}">Копіювати</button></div><div class="payment-detail"><span>Призначення</span><b>${esc(paymentPurpose)}</b><button class="copy-one" data-copy-value="${esc(paymentPurpose)}">Копіювати</button></div></div>`:''}
   <div class="actions">${b.hasProtocol?`<button class="btn secondary" type="button" data-protocol="${esc(b.code)}">Переглянути протокол</button>`:''}${canCancel?`<button class="btn danger" type="button" data-cancel="${esc(b.code)}">Скасувати заявку</button>`:''}</div><div class="protocol" id="prot-${esc(b.code)}"></div></div>`;
 }
 function studyWord(n){const t=n%10,h=n%100;return(t===1&&h!==11)?'дослідження':(t>=2&&t<=4&&(h<12||h>14))?'дослідження':'досліджень'}
