@@ -113,7 +113,9 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   const route = await read("app/api/pay-link/route.ts");
   assert.match(route, /pay_link/);
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /\/api\/pay-link/);
+  // The site pays through /api/site-payment (server-side amount), never a hardcoded link.
+  assert.match(bridge, /\/api\/site-payment/);
+  assert.doesNotMatch(bridge, /privatbank\.ua|liqpay\.ua/);
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /assets\/notify\.js/);
   const cabinet = await read("public/site/cabinet.html");
@@ -121,16 +123,16 @@ test("payment link is served publicly and used by the site, not hardcoded", asyn
   assert.match(cabinet, /const paymentPurpose = `Сплата за медичні послуги, заявка \$\{b\.code\}/);
 });
 
-test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
+test("the payment QR renders on the site and in the cabinet, pointing at /api/site-payment", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /if \(\/\^https\?:/);
-  assert.match(bridge, /btn\.removeAttribute\('href'\); btn\.hidden = true/);
   assert.match(bridge, /qr\.createImgTag/);
+  assert.match(bridge, /\/api\/site-payment\?codes=/);
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  assert.match(cabinet, /payLink \? `<div class="pay-qr"/);
-  assert.match(cabinet, /isPayUrl\(payLink\)/);
+  // The cabinet QR and card button pay through the auto-amount endpoint for the booking code.
+  assert.match(cabinet, /payQrImg\(location\.origin\+'\/api\/site-payment\?codes='/);
+  assert.match(cabinet, /data-open-payment data-url="\$\{esc\(location\.origin\+'\/api\/site-payment\?codes='/);
 });
 
 test("civilian public request offers an optional preferred-time picker (not forced)", async () => {
@@ -153,20 +155,37 @@ test("a civilian booking offers PrivatBank payment right in the drawer, not only
   // Civilian submit shows the in-drawer success/pay step instead of a blind cabinet redirect.
   assert.match(bridge, /showCivilSuccess\(result\)/);
   assert.match(bridge, /function showCivilSuccess/);
-  // That step reveals the pay block, which pulls the PrivatBank link from /api/pay-link.
-  assert.match(bridge, /populatePayBlock\(\)/);
-  assert.match(bridge, /\/api\/pay-link/);
-  // The pay button is a real https link (redirects to PrivatBank) and there is a QR fallback.
-  assert.match(bridge, /if \(\/\^https\?:/);
-  // The default destination is a real Privat24 pay link.
-  const route = await read("app/api/pay-link/route.ts");
-  assert.match(route, /privatbank\.ua/);
+  // The pay button/QR go through /api/site-payment for the booking codes.
+  assert.match(bridge, /function wirePayButton/);
+  assert.match(bridge, /\/api\/site-payment\?codes=/);
+  assert.match(bridge, /qr\.createImgTag/);
   // The confirmation markup carries the PrivatBank pay button on both civilian pages.
   for (const page of ["public/site/index.html", "public/site/price.html"]) {
     const html = await read(page);
     assert.match(html, /id="payBtn"[\s\S]*ПриватБанк/);
     assert.match(html, /id="payBlock"/);
   }
+});
+
+test("site-payment builds a signed LiqPay checkout with a server-side amount, or falls back to the static QR", async () => {
+  const route = await read("app/api/site-payment/route.ts");
+  // Amount comes from D1, never the query string.
+  assert.match(route, /SELECT[\s\S]*payment_amount AS amount[\s\S]*FROM bookings/);
+  assert.match(route, /row\.category === "civilian" && row\.amount > 0/);
+  assert.match(route, /buildLiqpayCheckout/);
+  assert.match(route, /LIQPAY_CHECKOUT_URL/);
+  // No keys → static PrivatBank fallback (previous behavior preserved).
+  assert.match(route, /if \(!publicKey \|\| !privateKey\) return staticFallback/);
+  // The callback settles paid bookings through the shared manual-payment ledger path.
+  const cb = await read("app/api/liqpay-callback/route.ts");
+  assert.match(cb, /verifyLiqpayCallback/);
+  assert.match(cb, /if \(!result\.paid\) return ok\(\)/);
+  assert.match(cb, /settleVerifiedProviderPayment/);
+  assert.match(cb, /payment_already_settled/);
+  // Signing/verification contract lives in lib/liqpay.
+  const lib = await read("lib/liqpay.ts");
+  assert.match(lib, /private_key.*data.*private_key|privateKey.*data.*privateKey/s);
+  assert.match(lib, /SHA-1/);
 });
 
 test("the military free-booking form saves to D1 as category 'military'", async () => {

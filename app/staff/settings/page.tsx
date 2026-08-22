@@ -6,6 +6,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = {
   telegramConfigured: boolean; telegramChatId: string; payLink: string;
+  liqpayPublicKey: string; liqpayPrivateKeySet: boolean; liqpayConfigured: boolean;
   calendarConfigured: boolean; calendarToken?: string; externalIcsUrl: string;
   remindersEnabled: boolean; reminderLeadHours: string; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
   emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
@@ -17,6 +18,8 @@ export default function StaffSettingsPage() {
   const [forbidden, setForbidden] = useState(false);
   const [chatId, setChatId] = useState("");
   const [payLink, setPayLink] = useState("");
+  const [liqpayPublicKey, setLiqpayPublicKey] = useState("");
+  const [liqpayPrivateKey, setLiqpayPrivateKey] = useState("");
   const [token, setToken] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
@@ -45,7 +48,7 @@ export default function StaffSettingsPage() {
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
       if (!active) return;
       if (data.settings) {
-        setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || "");
+        setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); setExternalIcsUrl(data.settings.externalIcsUrl || "");
         setRemindersEnabled(Boolean(data.settings.remindersEnabled));
         setReminderLeadHours(data.settings.reminderLeadHours || "3, 1");
         setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
@@ -64,14 +67,16 @@ export default function StaffSettingsPage() {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          telegramBotToken: token, telegramChatId: chatId, payLink, externalIcsUrl,
+          telegramBotToken: token, telegramChatId: chatId, payLink,
+          liqpayPublicKey, liqpayPrivateKey, externalIcsUrl,
           remindersEnabled, reminderLeadHours, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
         }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
-      if (data.settings) setSettings(data.settings);
+      if (data.settings) { setSettings(data.settings); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); }
       setToken("");
+      setLiqpayPrivateKey("");
       setSmsGatewayAuth("");
       setEmailGatewayAuth("");
       setNotice("Налаштування збережено");
@@ -171,6 +176,17 @@ export default function StaffSettingsPage() {
         <p>Посилання на оплату (напр. кнопка/QR «Оплатити частинами» або сторінка оплати ПриватБанку). Його побачать цивільні пацієнти після заявки та в кабінеті.</p>
         <label><span>Посилання на оплату</span>
           <input value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://…" autoComplete="off" inputMode="url" />
+        </label>
+        <h3 style={{ margin: "18px 0 4px" }}>LiqPay — автоматична сума</h3>
+        <p>Ключі мерчанта LiqPay (кабінет ПриватБанку). Коли їх заповнено, після заявки пацієнт переходить на оплату вже з підставленою сумою й номером заявки, а статус «Оплачено» проставляється автоматично. Без ключів працює звичайне посилання/QR вище.</p>
+        <span className={`settingsState ${settings?.liqpayConfigured ? "on" : "off"}`}>
+          {settings?.liqpayConfigured ? "✓ LiqPay підключено" : "LiqPay не підключено"}
+        </span>
+        <label><span>Public key</span>
+          <input value={liqpayPublicKey} onChange={(e) => setLiqpayPublicKey(e.target.value)} placeholder="i00000000000 або sandbox_i…" autoComplete="off" />
+        </label>
+        <label><span>Private key</span>
+          <input value={liqpayPrivateKey} onChange={(e) => setLiqpayPrivateKey(e.target.value)} type="password" placeholder={settings?.liqpayPrivateKeySet ? "Збережено — введіть, щоб змінити" : "приватний ключ LiqPay"} autoComplete="off" />
         </label>
       </section>
 

@@ -18,6 +18,7 @@ function clean(value: unknown, max: number) {
 
 const SETTING_KEYS = [
   "telegram_bot_token", "telegram_chat_id", "pay_link",
+  "liqpay_public_key", "liqpay_private_key",
   "calendar_token_hash", "external_ics_url",
   "patient_reminders_enabled", "sms_gateway_url", "sms_gateway_auth",
   "email_gateway_url", "email_gateway_auth", "email_gateway_from",
@@ -29,6 +30,9 @@ function settingsView(values: Record<string, string>) {
     telegramConfigured: Boolean(values.telegram_bot_token && values.telegram_chat_id),
     telegramChatId: values.telegram_chat_id,
     payLink: values.pay_link,
+    liqpayPublicKey: values.liqpay_public_key,
+    liqpayPrivateKeySet: Boolean(values.liqpay_private_key),
+    liqpayConfigured: Boolean(values.liqpay_public_key && values.liqpay_private_key),
     calendarConfigured: Boolean(values.calendar_token_hash),
     externalIcsUrl: values.external_ics_url,
     remindersEnabled: Boolean(values.patient_reminders_enabled),
@@ -68,12 +72,15 @@ export async function PUT(request: Request) {
 
   const body = await request.json().catch(() => ({})) as {
     telegramBotToken?: string; telegramChatId?: string; payLink?: string;
+    liqpayPublicKey?: string; liqpayPrivateKey?: string;
     externalIcsUrl?: string; remindersEnabled?: boolean; reminderLeadHours?: string;
     smsGatewayUrl?: string; smsGatewayAuth?: string;
     emailGatewayUrl?: string; emailGatewayAuth?: string; emailGatewayFrom?: string;
   };
   const chatId = clean(body.telegramChatId, 40);
   const payLink = clean(body.payLink, 500);
+  const liqpayPublicKey = clean(body.liqpayPublicKey, 120);
+  const liqpayPrivateKey = clean(body.liqpayPrivateKey, 120);
   const externalIcsUrl = clean(body.externalIcsUrl, 600);
   const smsGatewayUrl = clean(body.smsGatewayUrl, 600);
   const emailGatewayUrl = clean(body.emailGatewayUrl, 600);
@@ -102,6 +109,12 @@ export async function PUT(request: Request) {
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
+  if (liqpayPublicKey && liqpayPublicKey !== "-" && !/^(sandbox_)?[A-Za-z0-9_]{8,40}$/.test(liqpayPublicKey)) {
+    return Response.json({ error: "Некоректний публічний ключ LiqPay" }, { status: 400 });
+  }
+  if (liqpayPrivateKey && liqpayPrivateKey !== "-" && !/^(sandbox_)?[A-Za-z0-9_]{8,60}$/.test(liqpayPrivateKey)) {
+    return Response.json({ error: "Некоректний приватний ключ LiqPay" }, { status: 400 });
+  }
 
   const set = (key: string, value: string) =>
     setOrganizationIntegrationSetting(db, ctx.organizationId, key, value, ctx.member.email);
@@ -109,6 +122,10 @@ export async function PUT(request: Request) {
   else if (token) await set("telegram_bot_token", token);
   await set("telegram_chat_id", chatId);
   await set("pay_link", payLink);
+  if (liqpayPublicKey === "-") await set("liqpay_public_key", "");
+  else if (liqpayPublicKey) await set("liqpay_public_key", liqpayPublicKey);
+  if (liqpayPrivateKey === "-") await set("liqpay_private_key", "");
+  else if (liqpayPrivateKey) await set("liqpay_private_key", liqpayPrivateKey);
   await set("external_ics_url", externalIcsUrl);
   await set("patient_reminders_enabled", body.remindersEnabled ? "1" : "");
   await set(REMINDER_LEAD_KEY, parseLeadHours(clean(body.reminderLeadHours, 40)).join(", "));
