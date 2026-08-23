@@ -38,3 +38,13 @@ test("private hosts stay blocked unless deliberately allowlisted", () => {
   setAllowlist("10.0.0.5");
   assert.equal(safeOutboundUrl("https://10.0.0.5/dicom-web")?.hostname, "10.0.0.5");
 });
+
+test("reputable transactional e-mail/SMS providers are allowed without the env allowlist", () => {
+  // No env allowlist set (afterEach cleared it) — built-in providers still pass.
+  assert.equal(safeOutboundUrl("https://api.resend.com/emails")?.hostname, "api.resend.com");
+  assert.equal(safeOutboundUrl("https://api.sendgrid.com/v3/mail/send")?.hostname, "api.sendgrid.com");
+  // Arbitrary hosts remain blocked.
+  assert.equal(safeOutboundUrl("https://evil.example.test/steal"), null);
+  // Still no plaintext or embedded credentials, even for a built-in host.
+  assert.equal(safeOutboundUrl("http://api.resend.com/emails"), null);
+});
