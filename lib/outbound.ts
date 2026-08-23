@@ -69,7 +69,13 @@ export async function fetchLimited(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { ...init, redirect: "error", signal: controller.signal });
+    // "manual" (not "error") — the Cloudflare Workers runtime only accepts
+    // "follow"/"manual". We still refuse to follow redirects (SSRF guard):
+    // any 3xx / opaque redirect is treated as a failure.
+    const response = await fetch(url, { ...init, redirect: "manual", signal: controller.signal });
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      throw new Error("redirect_not_allowed");
+    }
     const length = Number(response.headers.get("content-length") || 0);
     if (length > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
     return response;
