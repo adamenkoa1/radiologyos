@@ -22,6 +22,7 @@ const SETTING_KEYS = [
   "calendar_token_hash", "external_ics_url",
   "patient_reminders_enabled", "sms_gateway_url", "sms_gateway_auth",
   "email_gateway_url", "email_gateway_auth", "email_gateway_from",
+  "booking_notify_email",
   REMINDER_LEAD_KEY,
 ];
 
@@ -42,6 +43,7 @@ function settingsView(values: Record<string, string>) {
     emailGatewayUrl: values.email_gateway_url,
     emailGatewayAuthSet: Boolean(values.email_gateway_auth),
     emailGatewayFrom: values.email_gateway_from,
+    bookingNotifyEmail: values.booking_notify_email,
   };
 }
 
@@ -76,8 +78,10 @@ export async function PUT(request: Request) {
     externalIcsUrl?: string; remindersEnabled?: boolean; reminderLeadHours?: string;
     smsGatewayUrl?: string; smsGatewayAuth?: string;
     emailGatewayUrl?: string; emailGatewayAuth?: string; emailGatewayFrom?: string;
+    bookingNotifyEmail?: string;
   };
   const chatId = clean(body.telegramChatId, 40);
+  const bookingNotifyEmail = clean(body.bookingNotifyEmail, 254);
   const payLink = clean(body.payLink, 500);
   const liqpayPublicKey = clean(body.liqpayPublicKey, 120);
   const liqpayPrivateKey = clean(body.liqpayPrivateKey, 120);
@@ -106,6 +110,9 @@ export async function PUT(request: Request) {
   if (emailGatewayFrom && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailGatewayFrom)) {
     return Response.json({ error: "Адреса відправника e-mail некоректна" }, { status: 400 });
   }
+  if (bookingNotifyEmail && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(bookingNotifyEmail)) {
+    return Response.json({ error: "Адреса для нових заявок некоректна" }, { status: 400 });
+  }
   if (token && token !== "-" && !/^\d{6,}:[A-Za-z0-9_-]{20,}$/.test(token)) {
     return Response.json({ error: "Некоректний токен бота Telegram" }, { status: 400 });
   }
@@ -132,6 +139,7 @@ export async function PUT(request: Request) {
   await set("sms_gateway_url", smsGatewayUrl);
   await set("email_gateway_url", emailGatewayUrl);
   await set("email_gateway_from", emailGatewayFrom);
+  await set("booking_notify_email", bookingNotifyEmail);
   if (smsAuth === "-") await set("sms_gateway_auth", "");
   else if (smsAuth) await set("sms_gateway_auth", smsAuth);
   if (emailAuth === "-") await set("email_gateway_auth", "");
