@@ -1,10 +1,27 @@
 const MAX_RESPONSE_BYTES = 1_000_000;
 
+// Reputable transactional e-mail / SMS provider APIs are always allowed, so an
+// administrator can point the messaging gateway at one without editing the
+// Cloudflare OUTBOUND_ALLOWED_HOSTS variable. This stays an allowlist — every
+// other host still requires the env var — and these are public provider HTTPS
+// APIs (no SSRF-to-internal exposure).
+const BUILT_IN_ALLOWED_HOSTS = [
+  "api.resend.com",
+  "api.sendgrid.com",
+  "api.mailgun.net",
+  "api.brevo.com",
+  "api.postmarkapp.com",
+  "api.elasticemail.com",
+  "api.turbosms.ua",
+];
+
 function allowedHosts(): Set<string> {
   const raw = (globalThis as typeof globalThis & {
     __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
   }).__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ || "";
-  return new Set(raw.split(",").map((host) => host.trim().toLowerCase()).filter(Boolean));
+  const hosts = new Set<string>(BUILT_IN_ALLOWED_HOSTS);
+  for (const host of raw.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean)) hosts.add(host);
+  return hosts;
 }
 
 function privateIpv4(hostname: string): boolean {
