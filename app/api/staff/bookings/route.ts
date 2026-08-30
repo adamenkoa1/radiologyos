@@ -10,7 +10,6 @@ import { canTransition, isStudyState, stateLabel } from "../../../../lib/study-s
 import {
   canManageBookings,
   canManageFinance,
-  canManageProtocols,
   canAccessBooking,
   canWriteNotes,
   type StaffRole,
@@ -415,54 +414,14 @@ export async function PATCH(request: Request) {
     });
   }
 
+  // `protocols` is the only clinical source of truth. Keep recognizing the
+  // legacy booking payload so stale clients fail closed with a controlled
+  // response instead of reaching the D1 projection guard and surfacing a 500.
   if (typeof body.protocolStatus === "string" || typeof body.protocolNumber === "string") {
-    if (!canManageProtocols(member.role)) {
-      return Response.json({ error: "Протоколи може змінювати лише лікар або адміністратор" }, { status: 403 });
-    }
-    const protocolStatuses = new Set(["not_started", "in_progress", "ready", "issued"]);
-    const protocolStatus = String(body.protocolStatus || "");
-    const protocolNumber = String(body.protocolNumber || "").trim().slice(0, 80);
-    if (!protocolStatuses.has(protocolStatus)) {
-      return Response.json({ error: "Некоректний статус протоколу" }, { status: 400 });
-    }
-    if ((protocolStatus === "ready" || protocolStatus === "issued") && !protocolNumber) {
-      return Response.json({ error: "Для готового або виданого протоколу вкажіть його номер" }, { status: 400 });
-    }
-    const current = await db.prepare(
-      "SELECT protocol_status AS protocolStatus FROM bookings WHERE organization_id = ? AND id = ? LIMIT 1"
-    ).bind(ctx.organizationId, body.id).first<{ protocolStatus: string }>();
-    const protocolTransitions: Record<string, string[]> = {
-      not_started: ["in_progress"],
-      in_progress: ["ready"],
-      ready: ["issued"],
-      issued: [],
-    };
-    if (
-      current
-      && protocolStatus !== current.protocolStatus
-      && !(protocolTransitions[current.protocolStatus] || []).includes(protocolStatus)
-    ) {
-      return Response.json({ error: "Неможливо повернути протокол до попереднього статусу" }, { status: 409 });
-    }
-    const updated = await db.prepare(
-      `UPDATE bookings SET protocol_number = ?, protocol_status = ?,
-       protocol_updated_at = CURRENT_TIMESTAMP,
-       protocol_ready_at = CASE
-         WHEN ? IN ('ready','issued') AND protocol_ready_at = '' THEN CURRENT_TIMESTAMP
-         ELSE protocol_ready_at END,
-       protocol_issued_at = CASE
-         WHEN ? = 'issued' AND protocol_issued_at = '' THEN CURRENT_TIMESTAMP
-         ELSE protocol_issued_at END
-       WHERE organization_id = ? AND id = ?`
-    ).bind(protocolNumber, protocolStatus, protocolStatus, protocolStatus, ctx.organizationId, body.id).run();
-    if (!updated.meta.changes) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
-    await db.prepare(
-      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'protocol_updated', ?, ?)"
-    ).bind(ctx.organizationId, body.id, `${protocolStatus}${protocolNumber ? ` · ${protocolNumber}` : ""}`, member.email).run();
-    const protocolDates = await db.prepare(
-      "SELECT protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt FROM bookings WHERE organization_id = ? AND id = ?"
-    ).bind(ctx.organizationId, body.id).first<{protocolReadyAt:string;protocolIssuedAt:string}>();
-    return Response.json({ ok: true, protocolNumber, protocolStatus, ...protocolDates });
+    return Response.json(
+      { error: "Статус і номер протоколу змінюються лише через редактор протоколів" },
+      { status: 409 },
+    );
   }
 
   if (
