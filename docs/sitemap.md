@@ -140,7 +140,7 @@
 
 ### Довідники — *Адмін*
 
-Хаб-сторінка `/staff/directories`, що відкриває довідники та кадровий розділ:
+Хаб-сторінка `/staff/directories`, що відкриває довідники:
 
 - Обладнання — `/staff/equipment`
 - Обслуговування — `/staff/maintenance`
@@ -148,19 +148,17 @@
 - Графік змін персоналу — `/staff/shifts` *(Адмін, Завідувач)*
 - Структура відділення — `/staff/structure`
 - Довільні поля — `/staff/custom-fields`
-- **Персонал і радіаційна безпека** — `/staff/personnel` *(див. нижче)*
 
-#### Персонал і радіаційна безпека — *Адмін, Завідувач*
+### Персонал і радіаційна безпека — *Адмін, Завідувач*
 
-> Точка входу — **Довідники → Персонал** (`/staff/directories`). Це **не**
-> окремий модуль верхнього рівня в бічній навігації, хоча за вагою (юридичні
-> зобов'язання щодо доз персоналу) заслуговує на виведення нагору.
+Окремий модуль верхнього рівня в навігації (rail-іконка ☢ + модуль
+«Персонал»); також крос-лінк із хаба Довідників.
 
 - Персонал і зміни — `/staff/personnel`
 - Дозиметрія — `/staff/personnel/dosimetry`
 - Радіаційний допуск — `/staff/personnel/radiation-clearance`
-- Навчання — `/staff/personnel/radiation-training`
-- Моніторинг і черга огляду — `/staff/personnel/radiation-review-queue`
+- Навчання з радіобезпеки — `/staff/personnel/radiation-training`
+- Черга радіаційного огляду — `/staff/personnel/radiation-review-queue`
 - Політика й зведення доз — `/staff/personnel/radiation-review-policy`, `/staff/personnel/radiation-dose-summary`
 - ВЛК — `/staff/personnel/vlk`
 

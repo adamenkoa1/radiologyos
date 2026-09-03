@@ -135,7 +135,7 @@ export default function PersonnelRadiationMonitoringScopePage() {
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Контингент радіаційного контролю"
     description="Append-only організаційна історія: хто в RadiologyOS входить до контуру радіаційного review. Це не автоматична правова категоризація і не дозвіл на роботу."
   >

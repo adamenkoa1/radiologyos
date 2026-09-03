@@ -132,7 +132,7 @@ export default function RadiationDoseSummaryPage() {
   }, [load]);
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Індивідуальна дозиметрія · дозове зведення"
     description="Read-only числовий subtotal виміряних Hp(10), Hp(0.07) та Hp(3) за вибраним інтервалом без нормативних порогів."
   >

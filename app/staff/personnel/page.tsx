@@ -159,7 +159,7 @@ export default function PersonnelPage() {
   const showEditor = creating || Boolean(editorRecord);
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Персонал"
     description="Кадровий довідник працівників. Картка працівника відокремлена від облікового запису RadiologyOS."
   >
