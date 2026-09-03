@@ -13,7 +13,7 @@ import {
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { createMessagingProvider } from "../../../lib/providers/messaging";
 import { isRateLimited } from "../../../lib/rate-limit";
-import { getSettings } from "../../../lib/settings";
+import { getOrganizationIntegrationSettings, getSettings } from "../../../lib/settings";
 import { dbBinding } from "../../../lib/db";
 
 const PURPOSE = "cabinet_login";
@@ -28,6 +28,47 @@ type ProvenPatientIdentity = {
 
 function maskedPhone(phoneNormalized: string): string {
   return phoneNormalized ? `***${phoneNormalized.slice(-4)}` : "";
+}
+
+function validEmail(value: unknown): string {
+  const email = String(value || "").trim().toLowerCase();
+  return /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) ? email : "";
+}
+
+// Reveal only enough of an on-file address for the patient to recognise their
+// own inbox (first char + domain). The identity is already proven by phone plus
+// DOB / booking code before this is shown, so it is not an enumeration oracle.
+function maskedEmail(email: string): string {
+  const [local, domain] = email.split("@");
+  if (!domain) return "";
+  const head = local.slice(0, 1);
+  return `${head}***@${domain}`;
+}
+
+// The e-mail delivered to must be one already ON FILE for the proven identity —
+// never an address supplied at login — so it stands in as a possession factor.
+// Prefer the immutable patient profile; otherwise the address the patient gave
+// on the matching booking(s).
+async function emailOnFileForIdentity(
+  db: D1Database,
+  phoneNormalized: string,
+  proof: ProvenPatientIdentity,
+): Promise<string> {
+  if (proof.patientId) {
+    const profile = await db.prepare(
+      "SELECT email FROM patient_profiles WHERE organization_id = ? AND patient_id = ? LIMIT 1",
+    ).bind(proof.organizationId, proof.patientId).first<{ email: string }>().catch(() => null);
+    const fromProfile = validEmail(profile?.email);
+    if (fromProfile) return fromProfile;
+  }
+  const identityClause = proof.identity.kind === "dob" ? "date_of_birth = ?" : "code = ?";
+  const row = await db.prepare(
+    `SELECT patient_email AS email FROM bookings
+     WHERE organization_id = ? AND phone_normalized = ? AND ${identityClause} AND patient_email != ''
+     ORDER BY created_at DESC, id DESC LIMIT 1`,
+  ).bind(proof.organizationId, phoneNormalized, proof.identity.value)
+    .first<{ email: string }>().catch(() => null);
+  return validEmail(row?.email);
 }
 
 function opaqueChallengeResponse() {
@@ -150,16 +191,28 @@ export async function POST(request: Request) {
     return Response.json({ error: "Забагато запитів коду. Спробуйте пізніше." }, { status: 429 });
   }
 
-  const cfg = await getSettings(db, ["sms_gateway_url", "sms_gateway_auth"]);
+  // SMS stays on the legacy global gateway (unchanged). The e-mail channel reads
+  // the org-scoped gateway the administrator configured in staff settings — the
+  // same store the registrar booking notification uses.
+  const sms = await getSettings(db, ["sms_gateway_url", "sms_gateway_auth"]);
+  const email = await getOrganizationIntegrationSettings(db, PRIMARY_ORGANIZATION_ID, [
+    "email_gateway_url", "email_gateway_auth", "email_gateway_from",
+  ]);
   const messaging = createMessagingProvider({
-    sms: { url: cfg.sms_gateway_url || "", auth: cfg.sms_gateway_auth || "" },
-    email: { url: "", auth: "", from: "" },
+    sms: { url: sms.sms_gateway_url || "", auth: sms.sms_gateway_auth || "" },
+    email: {
+      url: email.email_gateway_url || "",
+      auth: email.email_gateway_auth || "",
+      from: email.email_gateway_from || "",
+    },
   });
   // Do not fall back to knowledge-only login if possession verification is
-  // unavailable. The check happens before identity lookup to avoid enumeration.
-  if (!messaging.capabilities.sms) {
+  // unavailable. Either channel (SMS or e-mail) is enough; when neither gateway
+  // is configured we fail closed. The check happens before identity lookup to
+  // avoid enumeration.
+  if (!messaging.capabilities.sms && !messaging.capabilities.email) {
     return Response.json(
-      { error: "Підтвердження номера телефону тимчасово недоступне" },
+      { error: "Підтвердження входу тимчасово недоступне" },
       { status: 503, headers: { "cache-control": "no-store" } },
     );
   }
@@ -169,6 +222,22 @@ export async function POST(request: Request) {
     // Burn similar local crypto work and return an opaque fake challenge id.
     // No database row exists, so verification can never succeed. Secondary
     // tenant identities deliberately share this response to prevent enumeration.
+    await hashPassword("000000");
+    return opaqueChallengeResponse();
+  }
+
+  // Choose the possession channel: e-mail (free, gateway already live) when the
+  // patient has an address on file, otherwise SMS. A proven identity with no
+  // deliverable channel gets the SAME opaque fake response as an unknown one, so
+  // "does this patient have an e-mail on file" never leaks — they simply use the
+  // knowledge-based /api/patient-login fallback instead.
+  const emailTarget = messaging.capabilities.email
+    ? await emailOnFileForIdentity(db, phoneNormalized, proof)
+    : "";
+  const channel: "email" | "sms" | "" = emailTarget
+    ? "email"
+    : (messaging.capabilities.sms ? "sms" : "");
+  if (!channel) {
     await hashPassword("000000");
     return opaqueChallengeResponse();
   }
@@ -190,9 +259,19 @@ export async function POST(request: Request) {
     PURPOSE,
     proof.patientId,
   );
-  const text = `RadiologyOS: код підтвердження ${challenge.code}. Код діє 5 хвилин. Нікому його не повідомляйте.`;
+  const smsText = `RadiologyOS: код підтвердження ${challenge.code}. Код діє 5 хвилин. Нікому його не повідомляйте.`;
+  const emailSubject = `RadiologyOS — код входу ${challenge.code}`;
+  const emailText = [
+    "Вітаємо!",
+    "",
+    `Ваш одноразовий код для входу в кабінет пацієнта: ${challenge.code}`,
+    "Код діє 5 хвилин і використовується один раз. Нікому його не повідомляйте.",
+    "",
+    "Якщо ви не намагалися увійти, просто проігноруйте цей лист.",
+  ].join("\n");
   try {
-    await messaging.sendSms(`+${phoneNormalized}`, text);
+    if (channel === "email") await messaging.sendEmail(emailTarget, emailSubject, emailText);
+    else await messaging.sendSms(`+${phoneNormalized}`, smsText);
   } catch (error) {
     // A code that was never delivered must not remain usable.
     await db.prepare(
@@ -204,7 +283,7 @@ export async function POST(request: Request) {
       action: "patient_otp_delivery_failed",
       resource: "patient_auth",
       targetId: challenge.challengeId.slice(0, 12),
-      details: { phone: maskedPhone(phoneNormalized), identityKind:proof.identity.kind },
+      details: { phone: maskedPhone(phoneNormalized), channel, identityKind:proof.identity.kind },
     });
     console.error("patient_otp_delivery_failed", error instanceof Error ? error.message : "unknown");
     return Response.json(
@@ -219,14 +298,17 @@ export async function POST(request: Request) {
     action: "patient_otp_requested",
     resource: "patient_auth",
     targetId: challenge.challengeId.slice(0, 12),
-    details: { phone: maskedPhone(phoneNormalized), channel: "sms", identityKind:proof.identity.kind },
+    details: { phone: maskedPhone(phoneNormalized), channel, identityKind:proof.identity.kind },
   });
   return Response.json(
     {
       ok: true,
       challengeId: challenge.challengeId,
       expiresIn: challenge.expiresIn,
-      message: "Код підтвердження надіслано на ваш номер телефону.",
+      channel,
+      message: channel === "email"
+        ? `Код підтвердження надіслано на вашу пошту ${maskedEmail(emailTarget)}.`
+        : "Код підтвердження надіслано на ваш номер телефону.",
     },
     { status: 202, headers: { "cache-control": "no-store" } },
   );
