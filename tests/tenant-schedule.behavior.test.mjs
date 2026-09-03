@@ -80,7 +80,13 @@ test("staff availability uses its tenant schedule while anonymous availability s
     await setRawSetting(db, SCHEDULE_KEY, JSON.stringify(scheduleWithCtStart("08:00")));
     await setRawSetting(db, scheduleKey(2), JSON.stringify(scheduleWithCtStart("11:00")));
 
-    const url = "/api/availability?date=2026-09-01&serviceCode=403";
+    // A future, bookable weekday (Sunday is closed in the schedule and rejected by
+    // isBookableDate). A hardcoded date silently becomes "in the past" and returns
+    // no slots once the wall clock moves past it.
+    const target = new Date(Date.now() + 7 * 86400000);
+    if (target.getUTCDay() === 0) target.setUTCDate(target.getUTCDate() + 1);
+    const date = target.toISOString().slice(0, 10);
+    const url = `/api/availability?date=${date}&serviceCode=403`;
     const staffResponse = await callWorker(jsonRequest(url, undefined, {
       method: "GET", headers: { cookie: staff2 },
     }), db);

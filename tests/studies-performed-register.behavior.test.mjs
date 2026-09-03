@@ -2,6 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
+// Dates anchored to "now" so the report window always contains the storno document
+// that the correction API creates with CURRENT_TIMESTAMP; a hardcoded calendar
+// window drifts out of range once the wall clock moves past it.
+const ISO = (ms) => new Date(ms).toISOString().slice(0, 10);
+const NOW = Date.now();
+const REPORT_FROM = ISO(NOW - 20 * 86400000);
+const REPORT_TO = ISO(NOW + 86400000);
+const IN_PERIOD = ISO(NOW - 5 * 86400000);
+
 async function seedCompleted(db,{
   organizationId=1,
   code,
@@ -49,7 +58,7 @@ async function storno(db,cookie,sourceDocumentId) {
 
 async function report(db,cookie) {
   return callWorker(new Request(
-    "http://localhost/api/staff/reports/registers?from=2026-08-01&to=2026-08-31",
+    `http://localhost/api/staff/reports/registers?from=${REPORT_FROM}&to=${REPORT_TO}`,
     {headers:{cookie}},
   ),db);
 }
@@ -59,10 +68,10 @@ test("studies_performed projection includes civilian, military and explicit stor
     const admin=await seedStaffSession(db,{email:"studies-admin@example.com",role:"admin",organizationId:1});
 
     const civilian=await seedCompleted(db,{
-      code:"RD-STUDIES-CIV",amount:3000,category:"civilian",performedAt:"2026-08-10T10:00:00",regions:2,
+      code:"RD-STUDIES-CIV",amount:3000,category:"civilian",performedAt:`${IN_PERIOD}T10:00:00`,regions:2,
     });
     const military=await seedCompleted(db,{
-      code:"RD-STUDIES-MIL",amount:5000,category:"military",performedAt:"2026-08-11T11:00:00",regions:1,
+      code:"RD-STUDIES-MIL",amount:5000,category:"military",performedAt:`${IN_PERIOD}T11:00:00`,regions:1,
     });
     assert.ok(civilian>0);
     assert.ok(military>0);
@@ -93,10 +102,10 @@ test("studies_performed projection is tenant scoped",async()=>{
     const org2=await seedStaffSession(db,{email:"studies-org2@example.com",role:"admin",organizationId:2});
 
     await seedCompleted(db,{
-      organizationId:1,code:"RD-STUDIES-ORG1",amount:0,category:"military",performedAt:"2026-08-12T09:00:00",regions:1,
+      organizationId:1,code:"RD-STUDIES-ORG1",amount:0,category:"military",performedAt:`${IN_PERIOD}T09:00:00`,regions:1,
     });
     await seedCompleted(db,{
-      organizationId:2,code:"RD-STUDIES-ORG2",amount:0,category:"military",performedAt:"2026-08-12T09:30:00",regions:4,
+      organizationId:2,code:"RD-STUDIES-ORG2",amount:0,category:"military",performedAt:`${IN_PERIOD}T09:30:00`,regions:4,
       serviceCode:"ct-abdomen",service:"КТ ОЧП",
     });
 
