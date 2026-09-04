@@ -155,6 +155,24 @@ export default function PersonnelPage() {
     }
   }
 
+  async function remove() {
+    if (!selected) return;
+    if (!window.confirm(`Видалити картку працівника «${selected.displayName}»? Дію не можна скасувати. Обліковий запис (логін/PIN) не видаляється — його вимикають окремо в «Персонал і ролі».`)) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch(`/api/staff/personnel?id=${encodeURIComponent(selected.id)}`, { method:"DELETE" });
+      const body = await response.json().catch(() => ({})) as { ok?:boolean; error?:string };
+      if (!response.ok || !body.ok) throw new Error(body.error || "Не вдалося видалити картку");
+      closeEditor();
+      await load();
+      setNotice("Картку працівника видалено.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося видалити картку");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const editorRecord = selected;
   const showEditor = creating || Boolean(editorRecord);
 
@@ -223,7 +241,7 @@ export default function PersonnelPage() {
         <label>Адреса<input name="addressLine" defaultValue={editorRecord?.addressLine || ""} placeholder="Вулиця, будинок, квартира" /></label>
         <label>Поштовий індекс<input name="postalCode" inputMode="numeric" defaultValue={editorRecord?.postalCode || ""} /></label>
         <label><span>Статус</span><span><input name="active" type="checkbox" defaultChecked={editorRecord ? Boolean(editorRecord.active) : true} /> Активний працівник</span></label>
-        <div><button className="button primary" type="submit" disabled={saving}>{saving ? "Зберігаємо…" : "Зберегти картку"}</button></div>
+        <div className="shiftPlannerActions"><button className="button primary" type="submit" disabled={saving}>{saving ? "Зберігаємо…" : "Зберегти картку"}</button>{selected && <button className="button danger" type="button" disabled={saving} onClick={remove}>Видалити картку</button>}</div>
       </form>
       <p className="notice">Фото, дипломи, сертифікати, ВЛК, допуск до ДІВ і навчання будуть окремими захищеними вкладками цієї ж картки — без зберігання файлів у D1.</p>
     </section>}
