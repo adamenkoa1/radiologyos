@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
-import { workCalendar, holidaysForYear, hasHolidayData } from "../../../lib/work-calendar";
+import { workCalendar, holidaysForYear } from "../../../lib/work-calendar";
 
 const WEEKDAY = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const YEARS = [2025, 2026, 2027];
@@ -40,14 +40,14 @@ export default function WorkCalendarPage() {
     </section>
 
     {!cal.hasHolidayData && <p className="notice" role="status">
-      Для {year} року перелік свят не заданий — показано чисту п'ятиденку. Додати свята можна у <code>lib/work-calendar.ts</code>.
+      Для {year} року перелік свят не заданий — показано чисту п’ятиденку. Додати свята можна у <code>lib/work-calendar.ts</code>.
     </p>}
 
     <section className="financeSummary" aria-label="Річна норма">
       <article><span>Робочих днів</span><b>{cal.totalDays}</b><small>за рік</small></article>
       <article><span>Норма годин</span><b>{cal.totalHours}</b><small>за рік</small></article>
       <article><span>Середньомісячно</span><b>{cal.avgMonthlyHours}</b><small>годин</small></article>
-      <article><span>Годин на день</span><b>{cal.hoursPerDay}</b><small>п'ятиденка</small></article>
+      <article><span>Годин на день</span><b>{cal.hoursPerDay}</b><small>п’ятиденка</small></article>
     </section>
 
     <div style={{ overflowX: "auto" }}>
