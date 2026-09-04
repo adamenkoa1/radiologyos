@@ -268,3 +268,53 @@ export async function PATCH(request: Request) {
   });
   return Response.json({ ok: true, id });
 }
+
+export async function DELETE(request: Request) {
+  const db = dbBinding();
+  if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
+  const ctx = await requirePersonnelManager(request, db);
+  if (!ctx) return Response.json({ error: "Доступ до кадрового довідника заборонено" }, { status: 403 });
+
+  const id = clean(new URL(request.url).searchParams.get("id") || "", 120);
+  if (!id) return Response.json({ error: "Не вказано працівника" }, { status: 400 });
+  const existing = await db.prepare(
+    "SELECT id FROM personnel_records WHERE id = ? AND organization_id = ? LIMIT 1",
+  ).bind(id, ctx.organizationId).first();
+  if (!existing) return Response.json({ error: "Працівника не знайдено" }, { status: 404 });
+
+  // Radiation-safety history (ДІВ / ВЛК / навчання / дозиметрія / моніторинг) is
+  // immutable by law and referenced with ON DELETE RESTRICT. A card carrying any
+  // such record must be deactivated, not deleted, so the history is preserved.
+  const deps = await db.prepare(
+    `SELECT
+       (SELECT COUNT(*) FROM personnel_vlk_records WHERE organization_id = ? AND personnel_id = ?)
+     + (SELECT COUNT(*) FROM personnel_radiation_clearance_records WHERE organization_id = ? AND personnel_id = ?)
+     + (SELECT COUNT(*) FROM personnel_radiation_training_records WHERE organization_id = ? AND personnel_id = ?)
+     + (SELECT COUNT(*) FROM personnel_dosimetry_records WHERE organization_id = ? AND personnel_id = ?)
+     + (SELECT COUNT(*) FROM personnel_radiation_monitoring_scope_records WHERE organization_id = ? AND personnel_id = ?)
+       AS dependents`,
+  ).bind(
+    ctx.organizationId, id, ctx.organizationId, id, ctx.organizationId, id,
+    ctx.organizationId, id, ctx.organizationId, id,
+  ).first<{ dependents: number }>();
+  if ((deps?.dependents || 0) > 0) {
+    return Response.json(
+      { error: "Не можна видалити картку: є пов'язані записи (ДІВ / ВЛК / навчання / дозиметрія). Вимкніть картку замість видалення." },
+      { status: 409 },
+    );
+  }
+
+  await db.prepare(
+    "DELETE FROM personnel_records WHERE id = ? AND organization_id = ?",
+  ).bind(id, ctx.organizationId).run();
+
+  await audit(db, {
+    organizationId: ctx.organizationId,
+    actorEmail: ctx.member.email,
+    action: "personnel_deleted",
+    resource: "personnel",
+    targetId: id,
+    details: {},
+  });
+  return Response.json({ ok: true, id });
+}
