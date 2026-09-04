@@ -12,20 +12,74 @@ type SearchResult = {
   href: string;
 };
 
+// Full navigation surface: every top-level staff section is reachable from the
+// palette, so search is a complete jump-to mechanism rather than a partial list.
+// (Server-side guards still enforce access — this list is discovery only.)
 const COMMANDS: { label: string; hint: string; href: string }[] = [
+  // Щоденна робота
   { label: "Пульт відділення", hint: "огляд дня", href: "/staff/dashboard" },
   { label: "Прийом", hint: "черга заявок", href: "/staff/intake" },
   { label: "Календар записів", hint: "розклад", href: "/staff/appointments" },
   { label: "Нова заявка", hint: "записати пацієнта", href: "/staff/book" },
-  { label: "Пацієнти", hint: "картки / CRM", href: "/staff/patients" },
+  { label: "Дошка досліджень", hint: "робочий стан", href: "/staff/board" },
+  { label: "Завдання", hint: "нагадування / to-do", href: "/staff/tasks" },
   { label: "Протоколи", hint: "опис досліджень", href: "/staff/protocols" },
-  { label: "DICOM", hint: "знімки та PACS", href: "/staff/imaging" },
-  { label: "Склад", hint: "витратні матеріали", href: "/staff/inventory" },
-  { label: "Фінанси", hint: "оплати / повернення / взаєморозрахунки", href: "/staff/finance" },
+  { label: "Видача результатів", hint: "готові дослідження", href: "/staff/studies" },
+  // Пацієнти
+  { label: "Пацієнти", hint: "картки / CRM", href: "/staff/patients" },
+  { label: "Імпорт пацієнтів", hint: "CSV / масове завантаження", href: "/staff/patients/import" },
+  { label: "Чат із пацієнтами", hint: "повідомлення", href: "/staff/chat" },
+  // Медицина
+  { label: "DICOM / PACS", hint: "знімки та архів", href: "/staff/imaging" },
+  { label: "Стан PACS / MWL", hint: "інтеграції", href: "/staff/integrations/health" },
+  { label: "Modality Worklist", hint: "MWL / робочий список", href: "/staff/integrations/mwl" },
+  // Послуги і тарифи
+  { label: "Послуги кабінетів", hint: "перелік послуг", href: "/staff/services" },
+  { label: "Надані послуги", hint: "service-delivery", href: "/staff/finance/services" },
+  { label: "Тарифи", hint: "ціни / прейскурант", href: "/staff/tariffs" },
+  // Фінанси
+  { label: "Фінансові документи", hint: "оплати / повернення / взаєморозрахунки", href: "/staff/finance" },
+  { label: "Каси і рахунки", hint: "готівка / банк", href: "/staff/cash-accounts" },
+  { label: "Дебіторська заборгованість", hint: "борги пацієнтів", href: "/staff/reports/receivables" },
+  // Документи / регістри / звіти
+  { label: "Журнал документів", hint: "BAS-реєстратори", href: "/staff/documents" },
+  { label: "Регістри", hint: "карта регістрів", href: "/staff/registers" },
+  { label: "Обороти регістрів", hint: "оборотно-сальдовий", href: "/staff/reports/registers" },
+  { label: "Звіти відділення", hint: "аналітика", href: "/staff/reports" },
+  { label: "Маржинальність послуг", hint: "план / факт матеріалів", href: "/staff/reports/material-margin" },
+  { label: "Контроль матеріалів", hint: "план / факт списання", href: "/staff/reports/material-consumption-control" },
+  // Склад
+  { label: "Склад", hint: "залишки / витратні матеріали", href: "/staff/inventory" },
+  { label: "Переміщення запасів", hint: "між складами", href: "/staff/inventory/transfers" },
+  { label: "Інвентаризація", hint: "фактичні залишки", href: "/staff/inventory/counts" },
+  { label: "Фактичне списання", hint: "резервації / партії", href: "/staff/inventory/material-consumption" },
+  { label: "Склади", hint: "warehouses", href: "/staff/warehouses" },
+  // Закупівлі
+  { label: "Кредиторка і оплати", hint: "борги постачальникам", href: "/staff/supplier-payables" },
+  { label: "Постачальники", hint: "контрагенти", href: "/staff/counterparties" },
+  // Персонал і радіаційна безпека
+  { label: "Персонал і зміни", hint: "кадрові картки", href: "/staff/personnel" },
+  { label: "Дозиметрія", hint: "дози опромінення", href: "/staff/personnel/dosimetry" },
+  { label: "Радіаційний допуск", hint: "clearance", href: "/staff/personnel/radiation-clearance" },
+  { label: "Навчання з радіобезпеки", hint: "training", href: "/staff/personnel/radiation-training" },
+  { label: "Черга радіаційного огляду", hint: "review queue", href: "/staff/personnel/radiation-review-queue" },
+  { label: "Зведення доз", hint: "dose summary", href: "/staff/personnel/radiation-dose-summary" },
+  { label: "ВЛК", hint: "військово-лікарська комісія", href: "/staff/personnel/vlk" },
+  // Довідники / обладнання / графіки
+  { label: "Довідники", hint: "master-data", href: "/staff/directories" },
+  { label: "Обладнання", hint: "апарати / кабінети", href: "/staff/equipment" },
   { label: "ТО та несправності", hint: "обладнання / сервіс", href: "/staff/maintenance" },
-  { label: "Звіти", hint: "аналітика", href: "/staff/reports" },
+  { label: "Графік кабінетів", hint: "робочі години", href: "/staff/schedule" },
+  { label: "Графік змін персоналу", hint: "зміни / бригади", href: "/staff/shifts" },
+  { label: "Структура відділення", hint: "підрозділи", href: "/staff/structure" },
+  { label: "Довільні поля", hint: "custom fields", href: "/staff/custom-fields" },
+  // Адміністрування
+  { label: "Налаштування", hint: "шлюзи / LiqPay / e-mail", href: "/staff/settings" },
+  { label: "Організація та профіль", hint: "реквізити", href: "/staff/organization" },
+  { label: "Журнал дій", hint: "аудит", href: "/staff/audit" },
+  { label: "WhatsApp і чат-бот", hint: "інтеграція", href: "/staff/whatsapp" },
   { label: "Стан системи", hint: "health / production", href: "/staff/system/health" },
-  { label: "Налаштування", hint: "адміністрування", href: "/staff/settings" },
+  { label: "Особистий кабінет", hint: "профіль / вихід", href: "/staff/profile" },
 ];
 
 const TYPE_LABEL:Record<SearchResult["type"],string> = {
