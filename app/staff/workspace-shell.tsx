@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases" | "documents" | "registers" | "directories";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases" | "documents" | "registers" | "directories" | "personnel";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -37,6 +37,7 @@ const quickRail:NavLink[]=[
   { label:"Склад",href:"/staff/inventory",section:"inventory",icon:"▣" },
   { label:"Фінанси",href:"/staff/finance",section:"finance",icon:"₴" },
   { label:"Звіти",href:"/staff/reports",section:"reports",icon:"⌁" },
+  { label:"Персонал",href:"/staff/personnel",section:"personnel",icon:"☢" },
 ];
 
 const businessModules:BusinessModule[]=[
@@ -120,6 +121,15 @@ const businessModules:BusinessModule[]=[
     {label:"Графік кабінетів",href:"/staff/schedule"},
     {label:"Графік змін персоналу",href:"/staff/shifts",hint:"Циклічні зміни, бригади та персональні корекції"},
   ]},
+  { key:"personnel",label:"Персонал",items:[
+    {label:"Персонал і зміни",href:"/staff/personnel",hint:"Кадрові картки, підрозділ, посада, зв'язок з обліковим записом"},
+    {label:"Дозиметрія",href:"/staff/personnel/dosimetry",hint:"Індивідуальні дози опромінення персоналу"},
+    {label:"Радіаційний допуск",href:"/staff/personnel/radiation-clearance"},
+    {label:"Навчання з радіобезпеки",href:"/staff/personnel/radiation-training"},
+    {label:"Черга радіаційного огляду",href:"/staff/personnel/radiation-review-queue"},
+    {label:"Зведення доз",href:"/staff/personnel/radiation-dose-summary"},
+    {label:"ВЛК",href:"/staff/personnel/vlk",hint:"Військово-лікарська комісія"},
+  ]},
   { key:"admin",label:"Адміністрування",shortLabel:"Адмін",items:[
     {label:"Налаштування",href:"/staff/settings"},
     {label:"Структура відділення",href:"/staff/structure"},
@@ -138,7 +148,7 @@ const moduleBySection:Record<WorkspaceSection,string>={
   finance:"finance",counterparties:"directories",
   inventory:"inventory",purchases:"purchases",
   documents:"documents",registers:"registers",reports:"reports",directories:"directories",
-  equipment:"directories",schedule:"directories",
+  equipment:"directories",schedule:"directories",personnel:"personnel",
   settings:"admin",organization:"admin",site:"admin",whatsapp:"admin",structure:"admin",audit:"admin",
 };
 
@@ -150,6 +160,7 @@ const sectionLabels:Record<WorkspaceSection,string>={
   equipment:"Обладнання",services:"Послуги",structure:"Структура відділення",audit:"Журнал дій",
   intake:"Прийом",board:"Дошка досліджень",tasks:"Завдання",inventory:"Склад",purchases:"Кредиторка постачальників",
   documents:"Журнал документів",registers:"Регістри",directories:"Довідники",
+  personnel:"Персонал і радіаційна безпека",
 };
 
 function formatDateTime(value:Date) {

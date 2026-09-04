@@ -128,7 +128,7 @@ export default function PersonnelRadiationTrainingPage(){
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Радіаційна безпека · навчання"
     description="Історія навчання, перевірок знань та інструктажів персоналу, прив’язана до стабільного personnelId."
   >

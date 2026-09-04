@@ -176,7 +176,7 @@ export default function RadiationCompliancePage(){
   },[load]);
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Радіаційна безпека · зведення"
     description="Read-only проекція організаційного scope, допуску до ДІВ, навчання, перевірки знань та останнього стану індивідуальної дозиметрії."
   >

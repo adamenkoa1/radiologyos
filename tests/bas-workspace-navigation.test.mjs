@@ -20,6 +20,19 @@ test("staff workspace exposes BAS documents and registers as first-class navigat
   assert.match(shell,/Документи · регістри · медицина/);
 });
 
+test("radiation safety is a first-class personnel navigation module, not buried under directories",()=>{
+  const personnel=readFileSync("app/staff/personnel/page.tsx","utf8");
+  // Own top-level module + rail entry, mapped and labelled as a real section.
+  assert.match(shell,/key:"personnel",label:"Персонал"/);
+  assert.match(shell,/label:"Персонал",href:"\/staff\/personnel",section:"personnel"/);
+  assert.match(shell,/\/staff\/personnel\/dosimetry/);
+  assert.match(shell,/\/staff\/personnel\/radiation-clearance/);
+  assert.match(shell,/personnel:"personnel"/);
+  assert.match(shell,/personnel:"Персонал і радіаційна безпека"/);
+  // The personnel pages now highlight their own section rather than directories.
+  assert.match(personnel,/active="personnel"/);
+});
+
 test("document journal supports canonical BAS filtering and lineage",()=>{
   assert.match(documents,/active="documents"/);
   assert.match(documents,/params\.get\("type"\)/);
