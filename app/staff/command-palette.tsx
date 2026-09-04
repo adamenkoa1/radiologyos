@@ -59,6 +59,7 @@ const COMMANDS: { label: string; hint: string; href: string }[] = [
   { label: "Постачальники", hint: "контрагенти", href: "/staff/counterparties" },
   // Персонал і радіаційна безпека
   { label: "Персонал і зміни", hint: "кадрові картки", href: "/staff/personnel" },
+  { label: "Норм-календар роботи", hint: "виробничий календар / норма годин", href: "/staff/work-calendar" },
   { label: "Дозиметрія", hint: "дози опромінення", href: "/staff/personnel/dosimetry" },
   { label: "Радіаційний допуск", hint: "clearance", href: "/staff/personnel/radiation-clearance" },
   { label: "Навчання з радіобезпеки", hint: "training", href: "/staff/personnel/radiation-training" },

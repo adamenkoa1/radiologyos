@@ -185,7 +185,7 @@ export default function PersonnelPage() {
       <article><span>Працівники</span><b>{data?.records.filter((record) => record.active).length || 0}</b><small>активні картки</small></article>
       <article><span>Підрозділи</span><b>{data?.departments.length || 0}</b><small>доступні у структурі</small></article>
       <article><span>З акаунтом</span><b>{data?.records.filter((record) => record.accountEmail).length || 0}</b><small>мають вхід у RadiologyOS</small></article>
-      <article><span>Графіки</span><b>Calendar6</b><small><Link href="/staff/shifts">відкрити графік змін</Link></small></article>
+      <article><span>Графіки</span><b>Calendar6</b><small><Link href="/staff/shifts">графік змін</Link> · <Link href="/staff/work-calendar">норм-календар</Link></small></article>
     </section>
 
     {notice && <p className="notice success" role="status">{notice}</p>}

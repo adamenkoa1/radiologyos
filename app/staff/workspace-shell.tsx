@@ -123,6 +123,7 @@ const businessModules:BusinessModule[]=[
   ]},
   { key:"personnel",label:"Персонал",items:[
     {label:"Персонал і зміни",href:"/staff/personnel",hint:"Кадрові картки, підрозділ, посада, зв'язок з обліковим записом"},
+    {label:"Норм-календар роботи",href:"/staff/work-calendar",hint:"Виробничий календар: норма днів і годин по місяцях"},
     {label:"Дозиметрія",href:"/staff/personnel/dosimetry",hint:"Індивідуальні дози опромінення персоналу"},
     {label:"Радіаційний допуск",href:"/staff/personnel/radiation-clearance"},
     {label:"Навчання з радіобезпеки",href:"/staff/personnel/radiation-training"},
