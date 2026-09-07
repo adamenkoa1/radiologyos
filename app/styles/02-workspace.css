@@ -909,3 +909,22 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .utilCell .reportBarTrack{flex:1}
 .utilCell b{font-variant-numeric:tabular-nums;font-size:12px}
 .utilHint{margin-top:14px;font-size:11px;color:#71807c;line-height:1.5}
+
+/* Пульт завідувача — червоні зони (/staff/management). */
+.kpiHeader{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.kpiHeader>a{margin-left:auto}
+.kpiAttention{font-size:13px;font-weight:800;padding:6px 12px;border-radius:999px}
+.kpiAttention.clear{background:#e6f0ec;color:#2b5c4f}
+.kpiAttention.has{background:#fce6e2;color:#a1301b}
+.kpiGrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.kpiCard{border:1px solid #dce4e3;border-left:4px solid #c9d3d1;border-radius:8px;padding:14px 16px;background:white;display:flex;flex-direction:column;gap:4px}
+.kpiCard.st-alert{border-left-color:#d1442b;background:#fdf4f2}
+.kpiCard.st-warn{border-left-color:#d99a2b;background:#fdf9f0}
+.kpiCard.st-ok{border-left-color:#4f8f7c}
+.kpiStatus{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:900;color:#71807c}
+.kpiCard.st-alert .kpiStatus{color:#a1301b}
+.kpiCard.st-warn .kpiStatus{color:#8a5a12}
+.kpiCard.st-ok .kpiStatus{color:#2b5c4f}
+.kpiValue{font-family:var(--font-serif);font-size:28px;line-height:1}
+.kpiLabel{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.kpiHint{margin:4px 0 0;font-size:11px;color:#71807c;line-height:1.4}
