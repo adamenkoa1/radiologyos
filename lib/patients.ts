@@ -23,7 +23,9 @@ export type PatientProfile = {
   patientId?:string;
   phoneNormalized:string; displayName:string; birthYear:number;
   birthDate:string; email:string; address:string;
-  tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
+  tags:string; notes:string; doNotContact:number;
+  contrastAlert:number; allergyNote:string;
+  updatedBy:string; updatedAt:string;
 };
 
 export type PatientSummary = {
@@ -172,7 +174,7 @@ export function segmentCounts(summaries:PatientSummary[]):Record<PatientSegment,
 }
 
 export type ProfileValidation =
-  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; birthDate:string; email:string; address:string; tags:string; notes:string; doNotContact:number } }
+  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; birthDate:string; email:string; address:string; tags:string; notes:string; doNotContact:number; contrastAlert:number; allergyNote:string } }
   | { ok:false; error:string };
 
 export function sanitizeProfile(input:unknown):ProfileValidation {
@@ -189,6 +191,8 @@ export function sanitizeProfile(input:unknown):ProfileValidation {
     return { ok:false, error:"Некоректний email пацієнта" };
   }
   const doNotContact = raw.doNotContact === true || raw.doNotContact === 1 || raw.doNotContact === "true" ? 1 : 0;
+  const contrastAlert = raw.contrastAlert === true || raw.contrastAlert === 1 || raw.contrastAlert === "true" ? 1 : 0;
+  const allergyNote = String(raw.allergyNote ?? "").trim().slice(0, 400);
   const birthDate = normalizeDob(raw.birthDate);
   if (raw.birthDate && !birthDate) return { ok:false, error:"Некоректна дата народження" };
   let birthYear = birthDate ? Number(birthDate.slice(0, 4)) : (Number(raw.birthYear) || 0);
@@ -196,7 +200,7 @@ export function sanitizeProfile(input:unknown):ProfileValidation {
     return { ok:false, error:"Рік народження вкажіть у форматі РРРР" };
   }
   birthYear = birthYear || 0;
-  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, birthDate, email:emailRaw, address, tags, notes, doNotContact } };
+  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, birthDate, email:emailRaw, address, tags, notes, doNotContact, contrastAlert, allergyNote } };
 }
 
 export type CommunicationValidation =
