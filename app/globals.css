@@ -3,7 +3,6 @@
    app/styles/, а не цей список. */
 @import "./styles/01-base.css";
 @import "./styles/02-workspace.css";
-@import "./styles/03-public-army.css";
 @import "./styles/04-forms.css";
 @import "./styles/05-tariffs.css";
 @import "./styles/06-privat24-cards.css";
