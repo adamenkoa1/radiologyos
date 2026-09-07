@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { workCalendar, holidaysForYear, hasHolidayData } from "../lib/work-calendar.ts";
+import {
+  workCalendar, holidaysForYear, hasHolidayData, orthodoxEaster, generateHolidays,
+} from "../lib/work-calendar.ts";
 
 test("2026 norm calendar without holidays matches the reference 1C production calendar", () => {
   const cal = workCalendar(2026, { includeHolidays: false });
@@ -35,4 +37,35 @@ test("holiday data is exposed and years without data degrade gracefully", () => 
   const a = workCalendar(2099, { includeHolidays: true });
   const b = workCalendar(2099, { includeHolidays: false });
   assert.equal(a.totalDays, b.totalDays);
+});
+
+test("orthodoxEaster matches the Ukrainian (Julian paschalion) dates", () => {
+  assert.equal(orthodoxEaster(2025), "2025-04-20");
+  assert.equal(orthodoxEaster(2026), "2026-04-12");
+  assert.equal(orthodoxEaster(2027), "2027-05-02");
+});
+
+test("generateHolidays reproduces the vendored list exactly (self-consistent with the refresh script)", () => {
+  // Блок UA_HOLIDAYS у lib/work-calendar.ts пише scripts/refresh-ua-holidays.mjs
+  // через generateHolidays — тож вивід генератора має збігатися з vendored-даними.
+  assert.deepEqual(generateHolidays(2026), holidaysForYear(2026));
+  const g = generateHolidays(2026);
+  assert.equal(g.length, 10);
+  assert.deepEqual([...g].sort((a, b) => a.date.localeCompare(b.date)), g); // відсортовано
+  // Рухомі свята: Трійця = Великдень + 49 діб.
+  const easter = g.find((h) => h.name.startsWith("Великдень")).date;
+  const trinity = g.find((h) => h.name === "Трійця").date;
+  const diff = (new Date(`${trinity}T00:00:00Z`) - new Date(`${easter}T00:00:00Z`)) / 86_400_000;
+  assert.equal(diff, 49);
+});
+
+test("refresh-ua-holidays script edits the vendored block in place, offline", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../scripts/refresh-ua-holidays.mjs", import.meta.url), "utf8");
+  assert.match(src, /ua-holidays:generated:start/);
+  assert.match(src, /generateHolidays/);
+  assert.doesNotMatch(src, /fetch\(|https?:\/\//); // без мережевих залежностей
+  const lib = await readFile(new URL("../lib/work-calendar.ts", import.meta.url), "utf8");
+  assert.match(lib, /\/\/ ua-holidays:generated:start/);
+  assert.match(lib, /\/\/ ua-holidays:generated:end/);
 });
