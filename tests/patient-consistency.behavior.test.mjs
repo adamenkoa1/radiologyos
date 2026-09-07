@@ -85,6 +85,88 @@ test("issues route is denied to roles without registry access", async () => {
   });
 });
 
+async function fullProfile(db, patientId, phone, name, { contrast = 0, dnc = 0, note = "" } = {}) {
+  await db.prepare(
+    `INSERT INTO patient_profiles (patient_id, organization_id, phone_normalized, display_name,
+       contrast_alert, do_not_contact, allergy_note, updated_by)
+     VALUES (?, 1, ?, ?, ?, ?, ?, 'test')`
+  ).bind(patientId, phone, name, contrast, dnc, note).run();
+}
+
+test("merge re-points history to the survivor, unions safety flags and deletes absorbed cards", async () => {
+  await withD1(async (db) => {
+    const cookie = await seedStaffSession(db, { email: "boss@example.com", role: "admin", organizationId: 1 });
+    const survivorId = PID("a"), absorbedId = PID("b");
+    await fullProfile(db, survivorId, "380501112233", "Іваненко Іван", { contrast: 0, dnc: 0, note: "" });
+    await fullProfile(db, absorbedId, "380501112233", "Іваненко І.", { contrast: 1, dnc: 1, note: "Йодовмісний контраст" });
+
+    const bId = await booking(db, "RD-M1", "Іваненко Іван", "380501112233", absorbedId, "09:00");
+    await db.prepare(
+      `INSERT INTO patient_communications (organization_id, patient_id, phone_normalized, channel, direction, summary, actor)
+       VALUES (1, ?, '380501112233', 'call', 'outbound', 'дзвінок', 'test')`
+    ).bind(absorbedId).run();
+
+    const res = await callWorker(jsonRequest("/api/staff/patients/issues",
+      { survivorId, absorbedIds: [absorbedId] }, { method: "POST", headers: { cookie } }), db);
+    assert.equal(res.status, 200);
+    const body = await res.json();
+    assert.equal(body.ok, true);
+
+    // Поглинуту картку видалено, головна лишилась.
+    const gone = await db.prepare("SELECT patient_id FROM patient_profiles WHERE patient_id = ?").bind(absorbedId).first();
+    assert.equal(gone, null);
+    const kept = await db.prepare(
+      "SELECT contrast_alert AS c, do_not_contact AS d, allergy_note AS n FROM patient_profiles WHERE patient_id = ?"
+    ).bind(survivorId).first();
+    assert.equal(kept.c, 1); // прапорець контрасту перейшов
+    assert.equal(kept.d, 1); // «не турбувати» перейшов
+    assert.equal(kept.n, "Йодовмісний контраст"); // нотатка алергій збережена
+
+    // Історія перепризначена головній.
+    const bk = await db.prepare("SELECT patient_id AS p FROM bookings WHERE id = ?").bind(bId).first();
+    assert.equal(bk.p, survivorId);
+    const comm = await db.prepare("SELECT COUNT(*) AS n FROM patient_communications WHERE patient_id = ?").bind(survivorId).first();
+    assert.equal(comm.n, 1);
+  });
+});
+
+test("merge is denied to non-admin roles and validates input", async () => {
+  await withD1(async (db) => {
+    const survivorId = PID("a"), absorbedId = PID("b");
+    await fullProfile(db, survivorId, "380501112233", "A");
+    await fullProfile(db, absorbedId, "380501112233", "B");
+
+    const reg = await seedStaffSession(db, { email: "reg@example.com", role: "registrar", organizationId: 1 });
+    const denied = await callWorker(jsonRequest("/api/staff/patients/issues",
+      { survivorId, absorbedIds: [absorbedId] }, { method: "POST", headers: { cookie: reg } }), db);
+    assert.equal(denied.status, 403); // реєстратор не може обʼєднувати
+
+    const admin = await seedStaffSession(db, { email: "boss@example.com", role: "admin", organizationId: 1 });
+    const selfMerge = await callWorker(jsonRequest("/api/staff/patients/issues",
+      { survivorId, absorbedIds: [survivorId] }, { method: "POST", headers: { cookie: admin } }), db);
+    assert.equal(selfMerge.status, 400); // не можна приєднати картку до себе
+  });
+});
+
+test("merge refuses cards from another organization", async () => {
+  await withD1(async (db) => {
+    await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'other', 'Other', 1)").run();
+    const cookie = await seedStaffSession(db, { email: "boss@example.com", role: "admin", organizationId: 1 });
+    const survivorId = PID("a"), foreignId = PID("f");
+    await fullProfile(db, survivorId, "380501112233", "Свій");
+    await db.prepare(
+      `INSERT INTO patient_profiles (patient_id, organization_id, phone_normalized, display_name, updated_by)
+       VALUES (?, 2, '380501112233', 'Чужий', 'test')`
+    ).bind(foreignId).run();
+
+    const res = await callWorker(jsonRequest("/api/staff/patients/issues",
+      { survivorId, absorbedIds: [foreignId] }, { method: "POST", headers: { cookie } }), db);
+    assert.equal(res.status, 404); // чужа картка не знайдена в організації актора
+    const stillThere = await db.prepare("SELECT patient_id FROM patient_profiles WHERE patient_id = ?").bind(foreignId).first();
+    assert.ok(stillThere); // і не видалена
+  });
+});
+
 test("issues route isolates findings by organization", async () => {
   await withD1(async (db) => {
     await db.prepare("INSERT INTO organizations (id, slug, name, active) VALUES (2, 'other', 'Other', 1)").run();

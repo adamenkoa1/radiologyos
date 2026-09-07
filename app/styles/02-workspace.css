@@ -881,3 +881,12 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .consistencyItem>b{display:block;font-size:15px;letter-spacing:-.01em}
 .consistencyDetail{margin:6px 0 4px;font-size:13px;color:#3a4744}
 .consistencySuggestion{margin:0 0 10px;font-size:12px;color:#6b7976}
+
+/* Злиття карток-дублікатів на екрані неузгодженостей. */
+.mergeBox{margin-top:6px;padding:12px 14px;background:#f6f4ee;border:1px dashed #d4cdbf;border-radius:7px}
+.mergeHint{margin:0 0 8px;font-size:12px;color:#5c6a66}
+.mergeMembers{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+.mergeMembers li{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:13px}
+.mergeMembers label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.mergeMembers small{color:#71807c}
+.mergeError{margin:0 0 8px;font-size:12px;color:#a1301b}

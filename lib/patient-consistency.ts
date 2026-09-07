@@ -9,6 +9,12 @@ export type ConsistencyKind =
   | "stale_contact" | "duplicate_phone" | "linkable_booking" | "name_divergence";
 export type ConsistencySeverity = "high" | "medium" | "low";
 
+export interface ConsistencyMember {
+  patientId: string;
+  displayName: string;
+  birthDate: string;
+}
+
 export interface ConsistencyFinding {
   kind: ConsistencyKind;
   severity: ConsistencySeverity;
@@ -19,6 +25,8 @@ export interface ConsistencyFinding {
   title: string;
   detail: string;
   suggestion: string;
+  // Заповнюється лише для duplicate_phone — картки, що ділять номер (для злиття).
+  members?: ConsistencyMember[];
 }
 
 // Нормалізація ПІБ для порівняння: нижній регістр, без пунктуації, згорнуті
@@ -54,17 +62,56 @@ export function staleContactFindings(rows: StaleContactRow[]): ConsistencyFindin
   }));
 }
 
-export interface DuplicatePhoneRow {
-  phoneNormalized: string; count: number; names: string;
+export interface DuplicatePhoneMember {
+  phoneNormalized: string; patientId: string; displayName: string; birthDate: string;
 }
-export function duplicatePhoneFindings(rows: DuplicatePhoneRow[]): ConsistencyFinding[] {
-  return rows.map((r) => ({
-    kind: "duplicate_phone", severity: "medium",
-    patientId: "", bookingId: null, code: "", phoneNormalized: r.phoneNormalized,
-    title: `Один номер у ${r.count} карток`,
-    detail: `${r.phoneNormalized}: ${r.names}.`,
-    suggestion: "Якщо це та сама людина — зведіть картки в одну; якщо родина ділить номер — залиште окремі, але переконайтесь, що історії не переплутано.",
-  }));
+// Групуємо картки за номером; знахідка — на кожен номер із ≥2 картками.
+export function duplicatePhoneFindings(members: DuplicatePhoneMember[]): ConsistencyFinding[] {
+  const groups = new Map<string, ConsistencyMember[]>();
+  for (const m of members) {
+    if (!m.phoneNormalized) continue;
+    const list = groups.get(m.phoneNormalized) || [];
+    list.push({ patientId: m.patientId, displayName: m.displayName, birthDate: m.birthDate });
+    groups.set(m.phoneNormalized, list);
+  }
+  const out: ConsistencyFinding[] = [];
+  for (const [phone, list] of groups) {
+    if (list.length < 2) continue;
+    const names = list.map((m) => m.displayName || "без імені").join(" | ");
+    out.push({
+      kind: "duplicate_phone", severity: "medium",
+      patientId: "", bookingId: null, code: "", phoneNormalized: phone,
+      title: `Один номер у ${list.length} карток`,
+      detail: `${phone}: ${names}.`,
+      suggestion: "Якщо це та сама людина — оберіть головну картку й обʼєднайте; якщо родина ділить номер — залиште окремі, але переконайтесь, що історії не переплутано.",
+      members: list,
+    });
+  }
+  return out;
+}
+
+export interface MergeProfile {
+  patientId: string; contrastAlert: number; doNotContact: number;
+  allergyNote: string; telegramChatId: string;
+}
+// Об'єднання КЛІНІЧНО-безпечних полів при злитті карток: жоден прапорець
+// «контраст»/«не турбувати» й жодна нотатка алергій НЕ втрачаються. Демографію
+// (ПІБ, дата народження тощо) визначає головна картка — тут не чіпаємо.
+export function mergeSafetyFields(survivor: MergeProfile, absorbed: MergeProfile[]): {
+  contrastAlert: number; doNotContact: number; allergyNote: string; telegramChatId: string;
+} {
+  const all = [survivor, ...absorbed];
+  const contrastAlert = all.some((p) => Number(p.contrastAlert) === 1) ? 1 : 0;
+  const doNotContact = all.some((p) => Number(p.doNotContact) === 1) ? 1 : 0;
+  const notes: string[] = [];
+  for (const p of all) {
+    const n = (p.allergyNote || "").trim();
+    if (n && !notes.some((x) => x.toLowerCase() === n.toLowerCase())) notes.push(n);
+  }
+  const allergyNote = notes.join(" / ").slice(0, 400);
+  const telegramChatId = (survivor.telegramChatId || "").trim()
+    || absorbed.map((p) => (p.telegramChatId || "").trim()).find(Boolean) || "";
+  return { contrastAlert, doNotContact, allergyNote, telegramChatId };
 }
 
 export interface LinkableBookingRow {
