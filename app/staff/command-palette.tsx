@@ -47,6 +47,7 @@ const COMMANDS: { label: string; hint: string; href: string }[] = [
   { label: "Регістри", hint: "карта регістрів", href: "/staff/registers" },
   { label: "Обороти регістрів", hint: "оборотно-сальдовий", href: "/staff/reports/registers" },
   { label: "Пульт завідувача", hint: "червоні зони / KPI", href: "/staff/management" },
+  { label: "Критичні знахідки", hint: "ургентна патологія / доведення", href: "/staff/critical-findings" },
   { label: "Звіти відділення", hint: "аналітика", href: "/staff/reports" },
   { label: "Завантаженість обладнання", hint: "потужність / факт / простій", href: "/staff/reports/utilization" },
   { label: "Маржинальність послуг", hint: "план / факт матеріалів", href: "/staff/reports/material-margin" },

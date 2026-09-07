@@ -928,3 +928,17 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .kpiValue{font-family:var(--font-serif);font-size:28px;line-height:1}
 .kpiLabel{font-size:14px;font-weight:700;letter-spacing:-.01em}
 .kpiHint{margin:4px 0 0;font-size:11px;color:#71807c;line-height:1.4}
+
+/* Критичні знахідки (/staff/critical-findings). */
+.cfList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.cfItem{border:1px solid #dce4e3;border-left:4px solid #d1442b;border-radius:8px;padding:14px 16px;background:#fdf4f2}
+.cfItem.st-communicated{border-left-color:#d99a2b;background:#fdf9f0}
+.cfHead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.cfHead b{font-size:15px}
+.cfBadge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;padding:3px 8px;border-radius:999px;background:#fce6e2;color:#a1301b}
+.cfBadge.st-communicated{background:#fdf0da;color:#8a5a12}
+.cfMeta{font-size:12px;color:#6b7976;margin:2px 0 0}
+.cfNote{margin:8px 0 4px;font-size:14px;color:#2a3633;white-space:pre-wrap}
+.cfActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.cfActions input{padding:7px 10px;border:1px solid #cdd6d3;border-radius:6px;font-size:13px;min-width:220px}
+.button.compact.ghost{background:#eef2f0;color:#3a4744}

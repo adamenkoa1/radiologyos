@@ -270,6 +270,20 @@ export default function ProtocolsPage() {
     }
   }
 
+  async function flagCritical() {
+    if (!booking) return;
+    const note = window.prompt("Опишіть критичну знахідку (для термінового доведення лікарю/пацієнту):", "");
+    if (note === null) return;
+    setActionError(""); setActionSuccess("");
+    const res = await fetch("/api/staff/critical-findings", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "flag", bookingId: booking.id, note }),
+    });
+    const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) { setActionError(data.error || "Не вдалося позначити критичну знахідку"); return; }
+    setActionSuccess("Критичну знахідку позначено — вона у списку «Критичні знахідки» для доведення.");
+  }
+
   async function generateDraft() {
     if (!doc || !booking) return;
     setActionError(""); setActionSuccess(""); setAiLoading(true);
@@ -511,6 +525,7 @@ export default function ProtocolsPage() {
             {canIssue && <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати пацієнту</button>}
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
+            {canManage && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
           </div>
 
           <article className="protocolPrint" aria-hidden="true">
