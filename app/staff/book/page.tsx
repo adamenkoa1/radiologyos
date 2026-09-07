@@ -131,6 +131,7 @@ export default function StaffBookPage() {
         patientCategory: String(data.get("patientCategory") || "civilian"),
         serviceCode, date, time,
         referralType: String(data.get("referralType") || "none"),
+        clinicalIndication: String(data.get("clinicalIndication") || ""),
         comment: String(data.get("comment") || ""),
         assignedRadiologistEmail: String(data.get("radiologist") || ""),
         assignedRadiographerEmail: String(data.get("radiographer") || ""),
@@ -207,6 +208,7 @@ export default function StaffBookPage() {
               {REFERRALS.map(([v, l]) => <option value={v} key={v}>{l}</option>)}
             </select>
           </label>
+          <label className="settingsField"><span>Клінічні показання / діагноз направлення</span><input name="clinicalIndication" maxLength={400} placeholder="Напр.: підозра на ТЕЛА; контроль після пневмонії" /></label>
           <label className="settingsField"><span>Причина звернення / коментар</span><textarea name="comment" rows={3} maxLength={700} placeholder="Скарги, важливі деталі" /></label>
         </section>
 

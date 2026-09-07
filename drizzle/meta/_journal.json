@@ -799,6 +799,13 @@
       "when": 1787286000000,
       "tag": "0114_personnel_radiation_monitoring_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "6",
+      "when": 1788771358737,
+      "tag": "0115_patient_clinical_fields",
+      "breakpoints": true
     }
   ]
 }

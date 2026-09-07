@@ -13,7 +13,7 @@ import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDU
 export type CalBooking = {
   id: number; code: string; name: string; phone: string; service: string; serviceCode?: string;
   equipmentId: string; durationMinutes: number; desiredDate: string; desiredTime: string;
-  status: string; patientCategory?: string; paymentStatus?: string; paymentAmount?: number; paidAmount?: number;
+  status: string; patientCategory?: string; paymentStatus?: string; paymentAmount?: number; paidAmount?: number; clinicalIndication?: string;
   assignedRadiologistEmail?: string; assignedRadiographerEmail?: string;
 };
 export type CalStaffOption = { email: string; displayName: string; role: string };

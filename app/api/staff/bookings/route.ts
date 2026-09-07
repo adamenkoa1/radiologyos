@@ -69,6 +69,7 @@ export async function POST(request: Request) {
   let referralType = clean(body.referralType, 30);
   if (!REFERRAL_TYPES.includes(referralType)) referralType = "none";
   const comment = clean(body.comment, 700);
+  const clinicalIndication = clean(body.clinicalIndication, 400);
   let radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
   let radiographer = clean(body.assignedRadiographerEmail, 254).toLowerCase();
 
@@ -113,14 +114,14 @@ export async function POST(request: Request) {
     `INSERT INTO bookings (
       organization_id, code, name, phone, phone_normalized, service, service_code, equipment_id,
       duration_minutes, desired_date, desired_time, referral, patient_category, referral_type,
-      payment_status, payment_amount, nszu_status, comment, date_of_birth, patient_email,
+      payment_status, payment_amount, nszu_status, comment, clinical_indication, date_of_birth, patient_email,
       assigned_radiologist_email, assigned_radiographer_email, status,
       consent_at, consent_version, consent_source
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
   ).bind(
     ctx.organizationId, code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
     service.durationMinutes, desiredDate, desiredTime, referral, category, referralType,
-    paymentStatus, service.price, nszuStatus, comment, dob, email,
+    paymentStatus, service.price, nszuStatus, comment, clinicalIndication, dob, email,
     radiologist, radiographer, "2026-07-29", "staff",
   ).run();
 
@@ -175,7 +176,7 @@ export async function GET(request: Request) {
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         paid_amount AS paidAmount, external_reference AS externalReference,
         date_of_birth AS dateOfBirth,
-        comment, status, created_at AS createdAt
+        comment, clinical_indication AS clinicalIndication, status, created_at AS createdAt
        FROM bookings WHERE ${scope.sql} ORDER BY created_at DESC LIMIT 500`
     ).bind(...scope.values).all(),
     db.prepare(
@@ -245,7 +246,7 @@ export async function PATCH(request: Request) {
     externalReference?: string;
     edit?: {
       name?: string; phone?: string; email?: string; dob?: string;
-      patientCategory?: string; serviceCode?: string; comment?: string;
+      patientCategory?: string; serviceCode?: string; comment?: string; clinicalIndication?: string;
     };
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
@@ -291,6 +292,7 @@ export async function PATCH(request: Request) {
       if (!financeLocked) { sets.push("payment_status = ?"); binds.push(cat === "civilian" ? "pending" : "verification_required"); }
     }
     if (typeof e.comment === "string") { sets.push("comment = ?"); binds.push(e.comment.trim().slice(0, 700)); }
+    if (typeof e.clinicalIndication === "string") { sets.push("clinical_indication = ?"); binds.push(e.clinicalIndication.trim().slice(0, 400)); }
     if (typeof e.serviceCode === "string") {
       const svc = await effectiveServiceByCode(db, e.serviceCode.trim().slice(0, 12), ctx.organizationId);
       const targetCategory = e.patientCategory === "military"

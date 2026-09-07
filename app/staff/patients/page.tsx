@@ -21,13 +21,14 @@ type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type PatientProfile = {
   patientId:string; phoneNormalized:string; displayName:string; birthYear:number;
   birthDate:string; email:string; address:string;
-  tags:string; notes:string; doNotContact:number; updatedBy:string; updatedAt:string;
+  tags:string; notes:string; doNotContact:number;
+  contrastAlert:number; allergyNote:string; updatedBy:string; updatedAt:string;
 };
 type PatientBooking = {
   id:number; code:string; service:string; serviceCode:string; equipmentId:string;
   desiredDate:string; desiredTime:string; status:string; patientCategory:string;
   protocolStatus:string; protocolNumber:string; paymentStatus:string;
-  paymentAmount:number; paidAmount:number; performedAt:string;
+  paymentAmount:number; paidAmount:number; performedAt:string; clinicalIndication?:string;
 };
 type Communication = { id:number; patientId?:string; channel:string; direction:string; summary:string; actor:string; createdAt:string };
 type PatientCard = {
@@ -160,6 +161,8 @@ export default function PatientsPage() {
         tags:String(data.get("tags") || ""),
         notes:String(data.get("notes") || ""),
         doNotContact:data.get("doNotContact") === "on",
+        contrastAlert:data.get("contrastAlert") === "on",
+        allergyNote:String(data.get("allergyNote") || ""),
       }),
     });
     const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
@@ -184,6 +187,8 @@ export default function PatientsPage() {
         tags:String(data.get("tags") || ""),
         notes:String(data.get("notes") || ""),
         doNotContact:data.get("doNotContact") === "on",
+        contrastAlert:data.get("contrastAlert") === "on",
+        allergyNote:String(data.get("allergyNote") || ""),
       }),
     });
     const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
@@ -227,6 +232,7 @@ export default function PatientsPage() {
     service:v.service, serviceCode:v.serviceCode, equipmentId:v.equipmentId, durationMinutes:30,
     desiredDate:v.desiredDate, desiredTime:v.desiredTime, status:v.status,
     patientCategory:card?.patient?.category, paymentStatus:v.paymentStatus, paymentAmount:v.paymentAmount,
+    clinicalIndication:v.clinicalIndication,
   })), [card]);
   const openBooking = drawerBookings.find((b) => b.id === openId) || null;
 
@@ -303,6 +309,8 @@ export default function PatientsPage() {
             <label><span>Теги (через кому)</span><input name="tags" maxLength={200} placeholder="VIP, потребує супроводу"/></label>
             <label className="crmWide"><span>Нотатки</span><textarea name="notes" maxLength={2000} placeholder="Алергії, особливі вказівки, домовленості"/></label>
             <label className="crmCheck"><input name="doNotContact" type="checkbox"/><span>Не турбувати</span></label>
+            <label className="crmCheck"><input name="contrastAlert" type="checkbox"/><span>⚠ Реакція / алергія на контраст</span></label>
+            <label className="crmWide"><span>Алергії / реакції (деталі)</span><input name="allergyNote" maxLength={400} placeholder="Напр.: реакція на йодовмісний контраст"/></label>
             <div className="crmCreateActions">
               <button type="submit" disabled={saving}>{saving?"Зберігаємо…":"Додати пацієнта"}</button>
               <button type="button" className="crmCancel" onClick={()=>setCreating(false)}>Скасувати</button>
@@ -330,6 +338,7 @@ export default function PatientsPage() {
             </div>
             <div className="crmCardActions">
               {card.profile?.doNotContact ? <span className="crmDnc large">Не турбувати</span> : null}
+              {card.profile?.contrastAlert ? <span className="crmAlert large">⚠ Контраст</span> : null}
               {canManage && <a className="crmBookBtn" href={`/staff/book?${new URLSearchParams({
                 ...(card.patientId ? { patientId:card.patientId } : {}),
                 phone:card.phone,
@@ -339,6 +348,11 @@ export default function PatientsPage() {
               }).toString()}`}>+ Записати на дослідження</a>}
             </div>
           </header>
+
+          {(card.profile?.contrastAlert || card.profile?.allergyNote) && <div className="crmAlertBanner" role="alert">
+            <b>⚠ {card.profile?.contrastAlert ? "Реакція / алергія на контраст" : "Алергії"}</b>
+            {card.profile?.allergyNote ? <span>{card.profile.allergyNote}</span> : <span>Перед контрастним дослідженням уточніть у лікаря.</span>}
+          </div>}
 
           <div className="crmStats">
             <article><span>Візитів</span><b>{card.patient?.visits || 0}</b></article>
@@ -358,6 +372,8 @@ export default function PatientsPage() {
               <label><span>Теги (через кому)</span><input name="tags" maxLength={200} defaultValue={card.profile?.tags || ""} placeholder="VIP, потребує супроводу"/></label>
               <label className="crmWide"><span>Нотатки</span><textarea name="notes" maxLength={2000} defaultValue={card.profile?.notes || ""} placeholder="Особливості, алергії, домовленості"/></label>
               <label className="crmCheck"><input name="doNotContact" type="checkbox" defaultChecked={!!card.profile?.doNotContact}/><span>Не турбувати (пацієнт відмовився від дзвінків/розсилок)</span></label>
+              <label className="crmCheck"><input name="contrastAlert" type="checkbox" defaultChecked={!!card.profile?.contrastAlert}/><span>⚠ Реакція / алергія на контраст</span></label>
+              <label className="crmWide"><span>Алергії / реакції (деталі)</span><input name="allergyNote" maxLength={400} defaultValue={card.profile?.allergyNote || ""} placeholder="Напр.: реакція на йодовмісний контраст"/></label>
               <button type="submit" disabled={saving}>{card.profile ? "Зберегти картку" : "Створити окрему картку"}</button>
             </form>
           </details>}
@@ -373,6 +389,7 @@ export default function PatientsPage() {
                     <small>{booking.code} · {formatDate(booking.desiredDate)} {booking.desiredTime}</small>
                   </button>
                   <div className="crmVisitMeta">
+                    {booking.clinicalIndication && <span>Показання: {booking.clinicalIndication}</span>}
                     <span>Протокол: {protocolLabels[booking.protocolStatus] || booking.protocolStatus}{booking.protocolNumber?` (№ ${booking.protocolNumber})`:""}</span>
                     <span>Оплата: {paymentLabels[booking.paymentStatus] || booking.paymentStatus}{booking.paidAmount?` · ${booking.paidAmount} грн`:""}</span>
                     {booking.performedAt && <span>Виконано: {formatDateTime(booking.performedAt)}</span>}
