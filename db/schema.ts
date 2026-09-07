@@ -104,6 +104,8 @@ export const staffMembers = sqliteTable("staff_members", {
 	contactEmail: text("contact_email").notNull().default(""),
 	militaryRank: text("military_rank").notNull().default(""),
 	positionTitle: text("position_title").notNull().default(""),
+	totpSecret: text("totp_secret").notNull().default(""),
+	totpEnabled: integer("totp_enabled").notNull().default(0),
 },
 table => [
 	uniqueIndex("staff_members_phone_idx").on(table.phone).where(sql.raw("`phone` != ''")),

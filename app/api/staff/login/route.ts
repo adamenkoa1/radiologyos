@@ -16,6 +16,7 @@ import {
 import { normalizeUkrainianPhone } from "../../../../lib/phone";
 import { dbBinding } from "../../../../lib/db";
 import { audit } from "../../../../lib/audit";
+import { verifyTotp } from "../../../../lib/totp";
 
 const STAFF_LOGIN_LIMIT = 10;
 const STAFF_LOGIN_WINDOW_MINUTES = 15;
@@ -101,22 +102,25 @@ export async function POST(request: Request) {
     return Response.json({ error: "Забагато спроб входу. Спробуйте за 15 хвилин." }, { status: 429 });
   }
 
-  const body = await request.json().catch(() => ({})) as { phone?: string; email?: string; password?: string };
+  const body = await request.json().catch(() => ({})) as { phone?: string; email?: string; password?: string; totpCode?: string };
   const phone = normalizeUkrainianPhone(String(body.phone || ""));
   const email = String(body.email || "").trim().toLowerCase().slice(0, 254);
   const password = String(body.password || "");
+  const totpCode = String(body.totpCode || "").replace(/\s+/g, "");
   if ((!phone && !email) || !password) {
     return Response.json({ error: "Вкажіть номер телефону і PIN-код" }, { status: 400 });
   }
 
   // Вхід за номером телефону (основний) або email (сумісність).
+  const memberColumns = "SELECT email, display_name AS displayName, role, password_hash AS passwordHash,"
+    + " totp_enabled AS totpEnabled, totp_secret AS totpSecret FROM staff_members";
+  type MemberRow = {
+    email: string; displayName: string; role: string; passwordHash: string;
+    totpEnabled: number; totpSecret: string;
+  };
   const member = phone
-    ? await db.prepare(
-        "SELECT email, display_name AS displayName, role, password_hash AS passwordHash FROM staff_members WHERE phone = ? AND active = 1 LIMIT 1"
-      ).bind(phone).first<{ email: string; displayName: string; role: string; passwordHash: string }>()
-    : await db.prepare(
-        "SELECT email, display_name AS displayName, role, password_hash AS passwordHash FROM staff_members WHERE email = ? AND active = 1 LIMIT 1"
-      ).bind(email).first<{ email: string; displayName: string; role: string; passwordHash: string }>();
+    ? await db.prepare(`${memberColumns} WHERE phone = ? AND active = 1 LIMIT 1`).bind(phone).first<MemberRow>()
+    : await db.prepare(`${memberColumns} WHERE email = ? AND active = 1 LIMIT 1`).bind(email).first<MemberRow>();
 
   // Known accounts are always throttled by one canonical account key, regardless
   // of whether the caller supplied phone or email. Unknown identifiers still get
@@ -195,6 +199,29 @@ export async function POST(request: Request) {
   }
 
   await clearIdentifierRateLimit(db, "staff-login-account", accountIdentifier);
+
+  // Second factor (TOTP) — only when enabled for this account. The prompt is
+  // shown ONLY after a correct password + active membership, so it never helps
+  // enumerate accounts. A missing code is not a failure; a wrong code is.
+  if (Number(member.totpEnabled) === 1) {
+    if (!totpCode) {
+      return Response.json({ needsTotp: true }, { status: 200, headers: { "cache-control": "no-store" } });
+    }
+    const totpOk = await verifyTotp(member.totpSecret, totpCode);
+    if (!totpOk) {
+      await recordIdentifierRateLimitFailure(
+        db, "staff-login-account", accountIdentifier, STAFF_LOGIN_LIMIT, STAFF_LOGIN_WINDOW_MINUTES,
+      );
+      await auditAuthEvent(db, {
+        memberEmail: member.email,
+        actorEmail: member.email,
+        action: "login_failed",
+        activeOnly: true,
+        details: { reason: "wrong_totp" },
+      });
+      return Response.json({ error: "Невірний код автентифікації" }, { status: 401 });
+    }
+  }
 
   if (passwordHashNeedsUpgrade(member.passwordHash)) {
     await db.prepare("UPDATE staff_members SET password_hash = ? WHERE email = ?")
