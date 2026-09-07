@@ -890,3 +890,6 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .mergeMembers label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .mergeMembers small{color:#71807c}
 .mergeError{margin:0 0 8px;font-size:12px;color:#a1301b}
+
+/* Підказка під полем «Джерело методики» в редакторі протоколу. */
+.protocolFieldHint{display:block;margin-top:5px;font-size:11px;color:#71807c}

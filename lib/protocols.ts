@@ -29,6 +29,9 @@ export type ProtocolTemplate = {
   equipmentId: EquipmentType;
   modalityLabel: string;
   method: string;
+  // Джерело / стандарт методики (галузевий протокол, методика виробника тощо).
+  // Необовʼязкове: якщо порожнє — беремо типове за модальністю (defaultMethodRef).
+  methodRef?: string;
   sections: ProtocolSection[];
 };
 
@@ -39,6 +42,7 @@ export type ProtocolSectionValues = Record<string, Record<string, string>>;
 export type ProtocolDocument = {
   templateKey: string;
   method: string;
+  methodRef: string;
   sections: ProtocolSectionValues;
   findings: string;
   conclusion: string;
@@ -58,6 +62,7 @@ export const PROTOCOL_STATUS_LABELS: Record<ProtocolStatus, string> = {
 // Field length guards used by both the API and the editor.
 export const PROTOCOL_LIMITS = {
   method: 600,
+  methodRef: 300,
   field: 2000,
   narrative: 6000,
   number: 80,
@@ -413,6 +418,21 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   },
 ];
 
+// Типове джерело методики за модальністю — чесне узагальнення без вигаданих
+// номерів наказів; лікар уточнює конкретний стандарт у редакторі.
+export function defaultMethodRef(equipmentId: EquipmentType): string {
+  switch (equipmentId) {
+    case "ct":
+      return "Виконано за методикою виробника КТ-системи згідно з чинними галузевими протоколами променевої діагностики.";
+    case "fluoro":
+      return "Виконано за стандартною методикою цифрової флюорографії згідно з чинними галузевими протоколами.";
+    case "xray":
+      return "Виконано за стандартною методикою рентгенографії згідно з чинними галузевими протоколами.";
+    default:
+      return "Виконано згідно з чинними галузевими протоколами променевої діагностики.";
+  }
+}
+
 export function protocolTemplateByKey(key: string | null | undefined): ProtocolTemplate {
   return PROTOCOL_TEMPLATES.find((template) => template.key === key)
     || PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1];
@@ -462,6 +482,7 @@ export function normalDocument(templateKey: string): ProtocolDocument {
   return {
     templateKey: template.key,
     method: template.method,
+    methodRef: template.methodRef || defaultMethodRef(template.equipmentId),
     sections,
     findings: "",
     conclusion: "",
@@ -480,6 +501,8 @@ export function renderProtocolText(document: ProtocolDocument): string {
   if (document.number) lines.push(`Протокол № ${document.number}`);
   const method = (document.method || template.method).trim();
   if (method) lines.push("", `Методика: ${method}`);
+  const methodRef = (document.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)).trim();
+  if (methodRef) lines.push(`Джерело методики: ${methodRef}`);
   for (const section of template.sections) {
     const values = document.sections[section.key] || {};
     const rendered = section.fields
@@ -535,6 +558,7 @@ export function sanitizeDocument(input: unknown): ProtocolValidation {
   const document: ProtocolDocument = {
     templateKey,
     method: clip(raw.method, PROTOCOL_LIMITS.method),
+    methodRef: clip(raw.methodRef, PROTOCOL_LIMITS.methodRef),
     sections,
     findings: clip(raw.findings, PROTOCOL_LIMITS.narrative),
     conclusion: clip(raw.conclusion, PROTOCOL_LIMITS.narrative),

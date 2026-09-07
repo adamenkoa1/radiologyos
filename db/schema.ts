@@ -142,6 +142,7 @@ export const protocols = sqliteTable("protocols", {
 	bookingId: integer("booking_id").primaryKey().notNull(),
 	templateKey: text("template_key").notNull().default("generic"),
 	method: text().notNull().default(""),
+	methodRef: text("method_ref").notNull().default(""),
 	sectionsJson: text("sections_json").notNull().default("{}"),
 	findings: text().notNull().default(""),
 	conclusion: text().notNull().default(""),

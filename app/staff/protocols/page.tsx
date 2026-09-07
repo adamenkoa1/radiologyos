@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 import {
   PROTOCOL_TEMPLATES,
   type ProtocolDocument,
+  defaultMethodRef,
   normalDocument,
   protocolTemplateByKey,
   renderProtocolText,
@@ -122,6 +123,7 @@ export default function ProtocolsPage() {
       setDoc(data.protocol
         ? {
             templateKey:data.protocol.templateKey, method:data.protocol.method,
+            methodRef:data.protocol.methodRef || "",
             sections:data.protocol.sections || {}, findings:data.protocol.findings,
             conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
             number:data.protocol.number, status:data.protocol.status,
@@ -161,6 +163,7 @@ export default function ProtocolsPage() {
         ...current,
         templateKey,
         method:current.method.trim() ? current.method : template.method,
+        methodRef:current.methodRef.trim() ? current.methodRef : (template.methodRef || defaultMethodRef(template.equipmentId)),
       };
     });
     setDirty(true);
@@ -176,7 +179,12 @@ export default function ProtocolsPage() {
         for (const field of section.fields) if (field.normal && !values[field.key]?.trim()) values[field.key] = field.normal;
         sections[section.key] = values;
       }
-      return { ...current, method:current.method.trim() ? current.method : template.method, sections };
+      return {
+        ...current,
+        method:current.method.trim() ? current.method : template.method,
+        methodRef:current.methodRef.trim() ? current.methodRef : (template.methodRef || defaultMethodRef(template.equipmentId)),
+        sections,
+      };
     });
     setDirty(true);
     setActionSuccess("Поля заповнено типовими формулюваннями норми. Відредагуйте виявлені зміни.");
@@ -247,6 +255,7 @@ export default function ProtocolsPage() {
       const renderable:ProtocolDocument = {
         templateKey:doc.templateKey,
         method:doc.method,
+        methodRef:doc.methodRef,
         sections:doc.sections,
         findings:doc.findings,
         conclusion:doc.conclusion,
@@ -389,6 +398,7 @@ export default function ProtocolsPage() {
           <nav className="protocolToc" aria-label="Зміст протоколу">
             <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
             <a href="#protocol-method" className={doc.method.trim() ? "done" : ""}>Методика</a>
+            <a href="#protocol-method-ref" className={doc.methodRef.trim() ? "done" : ""}>Джерело методики</a>
             {template.sections.map((section)=>{
               const filled = section.fields.some((f)=>(doc.sections[section.key]?.[f.key] || "").trim());
               return <a key={section.key} href={`#protocol-section-${section.key}`} className={filled ? "done" : ""}>{section.title}</a>;
@@ -415,6 +425,13 @@ export default function ProtocolsPage() {
             <label className="protocolNarrative" id="protocol-method"><span>Методика</span>
               <textarea value={doc.method} maxLength={600} placeholder={template.method || "Опишіть методику дослідження"}
                 onChange={(e)=>patchDoc({method:e.target.value})}/>
+            </label>
+
+            <label className="protocolNarrative" id="protocol-method-ref"><span>Джерело методики / стандарт</span>
+              <textarea value={doc.methodRef} maxLength={300}
+                placeholder={template.methodRef || defaultMethodRef(template.equipmentId) || "Галузевий протокол, методика виробника, наказ МОЗ тощо"}
+                onChange={(e)=>patchDoc({methodRef:e.target.value})}/>
+              <small className="protocolFieldHint">Підстава методики дослідження — потрапляє в текст протоколу (аналог посилання на стандарт).</small>
             </label>
 
             {template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
@@ -510,6 +527,7 @@ export default function ProtocolsPage() {
               <div><dt>{booking.performedAt ? "Дата виконання" : "Запланована дата"}</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
             </dl>
             {(doc.method || template.method) && <section><h2>Методика</h2><p>{doc.method || template.method}</p></section>}
+            {(doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)) && <section><h2>Джерело методики</h2><p>{doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)}</p></section>}
             {template.sections.map((section)=>{
               const rendered = section.fields
                 .map((field)=>({ field, value:(doc.sections[section.key]?.[field.key] || "").trim() }))

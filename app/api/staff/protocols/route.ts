@@ -43,6 +43,7 @@ type ExistingProtocol = {
   status: string;
   templateKey: string;
   method: string;
+  methodRef: string;
   sectionsJson: string;
   findings: string;
   conclusion: string;
@@ -56,6 +57,7 @@ type ExistingProtocol = {
 function sameClinicalDocument(existing: ExistingProtocol, document: ProtocolLifecycleDocument): boolean {
   return existing.templateKey === document.templateKey
     && existing.method === document.method
+    && existing.methodRef === document.methodRef
     && existing.sectionsJson === JSON.stringify(document.sections)
     && existing.findings === document.findings
     && existing.conclusion === document.conclusion
@@ -90,7 +92,7 @@ export async function GET(request: Request) {
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     const [row, revisions] = await Promise.all([
       db.prepare(
-      `SELECT template_key AS templateKey, method, sections_json AS sectionsJson,
+      `SELECT template_key AS templateKey, method, method_ref AS methodRef, sections_json AS sectionsJson,
         findings, conclusion, recommendations, number, status, version,
         author_email AS authorEmail, updated_by AS updatedBy, updated_at AS updatedAt,
         signed_by AS signedBy, signed_at AS signedAt, signed_version AS signedVersion
@@ -105,6 +107,7 @@ export async function GET(request: Request) {
       ? {
           templateKey: String(row.templateKey),
           method: String(row.method || ""),
+          methodRef: String(row.methodRef || ""),
           sections: parseSections(String(row.sectionsJson || "{}")),
           findings: String(row.findings || ""),
           conclusion: String(row.conclusion || ""),
@@ -182,7 +185,7 @@ export async function PUT(request: Request) {
 
   const existing = await db.prepare(
     `SELECT version, author_email AS authorEmail, status,
-       template_key AS templateKey, method, sections_json AS sectionsJson,
+       template_key AS templateKey, method, method_ref AS methodRef, sections_json AS sectionsJson,
        findings, conclusion, recommendations, number,
        signed_by AS signedBy, signed_at AS signedAt, signed_version AS signedVersion
      FROM protocols WHERE booking_id = ? AND organization_id = ? LIMIT 1`
@@ -286,12 +289,12 @@ export async function PUT(request: Request) {
     await db.batch([
       db.prepare(
         `INSERT INTO protocols
-       (organization_id, booking_id, template_key, method, sections_json, findings, conclusion, recommendations,
+       (organization_id, booking_id, template_key, method, method_ref, sections_json, findings, conclusion, recommendations,
         number, status, version, author_email, updated_by, updated_at, signed_by, signed_at, signed_version)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?)
      ON CONFLICT(booking_id) DO UPDATE SET
        organization_id = excluded.organization_id,
-       template_key = excluded.template_key, method = excluded.method,
+       template_key = excluded.template_key, method = excluded.method, method_ref = excluded.method_ref,
        sections_json = excluded.sections_json, findings = excluded.findings,
        conclusion = excluded.conclusion, recommendations = excluded.recommendations,
        number = excluded.number, status = excluded.status, version = excluded.version,
@@ -299,7 +302,7 @@ export async function PUT(request: Request) {
        signed_by = excluded.signed_by, signed_at = excluded.signed_at,
        signed_version = excluded.signed_version`
       ).bind(
-        ctx.organizationId, bookingId, document.templateKey, document.method, sectionsJson, document.findings,
+        ctx.organizationId, bookingId, document.templateKey, document.method, document.methodRef, sectionsJson, document.findings,
         document.conclusion, document.recommendations, document.number, document.status,
         version, authorEmail, member.email, signedBy, signedAt, signedVersion,
       ),
