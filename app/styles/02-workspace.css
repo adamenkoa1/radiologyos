@@ -748,7 +748,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .themeDark .apptDrawerClose{background:#1b2731;color:#cdd9df}
 .themeDark .apptDrawerBtn{background:#161d24;border-color:#2a3843;color:#cdd8de}
 .apptBadge{flex-shrink:0;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;white-space:nowrap}
-.apptBadge.grp-planned{background:#fdf2df;color:#8a5a12}
+.apptBadge.grp-planned{background:#fdf2df;color:var(--status-warn-fg)}
 .apptBadge.grp-confirmed{background:#e0eef3;color:#1d5a72}
 .apptBadge.grp-arrived{background:#efe6fa;color:#5b3a99}
 .apptBadge.grp-inroom{background:#e2efe0;color:#2f5c2a}
@@ -811,7 +811,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .chatList{background:#fff;border:1px solid #dce4e3;border-radius:10px;overflow-y:auto;padding:6px}
 .chatList .empty{padding:20px;color:#7a8b88;font-size:13px;text-align:center}
 .chatListItem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:11px 12px;cursor:pointer;position:relative}
-.chatListItem:hover{background:#f2f6f4}.chatListItem.active{background:#e6f0ec}
+.chatListItem:hover{background:#f2f6f4}.chatListItem.active{background:var(--status-ok-bg)}
 .chatListItem b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
 .chatListItem small{display:block;font-size:12px;color:#66756f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
 .chatListTime{position:absolute;top:11px;right:12px;font-size:10.5px;color:#98a6a2}
@@ -868,14 +868,14 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .consistencySummary>a{margin-left:auto}
 .consistencyBadge{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;background:#edf4f1;color:#164945;white-space:nowrap}
 .consistencyBadge b{font-family:var(--font-serif);font-weight:800}
-.consistencyBadge.sev-high{background:#fce6e2;color:#a1301b}
-.consistencyBadge.sev-medium{background:#fdf0da;color:#8a5a12}
-.consistencyBadge.sev-low{background:#e6f0ec;color:#2b5c4f}
+.consistencyBadge.sev-high{background:var(--status-alert-bg);color:var(--status-alert-fg)}
+.consistencyBadge.sev-medium{background:var(--status-warn-bg);color:var(--status-warn-fg)}
+.consistencyBadge.sev-low{background:var(--status-ok-bg);color:var(--status-ok-fg)}
 .consistencyList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.consistencyItem{border:1px solid #dce4e3;border-left:4px solid #c9d3d1;border-radius:7px;padding:15px 17px;background:white}
-.consistencyItem.sev-high{border-left-color:#d1442b}
-.consistencyItem.sev-medium{border-left-color:#d99a2b}
-.consistencyItem.sev-low{border-left-color:#4f8f7c}
+.consistencyItem{border:1px solid #dce4e3;border-left:4px solid var(--ws-line);border-radius:7px;padding:15px 17px;background:white}
+.consistencyItem.sev-high{border-left-color:var(--status-alert-line)}
+.consistencyItem.sev-medium{border-left-color:var(--status-warn-line)}
+.consistencyItem.sev-low{border-left-color:var(--status-ok-line)}
 .consistencyItemHead{display:flex;gap:9px;align-items:center;margin-bottom:8px}
 .consistencyKind{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#71807c;font-weight:900}
 .consistencyItem>b{display:block;font-size:15px;letter-spacing:-.01em}
@@ -889,7 +889,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .mergeMembers li{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:13px}
 .mergeMembers label{display:flex;gap:8px;align-items:center;cursor:pointer}
 .mergeMembers small{color:#71807c}
-.mergeError{margin:0 0 8px;font-size:12px;color:#a1301b}
+.mergeError{margin:0 0 8px;font-size:12px;color:var(--status-alert-fg)}
 
 /* Підказка під полем «Джерело методики» в редакторі протоколу. */
 .protocolFieldHint{display:block;margin-top:5px;font-size:11px;color:#71807c}
@@ -914,29 +914,29 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .kpiHeader{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
 .kpiHeader>a{margin-left:auto}
 .kpiAttention{font-size:13px;font-weight:800;padding:6px 12px;border-radius:999px}
-.kpiAttention.clear{background:#e6f0ec;color:#2b5c4f}
-.kpiAttention.has{background:#fce6e2;color:#a1301b}
+.kpiAttention.clear{background:var(--status-ok-bg);color:var(--status-ok-fg)}
+.kpiAttention.has{background:var(--status-alert-bg);color:var(--status-alert-fg)}
 .kpiGrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
-.kpiCard{border:1px solid #dce4e3;border-left:4px solid #c9d3d1;border-radius:8px;padding:14px 16px;background:white;display:flex;flex-direction:column;gap:4px}
-.kpiCard.st-alert{border-left-color:#d1442b;background:#fdf4f2}
-.kpiCard.st-warn{border-left-color:#d99a2b;background:#fdf9f0}
-.kpiCard.st-ok{border-left-color:#4f8f7c}
+.kpiCard{border:1px solid #dce4e3;border-left:4px solid var(--ws-line);border-radius:8px;padding:14px 16px;background:white;display:flex;flex-direction:column;gap:4px}
+.kpiCard.st-alert{border-left-color:var(--status-alert-line);background:var(--status-alert-bg)}
+.kpiCard.st-warn{border-left-color:var(--status-warn-line);background:var(--status-warn-bg)}
+.kpiCard.st-ok{border-left-color:var(--status-ok-line)}
 .kpiStatus{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:900;color:#71807c}
-.kpiCard.st-alert .kpiStatus{color:#a1301b}
-.kpiCard.st-warn .kpiStatus{color:#8a5a12}
-.kpiCard.st-ok .kpiStatus{color:#2b5c4f}
+.kpiCard.st-alert .kpiStatus{color:var(--status-alert-fg)}
+.kpiCard.st-warn .kpiStatus{color:var(--status-warn-fg)}
+.kpiCard.st-ok .kpiStatus{color:var(--status-ok-fg)}
 .kpiValue{font-family:var(--font-serif);font-size:28px;line-height:1}
 .kpiLabel{font-size:14px;font-weight:700;letter-spacing:-.01em}
 .kpiHint{margin:4px 0 0;font-size:11px;color:#71807c;line-height:1.4}
 
 /* Критичні знахідки (/staff/critical-findings). */
 .cfList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
-.cfItem{border:1px solid #dce4e3;border-left:4px solid #d1442b;border-radius:8px;padding:14px 16px;background:#fdf4f2}
-.cfItem.st-communicated{border-left-color:#d99a2b;background:#fdf9f0}
+.cfItem{border:1px solid #dce4e3;border-left:4px solid var(--status-alert-line);border-radius:8px;padding:14px 16px;background:var(--status-alert-bg)}
+.cfItem.st-communicated{border-left-color:var(--status-warn-line);background:var(--status-warn-bg)}
 .cfHead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
 .cfHead b{font-size:15px}
-.cfBadge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;padding:3px 8px;border-radius:999px;background:#fce6e2;color:#a1301b}
-.cfBadge.st-communicated{background:#fdf0da;color:#8a5a12}
+.cfBadge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;padding:3px 8px;border-radius:999px;background:var(--status-alert-bg);color:var(--status-alert-fg)}
+.cfBadge.st-communicated{background:var(--status-warn-bg);color:var(--status-warn-fg)}
 .cfMeta{font-size:12px;color:#6b7976;margin:2px 0 0}
 .cfNote{margin:8px 0 4px;font-size:14px;color:#2a3633;white-space:pre-wrap}
 .cfActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
