@@ -106,6 +106,7 @@ const businessModules:BusinessModule[]=[
   ]},
   { key:"reports",label:"Звіти",items:[
     {label:"Звіти відділення",href:"/staff/reports"},
+    {label:"SEO-аудит сайту",href:"/staff/reports/seo"},
     {label:"Обороти регістрів",href:"/staff/reports/registers"},
     {label:"Дебіторська заборгованість",href:"/staff/reports/receivables"},
     {label:"Маржинальність послуг",href:"/staff/reports/material-margin"},
