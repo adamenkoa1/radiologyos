@@ -21,7 +21,11 @@ export async function GET(request: Request) {
   const today = todayInKyiv();
   const one = (sql: string, ...bind: unknown[]) => db.prepare(sql).bind(...bind).first<Record<string, unknown>>();
 
-  const [overdue, ready, needImaging, newBookings, maintenance, receivables] = await Promise.all([
+  const [critical, overdue, ready, needImaging, newBookings, maintenance, receivables] = await Promise.all([
+    one(
+      "SELECT COUNT(*) AS c FROM critical_findings WHERE organization_id = ? AND status = 'open'",
+      orgId,
+    ),
     one(
       `SELECT COUNT(*) AS c FROM bookings
        WHERE organization_id = ? AND performed_at != '' AND substr(performed_at,1,10) < date(?, '-2 days')
@@ -57,6 +61,7 @@ export async function GET(request: Request) {
   ]);
 
   const cards = buildRedZones({
+    criticalFindings: num(critical),
     overdueProtocols: num(overdue),
     readyToIssue: num(ready),
     needImaging: num(needImaging),

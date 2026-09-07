@@ -1638,3 +1638,27 @@ table => [
 	check("saved_report_views_report_key_check", sql.raw("`report_key` = 'register_turnover'")),
 	check("saved_report_views_name_check", sql.raw("length(trim(`name`)) BETWEEN 1 AND 80")),
 ]);
+
+// Критичні знахідки (за мотивами RIS «critical findings»): ургентна патологія,
+// що потребує термінового доведення лікарю/пацієнту, з фіксацією «донесено».
+// Окрема таблиця — не чіпає незмінний ЖЦ протоколу. Один активний запис на
+// заявку (upsert). Статуси: open → communicated → resolved.
+export const criticalFindings = sqliteTable("critical_findings", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull(),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	status: text().notNull().default("open"),
+	note: text().notNull().default(""),
+	flaggedBy: text("flagged_by").notNull(),
+	flaggedAt: text("flagged_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	communicatedBy: text("communicated_by").notNull().default(""),
+	communicatedAt: text("communicated_at").notNull().default(""),
+	communicatedVia: text("communicated_via").notNull().default(""),
+	resolvedBy: text("resolved_by").notNull().default(""),
+	resolvedAt: text("resolved_at").notNull().default(""),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("critical_findings_booking_unique").on(table.organizationId, table.bookingId),
+	index("critical_findings_org_status_idx").on(table.organizationId, table.status, table.flaggedAt),
+]);

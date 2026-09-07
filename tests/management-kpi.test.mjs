@@ -12,8 +12,9 @@ test("evaluateThreshold: більше = гірше", () => {
   assert.equal(evaluateThreshold(99, 1, 5), "alert");
 });
 
-test("buildRedZones повертає 6 карток, сортує alert→warn→ok, рахує зони уваги", () => {
+test("buildRedZones повертає 7 карток, сортує alert→warn→ok, рахує зони уваги", () => {
   const cards = buildRedZones({
+    criticalFindings: 0,   // ok
     overdueProtocols: 6,   // alert (≥5)
     readyToIssue: 0,       // ok
     needImaging: 2,        // warn (≥1)
@@ -22,7 +23,7 @@ test("buildRedZones повертає 6 карток, сортує alert→warn�
     activeDowntime: 0,
     receivablesDue: 0,     // ok
   });
-  assert.equal(cards.length, 6);
+  assert.equal(cards.length, 7);
   assert.equal(cards[0].key, "overdueProtocols");
   assert.equal(cards[0].status, "alert");
   const byKey = Object.fromEntries(cards.map((c) => [c.key, c.status]));
@@ -31,9 +32,19 @@ test("buildRedZones повертає 6 карток, сортує alert→warn�
   assert.equal(attentionCount(cards), 2); // 1 alert + 1 warn
 });
 
+test("критична знахідка = alert і йде першою серед alert (клінічна терміновість)", () => {
+  const cards = buildRedZones({
+    criticalFindings: 1, overdueProtocols: 6, readyToIssue: 0, needImaging: 0,
+    newBookings: 0, openFaults: 0, activeDowntime: 0, receivablesDue: 300000,
+  });
+  // Серед alert критична знахідка має пріоритет над боргом і простроченими.
+  assert.equal(cards[0].key, "criticalFindings");
+  assert.equal(cards[0].status, "alert");
+});
+
 test("openFaults будь-яке >0 = alert; downtime у підказці", () => {
   const cards = buildRedZones({
-    overdueProtocols: 0, readyToIssue: 0, needImaging: 0, newBookings: 0,
+    criticalFindings: 0, overdueProtocols: 0, readyToIssue: 0, needImaging: 0, newBookings: 0,
     openFaults: 1, activeDowntime: 2, receivablesDue: 0,
   });
   const faults = cards.find((c) => c.key === "openFaults");
@@ -42,7 +53,7 @@ test("openFaults будь-яке >0 = alert; downtime у підказці", () =
 });
 
 test("receivablesDue у гривнях з порогами 50k/200k", () => {
-  const mk = (v) => buildRedZones({ overdueProtocols: 0, readyToIssue: 0, needImaging: 0, newBookings: 0, openFaults: 0, activeDowntime: 0, receivablesDue: v })
+  const mk = (v) => buildRedZones({ criticalFindings: 0, overdueProtocols: 0, readyToIssue: 0, needImaging: 0, newBookings: 0, openFaults: 0, activeDowntime: 0, receivablesDue: v })
     .find((c) => c.key === "receivablesDue");
   assert.equal(mk(0).status, "ok");
   assert.equal(mk(60000).status, "warn");

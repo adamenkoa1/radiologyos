@@ -21,6 +21,7 @@ export function evaluateThreshold(value: number, warnAt: number, alertAt: number
 }
 
 export type ManagementMetrics = {
+  criticalFindings: number;   // критичні знахідки, ще не доведені (status = 'open')
   overdueProtocols: number;   // виконано >2 діб тому, протокол не готовий/виданий
   readyToIssue: number;       // протокол готовий, але не виданий пацієнту
   needImaging: number;        // виконано, але немає прив'язаних знімків
@@ -31,9 +32,18 @@ export type ManagementMetrics = {
 };
 
 const STATUS_ORDER: Record<KpiStatus, number> = { alert: 0, warn: 1, ok: 2 };
+// Клінічна терміновість важливіша за суму боргу — критичні знахідки й
+// несправності мають бути вгорі серед однакового статусу.
+const KEY_PRIORITY: Record<string, number> = { criticalFindings: 0, openFaults: 1, overdueProtocols: 2 };
+const priorityOf = (key: string) => (key in KEY_PRIORITY ? KEY_PRIORITY[key] : 9);
 
 export function buildRedZones(m: ManagementMetrics): KpiCard[] {
   const cards: KpiCard[] = [
+    {
+      key: "criticalFindings", label: "Критичні знахідки", value: m.criticalFindings, unit: "",
+      status: evaluateThreshold(m.criticalFindings, 1, 1),
+      hint: "Ургентні знахідки, які ще не доведено лікарю/пацієнту. Потребують негайної комунікації.",
+    },
     {
       key: "overdueProtocols", label: "Прострочені протоколи", value: m.overdueProtocols, unit: "",
       status: evaluateThreshold(m.overdueProtocols, 1, 5),
@@ -65,7 +75,10 @@ export function buildRedZones(m: ManagementMetrics): KpiCard[] {
       hint: "Несплачений залишок за проведені послуги (пороги орієнтовні — можна відкалібрувати).",
     },
   ];
-  return cards.sort((a, b) => STATUS_ORDER[a.status] - STATUS_ORDER[b.status] || b.value - a.value);
+  return cards.sort((a, b) =>
+    STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+    || priorityOf(a.key) - priorityOf(b.key)
+    || b.value - a.value);
 }
 
 export function attentionCount(cards: KpiCard[]): number {
