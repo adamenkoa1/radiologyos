@@ -28,6 +28,7 @@ const COMMANDS: { label: string; hint: string; href: string }[] = [
   // Пацієнти
   { label: "Пацієнти", hint: "картки / CRM", href: "/staff/patients" },
   { label: "Імпорт пацієнтів", hint: "CSV / масове завантаження", href: "/staff/patients/import" },
+  { label: "Неузгодженості карток", hint: "аудит суперечностей CRM", href: "/staff/patients/issues" },
   { label: "Чат із пацієнтами", hint: "повідомлення", href: "/staff/chat" },
   // Медицина
   { label: "DICOM / PACS", hint: "знімки та архів", href: "/staff/imaging" },

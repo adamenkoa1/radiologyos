@@ -273,6 +273,7 @@ export default function PatientsPage() {
           {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelectedPatientKey(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
           <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
           {canManage && <a className="crmExport" href="/staff/patients/import" title="Імпорт пацієнтів із CSV">↥ Імпорт із CSV</a>}
+          <a className="crmExport" href="/staff/patients/issues" title="Аудит суперечностей між картками, заявками й контактами">⚠ Неузгодженості</a>
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Пацієнтів у цій категорії немає.</p> : visible.map((item)=>{

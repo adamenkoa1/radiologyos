@@ -862,3 +862,22 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 
 /* Код заявки як компактний моноширинний чип (RD-РРММДД-N) у списках/картках. */
 .codeTag{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+
+/* Аудит неузгодженостей карток пацієнтів (/staff/patients/issues). */
+.consistencySummary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.consistencySummary>a{margin-left:auto}
+.consistencyBadge{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;background:#edf4f1;color:#164945;white-space:nowrap}
+.consistencyBadge b{font-family:var(--font-serif);font-weight:800}
+.consistencyBadge.sev-high{background:#fce6e2;color:#a1301b}
+.consistencyBadge.sev-medium{background:#fdf0da;color:#8a5a12}
+.consistencyBadge.sev-low{background:#e6f0ec;color:#2b5c4f}
+.consistencyList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.consistencyItem{border:1px solid #dce4e3;border-left:4px solid #c9d3d1;border-radius:7px;padding:15px 17px;background:white}
+.consistencyItem.sev-high{border-left-color:#d1442b}
+.consistencyItem.sev-medium{border-left-color:#d99a2b}
+.consistencyItem.sev-low{border-left-color:#4f8f7c}
+.consistencyItemHead{display:flex;gap:9px;align-items:center;margin-bottom:8px}
+.consistencyKind{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#71807c;font-weight:900}
+.consistencyItem>b{display:block;font-size:15px;letter-spacing:-.01em}
+.consistencyDetail{margin:6px 0 4px;font-size:13px;color:#3a4744}
+.consistencySuggestion{margin:0 0 10px;font-size:12px;color:#6b7976}
