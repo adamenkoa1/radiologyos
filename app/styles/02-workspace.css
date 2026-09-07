@@ -893,3 +893,19 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 
 /* Підказка під полем «Джерело методики» в редакторі протоколу. */
 .protocolFieldHint{display:block;margin-top:5px;font-size:11px;color:#71807c}
+
+/* Звіт завантаженості обладнання (/staff/reports/utilization). */
+.utilFilters{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
+.utilFilters label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5c6a66}
+.utilFilters input{padding:8px 10px;border:1px solid #cdd6d3;border-radius:6px}
+.utilFilters a{margin-left:auto}
+.utilTable{width:100%;border-collapse:collapse;font-size:13px}
+.utilTable th,.utilTable td{padding:9px 12px;border-bottom:1px solid #eceae3;text-align:left}
+.utilTable thead th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#71807c;font-weight:900}
+.utilTable td.num,.utilTable th.num{text-align:right;font-variant-numeric:tabular-nums}
+.utilTable tfoot th{font-weight:800;border-top:2px solid #dfe4e2}
+.utilTable small{color:#8a9793}
+.utilCell{display:flex;align-items:center;gap:10px;min-width:140px}
+.utilCell .reportBarTrack{flex:1}
+.utilCell b{font-variant-numeric:tabular-nums;font-size:12px}
+.utilHint{margin-top:14px;font-size:11px;color:#71807c;line-height:1.5}

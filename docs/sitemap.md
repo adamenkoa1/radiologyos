@@ -134,6 +134,7 @@
 ### Звіти — *Адмін*
 
 - Звіти відділення — `/staff/reports`
+- Завантаженість обладнання — `/staff/reports/utilization` *(також Завідувач)*
 - Обороти регістрів — `/staff/reports/registers`
 - Дебіторська заборгованість — `/staff/reports/receivables`
 - Маржинальність послуг — `/staff/reports/material-margin`
