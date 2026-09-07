@@ -41,6 +41,14 @@ function groupOf(status: string): string {
   for (const [group, list] of Object.entries(GROUPS)) if (list.includes(status)) return group;
   return "planned";
 }
+const STATUS_LEGEND: { key: string; label: string }[] = [
+  { key: "planned", label: "Заплановано" },
+  { key: "confirmed", label: "Підтверджено" },
+  { key: "arrived", label: "Прибув" },
+  { key: "inroom", label: "У кабінеті" },
+  { key: "done", label: "Виконано" },
+  { key: "cancelled", label: "Скасовано" },
+];
 const EQUIP: Record<string, string> = { ct: "КТ", xray: "Рентген", fluoro: "Флюорограф" };
 const WEEKDAY = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const DAY_START = 8, DAY_END = 19, HOUR_PX = 76;
@@ -240,6 +248,9 @@ export default function WeekCalendar({
           </button>
         ))}
       </div>}
+      <div className="apptStatusLegend" aria-label="Легенда статусів запису">
+        {STATUS_LEGEND.map(s => <span key={s.key}><i className={`grp-${s.key}`} aria-hidden="true" />{s.label}</span>)}
+      </div>
       {view === "day" && <p className="slotBoardHint">Натисніть зелений вільний слот, щоб одразу записати пацієнта на цей кабінет, дату і час.</p>}
 
       {view === "week"
@@ -279,7 +290,7 @@ export default function WeekCalendar({
                     ? <p className="roomClosed">Кабінет цього дня не працює</p>
                     : <div className="roomSlots">{candidateTimesFor(schedule.equipment[equipmentId] || SCHEDULE_DEFAULTS.equipment[equipmentId], schedule.equipment[equipmentId]?.slotMinutes || 15).map(time => {
                         const state=roomSlot(equipmentId,time);
-                        if(state.occupied) { const occ = state.occupied; return <button type="button" onClick={()=>setOpenId(occ.id)} className={`roomSlot occupied route-${occ.patientCategory || "unknown"}`} key={time}><strong>{time}</strong><span>{occ.name}</span><small>{occ.service}</small></button>; }
+                        if(state.occupied) { const occ = state.occupied; return <button type="button" onClick={()=>setOpenId(occ.id)} className={`roomSlot occupied grp-${groupOf(occ.status)} route-${occ.patientCategory || "unknown"}`} key={time} title={`${stateLabel(occ.status)} · ${occ.name}`}><strong>{time}</strong><span>{occ.name}</span><small>{occ.service}</small></button>; }
                         if(state.blocked) return <span className="roomSlot blocked" key={time} title={state.blocked.reason}><strong>{time}</strong><span>Недоступно</span><small>{state.blocked.reason || "Технічне вікно"}</small></span>;
                         return <a className="roomSlot free" href={`/staff/book?date=${date}&time=${time}&equipment=${equipmentId}`} key={time}><strong>{time}</strong><span>Вільний слот</span></a>;
                       })}</div>}

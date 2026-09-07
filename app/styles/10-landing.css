@@ -536,6 +536,13 @@
 .roomSlot.free:hover{background:#dcf3e6;border-color:#64ad83}
 .roomSlot.occupied{background:#e5f4f5;border-color:#78bcc0;color:#0b5960}
 .roomSlot.occupied.route-civilian{background:#edf5fc;border-color:#90b8df;color:#174f83}
+.roomSlot.occupied{border-left-width:4px}
+.roomSlot.occupied.grp-planned{border-left-color:#e0a638}
+.roomSlot.occupied.grp-confirmed{border-left-color:#2f7d99}
+.roomSlot.occupied.grp-arrived{border-left-color:#7a53c0}
+.roomSlot.occupied.grp-inroom{border-left-color:#3f8a37}
+.roomSlot.occupied.grp-done{border-left-color:#7a8b88}
+.roomSlot.occupied.grp-cancelled{border-left-color:#c85a38}
 .roomSlot.blocked{background:#f2f3f4;border-color:#d2d8da;color:#69777b}
 .roomClosed{margin:10px;padding:24px 12px;border-radius:9px;background:#f2f3f4;color:#6b787c;text-align:center;font-size:12px;font-weight:750}
 .apptCardTime{display:grid;gap:3px;font-size:22px}
