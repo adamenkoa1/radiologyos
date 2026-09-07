@@ -24,7 +24,7 @@ export default function StaffSettingsPage() {
   const [token, setToken] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  const [reminderLeadHours, setReminderLeadHours] = useState("3, 1");
+  const [reminderLeadHours, setReminderLeadHours] = useState("24, 3, 1");
   const [smsGatewayUrl, setSmsGatewayUrl] = useState("");
   const [smsGatewayAuth, setSmsGatewayAuth] = useState("");
   const [emailGatewayUrl, setEmailGatewayUrl] = useState("");
@@ -52,7 +52,7 @@ export default function StaffSettingsPage() {
       if (data.settings) {
         setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); setExternalIcsUrl(data.settings.externalIcsUrl || "");
         setRemindersEnabled(Boolean(data.settings.remindersEnabled));
-        setReminderLeadHours(data.settings.reminderLeadHours || "3, 1");
+        setReminderLeadHours(data.settings.reminderLeadHours || "24, 3, 1");
         setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
         setEmailGatewayUrl(data.settings.emailGatewayUrl || "");
         setEmailGatewayFrom(data.settings.emailGatewayFrom || "");
@@ -237,8 +237,8 @@ export default function StaffSettingsPage() {
           <span>Надсилати пацієнтам автонагадування про підтвердження та перенесення запису</span>
         </label>
         <label><span>Нагадування за (годин до візиту)</span>
-          <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="3, 1" inputMode="numeric" />
-          <small>Через кому — за скільки годин до візиту слати нагадування (напр. «3, 1»). Працює, коли підключено WhatsApp і увімкнено нагадування вище. Розсилає планувальник кожні ~15 хв.</small>
+          <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="24, 3, 1" inputMode="numeric" />
+          <small>Через кому — за скільки годин до візиту слати нагадування (напр. «24, 3, 1»; 24 = «напередодні»). Планувальник щоразу пробує канали по черзі Telegram → e-mail → WhatsApp → SMS і зупиняється на першому доступному. Розсилає кожні ~15 хв.</small>
         </label>
         <label><span>Адреса SMS-шлюзу (HTTP POST)</span>
           <input value={smsGatewayUrl} onChange={(e) => setSmsGatewayUrl(e.target.value)} placeholder="https://sms-провайдер/api/send" autoComplete="off" inputMode="url" />
