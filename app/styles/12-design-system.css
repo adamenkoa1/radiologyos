@@ -16,6 +16,12 @@
   --ws-radius-md: 12px;
   --ws-shadow-sm: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.08);
   --ws-shadow-md: 0 8px 24px rgba(16,24,40,.08);
+  /* Єдина шкала статусів (ok / warn / alert) — фон, текст, акцент-лінія.
+     Використовується всіма статус-картками й бейджами, тож червоний/бурштиновий/
+     зелений всюди однакові й коректно адаптуються до теми. */
+  --status-ok-bg: #e9f3ee;   --status-ok-fg: #166a46;   --status-ok-line: #2f9e6e;
+  --status-warn-bg: #fdf3e1; --status-warn-fg: #8a5411; --status-warn-line: #d99a2b;
+  --status-alert-bg: #fcebe8; --status-alert-fg: #a1301b; --status-alert-line: #d1442b;
 }
 
 .workspaceShell.themeDark {
@@ -27,6 +33,9 @@
   --ws-surface-subtle: #101827;
   --ws-shadow-sm: 0 1px 2px rgba(0,0,0,.28);
   --ws-shadow-md: 0 8px 24px rgba(0,0,0,.32);
+  --status-ok-bg: rgba(47,158,110,.16);   --status-ok-fg: #7fe0b4;
+  --status-warn-bg: rgba(217,154,43,.18); --status-warn-fg: #f2c887;
+  --status-alert-bg: rgba(209,68,43,.18); --status-alert-fg: #f2a99b;
 }
 
 /* Sidebar: dense clinical navigation, not decorative app cards. */
