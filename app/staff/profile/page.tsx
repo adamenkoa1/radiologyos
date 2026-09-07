@@ -22,6 +22,90 @@ type Profile = {
   active:number;
 };
 
+function TwoFactorSection() {
+  const [enabled, setEnabled] = useState<boolean | null>(null);
+  const [secret, setSecret] = useState("");
+  const [uri, setUri] = useState("");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const r = await fetch("/api/staff/2fa", { cache: "no-store" });
+        const d = await r.json().catch(() => ({})) as { enabled?: boolean };
+        if (!cancelled) setEnabled(Boolean(d.enabled));
+      } catch {
+        if (!cancelled) setEnabled(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function post(action: string, extra: Record<string, unknown> = {}) {
+    setBusy(true); setErr(""); setMsg("");
+    try {
+      const r = await fetch("/api/staff/2fa", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ action, ...extra }),
+      });
+      const d = await r.json().catch(() => ({})) as { ok?: boolean; secret?: string; otpauthUri?: string; error?: string };
+      if (!r.ok || !d.ok) { setErr(d.error || "Не вдалося виконати дію"); return null; }
+      return d;
+    } catch {
+      setErr("Мережа недоступна"); return null;
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function begin() {
+    const d = await post("begin");
+    if (d) { setSecret(d.secret || ""); setUri(d.otpauthUri || ""); setCode(""); }
+  }
+  async function confirm() {
+    const d = await post("confirm", { code });
+    if (d) { setEnabled(true); setSecret(""); setUri(""); setCode(""); setMsg("Двофакторну автентифікацію увімкнено."); }
+  }
+  async function disable() {
+    const d = await post("disable", { code });
+    if (d) { setEnabled(false); setCode(""); setMsg("Двофакторну автентифікацію вимкнено."); }
+  }
+
+  return <section className="orgProfileCard">
+    <h3>Двофакторна автентифікація (2FA)</h3>
+    <p className="orgProfileHint">
+      Додатковий код із застосунку-автентифікатора (Google Authenticator, FreeOTP, Aegis) під час входу.
+      Наполегливо рекомендовано для адміністраторів. Працює офлайн — не залежить від SMS чи e-mail.
+    </p>
+    {err && <p className="notice bad" role="alert">{err}</p>}
+    {msg && <p className="notice good" role="status">{msg}</p>}
+    {enabled === null ? <p className="dashLoading">Завантаження…</p>
+      : enabled ? <div className="formGrid">
+        <p className="notice good">2FA увімкнено для вашого акаунта.</p>
+        <label>Код із застосунку, щоб вимкнути
+          <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, ""))} inputMode="numeric" maxLength={6} placeholder="123456" />
+        </label>
+        <div><button className="button" type="button" onClick={() => void disable()} disabled={busy || code.length !== 6}>{busy ? "…" : "Вимкнути 2FA"}</button></div>
+      </div>
+      : secret ? <div className="formGrid">
+        <p className="orgProfileHint">1) Додайте акаунт у застосунок-автентифікатор — відскануйте QR або введіть ключ вручну:</p>
+        <label>Ключ (base32)
+          <input value={secret} readOnly onFocus={(e) => e.currentTarget.select()} style={{ fontFamily: "ui-monospace, monospace", letterSpacing: "0.08em" }} />
+        </label>
+        <p className="orgProfileHint">Або посилання для авто-додавання: <code style={{ wordBreak: "break-all" }}>{uri}</code></p>
+        <label>2) Введіть 6-значний код із застосунку для підтвердження
+          <input value={code} onChange={(e) => setCode(e.target.value.replace(/\s+/g, ""))} inputMode="numeric" maxLength={6} placeholder="123456" autoFocus />
+        </label>
+        <div><button className="button" type="button" onClick={() => void confirm()} disabled={busy || code.length !== 6}>{busy ? "…" : "Підтвердити й увімкнути"}</button></div>
+      </div>
+      : <div><button className="button" type="button" onClick={() => void begin()} disabled={busy}>{busy ? "…" : "Увімкнути 2FA"}</button></div>}
+  </section>;
+}
+
 export default function StaffProfilePage() {
   const [profile,setProfile] = useState<Profile|null>(null);
   const [error,setError] = useState("");
@@ -158,6 +242,8 @@ export default function StaffProfilePage() {
           <div><button className="button" type="submit" disabled={saving}>{saving ? "Змінюємо…":"Змінити PIN"}</button></div>
         </form>
       </section>
+
+      <TwoFactorSection />
 
       <section className="orgProfileCard">
         <h3>Службові дані</h3>

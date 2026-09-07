@@ -13,26 +13,68 @@ function safeReturnTo(): string {
 export default function StaffLoginPage() {
   const [status, setStatus] = useState<"idle" | "sending">("idle");
   const [error, setError] = useState("");
+  const [stage, setStage] = useState<"credentials" | "totp">("credentials");
+  // Зберігаємо облікові дані між кроками, щоб дослати їх разом із кодом 2FA.
+  const [phone, setPhone] = useState("");
+  const [password, setPassword] = useState("");
+  const [totpCode, setTotpCode] = useState("");
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
+  async function attempt(payload: { phone: string; password: string; totpCode?: string }) {
     setStatus("sending"); setError("");
-    const data = new FormData(event.currentTarget);
     const response = await fetch("/api/staff/login", {
       method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ phone: String(data.get("phone") || ""), password: String(data.get("password") || "") }),
+      body: JSON.stringify(payload),
     });
-    const result = await response.json().catch(() => ({})) as { ok?: boolean; error?: string };
+    const result = await response.json().catch(() => ({})) as { ok?: boolean; needsTotp?: boolean; error?: string };
+    setStatus("idle");
+    if (result.needsTotp) { setStage("totp"); setError(""); return; }
     if (!response.ok || !result.ok) {
-      setStatus("idle");
       setError(result.error || "Не вдалося увійти");
       return;
     }
     window.location.assign(safeReturnTo());
   }
 
+  async function submitCredentials(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const data = new FormData(event.currentTarget);
+    const p = String(data.get("phone") || "");
+    const pw = String(data.get("password") || "");
+    setPhone(p); setPassword(pw);
+    await attempt({ phone: p, password: pw });
+  }
+
+  async function submitTotp(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await attempt({ phone, password, totpCode });
+  }
+
+  if (stage === "totp") {
+    return <main className="loginShell">
+      <form className="loginCard" onSubmit={submitTotp}>
+        <span className="loginMark">R</span>
+        <h1>Підтвердження входу</h1>
+        <p>Введіть 6-значний код із застосунку-автентифікатора</p>
+        <label>
+          <span className="labelRow">Код автентифікації</span>
+          <input
+            name="totpCode" inputMode="numeric" autoComplete="one-time-code" maxLength={6}
+            placeholder="123456" autoFocus required pattern="[0-9]*"
+            value={totpCode} onChange={(e) => setTotpCode(e.target.value.replace(/\s+/g, ""))}
+          />
+        </label>
+        {error && <p className="loginError" role="alert">{error}</p>}
+        <button type="submit" disabled={status === "sending"}>{status === "sending" ? "Перевірка…" : "Підтвердити"}</button>
+        <button
+          type="button" className="loginBack" style={{ background: "none", border: 0, cursor: "pointer" }}
+          onClick={() => { setStage("credentials"); setTotpCode(""); setError(""); }}
+        >← Назад</button>
+      </form>
+    </main>;
+  }
+
   return <main className="loginShell">
-    <form className="loginCard" onSubmit={submit}>
+    <form className="loginCard" onSubmit={submitCredentials}>
       <span className="loginMark">R</span>
       <h1>RadiologyOS</h1>
       <p>Кабінет персоналу відділення променевої діагностики</p>
