@@ -767,6 +767,15 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptEvent.grp-inroom{background:#eef5ec;border-left-color:#3f8a37}
 .apptEvent.grp-done{background:#eef1ef;border-left-color:#7a8b88}
 .apptEvent.grp-cancelled{background:#fdefeb;border-left-color:#c85a38}
+.apptStatusLegend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 2px 2px;font-size:12px;color:#5c6c78}
+.apptStatusLegend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.apptStatusLegend i{width:13px;height:13px;border-radius:3px;flex:none;background:#b7c9c5}
+.apptStatusLegend i.grp-planned{background:#e0a638}
+.apptStatusLegend i.grp-confirmed{background:#2f7d99}
+.apptStatusLegend i.grp-arrived{background:#7a53c0}
+.apptStatusLegend i.grp-inroom{background:#3f8a37}
+.apptStatusLegend i.grp-done{background:#7a8b88}
+.apptStatusLegend i.grp-cancelled{background:#c85a38}
 /* Календар: навігація і тижневий вигляд (як Google Calendar) */
 .apptNav{display:inline-flex;align-items:center;gap:6px}
 .apptNav button{border:1px solid #cbd8d6;background:#fff;border-radius:7px;min-width:34px;height:38px;font-size:18px;line-height:1;cursor:pointer;color:#41544f;padding:0 10px}
