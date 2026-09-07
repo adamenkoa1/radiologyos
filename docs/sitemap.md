@@ -80,6 +80,7 @@
 
 - Картки пацієнтів — `/staff/patients`
 - Імпорт / експорт — `/staff/patients/import` *(експорт — лише Адмін)*
+- Неузгодженості карток — `/staff/patients/issues` *(read-only аудит суперечностей)*
 - Замовлення (Patient Order) — `/staff/documents?type=patient_order`
 - Чат із пацієнтами — `/staff/chat` *(клінічні ролі)*
 
