@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
-  normalizeName, namesDiverge,
+  normalizeName, namesDiverge, mergeSafetyFields,
   staleContactFindings, duplicatePhoneFindings, linkableBookingFindings, nameDivergenceFindings,
   sortFindings, countFindings,
 } from "../lib/patient-consistency.ts";
@@ -34,12 +34,38 @@ test("staleContactFindings marks a booking whose phone differs from the linked c
   assert.match(out[0].detail, /380509998877/);
 });
 
-test("duplicatePhoneFindings marks a phone shared by several cards (medium)", () => {
-  const out = duplicatePhoneFindings([{ phoneNormalized: "380501112233", count: 2, names: "Іван | Петро" }]);
+test("duplicatePhoneFindings groups members by phone and only fires for >=2 (medium)", () => {
+  const out = duplicatePhoneFindings([
+    { phoneNormalized: "380501112233", patientId: "a".repeat(32), displayName: "Іван", birthDate: "1990-01-01" },
+    { phoneNormalized: "380501112233", patientId: "b".repeat(32), displayName: "Петро", birthDate: "1985-02-02" },
+    { phoneNormalized: "380509998877", patientId: "c".repeat(32), displayName: "Соло", birthDate: "" }, // сам-один — не знахідка
+  ]);
+  assert.equal(out.length, 1);
   assert.equal(out[0].kind, "duplicate_phone");
   assert.equal(out[0].severity, "medium");
   assert.equal(out[0].patientId, "");
+  assert.equal(out[0].members.length, 2);
   assert.match(out[0].title, /2 карток/);
+});
+
+test("mergeSafetyFields never loses a contrast/do-not-contact flag or an allergy note", () => {
+  const survivor = { patientId: "a".repeat(32), contrastAlert: 0, doNotContact: 0, allergyNote: "", telegramChatId: "" };
+  const absorbed = [
+    { patientId: "b".repeat(32), contrastAlert: 1, doNotContact: 0, allergyNote: "Йод", telegramChatId: "999" },
+    { patientId: "c".repeat(32), contrastAlert: 0, doNotContact: 1, allergyNote: "Йод", telegramChatId: "" },
+  ];
+  const merged = mergeSafetyFields(survivor, absorbed);
+  assert.equal(merged.contrastAlert, 1);   // з поглинутої
+  assert.equal(merged.doNotContact, 1);    // з поглинутої
+  assert.equal(merged.allergyNote, "Йод"); // дедуп однакових нотаток
+  assert.equal(merged.telegramChatId, "999"); // головна порожня → беремо з поглинутої
+
+  const two = mergeSafetyFields(
+    { patientId: "a".repeat(32), contrastAlert: 0, doNotContact: 0, allergyNote: "Латекс", telegramChatId: "111" },
+    [{ patientId: "b".repeat(32), contrastAlert: 0, doNotContact: 0, allergyNote: "Йод", telegramChatId: "222" }],
+  );
+  assert.equal(two.allergyNote, "Латекс / Йод"); // різні — обидві збережено
+  assert.equal(two.telegramChatId, "111");       // головна має свій — лишаємо
 });
 
 test("linkableBookingFindings suggests linking an unlinked booking (low)", () => {
@@ -67,7 +93,10 @@ test("sortFindings orders high → medium → low; countFindings tallies", () =>
   const mixed = [
     ...linkableBookingFindings([{ bookingId: 1, code: "L", bookingName: "", phoneNormalized: "1", patientId: "x", displayName: "X" }]),
     ...staleContactFindings([{ bookingId: 2, code: "S", bookingName: "", bookingPhone: "1", patientId: "y", displayName: "Y", profilePhone: "2" }]),
-    ...duplicatePhoneFindings([{ phoneNormalized: "3", count: 2, names: "A | B" }]),
+    ...duplicatePhoneFindings([
+      { phoneNormalized: "3", patientId: "a".repeat(32), displayName: "A", birthDate: "" },
+      { phoneNormalized: "3", patientId: "b".repeat(32), displayName: "B", birthDate: "" },
+    ]),
   ];
   const sorted = sortFindings(mixed);
   assert.deepEqual(sorted.map((f) => f.severity), ["high", "medium", "low"]);

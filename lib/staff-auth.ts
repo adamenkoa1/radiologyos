@@ -99,6 +99,12 @@ export function canExportPatientData(role: AccessRole) {
   return role === "admin";
 }
 
+// Злиття карток пацієнтів необоротно об'єднує клінічні історії — лише повний
+// адміністратор із доступом до медичних даних (не organization_admin).
+export function canMergePatients(role: AccessRole) {
+  return role === "admin";
+}
+
 export function canViewReports(role: AccessRole) {
   return role === "admin";
 }
