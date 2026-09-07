@@ -942,3 +942,29 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .cfActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
 .cfActions input{padding:7px 10px;border:1px solid #cdd6d3;border-radius:6px;font-size:13px;min-width:220px}
 .button.compact.ghost{background:#eef2f0;color:#3a4744}
+
+/* Іконки статусів на бейджах/картках (монохром по currentColor) + м'який hover. */
+.kpiCard .kpiStatus::before,
+.cfBadge::before,
+.consistencyBadge.sev-high::before,
+.consistencyBadge.sev-medium::before,
+.consistencyBadge.sev-low::before{
+  content:"";display:inline-block;width:13px;height:13px;vertical-align:-2px;margin-right:5px;
+  background-color:currentColor;
+  -webkit-mask:var(--status-icon,var(--icon-ok)) center/contain no-repeat;
+  mask:var(--status-icon,var(--icon-ok)) center/contain no-repeat;
+}
+.kpiCard.st-alert{--status-icon:var(--icon-alert)}
+.kpiCard.st-warn{--status-icon:var(--icon-warn)}
+.kpiCard.st-ok{--status-icon:var(--icon-ok)}
+.cfBadge{--status-icon:var(--icon-alert)}
+.cfBadge.st-communicated{--status-icon:var(--icon-warn)}
+.consistencyBadge.sev-high{--status-icon:var(--icon-alert)}
+.consistencyBadge.sev-medium{--status-icon:var(--icon-warn)}
+.consistencyBadge.sev-low{--status-icon:var(--icon-ok)}
+.kpiCard,.cfItem,.consistencyItem{transition:box-shadow .14s ease, transform .14s ease}
+.kpiCard:hover,.cfItem:hover,.consistencyItem:hover{box-shadow:var(--ws-shadow-md);transform:translateY(-1px)}
+@media (prefers-reduced-motion: reduce){
+  .kpiCard,.cfItem,.consistencyItem{transition:none}
+  .kpiCard:hover,.cfItem:hover,.consistencyItem:hover{transform:none}
+}
