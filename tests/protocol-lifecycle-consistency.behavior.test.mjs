@@ -143,3 +143,25 @@ test("lifecycle migrations protect projection and explicit signing semantics", a
     "the API must not append issue events independently of the actual D1 state transition",
   );
 });
+
+test("legacy bookings PATCH cannot mutate protocol projection or forge lifecycle events", async () => {
+  const route = await read("app/api/staff/bookings/route.ts");
+
+  assert.match(
+    route,
+    /typeof body\.protocolStatus === "string" \|\| typeof body\.protocolNumber === "string"/,
+    "legacy protocol payloads must be recognized and rejected explicitly",
+  );
+  assert.match(route, /Статус і номер протоколу змінюються лише через редактор протоколів/);
+  assert.match(route, /\{ status: 409 \}/);
+  assert.doesNotMatch(
+    route,
+    /UPDATE bookings SET protocol_number = \?, protocol_status = \?/,
+    "booking API must never write the protocol read-model directly",
+  );
+  assert.doesNotMatch(
+    route,
+    /'protocol_updated'/,
+    "booking API must never forge protocol lifecycle audit events",
+  );
+});
