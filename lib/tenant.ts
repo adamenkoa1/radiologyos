@@ -50,6 +50,13 @@ export interface OrgContext<R extends AccessRole = StaffRole> {
   member: OrgMember<R>;
 }
 
+type MembershipContextRow = {
+  organizationId: number;
+  slug: string;
+  organizationName: string;
+  role: string;
+};
+
 async function resolveOrgContext<R extends AccessRole>(
   request: Request,
   db: D1Database,
@@ -58,19 +65,19 @@ async function resolveOrgContext<R extends AccessRole>(
   const identity = await requireStaff(request, db);
   if (!identity) return null;
 
-  let row = await db.prepare(
+  // One identity may belong to several organizations with different roles. Resolve
+  // the tenant only from server-verified active memberships whose role is valid for
+  // this capability context. Selecting the first tenant before checking its role
+  // would incorrectly deny a legitimate org2 radiologist merely because org1 has
+  // a management-only membership for the same identity.
+  const memberships = await db.prepare(
     `SELECT o.id AS organizationId, o.slug AS slug, o.name AS organizationName, m.role AS role
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id AND o.active = 1
      WHERE m.member_email = ? AND m.active = 1
-     ORDER BY o.id ASC
-     LIMIT 1`
-  ).bind(identity.email).first<{
-    organizationId: number;
-    slug: string;
-    organizationName: string;
-    role: string;
-  }>();
+     ORDER BY o.id ASC`
+  ).bind(identity.email).all<MembershipContextRow>();
+  let row = memberships.results.find((candidate) => allowedRoles.has(candidate.role as R)) || null;
 
   // Legacy bootstrap compatibility is allowed only for a genuinely empty
   // single-organization installation. Once any membership exists (or more than
