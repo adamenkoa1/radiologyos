@@ -11,6 +11,22 @@ a{text-decoration:none;color:inherit}
 .req{color:#c0392b}
 .opt{font-weight:500;color:#7c8a94}
 .field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:var(--r-md);font:inherit;background:#fff}
+.contact-method-field{margin:0;padding:0;border:0;min-width:0}
+.contact-method-field legend{display:block;margin:0 0 8px;padding:0;font-weight:700;font-size:14px}
+.contact-methods{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+.contact-method{display:block;position:relative;cursor:pointer}
+.contact-method input{position:absolute;inline-size:1px;block-size:1px;opacity:0;pointer-events:none}
+.contact-method-card{min-height:76px;display:flex;align-items:center;gap:10px;padding:12px;border:1.5px solid #dbe3e8;border-radius:var(--r-md);background:#fff;color:#253b3a;font-size:13px;font-weight:750;line-height:1.2;transition:border-color .16s,box-shadow .16s,background .16s,transform .16s}
+.contact-method:hover .contact-method-card{border-color:#a8c4c1;transform:translateY(-1px)}
+.contact-method input:checked+.contact-method-card{border-color:var(--brand);background:#eef7f6;box-shadow:0 0 0 2px rgba(18,61,58,.11)}
+.contact-method input:focus-visible+.contact-method-card{outline:3px solid rgba(18,61,58,.24);outline-offset:2px}
+.contact-method-icon{display:grid;place-items:center;inline-size:40px;block-size:40px;flex:0 0 40px;border-radius:50%;color:#fff}
+.contact-method-icon svg{inline-size:23px;block-size:23px;fill:currentColor}
+.contact-method-icon--whatsapp{background:#25d366}
+.contact-method-icon--viber{background:#7360f2}
+.contact-method-icon--call{background:#176b87}
+.contact-method-icon--email{background:#d65745}
+@media (max-width:390px){.contact-methods{grid-template-columns:1fr}.contact-method-card{min-height:60px}}
 .phone-wrap{display:flex;align-items:stretch}
 .phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:var(--r-md) 0 0 11px;background:#f2f6f8;font-weight:700;color:var(--brand)}
 .phone-wrap input{border-radius:0 11px 11px 0}
