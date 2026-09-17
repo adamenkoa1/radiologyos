@@ -1,0 +1,75 @@
+/* ============================================================
+   SEO-аудит (/staff/reports/seo) — аналітичний дашборд у стилі
+   моніторингових панелей. Побудовано на власних токенах кабінету:
+   --status-* (ok/warn/alert) і --ws-* (поверхні, лінії, акцент).
+   Скоуп: .workspaceShell.
+   ============================================================ */
+.workspaceShell .seoDash{display:grid;gap:16px;max-width:var(--dash-w,1500px);margin:0 auto}
+
+/* Важливість → локальні змінні, якими фарбуються бейджі, плитки й рядки. */
+.workspaceShell .sevError{--sev-bg:var(--status-alert-bg,#fcebe8);--sev-fg:var(--status-alert-fg,#a1301b);--sev-line:var(--status-alert-line,#d1442b)}
+.workspaceShell .sevWarn{--sev-bg:var(--status-warn-bg,#fdf3e1);--sev-fg:var(--status-warn-fg,#8a5411);--sev-line:var(--status-warn-line,#d99a2b)}
+.workspaceShell .sevInfo{--sev-bg:var(--ws-accent-soft,#eff6ff);--sev-fg:var(--ws-accent,#2563eb);--sev-line:var(--ws-accent,#2563eb)}
+
+/* Верх: health-score + KPI-плитки. */
+.workspaceShell .seoTop{display:grid;grid-template-columns:minmax(280px,.9fr) 1.4fr;gap:14px}
+.workspaceShell .seoScoreCard{display:flex;align-items:center;gap:20px;padding:20px 22px;border:1px solid var(--ws-line,#e4e7ec);border-left:4px solid var(--ws-muted,#98a2b3);border-radius:var(--ws-radius-md,12px);background:var(--ws-surface,#fff);box-shadow:var(--ws-shadow-sm)}
+.workspaceShell .seoScoreCard.scoreOk{border-left-color:var(--status-ok-line,#2f9e6e)}
+.workspaceShell .seoScoreCard.scoreWarn{border-left-color:var(--status-warn-line,#d99a2b)}
+.workspaceShell .seoScoreCard.scoreAlert{border-left-color:var(--status-alert-line,#d1442b)}
+.workspaceShell .seoScoreRing{position:relative;width:96px;height:96px;flex:0 0 96px;border-radius:50%;display:grid;place-items:center}
+.workspaceShell .seoScoreRing:before{content:"";position:absolute;inset:9px;border-radius:50%;background:var(--ws-surface,#fff)}
+.workspaceShell .seoScoreRing span{position:relative;display:grid;justify-items:center;line-height:1}
+.workspaceShell .seoScoreRing b{font-family:var(--font-serif,Georgia,serif);font-size:28px;color:var(--ws-ink,#172033)}
+.workspaceShell .seoScoreRing small{font-size:10px;color:var(--ws-muted,#667085)}
+.workspaceShell .seoScoreLabel{display:block;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.09em;color:var(--ws-muted,#667085)}
+.workspaceShell .seoScoreVerdict{display:block;margin:5px 0 4px;font-family:var(--font-serif,Georgia,serif);font-size:22px;color:var(--ws-ink,#172033)}
+.workspaceShell .seoScoreCard small{color:var(--ws-muted,#667085);font-size:12px}
+
+.workspaceShell .seoKpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0;padding:0;list-style:none}
+.workspaceShell .seoKpi{display:grid;gap:4px;padding:16px 16px 14px;border:1px solid var(--ws-line,#e4e7ec);border-radius:var(--ws-radius-md,12px);background:var(--ws-surface,#fff);box-shadow:var(--ws-shadow-sm)}
+.workspaceShell .seoKpi b{font-family:var(--font-serif,Georgia,serif);font-size:30px;line-height:1;color:var(--ws-ink,#172033)}
+.workspaceShell .seoKpi span{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--ws-muted,#667085)}
+.workspaceShell .seoKpi.sevError,.workspaceShell .seoKpi.sevWarn,.workspaceShell .seoKpi.sevInfo{border-top:3px solid var(--sev-line);background:linear-gradient(var(--sev-bg),var(--ws-surface,#fff) 62%)}
+.workspaceShell .seoKpi.sevError b,.workspaceShell .seoKpi.sevWarn b,.workspaceShell .seoKpi.sevInfo b{color:var(--sev-fg)}
+
+/* Панелі. */
+.workspaceShell .seoGrid{display:grid;grid-template-columns:1fr 1.15fr;gap:14px}
+.workspaceShell .seoPanel{border:1px solid var(--ws-line,#e4e7ec);border-radius:var(--ws-radius-md,12px);background:var(--ws-surface,#fff);box-shadow:var(--ws-shadow-sm);padding:16px 18px}
+.workspaceShell .seoPanel>header{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:12px;padding-bottom:11px;border-bottom:1px solid var(--ws-line,#e4e7ec)}
+.workspaceShell .seoPanel>header b{font-size:15px;color:var(--ws-ink,#172033)}
+.workspaceShell .seoPanel>header span{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--ws-muted,#667085)}
+
+/* Бейдж важливості. */
+.workspaceShell .seoBadge{flex:0 0 auto;display:inline-flex;align-items:center;padding:3px 9px;border-radius:999px;background:var(--sev-bg);color:var(--sev-fg);font-size:10px;font-weight:850;text-transform:uppercase;letter-spacing:.04em}
+
+/* Розбивка за типом. */
+.workspaceShell .seoBreakdown{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.workspaceShell .seoBreakdown li{display:flex;align-items:center;gap:11px;padding:9px 11px;border:1px solid var(--ws-line,#e4e7ec);border-left:3px solid var(--sev-line);border-radius:var(--ws-radius-sm,8px);background:var(--ws-surface-subtle,#f8fafc)}
+.workspaceShell .seoRuleLabel{flex:1;min-width:0;font-size:13px;color:var(--ws-ink,#172033);cursor:help}
+.workspaceShell .seoBreakdown b{font-family:var(--font-serif,Georgia,serif);font-size:17px;color:var(--sev-fg)}
+
+/* Таблиця сторінок. */
+.workspaceShell .seoPagesTable{width:100%;border-collapse:collapse;font-size:13px}
+.workspaceShell .seoPagesTable th{text-align:left;padding:8px 10px;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--ws-muted,#667085);border-bottom:1px solid var(--ws-line,#e4e7ec)}
+.workspaceShell .seoPagesTable td{padding:9px 10px;border-bottom:1px solid var(--ws-line,#eef1f4)}
+.workspaceShell .seoPagesTable td.num{text-align:right}
+.workspaceShell .seoPagesTable tr.hasIssues td.num b{color:var(--status-alert-fg,#a1301b)}
+.workspaceShell .seoPath{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ws-ink,#172033)}
+.workspaceShell .seoLen span{display:inline-block;min-width:26px;text-align:center;padding:2px 6px;border-radius:6px;background:var(--status-ok-bg,#e9f3ee);color:var(--status-ok-fg,#166a46);font-weight:700;font-size:12px}
+.workspaceShell .seoLen span.outOfRange{background:var(--status-warn-bg,#fdf3e1);color:var(--status-warn-fg,#8a5411)}
+
+/* Список зауважень. */
+.workspaceShell .seoIssueList{display:grid;gap:6px;margin:0;padding:0;list-style:none}
+.workspaceShell .seoIssueList li{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 11px;border:1px solid var(--ws-line,#e4e7ec);border-left:3px solid var(--sev-line);border-radius:var(--ws-radius-sm,8px);background:var(--ws-surface,#fff)}
+.workspaceShell .seoIssuePath{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;color:var(--ws-muted,#667085)}
+.workspaceShell .seoIssueLabel{font-size:13px;font-weight:650;color:var(--ws-ink,#172033)}
+.workspaceShell .seoIssueList small{color:var(--ws-muted,#667085);font-size:12px}
+
+.workspaceShell .seoActions{display:flex;gap:10px;justify-content:flex-end}
+
+@media(max-width:1000px){
+  .workspaceShell .seoTop,.workspaceShell .seoGrid{grid-template-columns:1fr}
+  .workspaceShell .seoKpis{grid-template-columns:repeat(2,1fr)}
+}
+@media(max-width:520px){.workspaceShell .seoKpis{grid-template-columns:1fr 1fr}}

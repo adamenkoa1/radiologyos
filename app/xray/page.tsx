@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { PublicLocalSeo } from "../components/public-local-seo";
+import { MedicalPageSchema } from "../components/medical-page-schema";
 import { SeoServiceLanding } from "../components/seo-service-landing";
 import { XRAY_SEO_PAGE } from "../../lib/seo-service-pages";
 
@@ -22,6 +23,7 @@ export default function XraySeoPage() {
   return (
     <>
       <SeoServiceLanding page={XRAY_SEO_PAGE} />
+      <MedicalPageSchema page={XRAY_SEO_PAGE} />
       <PublicLocalSeo path={XRAY_SEO_PAGE.path} />
     </>
   );

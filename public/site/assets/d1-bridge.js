@@ -178,11 +178,27 @@
     }
     const headers = { 'content-type': 'application/json', 'idempotency-key': requestKey };
     if (journeyId) headers['x-analytics-journey-id'] = journeyId;
-    const response = await fetch('/api/site-booking', {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(payload),
-    });
+    // Запобіжник: заявка не має «висіти» безкінечно. Той самий idempotency-key
+    // зберігається на кнопці, тож повторне надсилання після таймауту безпечне
+    // (сервер повертає вже збережений результат, а не дублює заявку).
+    const controller = (typeof AbortController === 'function') ? new AbortController() : null;
+    const timer = controller ? setTimeout(() => controller.abort(), 20000) : null;
+    let response;
+    try {
+      response = await fetch('/api/site-booking', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(payload),
+        signal: controller ? controller.signal : undefined,
+      });
+    } catch (error) {
+      if (error && error.name === 'AbortError') {
+        throw new Error('Заявка надсилається довше, ніж очікувалося. Перевірте кабінет або зателефонуйте в реєстратуру: +380 97 280 88 99');
+      }
+      throw new Error('Немає зв’язку із сервером. Перевірте інтернет і спробуйте ще раз.');
+    } finally {
+      if (timer) clearTimeout(timer);
+    }
     const data = await response.json().catch(() => ({}));
     if (!response.ok) throw new Error(data.error || 'Не вдалося надіслати заявку');
     return data;
