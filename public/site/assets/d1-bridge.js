@@ -233,7 +233,37 @@
       : (result && result.code ? [result.code] : []);
     wirePayButton(codes);
     renderCalendarLinks(result);
+    wireRegistrarWhatsApp(result);
     try { if (typeof saveCart === 'function') { cart = []; saveCart(); } } catch (e) {}
+  }
+
+  // Без шлюзу: WhatsApp відкривається з готовою копією заявки, а пацієнт
+  // підтверджує відправлення одним натисканням у застосунку або WhatsApp Web.
+  function wireRegistrarWhatsApp(result) {
+    const link = document.getElementById('whatsappSubmitLink');
+    if (!link) return;
+    const codes = (result && Array.isArray(result.codes) && result.codes.length)
+      ? result.codes.join(', ')
+      : ((result && result.code) || '');
+    const name = (document.getElementById('patientName') || {}).value || '';
+    const phone9 = ((document.getElementById('patientPhone') || {}).value || '').replace(/\D/g, '');
+    const phone = phone9 ? `+380${phone9}` : '';
+    const comment = ((document.getElementById('comment') || {}).value || '').trim();
+    const appointments = (result && Array.isArray(result.appointments)) ? result.appointments : [];
+    const lines = [
+      'Нова заявка з сайту',
+      codes ? `Код: ${codes}` : '',
+      name ? `Пацієнт: ${name}` : '',
+      phone ? `Телефон: ${phone}` : '',
+      ...appointments.map((item) => {
+        const service = item && item.service ? item.service : 'Дослідження';
+        const when = [item && item.date, item && item.time ? `о ${item.time}` : ''].filter(Boolean).join(' ');
+        return `${service}${when ? ` — ${when}` : ''}`;
+      }),
+      comment ? `Коментар: ${comment}` : '',
+    ].filter(Boolean);
+    link.href = `https://wa.me/380972808899?text=${encodeURIComponent(lines.join('\n'))}`;
+    link.hidden = false;
   }
 
   // «Додати в календар»: серверна відповідь несе готовий Google Calendar URL для
