@@ -68,7 +68,7 @@ test("public request is short and receives an automatic appointment", async () =
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /assignEarliestAppointments\(/);
   assert.match(route, /'new'/);
-  assert.match(route, /прізвище, ім’я та по батькові повністю/i);
+  assert.match(route, /прізвище, ім’я та по батькові/i);
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /Прізвище, ім’я та по батькові/);

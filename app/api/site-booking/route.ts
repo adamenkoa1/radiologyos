@@ -3,6 +3,7 @@ import { todayInKyiv } from "../../../lib/booking-rules";
 import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-services";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
+import { isPlausibleFullName } from "../../../lib/patient-name";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { sendTelegramBookingNotice } from "../../../lib/telegram";
 import { sendBookingEmail } from "../../../lib/booking-email";
@@ -117,8 +118,8 @@ export async function POST(request: Request) {
       return Response.json({ error: "Одна з обраних послуг зараз недоступна для цієї категорії пацієнтів" }, { status: 400 });
     }
 
-    if (name.split(/\s+/).filter(Boolean).length < 3) {
-      return Response.json({ error: "Вкажіть прізвище, ім’я та по батькові повністю" }, { status: 400 });
+    if (!isPlausibleFullName(name)) {
+      return Response.json({ error: "Вкажіть справжнє прізвище, ім’я та по батькові українською. Для нетипового написання зателефонуйте в реєстратуру: +380 97 280 88 99" }, { status: 400 });
     }
     if (!phoneNormalized) {
       return Response.json({ error: "Вкажіть коректний номер телефону" }, { status: 400 });
@@ -132,6 +133,25 @@ export async function POST(request: Request) {
     const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
     if (body.consent !== true || consentVersion !== CONSENT_VERSION) {
       return Response.json({ error: "Потрібно підтвердити актуальну політику обробки даних" }, { status: 400 });
+    }
+
+    // Захист від дублів/спаму: якщо на цей номер уже є АКТИВНА заявка на одну з
+    // обраних послуг — не створюємо ще одну (і не займаємо ще один слот).
+    // Скасовані/завершені не рахуються; інші послуги дозволені. Це зупиняє
+    // повторні надсилання (нова вкладка = новий idempotency-key) і базовий спам.
+    const dupPlaceholders = serviceCodes.map(() => "?").join(",");
+    const activeDuplicate = await db.prepare(
+      `SELECT 1 FROM bookings
+       WHERE organization_id = ? AND phone_normalized = ?
+         AND status IN ('new','confirmed','rescheduled')
+         AND service_code IN (${dupPlaceholders})
+       LIMIT 1`
+    ).bind(PUBLIC_ORGANIZATION_ID, phoneNormalized, ...serviceCodes).first();
+    if (activeDuplicate) {
+      return Response.json(
+        { error: "На цей номер уже є активна заявка на обрану послугу. Для змін зверніться до реєстратури: +380 97 280 88 99" },
+        { status: 409 },
+      );
     }
 
     const fromDate = todayInKyiv();

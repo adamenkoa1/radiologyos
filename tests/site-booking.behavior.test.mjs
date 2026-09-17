@@ -92,3 +92,43 @@ test("a request without an idempotency key is refused", async () => {
     assert.equal(res.status, 400);
   });
 });
+
+test("a second request from the same phone for the same active service is refused (no slot-spam)", async () => {
+  await withD1(async (db) => {
+    const first = await book(db, validBody(), "dedup-key-first-00001");
+    assert.equal(first.status, 201);
+    // Нова вкладка → інший idempotency-key, але той самий телефон і послуга.
+    const second = await book(db, validBody(), "dedup-key-second-0001");
+    assert.equal(second.status, 409);
+    const count = await db.prepare("SELECT COUNT(*) AS n FROM bookings").first("n");
+    assert.equal(count, 1); // рівно одна активна заявка, слот не задубльовано
+  });
+});
+
+test("the same phone can still book a DIFFERENT service", async () => {
+  await withD1(async (db) => {
+    const a = await book(db, validBody({ items: [{ code: "201" }] }), "diff-svc-key-000001");
+    assert.equal(a.status, 201);
+    const b = await book(db, validBody({ items: [{ code: "101" }] }), "diff-svc-key-000002");
+    assert.equal(b.status, 201); // інша послуга — дозволено
+  });
+});
+
+test("re-booking the same service is allowed after the previous one is cancelled", async () => {
+  await withD1(async (db) => {
+    const first = await book(db, validBody(), "recancel-key-000001");
+    const { code } = await first.json();
+    await db.prepare("UPDATE bookings SET status='cancelled' WHERE code = ?").bind(code).run();
+    const again = await book(db, validBody(), "recancel-key-000002");
+    assert.equal(again.status, 201); // скасована заявка не блокує
+  });
+});
+
+test("gibberish full name is refused server-side", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ name: "выв Володимир Павлівна" }), "gibber-key-0000001");
+    assert.equal(res.status, 400);
+    const count = await db.prepare("SELECT COUNT(*) AS n FROM bookings").first("n");
+    assert.equal(count, 0);
+  });
+});

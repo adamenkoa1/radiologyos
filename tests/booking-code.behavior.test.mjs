@@ -11,13 +11,14 @@ const validBody = (over = {}) => ({
   category: "civilian", items: [{ code: "201" }], referralType: "none",
   comment: "", source: "", consent: true, consentVersion: CONSENT_VERSION, ...over,
 });
-const book = (db, key) =>
-  callWorker(jsonRequest("/api/site-booking", validBody(), { headers: { "idempotency-key": key } }), db);
+const book = (db, key, over = {}) =>
+  callWorker(jsonRequest("/api/site-booking", validBody(over), { headers: { "idempotency-key": key } }), db);
 
 test("codes are RD-YYMMDD-N and increment per day", async () => {
   await withD1(async (db) => {
+    // Різні пацієнти (телефони) того самого дня — guard дублів не заважає.
     const a = await (await book(db, "code-key-00000001")).json();
-    const b = await (await book(db, "code-key-00000002")).json();
+    const b = await (await book(db, "code-key-00000002", { phone: "+380971112234" })).json();
     assert.match(a.code, /^RD-\d{6}-\d{3,}$/);
     assert.match(b.code, /^RD-\d{6}-\d{3,}$/);
     // Той самий день, послідовні номери.
