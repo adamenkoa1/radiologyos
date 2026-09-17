@@ -243,7 +243,32 @@
       ? result.codes
       : (result && result.code ? [result.code] : []);
     wirePayButton(codes);
+    renderCalendarLinks(result);
     try { if (typeof saveCart === 'function') { cart = []; saveCart(); } } catch (e) {}
+  }
+
+  // «Додати в календар»: серверна відповідь несе готовий Google Calendar URL для
+  // кожного візиту (lib/calendar-link). Малюємо через DOM (href/textContent), щоб
+  // не думати про екранування.
+  function renderCalendarLinks(result) {
+    const box = document.getElementById('calendarBlock');
+    if (!box) return;
+    box.innerHTML = '';
+    let any = false;
+    const appts = (result && Array.isArray(result.appointments)) ? result.appointments : [];
+    appts.forEach((appt) => {
+      if (!appt || !appt.calendarUrl) return;
+      const link = document.createElement('a');
+      link.className = 'btn send-request';
+      link.href = appt.calendarUrl;
+      link.target = '_blank';
+      link.rel = 'noopener';
+      link.style.cssText = 'background:#eef2f5;color:#0e454c;margin-bottom:6px';
+      link.textContent = `＋ Додати в календар (${appt.date} ${appt.time})`;
+      box.appendChild(link);
+      any = true;
+    });
+    box.hidden = !any;
   }
 
   // Point the confirmation's pay button/QR at /api/site-payment for these codes:

@@ -8,6 +8,7 @@ import { isRateLimited } from "../../../lib/rate-limit";
 import { sendTelegramBookingNotice } from "../../../lib/telegram";
 import { sendBookingEmail } from "../../../lib/booking-email";
 import { runAfterResponse } from "../../../lib/after-response";
+import { googleCalendarUrl } from "../../../lib/calendar-link";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
@@ -194,7 +195,20 @@ export async function POST(request: Request) {
 
     const codes: string[] = [];
     for (let i = 0; i < services.length; i += 1) codes.push(await nextBookingCode(db));
-    const responseBody = { codes, code: codes[0], appointments, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
+    // «Додати в календар» на екрані підтвердження — менше неявок.
+    const CLINIC_LOCATION = "Відділення променевої діагностики, м. Чернігів";
+    const appointmentsWithCalendar = appointments.map((appt, i) => ({
+      ...appt,
+      calendarUrl: googleCalendarUrl({
+        title: `Дослідження: ${appt.service}`,
+        date: appt.date,
+        time: appt.time,
+        durationMinutes: appt.durationMinutes,
+        details: `Заявка ${codes[i]}. Візьміть документ, що посвідчує особу, та попередні дослідження. Реєстратура: +380 97 280 88 99`,
+        location: CLINIC_LOCATION,
+      }),
+    }));
+    const responseBody = { codes, code: codes[0], appointments: appointmentsWithCalendar, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
     const statements: D1PreparedStatement[] = [];
 
     services.forEach((service, index) => {

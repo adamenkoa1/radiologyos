@@ -138,6 +138,18 @@ test("re-booking the same service is allowed after the previous one is cancelled
   });
 });
 
+test("the confirmation response carries an add-to-calendar link per appointment", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody(), "calendar-key-000001");
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    const appt = data.appointments[0];
+    const calUrl = new URL(appt.calendarUrl); // парсимо, а не шукаємо підрядок (CodeQL-safe)
+    assert.equal(calUrl.hostname, "calendar.google.com");
+    assert.match(calUrl.search, /dates=\d{8}T\d{6}/); // старт візиту у датах
+  });
+});
+
 test("gibberish full name is refused server-side", async () => {
   await withD1(async (db) => {
     const res = await book(db, validBody({ name: "выв Володимир Павлівна" }), "gibber-key-0000001");
