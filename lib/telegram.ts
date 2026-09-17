@@ -15,6 +15,13 @@ function escapeHtml(value: string): string {
 
 export interface BookingNotice { codes:string[]; desiredDate:string; desiredTime:string }
 
+export interface ActionableBookingNotice {
+  code:string;
+  service:string;
+  desiredDate:string;
+  desiredTime:string;
+}
+
 export function bookingMessage(notice: BookingNotice): string {
   const when = notice.desiredDate
     ? `${notice.desiredDate}${notice.desiredTime ? ` о ${notice.desiredTime}` : ""}`
@@ -51,6 +58,51 @@ export async function sendTelegramResult(
 
 export async function sendTelegram(db:D1Database,text:string,organizationId=LEGACY_PUBLIC_ORGANIZATION_ID):Promise<boolean>{
   return (await sendTelegramResult(db,text,organizationId)).ok;
+}
+
+export async function sendTelegramBookingNotice(
+  db:D1Database,
+  notice:ActionableBookingNotice,
+  organizationId=LEGACY_PUBLIC_ORGANIZATION_ID,
+):Promise<{ok:boolean;error?:string}> {
+  const { telegram_bot_token:token, telegram_chat_id:chatId } =
+    await getOrganizationIntegrationSettings(db, organizationId, ["telegram_bot_token", "telegram_chat_id"]);
+  if (!token || !chatId) return { ok:false, error:"Спочатку збережіть токен бота та ID чату" };
+  const when = `${notice.desiredDate}${notice.desiredTime ? ` о ${notice.desiredTime}` : ""}`;
+  const text = [
+    "🆕 <b>Нова заявка</b>",
+    `🔖 Код: ${escapeHtml(notice.code)}`,
+    `🩻 Дослідження: ${escapeHtml(notice.service)}`,
+    `📅 Час: ${escapeHtml(when)}`,
+  ].join("\n");
+  try {
+    const controller=new AbortController();
+    const timer=setTimeout(()=>controller.abort(),3000);
+    const response=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
+      method:"POST",headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        chat_id:chatId,text,parse_mode:"HTML",disable_web_page_preview:true,
+        reply_markup:{inline_keyboard:[[
+          {text:"✅ Підтвердити запис",callback_data:`booking:confirm:${notice.code}`},
+        ]]},
+      }),signal:controller.signal,
+    });
+    clearTimeout(timer);
+    if(response.ok) return {ok:true};
+    const data=await response.json().catch(()=>({})) as {description?:string};
+    return {ok:false,error:data.description||`Telegram відповів помилкою (${response.status})`};
+  } catch { return {ok:false,error:"Не вдалося з'єднатися з Telegram"}; }
+}
+
+export async function answerTelegramCallback(
+  db:D1Database, callbackQueryId:string, text:string, showAlert:boolean, organizationId=LEGACY_PUBLIC_ORGANIZATION_ID,
+):Promise<void> {
+  const {telegram_bot_token:token}=await getOrganizationIntegrationSettings(db,organizationId,["telegram_bot_token"]);
+  if(!token || !callbackQueryId) return;
+  await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`,{
+    method:"POST",headers:{"content-type":"application/json"},
+    body:JSON.stringify({callback_query_id:callbackQueryId,text:text.slice(0,180),show_alert:showAlert}),
+  }).catch(()=>undefined);
 }
 
 export async function sendTelegramTo(
@@ -98,7 +150,7 @@ export async function setTelegramWebhook(
   try {
     const response=await fetch(`https://api.telegram.org/bot${token}/setWebhook`,{
       method:"POST",headers:{"content-type":"application/json"},
-      body:JSON.stringify({url,secret_token:secret,allowed_updates:["message"]}),
+      body:JSON.stringify({url,secret_token:secret,allowed_updates:["message","callback_query"]}),
     });
     const data=await response.json().catch(()=>({})) as {ok?:boolean;description?:string};
     if(data.ok) return {ok:true};
