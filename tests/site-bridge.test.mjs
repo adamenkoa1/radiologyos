@@ -76,8 +76,8 @@ test("new public bookings notify the registrar via the public organization's Tel
   assert.match(lib, /getOrganizationIntegrationSettings\(db, organizationId/);
   assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok:\s*false/);
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /sendTelegram\(db,\s*bookingMessage\([\s\S]*?\),\s*PUBLIC_ORGANIZATION_ID\)/);
-  assert.match(route, /bookingMessage\(/);
+  assert.match(route, /sendTelegramBookingNotice\(db,[\s\S]*?PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(route, /desiredDate:appointments\[index\]\.date/);
 });
 
 test("department settings use system-admin authority and validate input", async () => {
