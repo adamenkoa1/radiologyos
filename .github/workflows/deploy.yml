@@ -1,6 +1,12 @@
 name: Deploy to Cloudflare
 
 on:
+  # Автозапуск на злиття в main. Фактичний викат у прод усе одно чекає на
+  # ручне підтвердження через protection-правило середовища "production"
+  # (Settings → Environments → production → Required reviewers). Без цього
+  # правила деплой піде без паузи — гейт вмикає саме required reviewer.
+  push:
+    branches: [main]
   workflow_dispatch:
     inputs:
       confirmation:
@@ -22,7 +28,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy
-    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY' }}
+    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment: production
