@@ -411,6 +411,7 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeChip.contrast{background:#eae2fb;color:#5a37a3}
 .intakeChip.paid{background:#e2efe0;color:#2f5c2a}.intakeChip.pay{background:#fdece0;color:#a5670f}
 .intakeChip.src{background:#f2f6f4;color:#5b6a66}
+.intakeChip.contact{background:#e0f1f2;color:#0c6670}
 .intakeFacts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;background:#eef2f0;border:1px solid #eef2f0;border-radius:12px;overflow:hidden}
 .intakeFacts>div{background:#fff;padding:10px 13px}
 .intakeFacts dt{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a9995;margin:0 0 3px}

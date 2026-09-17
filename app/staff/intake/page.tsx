@@ -34,6 +34,13 @@ const EQUIP_UK:Record<string,string> = { ct:"КТ", xray:"Рентген", fluor
 // Ознаки без окремих полів у БД.
 const isContrast = (svc:string) => /контраст|ангіограф/i.test(svc || "");
 const digits = (s:string) => (s || "").replace(/[^\d]/g, "");
+const CONTACT_LABELS:Record<string,string> = { call:"Телефонний дзвінок", whatsapp:"WhatsApp", email:"Email", viber:"Viber" };
+function preferredContact(comment?:string) {
+  return (comment || "").match(/^\[contact:(call|whatsapp|email|viber)\](?:\s|$)/i)?.[1]?.toLowerCase() || "";
+}
+function visibleComment(comment?:string) {
+  return (comment || "").replace(/^\[contact:(?:call|whatsapp|email|viber)\]\s*/i, "").replace(/^Бажаний спосіб зв’язку:[^\n]*(?:\n|$)/i, "").trim();
+}
 // Вік із дати народження (роки), Київ не критичний для року.
 function ageFrom(dob?:string) {
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
@@ -151,7 +158,7 @@ export default function IntakePage() {
   function saveEdits() {
     void patch({ edit:{ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, comment:form.comment } }, "Заявку скориговано");
   }
-  function confirmBooking() { void patch({ confirm:true }, "Підтверджено — пацієнту надіслано WhatsApp"); }
+  function confirmBooking() { void patch({ confirm:true }, "Запис підтверджено — канал зв’язку опрацьовано"); }
   function cancelBooking() { if (window.confirm("Скасувати заявку?")) void patch({ status:"cancelled" }, "Скасовано"); }
   function reschedule() { if (form.date && form.time) void patch({ desiredDate:form.date, desiredTime:form.time }, "Перенесено"); }
 
@@ -171,6 +178,7 @@ export default function IntakePage() {
   function startCreate() { if (!guardUnsaved()) return; setCreating(true); setSelectedId(null); setForm({ ...emptyForm, date:todayInKyiv() }); }
 
   const readOnly = !!data && !["admin","registrar"].includes(data.staff.role);
+  const contact = preferredContact(selected?.comment);
 
   const body = forbidden
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Дошка прийому доступна персоналу реєстратури.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fintake">Увійти</a></section>
@@ -218,6 +226,8 @@ export default function IntakePage() {
               </div>
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
+                {contact === "viber" && digits(selected.phone) && <a className="intakePatientLink" href={`viber://chat?number=%2B${digits(selected.phone)}`}>Написати у Viber</a>}
+                {contact === "email" && selected.patientEmail && <a className="intakePatientLink" href={`mailto:${selected.patientEmail}`}>Написати email</a>}
                 {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
               </div>
@@ -230,6 +240,7 @@ export default function IntakePage() {
                 {isContrast(selected.service) && <span className="intakeChip contrast">Контраст</span>}
                 {selected.patientCategory==="civilian" && <span className={`intakeChip ${selected.paymentStatus==="paid"?"paid":"pay"}`}>{selected.paymentStatus==="paid"?`Оплачено${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`:`Перевірити оплату${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`}</span>}
                 <span className="intakeChip src">{sourceOf.get(selected.id)==="staff"?"✍️ Внесено вручну":"🌐 Через сайт"}</span>
+                {contact && <span className="intakeChip contact">Зв’язок: {CONTACT_LABELS[contact]}</span>}
               </div>
 
               <dl className="intakeFacts">
@@ -241,7 +252,7 @@ export default function IntakePage() {
 
               {isContrast(selected.service) && <p className="intakeNote contrast">Дослідження з контрастуванням — попередьте пацієнта про підготовку (креатинін, алергоанамнез, натще).</p>}
 
-              {selected.comment && <div className="intakeCtxComment"><b>Коментар</b><p>{selected.comment}</p></div>}
+              {visibleComment(selected.comment) && <div className="intakeCtxComment"><b>Коментар</b><p>{visibleComment(selected.comment)}</p></div>}
 
               <div className="intakeHistory">
                 <div className="intakeHistoryHead"><b>Попередні дослідження</b>{digits(selected.phone) ? <a className="intakeHistoryAll" href={`/staff/patients?phone=${digits(selected.phone)}`}>відкрити CRM →</a> : <span>—</span>}</div>

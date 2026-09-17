@@ -42,11 +42,11 @@ export async function handleTelegramBookingAction(
   const booking=await db.prepare(
     `SELECT id, code, status, service_code AS serviceCode, equipment_id AS equipmentId,
       duration_minutes AS durationMinutes, desired_date AS desiredDate, desired_time AS desiredTime,
-      name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
+      name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service, comment
      FROM bookings WHERE organization_id = ? AND code = ? LIMIT 1`,
   ).bind(organizationId,code).first<{
     id:number;code:string;status:string;serviceCode:string;equipmentId:string;durationMinutes:number;
-    desiredDate:string;desiredTime:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string;
+    desiredDate:string;desiredTime:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string;comment:string;
   }>();
   if(!booking) return {handled:true,callbackId,chatId,ok:false,message:"Заявку не знайдено"};
   if(booking.status==="confirmed") {
@@ -85,7 +85,7 @@ export async function handleTelegramBookingAction(
     ).bind(organizationId,booking.id,actor).run();
     const reminder:ReminderBooking={
       id:booking.id,name:booking.name,phone:booking.phone,phoneNormalized:booking.phoneNormalized,
-      patientEmail:booking.patientEmail,service:booking.service,
+      patientEmail:booking.patientEmail,service:booking.service,comment:booking.comment,
       desiredDate:booking.desiredDate,desiredTime:booking.desiredTime,
     };
     await sendPatientReminder(db,"confirmed",reminder).catch(()=>null);

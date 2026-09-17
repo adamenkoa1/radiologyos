@@ -49,6 +49,20 @@ test("a valid civilian request creates a booking, priced and pending payment", a
   });
 });
 
+test("preferred contact is stored and email is required only for email contact", async () => {
+  await withD1(async (db) => {
+    const missing = await book(db, validBody({ contactMethod: "email" }), "key-email-missing1");
+    assert.equal(missing.status, 400);
+
+    const created = await book(db, validBody({ contactMethod: "email", email: "patient@example.com" }), "key-email-valid001");
+    assert.equal(created.status, 201);
+    const row = await db.prepare("SELECT patient_email AS email, comment FROM bookings LIMIT 1").first();
+    assert.equal(row.email, "patient@example.com");
+    assert.match(row.comment, /^\[contact:email\]/);
+    assert.match(row.comment, /Бажаний спосіб зв’язку: Email/);
+  });
+});
+
 test("the same idempotency key never creates a second booking", async () => {
   await withD1(async (db) => {
     const first = await book(db, validBody(), "same-key-0001aaaa");

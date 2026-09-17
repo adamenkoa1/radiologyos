@@ -27,6 +27,7 @@ export interface ReminderBooking {
   service: string;
   desiredDate: string;
   desiredTime: string;
+  comment?: string;
 }
 
 export interface ReminderSummary {
@@ -36,6 +37,20 @@ export interface ReminderSummary {
 }
 
 const DEPARTMENT = "Відділення променевої діагностики, Чернігівський військовий госпіталь";
+
+export type PreferredContact = "call" | "whatsapp" | "email" | "viber";
+
+export function preferredContactFromComment(comment?: string): PreferredContact | "" {
+  const match = (comment || "").match(/^\[contact:(call|whatsapp|email|viber)\](?:\s|$)/i);
+  return (match?.[1]?.toLowerCase() || "") as PreferredContact | "";
+}
+
+function channelAllowed(preferred: PreferredContact | "", channel: Channel): boolean {
+  if (!preferred) return true; // legacy bookings keep the existing multi-channel behaviour
+  return preferred === "whatsapp" ? channel === "whatsapp"
+    : preferred === "email" ? channel === "email"
+      : false; // call and Viber are handled manually by the registrar
+}
 
 export function reminderText(kind: ReminderKind, booking: ReminderBooking): string {
   const when = `${booking.desiredDate}${booking.desiredTime ? ` о ${booking.desiredTime}` : ""}`;
@@ -181,6 +196,7 @@ export async function sendPatientReminder(
   const organizationId = await bookingOrganizationId(db, booking.id);
   if (!organizationId) return summary;
   const body = reminderText(kind, booking);
+  const preferred = preferredContactFromComment(booking.comment);
 
   const cfg = await messagingSettings(db, organizationId, [
     "patient_reminders_enabled", "telegram_bot_token",
@@ -237,7 +253,7 @@ export async function sendPatientReminder(
     });
   }
 
-  for (const ch of channels) {
+  for (const ch of channels.filter((candidate) => channelAllowed(preferred, candidate.channel))) {
     if (!enabled) {
       await record(db, organizationId, booking, kind, ch.channel, ch.recipient, body, "skipped", "Нагадування вимкнено в налаштуваннях");
       summary.skipped += 1;
@@ -273,6 +289,7 @@ export async function sendPatientMessage(
   if (!organizationId) return summary;
   const body = (text || "").trim();
   if (!body) return summary;
+  const preferred = preferredContactFromComment(booking.comment);
 
   const cfg = await messagingSettings(db, organizationId, [
     "telegram_bot_token",
@@ -317,7 +334,7 @@ export async function sendPatientMessage(
     channels.push({ channel: "email", recipient: booking.patientEmail, url: cfg.email_gateway_url || "", send: () => messaging.sendEmail(booking.patientEmail, "Повідомлення з відділення", body) });
   }
 
-  for (const ch of channels) {
+  for (const ch of channels.filter((candidate) => channelAllowed(preferred, candidate.channel))) {
     if (!ch.url) {
       await record(db, organizationId, booking, "custom", ch.channel, ch.recipient, body, "skipped", `Шлюз ${ch.channel.toUpperCase()} не налаштовано`);
       summary.skipped += 1;

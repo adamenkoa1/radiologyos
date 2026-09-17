@@ -76,6 +76,11 @@ export async function POST(request: Request) {
     const dob = normalizeDob(body.dob);
     const emailRaw = clean(body.email, 254).toLowerCase();
     const patientEmail = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(emailRaw) ? emailRaw : "";
+    const contactMethodRaw = clean(body.contactMethod, 20);
+    const contactMethod = ["call", "whatsapp", "email", "viber"].includes(contactMethodRaw) ? contactMethodRaw : "call";
+    if (contactMethod === "email" && !patientEmail) {
+      return Response.json({ error: "Вкажіть коректний email для зв’язку" }, { status: 400 });
+    }
     const category = clean(body.category, 20) === "military" ? "military" : "civilian";
     if (category === "military") {
       const storefront = parseSiteContent(await getSetting(db, SITE_CONTENT_KEY));
@@ -93,7 +98,9 @@ export async function POST(request: Request) {
     const resultNote = resultDelivery === "email"
       ? `Спосіб отримання результату: на email ${patientEmail}`
       : "Спосіб отримання результату: у відділенні";
-    const comment = [commentRaw, resultNote].filter(Boolean).join("\n").slice(0, 700);
+    const contactLabel = ({ call:"Телефонний дзвінок", whatsapp:"WhatsApp", email:"Email", viber:"Viber" } as Record<string,string>)[contactMethod];
+    const comment = [`[contact:${contactMethod}]`, `Бажаний спосіб зв’язку: ${contactLabel}`, commentRaw, resultNote]
+      .filter(Boolean).join("\n").slice(0, 700);
     const marketingSource = clean(body.source, 40);
     const consentVersion = clean(body.consentVersion, 20);
 

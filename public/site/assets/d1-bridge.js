@@ -167,6 +167,17 @@
   prepareIdentityFields('patientName', 'patientDob');
   prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
+  const preferredContact = document.getElementById('preferredContact');
+  const patientEmail = document.getElementById('patientEmail');
+  const patientEmailField = document.getElementById('patientEmailField');
+  function syncPreferredContact() {
+    const needsEmail = preferredContact && preferredContact.value === 'email';
+    if (patientEmailField) patientEmailField.hidden = !needsEmail;
+    if (patientEmail) patientEmail.required = !!needsEmail;
+  }
+  if (preferredContact) preferredContact.addEventListener('change', syncPreferredContact);
+  syncPreferredContact();
+
   async function postBooking(payload, requestKey) {
     const journeyId = typeof radiologyAnalyticsJourney === 'function' ? radiologyAnalyticsJourney() : '';
     const firstServiceCode = Array.isArray(payload.items) && payload.items[0] ? String(payload.items[0].code || '') : '';
@@ -303,6 +314,8 @@
       const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
       const referralType = category === 'military' ? 'military_referral' : 'other';
       const comment = (document.getElementById('comment') || {}).value?.trim() || '';
+      const contactMethod = (document.getElementById('preferredContact') || {}).value || 'call';
+      const email = (document.getElementById('patientEmail') || {}).value?.trim() || '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
       const submitBtn = civilForm.querySelector('.send-request');
@@ -313,7 +326,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const result = await postBooking({
-          name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
+          name, phone, dob, email, contactMethod, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);

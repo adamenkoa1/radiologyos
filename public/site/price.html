@@ -453,6 +453,18 @@ body{background:#f3f6f8}
           <input id="patientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
           <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>
         </div>
+        <div class="field">
+          <label for="preferredContact">Як з вами зв’язатися <span class="req">*</span></label>
+          <select id="preferredContact" required>
+            <option value="call">Телефонний дзвінок</option><option value="whatsapp">WhatsApp</option>
+            <option value="email">Email</option><option value="viber">Viber</option>
+          </select>
+        </div>
+        <div class="field" id="patientEmailField" hidden>
+          <label for="patientEmail">Email <span class="req">*</span></label>
+          <input autocomplete="email" id="patientEmail" type="email" placeholder="name@example.com"/>
+          <span class="field-error">Вкажіть коректну електронну адресу</span>
+        </div>
       </div>
 
       <div class="form-step">
