@@ -83,6 +83,20 @@ test("telegram lib can message an arbitrary chat and register a webhook", async 
   assert.match(lib, /export async function setTelegramWebhook/);
   assert.match(lib, /getMe/);
   assert.match(lib, /secret_token\s*:\s*secret/);
+  assert.match(lib, /allowed_updates:\["message","callback_query"\]/);
+  assert.match(lib, /sendTelegramBookingNotice/);
+  assert.match(lib, /booking:confirm:/);
+});
+
+test("telegram webhook confirms bookings only through the configured registrar chat", async () => {
+  const route = await read("app/api/telegram/webhook/route.ts");
+  const actions = await read("lib/telegram-booking-actions.ts");
+  assert.match(route, /handleTelegramBookingAction/);
+  assert.match(route, /answerTelegramCallback/);
+  assert.match(actions, /chatId!==registrarChatId/);
+  assert.match(actions, /status IN \('new','scheduled','rescheduled'\)/);
+  assert.match(actions, /booking_events/);
+  assert.match(actions, /sendPatientReminder/);
 });
 
 test("notify selects exact Telegram chat by patient_id and sends with booking tenant credentials", async () => {
