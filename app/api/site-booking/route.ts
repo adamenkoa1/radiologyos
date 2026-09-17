@@ -4,7 +4,7 @@ import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-se
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
 import { isRateLimited } from "../../../lib/rate-limit";
-import { bookingMessage, sendTelegram } from "../../../lib/telegram";
+import { sendTelegramBookingNotice } from "../../../lib/telegram";
 import { sendBookingEmail } from "../../../lib/booking-email";
 import { runAfterResponse } from "../../../lib/after-response";
 import { getSetting } from "../../../lib/settings";
@@ -252,11 +252,12 @@ export async function POST(request: Request) {
     // недоступний шлюз інакше тримав би кнопку «Надсилаємо…»). waitUntil дає їм
     // дожити після повернення 201.
     runAfterResponse(Promise.allSettled([
-      sendTelegram(db, bookingMessage({
-        codes,
-        desiredDate: appointments[0].date,
-        desiredTime: appointments[0].time,
-      }), PUBLIC_ORGANIZATION_ID).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; }),
+      ...services.map((service,index)=>sendTelegramBookingNotice(db,{
+        code:codes[index],service:service!.title,
+        desiredDate:appointments[index].date,desiredTime:appointments[index].time,
+      },PUBLIC_ORGANIZATION_ID).catch((error)=>{
+        console.error("telegram_notify_failed",codes[index],error);return {ok:false};
+      })),
       // E-mail the registrar when an e-mail gateway + recipient are configured.
       sendBookingEmail(db, PUBLIC_ORGANIZATION_ID, {
         codes, name, phone, category, comment,
