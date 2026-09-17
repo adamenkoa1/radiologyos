@@ -42,7 +42,7 @@ test("the booking pages load the D1 bridge after cart.js", async () => {
 test("civilian booking captures and submits the patient's preferred contact channel", async () => {
   for (const page of ["public/site/index.html", "public/site/price.html"]) {
     const html = await read(page);
-    assert.match(html, /id="preferredContact"/);
+    assert.match(html, /name="preferredContact"/);
     for (const method of ["call", "whatsapp", "email", "viber"]) {
       assert.match(html, new RegExp(`value="${method}"`));
     }
@@ -51,7 +51,7 @@ test("civilian booking captures and submits the patient's preferred contact chan
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /contactMethod/);
   assert.match(bridge, /email, contactMethod/);
-  assert.match(bridge, /preferredContact\.value === 'email'/);
+  assert.match(bridge, /selectedContact\.value === 'email'/);
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /\[contact:\$\{contactMethod\}\]/);
   assert.match(route, /Вкажіть коректний email для зв’язку/);
