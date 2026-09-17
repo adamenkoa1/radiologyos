@@ -48,6 +48,11 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /created_by_staff|Нова заявка/); // ручне створення
   assert.match(page, /🌐|✍️/);        // позначка джерела (сайт/вручну)
   assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
+  assert.match(page, /CONTACT_LABELS/);
+  assert.match(page, /Зв’язок:/);
+  assert.match(page, /viber:\/\/chat\?number=/);
+  assert.match(page, /mailto:/);
+  assert.doesNotMatch(page, /пацієнту надіслано WhatsApp/);
   // Виправлено (аудит): помилки завантаження не кладуться в data (не білий екран).
   assert.match(page, /!Array\.isArray\(payload\.bookings\) \|\| !payload\.staff/);
   // Notion-стиль: картка «живе» — контекст пацієнта та направлення.
