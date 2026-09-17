@@ -144,8 +144,9 @@ test("the confirmation response carries an add-to-calendar link per appointment"
     assert.equal(res.status, 201);
     const data = await res.json();
     const appt = data.appointments[0];
-    assert.ok(appt.calendarUrl && appt.calendarUrl.includes("calendar.google.com"));
-    assert.match(appt.calendarUrl, /dates=\d{8}T\d{6}/); // старт візиту у датах
+    const calUrl = new URL(appt.calendarUrl); // парсимо, а не шукаємо підрядок (CodeQL-safe)
+    assert.equal(calUrl.hostname, "calendar.google.com");
+    assert.match(calUrl.search, /dates=\d{8}T\d{6}/); // старт візиту у датах
   });
 });
 
