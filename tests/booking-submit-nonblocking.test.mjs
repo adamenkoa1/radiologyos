@@ -12,10 +12,10 @@ test("site-booking віддає відповідь, не чекаючи на р�
   // Сповіщення відкладено через waitUntil-хелпер…
   assert.match(route, /runAfterResponse\(/);
   // …і НЕ awaited на шляху відповіді.
-  assert.doesNotMatch(route, /await\s+sendTelegram\(/);
+  assert.doesNotMatch(route, /await\s+sendTelegramBookingNotice\(/);
   assert.doesNotMatch(route, /await\s+sendBookingEmail\(/);
   // Виклики самих сповіщень збережено.
-  assert.match(route, /sendTelegram\(db,\s*bookingMessage\(/);
+  assert.match(route, /sendTelegramBookingNotice\(db,/);
   assert.match(route, /sendBookingEmail\(db,\s*PUBLIC_ORGANIZATION_ID/);
 });
 
