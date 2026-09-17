@@ -100,6 +100,14 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 /* ===== Картки аудиторій ===== */
 .hero{padding:16px 0 0}
 .photo-audience{display:grid;grid-template-columns:1fr;gap:16px;width:100%}
+/* Десктоп: дві аудиторні пари (військові / цивільні) поруч, а не одним стовпцем */
+@media(min-width:760px){
+  .photo-audience{grid-template-columns:1fr 1fr;column-gap:14px;align-items:start}
+  .photo-audience>:nth-child(1){grid-column:1;grid-row:1}
+  .photo-audience>:nth-child(2){grid-column:1;grid-row:2}
+  .photo-audience>:nth-child(3){grid-column:2;grid-row:1}
+  .photo-audience>:nth-child(4){grid-column:2;grid-row:2}
+}
 .promo-card{
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;
   min-height:150px;padding:26px 28px;border-radius:var(--r-xl);

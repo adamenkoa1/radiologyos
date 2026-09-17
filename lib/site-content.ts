@@ -79,7 +79,7 @@ const FIELD_MAX = {
 export const SITE_CONTENT_DEFAULTS: SiteContent = {
   brandTitle: "Чернігівський військовий госпіталь",
   brandSubtitle: "Відділення променевої діагностики",
-  slogan: "Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.",
+  slogan: "Точна діагностика — вчасна допомога. Досвід, якому можна довіряти.",
   milTitle: "Військовослужбовцям",
   milSub: "Безоплатні дослідження за направленням",
   civTitle: "Цивільним особам",
@@ -144,7 +144,8 @@ export function sanitizeSiteContent(input: unknown): SiteContent {
     out.slogan === "" ||
     out.slogan === "Точна діагностика. Вчасна допомога. Підтримка військових." ||
     out.slogan === "Точна діагностика. Вчасна допомога." ||
-    out.slogan === "Точна діагностика-вчасна допомога."
+    out.slogan === "Точна діагностика-вчасна допомога." ||
+    out.slogan === "Точна діагностика-вчасна допомога. Досвід, якому можна довіряти."
   ) {
     out.slogan = SITE_CONTENT_DEFAULTS.slogan;
   }
