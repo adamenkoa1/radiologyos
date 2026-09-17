@@ -49,8 +49,20 @@ test("civilian booking does not ask the patient for a preferred contact channel"
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.doesNotMatch(bridge, /preferredContact/);
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /REGISTRAR_WHATSAPP = "380972808899"/);
-  assert.match(route, /sendWhatsApp\([\s\S]*REGISTRAR_WHATSAPP/);
+  assert.doesNotMatch(route, /REGISTRAR_WHATSAPP/);
+  assert.doesNotMatch(route, /registrar_whatsapp_failed/);
+});
+
+test("successful civilian booking offers a prefilled WhatsApp message without a gateway", async () => {
+  for (const page of ["public/site/index.html", "public/site/price.html"]) {
+    const html = await read(page);
+    assert.match(html, /id="whatsappSubmitLink"/);
+    assert.match(html, /Надіслати заявку у WhatsApp/);
+  }
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /function wireRegistrarWhatsApp/);
+  assert.match(bridge, /https:\/\/wa\.me\/380972808899\?text=/);
+  assert.match(bridge, /encodeURIComponent\(lines\.join\('\\n'\)\)/);
 });
 
 test("patient cabinet lists verified-session bookings and reads protocols from D1", async () => {
