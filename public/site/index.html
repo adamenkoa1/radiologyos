@@ -144,6 +144,15 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .address-text{font-size:clamp(13px,1.7vw,16px);overflow:hidden;text-overflow:ellipsis}
 .address-arrow{font-size:25px;line-height:1;opacity:.9}
 .phone-feedback{display:block;grid-column:2 / -1;margin-top:2px;font-size:12px;font-weight:700;color:#eafcff}
+.contact-heading{margin:0 0 12px;color:#12303a;font-size:clamp(20px,2.6vw,26px)}
+.contact-channels{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px;margin-bottom:12px}
+.contact-channel{display:flex;min-height:58px;align-items:center;justify-content:center;gap:9px;padding:11px 10px;border:1px solid var(--line);border-radius:var(--r-lg);background:#fff;color:#173f46;font-size:13px;font-weight:800;box-shadow:0 8px 22px rgba(18,40,30,.07);transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease}
+.contact-channel:hover{transform:translateY(-2px);border-color:#9fcdd1;box-shadow:0 12px 28px rgba(18,40,30,.12)}
+.contact-channel:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.contact-channel-icon{display:grid;width:32px;height:32px;flex:0 0 32px;place-items:center;border-radius:50%;background:var(--brand);color:#fff;font-size:14px;font-weight:900}
+.contact-channel.whatsapp .contact-channel-icon{background:#208b4d}.contact-channel.telegram .contact-channel-icon{background:#2588bd}.contact-channel.viber .contact-channel-icon{background:#665cac}.contact-channel.email .contact-channel-icon{background:#49636e}
+@media(max-width:760px){.contact-channels{grid-template-columns:repeat(2,minmax(0,1fr))}.contact-channel{justify-content:flex-start;padding-inline:14px}.contact-channel:last-child{grid-column:1 / -1}}
+@media(max-width:410px){.contact-channels{grid-template-columns:1fr}.contact-channel:last-child{grid-column:auto}}
 
 /* ===== Шухляда «Моя заявка» ===== */
 .eyebrow{text-transform:uppercase;letter-spacing:.13em;font-size:12px;font-weight:900}
@@ -402,6 +411,14 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 
   <section class="contact" id="contacts">
     <div class="wrap">
+      <h2 class="contact-heading">Зв’язатися з нами</h2>
+      <div class="contact-channels" aria-label="Канали зв’язку">
+        <a class="contact-channel telegram" href="https://t.me/+380972808899" target="_blank" rel="noopener" aria-label="Написати в Telegram"><span class="contact-channel-icon" aria-hidden="true">T</span><span>Telegram</span></a>
+        <a class="contact-channel viber" href="viber://chat?number=%2B380972808899" aria-label="Написати у Viber"><span class="contact-channel-icon" aria-hidden="true">V</span><span>Viber</span></a>
+        <a class="contact-channel whatsapp" href="https://wa.me/380972808899" target="_blank" rel="noopener" aria-label="Написати у WhatsApp"><span class="contact-channel-icon" aria-hidden="true">W</span><span>WhatsApp</span></a>
+        <a class="contact-channel" href="tel:+380972808899" aria-label="Зателефонувати"><span class="contact-channel-icon" aria-hidden="true">☎</span><span>Телефон</span></a>
+        <a class="contact-channel email" href="mailto:Adamenko1974@gmail.com" aria-label="Написати електронною поштою"><span class="contact-channel-icon" aria-hidden="true">@</span><span>Email</span></a>
+      </div>
       <a class="contact-card address-row" href="tel:+380972808899" id="scPhoneLink" aria-label="Зателефонувати в реєстратуру" style="margin-bottom:10px">
         <span class="address-label">Телефон</span>
         <span class="address-text" id="scPhone">+380 97 280 88 99</span>
