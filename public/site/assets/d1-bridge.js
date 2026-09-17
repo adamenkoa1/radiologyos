@@ -167,15 +167,16 @@
   prepareIdentityFields('patientName', 'patientDob');
   prepareIdentityFields('militaryPatientName', 'militaryPatientDob');
 
-  const preferredContact = document.getElementById('preferredContact');
+  const preferredContacts = Array.from(document.querySelectorAll('input[name="preferredContact"]'));
   const patientEmail = document.getElementById('patientEmail');
   const patientEmailField = document.getElementById('patientEmailField');
   function syncPreferredContact() {
-    const needsEmail = preferredContact && preferredContact.value === 'email';
+    const selectedContact = preferredContacts.find((input) => input.checked);
+    const needsEmail = selectedContact && selectedContact.value === 'email';
     if (patientEmailField) patientEmailField.hidden = !needsEmail;
     if (patientEmail) patientEmail.required = !!needsEmail;
   }
-  if (preferredContact) preferredContact.addEventListener('change', syncPreferredContact);
+  preferredContacts.forEach((input) => input.addEventListener('change', syncPreferredContact));
   syncPreferredContact();
 
   async function postBooking(payload, requestKey) {
@@ -314,7 +315,7 @@
       const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
       const referralType = category === 'military' ? 'military_referral' : 'other';
       const comment = (document.getElementById('comment') || {}).value?.trim() || '';
-      const contactMethod = (document.getElementById('preferredContact') || {}).value || 'call';
+      const contactMethod = (civilForm.querySelector('input[name="preferredContact"]:checked') || {}).value || 'call';
       const email = (document.getElementById('patientEmail') || {}).value?.trim() || '';
       const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
 
