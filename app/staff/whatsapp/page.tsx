@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = { idInstance: string; apiTokenSet: boolean; enabled: boolean; connected: boolean; webhookUrl: string };
@@ -90,8 +91,16 @@ export default function StaffWhatsAppPage() {
 
           <section className="settingsBlock">
             <h3>URL вебхука (впишіть у green-api)</h3>
-            <label><span>Webhook URL</span><input readOnly value={settings.webhookUrl} onFocus={e => e.target.select()} /></label>
-            <button type="button" className="button secondary" onClick={() => { void navigator.clipboard?.writeText(settings.webhookUrl); setCopied(true); }}>{copied ? "Скопійовано ✓" : "Скопіювати URL"}</button>
+            <label><span>URL вебхука</span><input readOnly value={settings.webhookUrl} onFocus={e => e.target.select()} /></label>
+            <button type="button" className="button secondary" onClick={async () => {
+              try {
+                await navigator.clipboard.writeText(settings.webhookUrl);
+                setCopied(true);
+                window.setTimeout(() => setCopied(false), 2000);
+              } catch {
+                setError("Не вдалося скопіювати автоматично. Виділіть URL у полі й скопіюйте вручну.");
+              }
+            }}>{copied ? "Скопійовано ✓" : "Скопіювати URL"}</button>
           </section>
 
           <section className="settingsBlock">
@@ -114,7 +123,7 @@ export default function StaffWhatsAppPage() {
         </div>;
 
   return (
-    <StaffWorkspaceShell active="whatsapp" title="WhatsApp" description="Підключення номера, автонагадування та бот — керує адміністратор." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="whatsapp" title="WhatsApp" description="Підключення номера, автонагадування та бот — керує адміністратор." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
       {body}
     </StaffWorkspaceShell>
   );

@@ -8,10 +8,7 @@ import {
   reportPayload,
 } from "../../../../../lib/reporting-server";
 import { createXlsx } from "../../../../../lib/xlsx";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../../../lib/db";
 
 export async function GET(request:Request) {
   const db = dbBinding();
@@ -45,6 +42,7 @@ export async function GET(request:Request) {
     containsPersonalData
   ).run();
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "report_exported",
     resource: "report",

@@ -1,17 +1,20 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
-  PROTOCOL_STATUS_LABELS,
   PROTOCOL_TEMPLATES,
   type ProtocolDocument,
-  type ProtocolStatus,
+  defaultMethodRef,
   normalDocument,
   protocolTemplateByKey,
   renderProtocolText,
   suggestTemplateKey,
 } from "../../../lib/protocols";
+import {
+  PROTOCOL_LIFECYCLE_STATUS_LABELS,
+  type ProtocolLifecycleStatus,
+} from "../../../lib/protocol-lifecycle";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -22,6 +25,7 @@ type QueueItem = {
   equipmentId:string; desiredDate:string; desiredTime:string; performedAt:string; status:string;
   protocolNumber:string; protocolStatus:string; protocolReadyAt:string; protocolIssuedAt:string;
   assignedRadiologistEmail:string; documentStatus:string; documentVersion:number;
+  signedBy:string; signedAt:string; signedVersion:number;
 };
 type BookingDetail = {
   id:number; code:string; name:string; service:string; serviceCode:string; equipmentId:string;
@@ -29,7 +33,10 @@ type BookingDetail = {
   anatomicalRegionsCount:number; protocolNumber:string; protocolStatus:string;
   protocolReadyAt:string; protocolIssuedAt:string; assignedRadiologistEmail:string;
 };
-type EditorDoc = ProtocolDocument & { version:number; updatedBy:string; updatedAt:string };
+type EditorDoc = Omit<ProtocolDocument,"status"> & {
+  status:ProtocolLifecycleStatus; version:number; updatedBy:string; updatedAt:string;
+  signedBy:string; signedAt:string; signedVersion:number;
+};
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
@@ -40,6 +47,12 @@ const bookingProtocolLabels: Record<string,string> = {
 };
 const categoryLabels: Record<string,string> = { civilian:"Цивільний маршрут", military:"Військовий маршрут" };
 
+function lifecycleLabel(status:string) {
+  return PROTOCOL_LIFECYCLE_STATUS_LABELS[status as ProtocolLifecycleStatus]
+    || bookingProtocolLabels[status]
+    || status;
+}
+
 function formatDateTime(value:string) {
   if (!value) return "—";
   const parsed = new Date(value.includes("T") || value.includes(" ") ? value : `${value}T00:00:00`);
@@ -47,7 +60,10 @@ function formatDateTime(value:string) {
 }
 
 function emptyDoc(serviceCode:string):EditorDoc {
-  return { ...normalDocument(suggestTemplateKey(serviceCode)), version:0, updatedBy:"", updatedAt:"" };
+  return {
+    ...normalDocument(suggestTemplateKey(serviceCode)),
+    version:0, updatedBy:"", updatedAt:"", signedBy:"", signedAt:"", signedVersion:0,
+  };
 }
 
 export default function ProtocolsPage() {
@@ -57,21 +73,40 @@ export default function ProtocolsPage() {
   const [booking,setBooking] = useState<BookingDetail | null>(null);
   const [doc,setDoc] = useState<EditorDoc | null>(null);
   const [error,setError] = useState("");
+  // Мережевий збій завантаження черги — щоб показати «Повторити», а не тиху
+  // порожню чергу (яка виглядає як «роботи немає»).
+  const [loadError,setLoadError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [saving,setSaving] = useState(false);
   const [aiDraft,setAiDraft] = useState<ProtocolDraft | null>(null);
   const [aiLoading,setAiLoading] = useState(false);
-  const [filter,setFilter] = useState<"awaiting"|"ready"|"issued"|"all">("awaiting");
+  const [filter,setFilter] = useState<"awaiting"|"ready"|"signed"|"issued"|"all">("awaiting");
   const [query,setQuery] = useState("");
+  const [bookingLoading,setBookingLoading] = useState(false);
+  const [dirty,setDirty] = useState(false);
 
-  async function loadQueue() {
-    const response = await fetch("/api/staff/protocols", { cache:"no-store" });
-    const data = await response.json() as { queue?:QueueItem[]; staff?:StaffInfo; error?:string };
-    if (!response.ok) { setError(data.error || "Немає доступу"); return; }
-    setQueue(data.queue || []);
-    setStaff(data.staff || null);
-    setError("");
+  // Єдиний патч документа + позначка «є незбережені зміни».
+  function patchDoc(partial:Partial<EditorDoc>) {
+    setDoc((current) => current && ({ ...current, ...partial }));
+    setDirty(true);
+  }
+
+  // background:true — тихе автооновлення черги: не показує екран помилки через
+  // тимчасовий збій (лишає наявну чергу до наступної спроби).
+  async function loadQueue({ background = false } = {}) {
+    try {
+      const response = await fetch("/api/staff/protocols", { cache:"no-store" });
+      const data = await response.json() as { queue?:QueueItem[]; staff?:StaffInfo; error?:string };
+      if (!response.ok) { if (!background) setError(data.error || "Немає доступу"); return; }
+      setQueue(data.queue || []);
+      setStaff(data.staff || null);
+      setError(""); setLoadError(false);
+    } catch {
+      // Мережевий збій першого завантаження — явна помилка з «Повторити»,
+      // а не мовчазна порожня черга.
+      if (!background) setLoadError(true);
+    }
   }
 
   useEffect(() => {
@@ -79,6 +114,59 @@ export default function ProtocolsPage() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Не оновлюємо у фоні під час збереження, відкриття протоколу чи генерації
+  // AI-чернетки — щоб не смикати чергу під час активної роботи.
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = saving || bookingLoading || aiLoading; });
+
+  // Жива черга «Очікують опису»: тихо оновлюємо ліву чергу кожні 45 с, тож нові
+  // виконані дослідження зʼявляються без ручного перезавантаження. Правий
+  // редактор має окремий стан і від фонового оновлення не страждає.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || busyRef.current) return;
+      void loadQueue({ background:true });
+    }, 45000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // Захист незбережених змін перед перемиканням на інший протокол.
+  function selectBooking(id:number) {
+    if (id === selectedId) return;
+    if (dirty && !window.confirm("У поточному протоколі є незбережені зміни. Відкрити інший запис без збереження?")) return;
+    void openBooking(id);
+  }
+
+  async function openBooking(id:number) {
+    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
+    setBookingLoading(true); setDirty(false);
+    try {
+      const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
+      const data = await response.json() as {
+        booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
+      };
+      if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
+      setBooking(data.booking);
+      setDoc(data.protocol
+        ? {
+            templateKey:data.protocol.templateKey, method:data.protocol.method,
+            methodRef:data.protocol.methodRef || "",
+            sections:data.protocol.sections || {}, findings:data.protocol.findings,
+            conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
+            number:data.protocol.number, status:data.protocol.status,
+            version:data.protocol.version, updatedBy:data.protocol.updatedBy, updatedAt:data.protocol.updatedAt,
+            signedBy:data.protocol.signedBy || "", signedAt:data.protocol.signedAt || "",
+            signedVersion:data.protocol.signedVersion || 0,
+          }
+        : emptyDoc(data.booking.serviceCode));
+    } catch {
+      setActionError("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBookingLoading(false);
+    }
+  }
+
+  // Глибоке посилання ?open=<id> відкриває протокол одразу після завантаження черги.
   useEffect(() => {
     if (!queue.length || selectedId !== null) return;
     const open = Number(new URLSearchParams(window.location.search).get("open"));
@@ -86,30 +174,12 @@ export default function ProtocolsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
-  async function openBooking(id:number) {
-    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
-    const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
-    const data = await response.json() as {
-      booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
-    };
-    if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
-    setBooking(data.booking);
-    setDoc(data.protocol
-      ? {
-          templateKey:data.protocol.templateKey, method:data.protocol.method,
-          sections:data.protocol.sections || {}, findings:data.protocol.findings,
-          conclusion:data.protocol.conclusion, recommendations:data.protocol.recommendations,
-          number:data.protocol.number, status:data.protocol.status,
-          version:data.protocol.version, updatedBy:data.protocol.updatedBy, updatedAt:data.protocol.updatedAt,
-        }
-      : emptyDoc(data.booking.serviceCode));
-  }
-
   function setSectionField(sectionKey:string,fieldKey:string,value:string) {
     setDoc((current) => current && ({
       ...current,
       sections:{ ...current.sections, [sectionKey]:{ ...(current.sections[sectionKey] || {}), [fieldKey]:value } },
     }));
+    setDirty(true);
   }
 
   function changeTemplate(templateKey:string) {
@@ -120,8 +190,10 @@ export default function ProtocolsPage() {
         ...current,
         templateKey,
         method:current.method.trim() ? current.method : template.method,
+        methodRef:current.methodRef.trim() ? current.methodRef : (template.methodRef || defaultMethodRef(template.equipmentId)),
       };
     });
+    setDirty(true);
   }
 
   function fillNorms() {
@@ -134,18 +206,24 @@ export default function ProtocolsPage() {
         for (const field of section.fields) if (field.normal && !values[field.key]?.trim()) values[field.key] = field.normal;
         sections[section.key] = values;
       }
-      return { ...current, method:current.method.trim() ? current.method : template.method, sections };
+      return {
+        ...current,
+        method:current.method.trim() ? current.method : template.method,
+        methodRef:current.methodRef.trim() ? current.methodRef : (template.methodRef || defaultMethodRef(template.equipmentId)),
+        sections,
+      };
     });
+    setDirty(true);
     setActionSuccess("Поля заповнено типовими формулюваннями норми. Відредагуйте виявлені зміни.");
   }
 
-  async function save(status:ProtocolStatus) {
+  async function save(status:ProtocolLifecycleStatus) {
     if (!doc || !booking) return;
     setActionError(""); setActionSuccess("");
-    if ((status === "ready" || status === "issued") && !doc.number.trim()) {
-      setActionError("Для готового або виданого протоколу вкажіть його номер."); return;
+    if ((status === "ready" || status === "signed" || status === "issued") && !doc.number.trim()) {
+      setActionError("Для готового, підписаного або виданого протоколу вкажіть його номер."); return;
     }
-    if ((status === "ready" || status === "issued") && !doc.conclusion.trim()) {
+    if ((status === "ready" || status === "signed" || status === "issued") && !doc.conclusion.trim()) {
       setActionError("Готовий протокол повинен містити висновок."); return;
     }
     setSaving(true);
@@ -155,11 +233,22 @@ export default function ProtocolsPage() {
     });
     const data = await response.json() as {
       ok?:boolean; version?:number; protocolStatus?:string; protocolNumber?:string;
+      documentStatus?:ProtocolLifecycleStatus; signedBy?:string; signedAt?:string; signedVersion?:number;
       protocolReadyAt?:string; protocolIssuedAt?:string; error?:string;
     };
     setSaving(false);
     if (!response.ok || !data.ok) { setActionError(data.error || "Не вдалося зберегти протокол"); return; }
-    setDoc((current) => current && ({ ...current, status, version:data.version || current.version, updatedBy:staff?.email || current.updatedBy }));
+    const resolvedStatus = data.documentStatus || status;
+    setDirty(false);
+    setDoc((current) => current && ({
+      ...current,
+      status:resolvedStatus,
+      version:data.version ?? current.version,
+      updatedBy:staff?.email || current.updatedBy,
+      signedBy:data.signedBy ?? current.signedBy,
+      signedAt:data.signedAt ?? current.signedAt,
+      signedVersion:data.signedVersion ?? current.signedVersion,
+    }));
     setBooking((current) => current && ({
       ...current,
       protocolNumber:data.protocolNumber ?? current.protocolNumber,
@@ -173,19 +262,53 @@ export default function ProtocolsPage() {
       protocolStatus:data.protocolStatus ?? item.protocolStatus,
       protocolReadyAt:data.protocolReadyAt ?? item.protocolReadyAt,
       protocolIssuedAt:data.protocolIssuedAt ?? item.protocolIssuedAt,
-      documentStatus:status, documentVersion:data.version || item.documentVersion,
+      documentStatus:resolvedStatus,
+      documentVersion:data.version ?? item.documentVersion,
+      signedBy:data.signedBy ?? item.signedBy,
+      signedAt:data.signedAt ?? item.signedAt,
+      signedVersion:data.signedVersion ?? item.signedVersion,
     } : item));
-    setActionSuccess(status === "issued" ? "Протокол видано." : status === "ready" ? "Протокол позначено готовим." : "Чернетку протоколу збережено.");
+    setActionSuccess(
+      resolvedStatus === "issued" ? "Протокол видано пацієнту."
+        : resolvedStatus === "signed" ? "Протокол підписано. Клінічний зміст тепер незмінний."
+          : resolvedStatus === "ready" ? "Протокол готовий до підпису."
+            : "Чернетку протоколу збережено.",
+    );
   }
 
   async function copyText() {
     if (!doc) return;
     try {
-      await navigator.clipboard.writeText(renderProtocolText(doc));
+      const renderable:ProtocolDocument = {
+        templateKey:doc.templateKey,
+        method:doc.method,
+        methodRef:doc.methodRef,
+        sections:doc.sections,
+        findings:doc.findings,
+        conclusion:doc.conclusion,
+        recommendations:doc.recommendations,
+        number:doc.number,
+        status:doc.status === "signed" ? "ready" : doc.status,
+      };
+      await navigator.clipboard.writeText(renderProtocolText(renderable));
       setActionSuccess("Текст протоколу скопійовано.");
     } catch {
       setActionError("Не вдалося скопіювати текст.");
     }
+  }
+
+  async function flagCritical() {
+    if (!booking) return;
+    const note = window.prompt("Опишіть критичну знахідку (для термінового доведення лікарю/пацієнту):", "");
+    if (note === null) return;
+    setActionError(""); setActionSuccess("");
+    const res = await fetch("/api/staff/critical-findings", {
+      method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ action: "flag", bookingId: booking.id, note }),
+    });
+    const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+    if (!res.ok || !data.ok) { setActionError(data.error || "Не вдалося позначити критичну знахідку"); return; }
+    setActionSuccess("Критичну знахідку позначено — вона у списку «Критичні знахідки» для доведення.");
   }
 
   async function generateDraft() {
@@ -202,48 +325,67 @@ export default function ProtocolsPage() {
   }
 
   function applyDraft(part:"conclusion"|"recommendations"|"all") {
-    if (!aiDraft) return;
-    setDoc((current) => current && ({
-      ...current,
-      conclusion:part === "recommendations" ? current.conclusion : aiDraft.conclusion,
-      recommendations:part === "conclusion" ? current.recommendations : aiDraft.recommendations,
-    }));
-    setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед видачею.");
+    if (!aiDraft || !doc) return;
+    patchDoc({
+      conclusion:part === "recommendations" ? doc.conclusion : aiDraft.conclusion,
+      recommendations:part === "conclusion" ? doc.recommendations : aiDraft.recommendations,
+    });
+    setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед підписом.");
   }
 
-  const canEdit = staff?.role === "admin" || staff?.role === "radiologist";
+  const canManage = staff?.role === "admin" || staff?.role === "radiologist";
+  const clinicalLocked = doc?.status === "signed" || doc?.status === "issued";
+  const canEdit = Boolean(canManage && !clinicalLocked);
+  const canSign = staff?.role === "radiologist" && doc?.status === "ready";
+  const canIssue = Boolean(canManage && doc?.status === "signed");
   const template = doc ? protocolTemplateByKey(doc.templateKey) : null;
 
   const visible = useMemo(() => queue
     .filter((item) => {
-      if (filter === "awaiting") return item.protocolStatus !== "ready" && item.protocolStatus !== "issued";
-      if (filter === "ready") return item.protocolStatus === "ready";
-      if (filter === "issued") return item.protocolStatus === "issued";
+      if (filter === "awaiting") return !["ready","signed","issued"].includes(item.documentStatus);
+      if (filter === "ready") return item.documentStatus === "ready";
+      if (filter === "signed") return item.documentStatus === "signed";
+      if (filter === "issued") return item.documentStatus === "issued";
       return true;
     })
     .filter((item) => !query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase())),
   [queue,filter,query]);
 
   const counts = useMemo(() => ({
-    awaiting:queue.filter((item) => item.protocolStatus !== "ready" && item.protocolStatus !== "issued").length,
-    ready:queue.filter((item) => item.protocolStatus === "ready").length,
-    issued:queue.filter((item) => item.protocolStatus === "issued").length,
+    awaiting:queue.filter((item) => !["ready","signed","issued"].includes(item.documentStatus)).length,
+    ready:queue.filter((item) => item.documentStatus === "ready").length,
+    signed:queue.filter((item) => item.documentStatus === "signed").length,
+    issued:queue.filter((item) => item.documentStatus === "issued").length,
   }), [queue]);
+
+  // Заповненість структурованих полів — для змісту й підказки готовності.
+  const completeness = useMemo(() => {
+    if (!doc) return null;
+    const tpl = protocolTemplateByKey(doc.templateKey);
+    let total = 0, filled = 0;
+    for (const section of tpl.sections) for (const field of section.fields) {
+      total++;
+      if ((doc.sections[section.key]?.[field.key] || "").trim()) filled++;
+    }
+    return { total, filled };
+  }, [doc]);
 
   return <StaffWorkspaceShell
     active="protocols"
     title="Конструктор протоколів"
-    description="Структуровані протоколи досліджень за модальностями: заповнення полів, висновок, видача та друк."
+    description="Структуровані протоколи досліджень за модальностями: заповнення, клінічний підпис, видача та друк."
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fprotocols">Увійти для роботи</a></section> :
+    loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити чергу протоколів. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); void loadQueue(); }}>Повторити</button></section> :
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Черга протоколів">
         <div className="protocolQueueTools">
           <div className="protocolFilterTabs" role="tablist">
             <button role="tab" aria-selected={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>setFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
-            <button role="tab" aria-selected={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>Готові <b>{counts.ready}</b></button>
+            <button role="tab" aria-selected={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>До підпису <b>{counts.ready}</b></button>
+            <button role="tab" aria-selected={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>setFilter("signed")}>Підписані <b>{counts.signed}</b></button>
             <button role="tab" aria-selected={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
             <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
@@ -253,9 +395,9 @@ export default function ProtocolsPage() {
           {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
             key={item.id}
             className={`protocolQueueItem${selectedId === item.id ? " active":""}`}
-            onClick={()=>void openBooking(item.id)}
+            onClick={()=>selectBooking(item.id)}
           >
-            <span className={`protocolTag ${item.protocolStatus}`}>{bookingProtocolLabels[item.protocolStatus] || item.protocolStatus}</span>
+            <span className={`protocolTag ${item.documentStatus || item.protocolStatus}`}>{lifecycleLabel(item.documentStatus || item.protocolStatus)}</span>
             <b>{item.serviceTitle}</b>
             <small>{item.code} · {item.name}</small>
             <small>{item.performedAt ? `Виконано ${formatDateTime(item.performedAt)}` : `Заплановано ${item.desiredDate} ${item.desiredTime}`}</small>
@@ -267,7 +409,11 @@ export default function ProtocolsPage() {
         {actionError && <p className="staffError" role="alert">{actionError}</p>}
         {actionSuccess && <p className="staffSuccess" role="status">{actionSuccess}</p>}
 
-        {!booking || !doc || !template ? <div className="protocolPlaceholder">
+        {bookingLoading && !booking ? <div className="protocolPlaceholder">
+          <span aria-hidden="true">⏳</span>
+          <b>Завантаження протоколу…</b>
+          <p>Відкриваємо структурований протокол дослідження та його чернетку.</p>
+        </div> : !booking || !doc || !template ? <div className="protocolPlaceholder">
           <span aria-hidden="true">▤</span>
           <b>Оберіть дослідження зі списку</b>
           <p>Структурований протокол відкриється тут. Для нового дослідження шаблон підбереться автоматично за модальністю.</p>
@@ -279,14 +425,30 @@ export default function ProtocolsPage() {
               <p>{booking.code} · {booking.name} · {categoryLabels[booking.patientCategory] || booking.patientCategory}</p>
               <p className="protocolMeta">
                 {booking.performedAt ? `Виконано: ${formatDateTime(booking.performedAt)}` : "Дослідження ще не виконано"}
-                {" · "}Статус: {PROTOCOL_STATUS_LABELS[doc.status]}
+                {" · "}Статус: {PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}
                 {doc.updatedBy && ` · Автор: ${doc.updatedBy}`}
+                {doc.signedAt && ` · Підписано: ${formatDateTime(doc.signedAt)}`}
               </p>
             </div>
-            <span className={`protocolTag ${booking.protocolStatus}`}>{bookingProtocolLabels[booking.protocolStatus] || booking.protocolStatus}</span>
+            <span className={`protocolTag ${doc.status}`}>{PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
           </header>
 
-          {!canEdit && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
+          {clinicalLocked
+            ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
+            : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
+
+          <nav className="protocolToc" aria-label="Зміст протоколу">
+            <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
+            <a href="#protocol-method" className={doc.method.trim() ? "done" : ""}>Методика</a>
+            <a href="#protocol-method-ref" className={doc.methodRef.trim() ? "done" : ""}>Джерело методики</a>
+            {template.sections.map((section)=>{
+              const filled = section.fields.some((f)=>(doc.sections[section.key]?.[f.key] || "").trim());
+              return <a key={section.key} href={`#protocol-section-${section.key}`} className={filled ? "done" : ""}>{section.title}</a>;
+            })}
+            <a href="#protocol-findings" className={doc.findings.trim() ? "done" : ""}>Опис</a>
+            <a href="#protocol-conclusion" className={doc.conclusion.trim() ? "done" : ""}>Висновок</a>
+            <a href="#protocol-recommendations" className={doc.recommendations.trim() ? "done" : ""}>Рекомендації</a>
+          </nav>
 
           <fieldset className="protocolFields" disabled={!canEdit || saving}>
             <div className="protocolRow">
@@ -297,17 +459,24 @@ export default function ProtocolsPage() {
               </label>
               <label><span>Номер протоколу</span>
                 <input value={doc.number} maxLength={80} placeholder="Наприклад, КТ-2026-001"
-                  onChange={(e)=>setDoc((c)=>c && ({...c,number:e.target.value}))}/>
+                  onChange={(e)=>patchDoc({number:e.target.value})}/>
               </label>
               <button type="button" className="protocolNormButton" onClick={fillNorms}>Заповнити норму</button>
             </div>
 
-            <label className="protocolNarrative"><span>Методика</span>
+            <label className="protocolNarrative" id="protocol-method"><span>Методика</span>
               <textarea value={doc.method} maxLength={600} placeholder={template.method || "Опишіть методику дослідження"}
-                onChange={(e)=>setDoc((c)=>c && ({...c,method:e.target.value}))}/>
+                onChange={(e)=>patchDoc({method:e.target.value})}/>
             </label>
 
-            {template.sections.map((section)=><div className="protocolSection" key={section.key}>
+            <label className="protocolNarrative" id="protocol-method-ref"><span>Джерело методики / стандарт</span>
+              <textarea value={doc.methodRef} maxLength={300}
+                placeholder={template.methodRef || defaultMethodRef(template.equipmentId) || "Галузевий протокол, методика виробника, наказ МОЗ тощо"}
+                onChange={(e)=>patchDoc({methodRef:e.target.value})}/>
+              <small className="protocolFieldHint">Підстава методики дослідження — потрапляє в текст протоколу (аналог посилання на стандарт).</small>
+            </label>
+
+            {template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
               <h3>{section.title}</h3>
               <div className="protocolSectionFields">
                 {section.fields.map((field)=>{
@@ -326,17 +495,17 @@ export default function ProtocolsPage() {
               </div>
             </div>)}
 
-            <label className="protocolNarrative"><span>Опис (додатково)</span>
+            <label className="protocolNarrative" id="protocol-findings"><span>Опис (додатково)</span>
               <textarea value={doc.findings} maxLength={6000} placeholder="Вільний опис виявлених змін, що доповнює структуровані поля"
-                onChange={(e)=>setDoc((c)=>c && ({...c,findings:e.target.value}))}/>
+                onChange={(e)=>patchDoc({findings:e.target.value})}/>
             </label>
-            <label className="protocolNarrative"><span>Висновок</span>
+            <label className="protocolNarrative" id="protocol-conclusion"><span>Висновок</span>
               <textarea value={doc.conclusion} maxLength={6000} placeholder="Діагностичний висновок"
-                onChange={(e)=>setDoc((c)=>c && ({...c,conclusion:e.target.value}))}/>
+                onChange={(e)=>patchDoc({conclusion:e.target.value})}/>
             </label>
-            <label className="protocolNarrative"><span>Рекомендації</span>
+            <label className="protocolNarrative" id="protocol-recommendations"><span>Рекомендації</span>
               <textarea value={doc.recommendations} maxLength={6000} placeholder="Рекомендації щодо подальшого обстеження"
-                onChange={(e)=>setDoc((c)=>c && ({...c,recommendations:e.target.value}))}/>
+                onChange={(e)=>patchDoc({recommendations:e.target.value})}/>
             </label>
           </fieldset>
 
@@ -373,13 +542,18 @@ export default function ProtocolsPage() {
           </section>}
 
           <div className="protocolActions">
-            {canEdit && <>
+            {canEdit && doc.status === "draft" && <>
               <button type="button" onClick={()=>void save("draft")} disabled={saving}>Зберегти чернетку</button>
-              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Позначити готовим</button>
-              <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати протокол</button>
+              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Готовий до підпису</button>
             </>}
+            {canEdit && doc.status === "ready" &&
+              <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Зберегти зміни</button>}
+            {canSign && <button type="button" className="primary" onClick={()=>void save("signed")} disabled={saving}>Підписати протокол</button>}
+            {doc.status === "ready" && staff?.role === "admin" && <span className="protocolReadonlyHint">Підпис доступний лише лікарю-рентгенологу.</span>}
+            {canIssue && <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати пацієнту</button>}
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
+            {canManage && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
           </div>
 
           <article className="protocolPrint" aria-hidden="true">
@@ -393,9 +567,10 @@ export default function ProtocolsPage() {
               <div><dt>Пацієнт</dt><dd>{booking.name}</dd></div>
               <div><dt>Код запису</dt><dd>{booking.code}</dd></div>
               <div><dt>Дослідження</dt><dd>{booking.service}</dd></div>
-              <div><dt>Дата виконання</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
+              <div><dt>{booking.performedAt ? "Дата виконання" : "Запланована дата"}</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
             </dl>
             {(doc.method || template.method) && <section><h2>Методика</h2><p>{doc.method || template.method}</p></section>}
+            {(doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)) && <section><h2>Джерело методики</h2><p>{doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)}</p></section>}
             {template.sections.map((section)=>{
               const rendered = section.fields
                 .map((field)=>({ field, value:(doc.sections[section.key]?.[field.key] || "").trim() }))
@@ -409,8 +584,10 @@ export default function ProtocolsPage() {
             {doc.conclusion.trim() && <section><h2>Висновок</h2><p>{doc.conclusion}</p></section>}
             {doc.recommendations.trim() && <section><h2>Рекомендації</h2><p>{doc.recommendations}</p></section>}
             <footer>
-              <span>Лікар-рентгенолог: {booking.assignedRadiologistEmail || doc.updatedBy || "________________"}</span>
-              <span>Статус: {PROTOCOL_STATUS_LABELS[doc.status]}</span>
+              <span>{doc.signedBy
+                ? `Лікар-рентгенолог: ${doc.signedBy === "system:legacy-issued" ? "історичний протокол до введення workflow-підпису" : doc.signedBy}${doc.signedAt ? ` · ${formatDateTime(doc.signedAt)}` : ""}`
+                : <>Лікар-рентгенолог: ________________________ <small>(підпис, ПІБ)</small></>}</span>
+              <span>Статус: {PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
             </footer>
           </article>
         </>}

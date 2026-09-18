@@ -67,6 +67,20 @@ test("studies page renders a transition-aware, tenant-scoped registry", async ()
   assert.match(page, /data\.canManage/);
 });
 
+test("studies registry has search, equipment filter and inline errors (no alert)", async () => {
+  const page = await read("app/staff/studies/page.tsx");
+  // Пошук за кодом/пацієнтом/послугою.
+  assert.match(page, /studiesSearch/);
+  assert.match(page, /`\$\{s\.code\} \$\{s\.name\} \$\{s\.service\}`\.toLowerCase\(\)\.includes/);
+  // Фільтр за апаратом.
+  assert.match(page, /equipment === "all" \|\| s\.equipmentId === equipment/);
+  // Помилки — інлайн, а не системний alert.
+  assert.doesNotMatch(page, /window\.alert/);
+  assert.match(page, /setNotice/);
+  // Позначка обрізання на межі 500.
+  assert.match(page, /studies\.length >= 500/);
+});
+
 // Робочий shell інтегрує реєстр досліджень.
 test("workspace shell wires the studies registry", async () => {
   const shell = await read("app/staff/workspace-shell.tsx");

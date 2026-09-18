@@ -1,166 +1,160 @@
-/* RadiologyOS — міст між заявками v22 і базою даних відділення (D1).
-   Перехоплює надсилання «Моєї заявки» (цивільна форма на index/price та
-   військова форма на military) і зберігає її через /api/site-booking, щоб
-   замовлення одразу з'являлось у кабінеті персоналу. Екрани «Заявку прийнято»
-   лишаємо від v22 — додаємо лише реальний код заявки. */
+/* RadiologyOS — мінімалістичний запис через месенджер.
+   Пацієнт обирає дослідження (кошик), вказує ПІБ + бажану дату й час і
+   надсилає заявку адміністратору у Viber / WhatsApp або телефонує. Публічний
+   сайт НЕ створює запис у базі, не вимагає телефон/пошту/дату народження,
+   реєстрацію кабінету чи передоплату — заявку оформлює адміністратор із
+   отриманого повідомлення. Підключається на index.html, price.html
+   (цивільний кошик `cart`) і military.html (`militaryCart`). */
 (function () {
-  const esc = (t) => String(t == null ? '' : t).replace(/[&<>]/g, (m) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[m]));
+  const ADMIN_PHONE_INTL = '380972808899';       // для wa.me / viber
+  const ADMIN_TEL = '+380972808899';             // для tel:
+
   const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
-  const REFERRAL_MAP = {
-    'Є направлення': 'paper_referral',
-    'Направлення ще немає': 'none',
-    'Потрібна консультація': 'other',
-  };
 
-  function codesLine(codes) {
-    if (!codes.length) return '';
-    return `<div style="margin-top:6px"><strong>${codes.length > 1 ? 'Коди заявок' : 'Код заявки'}:</strong> ${codes.map(esc).join(', ')}</div>` +
-      `<div style="margin-top:4px;color:#4e5d46;font-size:13px">Збережіть код — за ним і номером телефону можна відстежити статус у кабінеті пацієнта.</div>`;
+  function studyNames(cartArr) {
+    return (Array.isArray(cartArr) ? cartArr : [])
+      .map((x) => (x && x.name ? String(x.name) : '')).filter(Boolean);
   }
 
-  async function postBooking(payload, requestKey) {
-    const response = await fetch('/api/site-booking', {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'idempotency-key': requestKey },
-      body: JSON.stringify(payload),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(data.error || 'Не вдалося надіслати заявку');
-    return data.codes || (data.code ? [data.code] : []);
+  // Текст заявки для месенджера (URL-кодування — на місці відправлення).
+  function bookingMessage(name, studies, date, time) {
+    return [
+      'Добрий день! Хочу записатися на дослідження.',
+      `Пацієнт: ${name}`,
+      `Дослідження: ${studies.join(', ')}`,
+      `Бажана дата: ${humanDate(date)}`,
+      `Бажаний час: ${time}`,
+    ].join('\n');
   }
 
-  // Fill the confirmation screen's payment block from the department pay link.
-  async function populatePayBlock() {
-    const block = document.getElementById('payBlock');
-    if (!block) return;
+  async function copyText(text) {
     try {
-      const res = await fetch('/api/pay-link', { cache: 'no-store' });
-      const data = await res.json().catch(() => ({}));
-      const link = (data && data.payLink) || '';
-      if (!link) { block.hidden = true; return; }
-      const btn = document.getElementById('payBtn');
-      // The button must be a real link; a raw bank-QR payload is scan-only.
-      if (btn) {
-        if (/^https?:\/\//i.test(link)) { btn.href = link; btn.hidden = false; }
-        else { btn.removeAttribute('href'); btn.hidden = true; }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        return true;
       }
-      const qrBox = document.getElementById('payQr');
-      if (qrBox && typeof qrcode === 'function') {
-        try { const qr = qrcode(0, 'M'); qr.addData(link); qr.make(); qrBox.innerHTML = qr.createImgTag(4, 6); }
-        catch (e) { qrBox.innerHTML = ''; }
-      }
-      block.hidden = false;
-    } catch (e) { /* leave hidden on failure */ }
+    } catch (e) { /* fallback нижче */ }
+    try {
+      const ta = document.createElement('textarea');
+      ta.value = text;
+      ta.setAttribute('readonly', '');
+      ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      return ok;
+    } catch (e) { return false; }
   }
 
-  // ----- Civilian request (index.html, price.html) -----
-  const civilForm = document.getElementById('requestForm');
-  if (civilForm) {
-    civilForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
-      if (!items.length) { alert('Спочатку додайте послугу до заявки.'); return; }
-      if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
+  let _toastTimer = null;
+  function toast(text) {
+    let el = document.getElementById('bookToast');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'bookToast';
+      el.setAttribute('role', 'status');
+      el.style.cssText = 'position:fixed;left:50%;bottom:24px;transform:translateX(-50%);z-index:200;max-width:min(92vw,420px);padding:13px 18px;border-radius:12px;background:#12303a;color:#fff;font-size:14px;line-height:1.4;box-shadow:0 10px 30px rgba(0,0,0,.28);text-align:center';
+      document.body.appendChild(el);
+    }
+    el.textContent = text;
+    el.style.opacity = '1';
+    if (_toastTimer) clearTimeout(_toastTimer);
+    _toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 5000);
+  }
 
-      // Category comes from the form selector when present (home page), else the page.
-      const catSel = document.getElementById('patientCategory');
-      const category = catSel
-        ? (catSel.value === 'military' ? 'military' : 'civilian')
-        : (/military/i.test(location.pathname) ? 'military' : 'civilian');
+  function markInvalid(input) {
+    if (!input) return;
+    input.style.borderColor = '#d9705f';
+    const wrap = input.closest('.field');
+    const err = wrap ? wrap.querySelector('.field-error') : null;
+    if (err) err.style.display = 'block';
+    try { input.focus(); } catch (e) {}
+  }
+  function clearInvalid(input) {
+    if (!input) return;
+    input.style.borderColor = '';
+    const wrap = input.closest('.field');
+    const err = wrap ? wrap.querySelector('.field-error') : null;
+    if (err) err.style.display = '';
+  }
 
-      const name = document.getElementById('patientName').value.trim();
-      const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
-      const dob = (document.getElementById('patientDob') || {}).value || '';
-      const picked = (typeof pickedSlot !== 'undefined') ? pickedSlot : { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('desiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('desiredTime').value || '';
-      const referralType = category === 'military'
-        ? 'military_referral'
-        : (REFERRAL_MAP[document.getElementById('referral').value] || 'other');
-      const comment = document.getElementById('comment').value.trim();
-      const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
+  // Прив'язує кнопки Viber/WhatsApp форми до месенджер-хендофу.
+  // getCart() повертає масив обраних досліджень.
+  function bindBooking(form, ids, getCart) {
+    if (!form) return;
+    const nameEl = document.getElementById(ids.name);
+    const dateEl = document.getElementById(ids.date);
+    const timeEl = document.getElementById(ids.time);
+    [nameEl, dateEl, timeEl].forEach((el) => {
+      if (el) el.addEventListener('input', () => clearInvalid(el));
+    });
 
-      const submitBtn = civilForm.querySelector('.send-request');
-      const submitLabel = submitBtn ? submitBtn.textContent : '';
-      const requestKey = (submitBtn && submitBtn.dataset.idempotencyKey)
-        || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
-      try {
-        const codes = await postBooking({
-          name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
-          consent: true, consentVersion: '2026-07-29',
-          items: items.map((x) => ({ code: String(x.code) })),
-        }, requestKey);
-        if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        if (typeof showSuccess === 'function') {
-          showSuccess(
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes)
-          );
+    function collect() {
+      const studies = studyNames(getCart());
+      const name = (nameEl && nameEl.value || '').trim();
+      const date = (dateEl && dateEl.value) || '';
+      const time = (timeEl && timeEl.value) || '';
+      if (!studies.length) { alert('Оберіть щонайменше одне дослідження.'); return null; }
+      if (!name) { markInvalid(nameEl); return null; }
+      if (!date) { markInvalid(dateEl); return null; }
+      if (!time) { markInvalid(timeEl); return null; }
+      return { studies, name, date, time };
+    }
+
+    form.querySelectorAll('[data-book]').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const data = collect();
+        if (!data) return; // блокуємо відкриття месенджера без обов'язкових полів
+        const text = bookingMessage(data.name, data.studies, data.date, data.time);
+        if (btn.dataset.book === 'whatsapp') {
+          window.open(`https://wa.me/${ADMIN_PHONE_INTL}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+        } else if (btn.dataset.book === 'viber') {
+          // Viber не дає підставити текст у чат конкретного контакту, тож
+          // копіюємо заявку в буфер і відкриваємо чат адміністратора.
+          await copyText(text);
+          toast('Текст заявки скопійовано. Вставте його у повідомлення Viber');
+          window.location.href = `viber://chat?number=%2B${ADMIN_PHONE_INTL}`;
         }
-        if (category === 'civilian') populatePayBlock();
-      } catch (error) {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Сформувати заявку'; }
-        alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');
-      }
-    }, true);
+      });
+    });
   }
 
-  // ----- Military request — free, category "military" (military.html) -----
-  const milForm = document.getElementById('militaryRequestForm');
-  if (milForm) {
-    milForm.addEventListener('submit', async (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-      const items = (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart)) ? militaryCart : [];
-      if (!items.length) { alert('Оберіть хоча б одне дослідження.'); return; }
-      if (!milForm.checkValidity()) { milForm.classList.add('was-validated'); const bad = milForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
-
-      const name = document.getElementById('militaryPatientName').value.trim();
-      const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
-      const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
-      const picked = window.milPickedSlot || { date: '', time: '' };
-      const desiredDate = picked.date || document.getElementById('militaryDesiredDate').value || '';
-      const desiredTime = picked.time || document.getElementById('militaryDesiredTime').value || '';
-      const refText = (document.getElementById('militaryReferral') || {}).value || '';
-      const commentRaw = (document.getElementById('militaryComment') || {}).value || '';
-      const comment = [refText, commentRaw.trim()].filter(Boolean).join('. ');
-      const source = (typeof getTrafficSource === 'function') ? getTrafficSource() : '';
-
-      const submitBtn = milForm.querySelector('.send-request');
-      const submitLabel = submitBtn ? submitBtn.textContent : '';
-      const requestKey = (submitBtn && submitBtn.dataset.idempotencyKey)
-        || (crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`);
-      if (submitBtn) submitBtn.dataset.idempotencyKey = requestKey;
-      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
-      try {
-        const codes = await postBooking({
-          name, phone, dob, category: 'military', referralType: 'military_referral',
-          comment, desiredDate, desiredTime, source,
-          consent: true, consentVersion: '2026-07-29',
-          items: items.map((x) => ({ code: String(x.code) })),
-        }, requestKey);
-        if (submitBtn) delete submitBtn.dataset.idempotencyKey;
-        const summary = document.getElementById('milSuccessSummary');
-        if (summary) {
-          summary.innerHTML =
-            `<div><strong>Дослідження:</strong> ${items.map((x) => esc(x.name)).join('; ')}</div>` +
-            (desiredDate ? `<div><strong>Бажана дата:</strong> ${esc(humanDate(desiredDate))}${desiredTime ? ' о ' + esc(desiredTime) : ''}</div>` : '') +
-            `<div><strong>Телефон для зв'язку:</strong> ${esc(phone)}</div>` + codesLine(codes);
+  // Вимикає кнопки додавання для тимчасово недоступних послуг (сервер — джерело
+  // істини; тут лише підказка в UI).
+  async function applyPublicServiceAvailability() {
+    try {
+      const response = await fetch('/api/public-services', { cache: 'no-store' });
+      const data = await response.json().catch(() => ({}));
+      const services = Array.isArray(data.services) ? data.services : [];
+      if (!response.ok || !services.length) return;
+      const militaryPage = /military/i.test(location.pathname);
+      const byCode = Object.fromEntries(services.map((item) => [String(item.code), item]));
+      document.querySelectorAll('button.row-add').forEach((button) => {
+        const source = button.getAttribute('onclick') || '';
+        const match = source.match(/\(['"]([^'"]+)['"]/);
+        const item = match ? byCode[match[1]] : null;
+        if (!item) return;
+        const available = militaryPage ? item.availableToMilitary : item.availableToCivilian;
+        button.disabled = !available;
+        button.setAttribute('aria-disabled', available ? 'false' : 'true');
+        if (!available) {
+          button.textContent = 'Тимчасово недоступно';
+          button.title = 'Послугу вимкнено адміністратором';
         }
-        milForm.hidden = true;
-        const panel = document.getElementById('milSuccessPanel');
-        if (panel) panel.hidden = false;
-        const milList = document.getElementById('militaryCartItems');
-        if (milList) milList.style.display = 'none';
-        if (typeof militaryCart !== 'undefined') { militaryCart.length = 0; if (typeof saveMilitaryCart === 'function') saveMilitaryCart(); }
-      } catch (error) {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.textContent = submitLabel || 'Надіслати заявку'; }
-        alert((error && error.message) || 'Не вдалося надіслати заявку. Зателефонуйте в реєстратуру: +380 97 280 88 99');
-      }
-    }, true);
+      });
+    } catch (e) { /* тиха підказка */ }
   }
+  applyPublicServiceAvailability();
+
+  bindBooking(
+    document.getElementById('requestForm'),
+    { name: 'patientName', date: 'desiredDate', time: 'desiredTime' },
+    () => (typeof cart !== 'undefined' && Array.isArray(cart) ? cart : []),
+  );
+  bindBooking(
+    document.getElementById('militaryRequestForm'),
+    { name: 'militaryPatientName', date: 'militaryDesiredDate', time: 'militaryDesiredTime' },
+    () => (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart) ? militaryCart : []),
+  );
 })();

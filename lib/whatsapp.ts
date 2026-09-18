@@ -1,19 +1,24 @@
-// Best-effort WhatsApp через green-api.com. Тихий no-op, поки адміністратор
-// не збереже idInstance + apiToken на сторінці «WhatsApp» у кабінеті.
-// Дзеркалить lib/telegram.ts: прямий fetch до сталого хоста green-api.
+// Best-effort WhatsApp through green-api.com. Configuration is organization-
+// scoped. The optional organization id is explicit at tenant-aware call sites;
+// omitted means the legacy public org1 path only.
 
-import { getSettings } from "./settings";
+import { getOrganizationIntegrationSettings } from "./settings";
 
-// Чисті функції бота/розбору — у окремому модулі (тестовані без залежностей).
 export { interpretBotCommand, menuText, parseIncomingWebhook } from "./whatsapp-bot";
 export type { BotAction, IncomingMessage } from "./whatsapp-bot";
 
 const GREEN_API_HOST = "https://api.green-api.com";
+const LEGACY_PUBLIC_ORGANIZATION_ID = 1;
 
 export type WhatsAppConfig = { idInstance: string; apiToken: string; enabled: boolean };
 
-export async function whatsappConfig(db: D1Database): Promise<WhatsAppConfig> {
-  const s = await getSettings(db, ["whatsapp_id_instance", "whatsapp_api_token_instance", "whatsapp_enabled"]);
+export async function whatsappConfig(
+  db: D1Database,
+  organizationId = LEGACY_PUBLIC_ORGANIZATION_ID,
+): Promise<WhatsAppConfig> {
+  const s = await getOrganizationIntegrationSettings(db, organizationId, [
+    "whatsapp_id_instance", "whatsapp_api_token_instance", "whatsapp_enabled",
+  ]);
   const enabled = ["1", "true", "on", "yes"].includes((s.whatsapp_enabled || "").trim().toLowerCase());
   return { idInstance: s.whatsapp_id_instance || "", apiToken: s.whatsapp_api_token_instance || "", enabled };
 }
@@ -22,15 +27,16 @@ export function whatsappConfigured(cfg: WhatsAppConfig): boolean {
   return Boolean(cfg.idInstance && cfg.apiToken);
 }
 
-// Надсилає повідомлення пацієнту. Нічого не записує — облік лишається за
-// викликачем (нагадування / чат / вебхук).
 export async function sendWhatsApp(
   db: D1Database,
   phoneNormalized: string,
   text: string,
+  organizationId = LEGACY_PUBLIC_ORGANIZATION_ID,
 ): Promise<{ ok: boolean; error?: string; idMessage?: string }> {
-  const cfg = await whatsappConfig(db);
-  if (!whatsappConfigured(cfg)) return { ok: false, error: "WhatsApp не підключено (немає idInstance / apiToken)" };
+  const cfg = await whatsappConfig(db, organizationId);
+  if (!whatsappConfigured(cfg) || !cfg.enabled) {
+    return { ok: false, error: "WhatsApp не підключено для цієї організації" };
+  }
   const phone = String(phoneNormalized || "").replace(/\D/g, "");
   if (!phone) return { ok: false, error: "Некоректний номер отримувача" };
   try {

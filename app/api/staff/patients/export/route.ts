@@ -1,12 +1,10 @@
 // Export patients as a Google Contacts CSV (name + phone), ready for
-// contacts.google.com → Import. Excludes "do not contact" patients.
+// contacts.google.com → Import. Excludes exact "do not contact" profiles.
 
 import { logSecurityEvent } from "../../../../../lib/audit";
-import { canExportPatientData, requireStaff } from "../../../../../lib/staff-auth";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { canExportPatientData } from "../../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../../lib/tenant";
+import { dbBinding } from "../../../../../lib/db";
 
 function csvCell(value: string, neutralizeFormula = false): string {
   let v = String(value ?? "");
@@ -17,23 +15,37 @@ function csvCell(value: string, neutralizeFormula = false): string {
 export async function GET(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "База тимчасово недоступна" }, { status: 503 });
-  const member = await requireStaff(request, db);
-  if (!member) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const ctx = await requireOrgContext(request, db);
+  if (!ctx) return Response.json({ error: "Доступ лише для персоналу" }, { status: 403 });
+  const member = ctx.member;
   if (!canExportPatientData(member.role)) {
     return Response.json({ error: "Експорт персональних даних доступний лише адміністратору" }, { status: 403 });
   }
 
-  // Latest booking per phone gives the freshest name; the profile name wins if set.
+  // Exact CRM profiles are separate contacts even when they share a phone.
+  // Historical unlinked bookings are exported only when no profile at all uses
+  // that phone, so a legacy phone row can never collapse/override exact people.
   const rows = await db.prepare(
-    `SELECT b.phone_normalized AS phone,
-       COALESCE(NULLIF(p.display_name, ''), b.name) AS name
+    `SELECT phone_normalized AS phone,
+       COALESCE(NULLIF(display_name, ''), 'Пацієнт') AS name
+     FROM patient_profiles
+     WHERE organization_id = ?1 AND phone_normalized != '' AND do_not_contact = 0
+     UNION ALL
+     SELECT b.phone_normalized AS phone, b.name AS name
      FROM bookings b
-     JOIN (SELECT phone_normalized, MAX(id) AS mid FROM bookings
-           WHERE phone_normalized != '' GROUP BY phone_normalized) last ON last.mid = b.id
-     LEFT JOIN patient_profiles p ON p.phone_normalized = b.phone_normalized
-     WHERE COALESCE(p.do_not_contact, 0) = 0
+     JOIN (
+       SELECT phone_normalized, MAX(id) AS mid
+       FROM bookings
+       WHERE organization_id = ?1 AND patient_id = '' AND phone_normalized != ''
+       GROUP BY phone_normalized
+     ) last ON last.mid = b.id
+     WHERE b.organization_id = ?1
+       AND NOT EXISTS (
+         SELECT 1 FROM patient_profiles p
+         WHERE p.organization_id = ?1 AND p.phone_normalized = b.phone_normalized
+       )
      ORDER BY name`
-  ).all<{ phone: string; name: string }>();
+  ).bind(ctx.organizationId).all<{ phone: string; name: string }>();
 
   const header = "Name,Phone 1 - Type,Phone 1 - Value,Notes";
   const lines = (rows.results || []).map((r) => {
@@ -43,6 +55,7 @@ export async function GET(request: Request) {
   const csv = "﻿" + [header, ...lines].join("\r\n") + "\r\n";
 
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "patient_contacts_exported",
     resource: "patient_registry",

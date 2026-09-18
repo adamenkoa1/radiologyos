@@ -1,46 +1,36 @@
 import {
-  createPatientSession,
   normalizeBookingCode,
-  patientSessionCookie,
   requirePatientSession,
 } from "../../../lib/patient-auth";
-import { normalizeUkrainianPhone } from "../../../lib/phone";
+import { patientOrderCancellationBlocker } from "../../../lib/patient-orders";
 import { isRateLimited } from "../../../lib/rate-limit";
 import { stateLabel } from "../../../lib/study-state";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error: "Сервіс тимчасово недоступний" }, { status: 503 });
-  if (await isRateLimited(db, request, "booking-status", 8, 15)) {
+  if (await isRateLimited(db, request, "booking-status", 12, 15)) {
     return Response.json({ error: "Забагато спроб. Повторіть перевірку пізніше." }, { status: 429 });
   }
-  const body = await request.json().catch(() => ({})) as { code?: string; phone?: string };
+  const session = await requirePatientSession(request, db);
+  if (!session) return Response.json({ error: "Сесію завершено. Увійдіть повторно." }, { status: 401 });
+
+  const body = await request.json().catch(() => ({})) as { code?: string };
   const code = normalizeBookingCode(body.code);
-  const phoneNormalized = normalizeUkrainianPhone(String(body.phone || ""));
-  if (!code || !phoneNormalized) {
-    return Response.json({ error: "Перевірте код і повний номер телефону" }, { status: 400 });
-  }
+  if (!code) return Response.json({ error: "Перевірте код заявки" }, { status: 400 });
+
+  const identityClause = session.identityKind === "dob" ? "b.date_of_birth = ?" : "b.code = ?";
   const result = await db.prepare(
     `SELECT b.code, b.service, b.desired_date AS desiredDate, b.desired_time AS desiredTime,
       b.status, b.created_at AS createdAt, COALESCE(o.name, '') AS organization
      FROM bookings b LEFT JOIN organizations o ON o.id = b.organization_id
-     WHERE b.code = ? AND b.phone_normalized = ?
+     WHERE b.organization_id = ? AND b.code = ? AND b.phone_normalized = ? AND ${identityClause}
      LIMIT 1`
-  ).bind(code, phoneNormalized).first<{ status: string }>();
+  ).bind(session.organizationId, code, session.phoneNormalized, session.identityValue).first<{ status: string }>();
   if (!result) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
-  // Людський підпис стану дослідження (єдина state machine).
   const booking = { ...result, statusLabel: stateLabel(result.status) };
-  const sessionToken = await createPatientSession(db, phoneNormalized);
-  return Response.json({ booking }, {
-    headers: {
-      "cache-control": "no-store",
-      "set-cookie": patientSessionCookie(sessionToken),
-    },
-  });
+  return Response.json({ booking }, { headers: { "cache-control": "no-store" } });
 }
 
 export async function PATCH(request: Request) {
@@ -57,19 +47,29 @@ export async function PATCH(request: Request) {
   if (body.action !== "cancel" || !code) {
     return Response.json({ error: "Некоректний запит" }, { status: 400 });
   }
+  const identityClause = session.identityKind === "dob" ? "date_of_birth = ?" : "code = ?";
   const booking = await db.prepare(
     `SELECT id, status FROM bookings
-     WHERE code = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(code, session.phoneNormalized).first<{ id: number; status: string }>();
+     WHERE organization_id = ? AND code = ? AND phone_normalized = ? AND ${identityClause} LIMIT 1`
+  ).bind(session.organizationId, code, session.phoneNormalized, session.identityValue).first<{ id: number; status: string }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
   if (!["new", "confirmed", "rescheduled"].includes(booking.status)) {
     return Response.json({ error: "Цю заявку вже не можна скасувати онлайн" }, { status: 409 });
   }
+  const blocker=await patientOrderCancellationBlocker(db,session.organizationId,booking.id);
+  if(blocker){
+    const error=blocker==="payment_refund_required"
+      ?"За заявкою вже є оплата. Для скасування зверніться до реєстратури щодо повернення коштів."
+      :blocker==="service_storno_required"
+        ?"Послугу вже проведено. Для скасування зверніться до реєстратури."
+        :"Скасування тимчасово недоступне через незавершений пов’язаний документ. Зверніться до реєстратури.";
+    return Response.json({error},{status:409});
+  }
   await db.batch([
-    db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ?").bind(booking.id),
+    db.prepare("UPDATE bookings SET status = 'cancelled' WHERE id = ? AND organization_id = ?").bind(booking.id, session.organizationId),
     db.prepare(
-      "INSERT INTO booking_events (booking_id, action, details, actor) VALUES (?, 'cancelled', 'patient_self_service', 'patient')"
-    ).bind(booking.id),
+      "INSERT INTO booking_events (organization_id, booking_id, action, details, actor) VALUES (?, ?, 'cancelled', 'patient_self_service', 'patient')"
+    ).bind(session.organizationId, booking.id),
   ]);
   return Response.json({ ok: true, status: "cancelled" }, { headers: { "cache-control": "no-store" } });
 }

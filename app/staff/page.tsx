@@ -6,22 +6,27 @@ import StaffWorkspaceShell from "./workspace-shell";
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type StaffOption = { email:string; displayName:string; role:StaffRole };
+type BookingCapabilities = {
+  canManageBookings:boolean;
+  canViewPatientContact:boolean;
+  canManageFinance:boolean;
+};
 type Booking = {
-  id:number; code:string; name:string; phone:string; patientEmail:string; service:string;
+  id:number; code:string; name:string; phone?:string; patientEmail?:string; service:string;
   serviceCode:string; equipmentId:string; durationMinutes:number;
   desiredDate:string; desiredTime:string; referral:string;
   patientCategory:string; referralType:string; referralNumber:string;
-  marketingSource:string; protocolNumber:string; protocolStatus:string; protocolUpdatedAt:string;
+  marketingSource?:string; protocolNumber:string; protocolStatus:string; protocolUpdatedAt:string;
   assignedRadiologistEmail:string; assignedRadiographerEmail:string;
   performedAt:string; anatomicalRegionsCount:number;
   protocolReadyAt:string; protocolIssuedAt:string;
-  paidAmount:number; externalReference:string;
-  paymentStatus:string; paymentAmount:number; paymentMethod:string;
-  nszuStatus:string; nszuReference:string; listedPrice:number;
+  paidAmount?:number; externalReference:string;
+  paymentStatus?:string; paymentAmount?:number; paymentMethod?:string;
+  nszuStatus?:string; nszuReference?:string; listedPrice?:number;
   comment:string; status:string; createdAt:string;
 };
 type BookingEvent = { id:number; bookingId:number; action:string; details:string; actor:string; createdAt:string };
-type PatientNotification = { id:number; bookingId:number; kind:string; channel:string; recipient:string; status:string; error:string; createdAt:string; sentAt:string };
+type PatientNotification = { id:number; bookingId:number; kind:string; channel:string; recipient?:string; status:string; error:string; createdAt:string; sentAt:string };
 type ReminderResult = { sent:number; skipped:number; failed:number } | null | undefined;
 type StaffNote = { bookingId:number; note:string; updatedBy:string; updatedAt:string };
 type Equipment = { id:string; name:string; slotMinutes:number; start:string; end:string };
@@ -29,17 +34,28 @@ type EquipmentBlock = {
   id:number; equipmentId:string; blockedDate:string; startTime:string; endTime:string; reason:string;
 };
 type StaffMember = {
-  email:string; phone:string; displayName:string; role:StaffRole; active:number; createdAt:string;
+  email:string; phone:string; displayName:string; lastName:string; firstName:string; patronymic:string;
+  contactEmail:string; militaryRank:string; positionTitle:string; role:StaffRole; active:number; createdAt:string;
+};
+
+const NO_BOOKING_CAPABILITIES: BookingCapabilities = {
+  canManageBookings:false,
+  canViewPatientContact:false,
+  canManageFinance:false,
 };
 
 const labels: Record<string,string> = {
   new:"Нова", confirmed:"Підтверджена", rescheduled:"Перенесена",
-  completed:"Завершена", cancelled:"Скасована",
+  arrived:"Прибув", no_show:"Неявка", completed:"Завершена", cancelled:"Скасована",
 };
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
 };
+const FIRST_NAMES = ["Іван","Олександр","Андрій","Дмитро","Микола","Сергій","Володимир","Олена","Наталія","Тетяна","Ірина","Марина"];
+const PATRONYMICS = ["Іванович","Олександрович","Андрійович","Дмитрович","Миколайович","Сергійович","Володимирович","Іванівна","Олександрівна","Андріївна","Миколаївна","Сергіївна"];
+const POSITION_OPTIONS = ["Начальник відділення","Лікар-рентгенолог","Рентгенолаборант","Черговий рентгенолаборант","Медична сестра","Санітарка","Реєстратор","Адміністратор"];
+const RANK_OPTIONS = ["Цивільний персонал","Солдат","Старший солдат","Молодший сержант","Сержант","Старший сержант","Головний сержант","Штаб-сержант","Молодший лейтенант","Лейтенант","Старший лейтенант","Капітан","Майор","Підполковник","Полковник"];
 const categoryLabels: Record<string,string> = { civilian:"Цивільний маршрут", military:"Військовий маршрут" };
 const referralLabels: Record<string,string> = {
   eh_referral:"е-Направлення", military_referral:"Направлення військової частини",
@@ -106,6 +122,8 @@ const STATUS_TABS: Array<{ v:string; l:string }> = [
   { v:"new", l:"Нові" },
   { v:"confirmed", l:"Підтверджені" },
   { v:"rescheduled", l:"Перенесені" },
+  { v:"arrived", l:"Прибули" },
+  { v:"no_show", l:"Неявка" },
   { v:"completed", l:"Завершені" },
   { v:"cancelled", l:"Скасовані" },
 ];
@@ -176,6 +194,7 @@ export default function StaffPage() {
   const [notes,setNotes] = useState<StaffNote[]>([]);
   const [notifications,setNotifications] = useState<PatientNotification[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
+  const [capabilities,setCapabilities] = useState<BookingCapabilities>(NO_BOOKING_CAPABILITIES);
   const [equipment,setEquipment] = useState<Equipment[]>([]);
   const [blocks,setBlocks] = useState<EquipmentBlock[]>([]);
   const [members,setMembers] = useState<StaffMember[]>([]);
@@ -185,8 +204,13 @@ export default function StaffPage() {
   const [actionSuccess,setActionSuccess] = useState("");
   const [filter,setFilter] = useState("all");
   const [equipmentFilter,setEquipmentFilter] = useState("all");
+  const [categoryFilter,setCategoryFilter] = useState("all");
+  const [paymentFilter,setPaymentFilter] = useState("all");
   const [dayFilter,setDayFilter] = useState("");
   const [query,setQuery] = useState("");
+  // Глибоке посилання ?open=<id> з drawer («Відкрити повну заявку →»): показати
+  // саме цю заявку, розгорнути її картку керування і підсвітити.
+  const [openId,setOpenId] = useState<number | null>(null);
 
   async function load() {
     const [bookingsResponse,equipmentResponse] = await Promise.all([
@@ -195,7 +219,8 @@ export default function StaffPage() {
     ]);
     const data = await bookingsResponse.json() as {
       bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo;
-      staffOptions?:StaffOption[]; notifications?:PatientNotification[]; error?:string;
+      staffOptions?:StaffOption[]; notifications?:PatientNotification[];
+      capabilities?:BookingCapabilities; error?:string;
     };
     if (!bookingsResponse.ok) { setError(data.error || "Немає доступу"); return; }
     const equipmentData = await equipmentResponse.json() as {
@@ -207,6 +232,7 @@ export default function StaffPage() {
     setNotes(data.notes || []);
     setNotifications(data.notifications || []);
     setStaff(data.staff || null);
+    setCapabilities(data.capabilities || NO_BOOKING_CAPABILITIES);
     setStaffOptions(data.staffOptions || []);
     setEquipment(equipmentData.equipment || []);
     setBlocks(equipmentData.blocks || []);
@@ -225,6 +251,38 @@ export default function StaffPage() {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  // Прочитати ?open=<id> один раз і зняти всі фільтри, щоб заявка була видима
+  // незалежно від активного табу/пошуку.
+  useEffect(() => {
+    const raw = new URLSearchParams(window.location.search).get("open");
+    const id = raw && /^\d+$/.test(raw) ? Number(raw) : null;
+    if (!id) return;
+    const timer = window.setTimeout(() => {
+      setFilter("all"); setDayFilter(""); setEquipmentFilter("all");
+      setCategoryFilter("all"); setPaymentFilter("all"); setQuery("");
+      setOpenId(id);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
+  // Коли заявка з'явилась у списку — прокрутити до неї, розгорнути «Керування» і
+  // коротко підсвітити. Одноразово (далі openId скидається).
+  useEffect(() => {
+    if (openId == null || !items.some(i => i.id === openId)) return;
+    const timer = window.setTimeout(() => {
+      const node = document.getElementById(`booking-${openId}`);
+      if (node) {
+        const details = node.querySelector("details.apptManage");
+        if (details) (details as HTMLDetailsElement).open = true;
+        node.scrollIntoView({ behavior: "smooth", block: "center" });
+        node.classList.add("bookingRowFocus");
+        window.setTimeout(() => node.classList.remove("bookingRowFocus"), 2600);
+      }
+      setOpenId(null);
+    }, 60);
+    return () => window.clearTimeout(timer);
+  }, [openId, items]);
 
   async function changeStatus(id:number,status:string) {
     setActionError(""); setActionSuccess("");
@@ -259,8 +317,9 @@ export default function StaffPage() {
     const data = await response.json() as { error?:string; reminder?:ReminderResult };
     if (!response.ok) { setActionError(data.error || "Не вдалося підтвердити запис"); return; }
     setItems(current => current.map(item => item.id === id ? {...item,status:"confirmed"} : item));
-    setActionSuccess(`Запис підтверджено та поставлено в розклад.${reminderNote(data.reminder)}`);
-    void load();
+    // Одразу відкриваємо розклад (тиждень) на даті цього запису.
+    const target = items.find(item => item.id === id)?.desiredDate;
+    window.location.assign(`/staff/appointments?view=week&date=${target || ""}`);
   }
 
   async function saveNote(id:number,note:string) {
@@ -325,7 +384,12 @@ export default function StaffPage() {
       method:"POST", headers:{"content-type":"application/json"},
       body:JSON.stringify({
         phone:String(data.get("phone")),
-        displayName:String(data.get("displayName")),
+        lastName:String(data.get("lastName")),
+        firstName:String(data.get("firstName")),
+        patronymic:String(data.get("patronymic")),
+        contactEmail:String(data.get("contactEmail")),
+        militaryRank:String(data.get("militaryRank")),
+        positionTitle:String(data.get("positionTitle")),
         role:String(data.get("role")),
         active:String(data.get("active")) !== "false",
         password:String(data.get("password") || ""),
@@ -344,9 +408,11 @@ export default function StaffPage() {
   const baseFiltered = useMemo(() => items
     .filter(item => equipmentFilter === "all" || item.equipmentId === equipmentFilter)
     .filter(item => !dayFilter || item.desiredDate === dayFilter)
-    .filter(item => !query.trim() || `${item.name} ${item.phone} ${item.code} ${item.service} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase()))
+    .filter(item => categoryFilter === "all" || item.patientCategory === categoryFilter)
+    .filter(item => !capabilities.canManageFinance || paymentFilter === "all" || (paymentFilter === "paid" ? item.paymentStatus === "paid" : item.patientCategory === "civilian" && item.paymentStatus !== "paid"))
+    .filter(item => !query.trim() || `${item.name} ${capabilities.canViewPatientContact ? item.phone || "" : ""} ${item.code} ${item.service} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase()))
     .sort((a,b)=>`${a.desiredDate} ${a.desiredTime}`.localeCompare(`${b.desiredDate} ${b.desiredTime}`)),
-  [items,equipmentFilter,dayFilter,query]);
+  [items,equipmentFilter,categoryFilter,paymentFilter,dayFilter,query,capabilities]);
   const statusCounts = useMemo(() => {
     const counts:Record<string,number> = { all:baseFiltered.length };
     for (const item of baseFiltered) counts[item.status] = (counts[item.status] || 0) + 1;
@@ -363,14 +429,15 @@ export default function StaffPage() {
     return [...map.entries()];
   }, [visible]);
   const today = todayInKyiv();
-  const canManage = staff?.role === "admin" || staff?.role === "registrar";
+  const canManage = capabilities.canManageBookings;
+  const canViewPatientContact = capabilities.canViewPatientContact;
   const canProtocol = staff?.role === "admin" || staff?.role === "radiologist";
-  const canFinance = staff?.role === "admin" || staff?.role === "registrar";
+  const canFinance = capabilities.canManageFinance;
 
   return <StaffWorkspaceShell
     active="overview"
     title="Записи"
-    description="Записи пацієнтів за статусами й днями. Керування кожним записом — протокол, оплата, виконання — у деталях запису."
+    description="Записи пацієнтів за статусами й днями. Деталі запису містять лише доступні вашій ролі операційні дані."
     staffName={staff?.displayName || staff?.email}
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
@@ -388,11 +455,13 @@ export default function StaffPage() {
         <a href="/staff/reports"><span className="quickGlyph">▥</span><b>Звіти</b><small>Аналітика та експорт Excel</small></a>
       </section>
 
-      <section className="staffStats" id="overview">
-        <article><span>Усього</span><b>{items.length}</b></article>
-        <article><span>Нові</span><b>{items.filter(i=>i.status==="new").length}</b></article>
+      <section className="staffStats receptionStats" id="overview">
         <article><span>На сьогодні</span><b>{items.filter(i=>i.desiredDate===today).length}</b></article>
-        <article><span>Підтверджені</span><b>{items.filter(i=>i.status==="confirmed").length}</b></article>
+        <article className="militaryStat"><span>Військові</span><b>{items.filter(i=>i.desiredDate===today&&i.patientCategory==="military").length}</b></article>
+        <article className="civilianStat"><span>Цивільні</span><b>{items.filter(i=>i.desiredDate===today&&i.patientCategory==="civilian").length}</b></article>
+        {canFinance && <article className="attentionStat"><span>Оплату перевірити</span><b>{items.filter(i=>i.patientCategory==="civilian"&&i.paymentStatus!=="paid"&&i.status!=="cancelled"&&i.status!=="no_show").length}</b></article>}
+        <article><span>Прибули</span><b>{items.filter(i=>i.desiredDate===today&&i.status==="arrived").length}</b></article>
+        <article><span>Неявка</span><b>{items.filter(i=>i.desiredDate===today&&i.status==="no_show").length}</b></article>
       </section>
       <div className="apptTabs" id="schedule" role="tablist" aria-label="Статус записів">
         {STATUS_TABS.map(tab=><button
@@ -407,8 +476,10 @@ export default function StaffPage() {
       <div className="staffTools">
         <label>Дата <input type="date" value={dayFilter} onChange={e=>setDayFilter(e.target.value)}/></label>
         <label>Апарат <select value={equipmentFilter} onChange={e=>setEquipmentFilter(e.target.value)}><option value="all">Усе обладнання</option>{equipment.map(item=><option value={item.id} key={item.id}>{item.name}</option>)}</select></label>
-        <label>Пошук <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder="Пацієнт, код, телефон…"/></label>
-        <div className="toolButtons"><button onClick={()=>{setDayFilter(today);setFilter("all")}}>Сьогодні</button><button onClick={()=>{setDayFilter("");setFilter("all");setEquipmentFilter("all");setQuery("");}}>Скинути</button><button onClick={()=>window.print()}>Друк</button><button onClick={()=>void load()}>Оновити</button></div>
+        <label>Пацієнти <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option value="all">Усі пацієнти</option><option value="military">Військовослужбовці</option><option value="civilian">Цивільні</option></select></label>
+        {canFinance && <label>Оплата <select value={paymentFilter} onChange={e=>setPaymentFilter(e.target.value)}><option value="all">Будь-який стан</option><option value="pending">Потрібно перевірити</option><option value="paid">Оплату перевірено</option></select></label>}
+        <label>Пошук <input type="search" value={query} onChange={e=>setQuery(e.target.value)} placeholder={canViewPatientContact ? "Пацієнт, код, телефон…" : "Пацієнт, код, дослідження…"}/></label>
+        <div className="toolButtons"><button onClick={()=>{setDayFilter(today);setFilter("all")}}>Сьогодні</button><button onClick={()=>{setDayFilter("");setFilter("all");setEquipmentFilter("all");setCategoryFilter("all");setPaymentFilter("all");setQuery("");}}>Скинути</button><button onClick={()=>window.print()}>Друк</button><button onClick={()=>void load()}>Оновити</button></div>
       </div>
       <p className="scheduleCaption">{dayFilter?`Записи на ${dayFilter}`:"Усі дати"} · {visible.length} {pluralAppt(visible.length)}</p>
       {actionError&&<p className="staffError" role="alert">{actionError}</p>}
@@ -418,26 +489,46 @@ export default function StaffPage() {
         <div>
           <p className="eyebrow">Доступ персоналу</p>
           <h2>Працівники та ролі</h2>
-          <p>Додавайте реєстраторів, лікарів і лаборантів без зміни програмного коду.</p>
+          <p>Створіть картку працівника. Повне ім’я складається автоматично з окремих полів і далі доступне у графіку кабінетів.</p>
         </div>
-        <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-          <label><span>Номер телефону</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/><span className="fieldHint">Без +38, напр.: 0972808899</span></label>
-          <label><span>Ім’я працівника</span><input name="displayName" maxLength={120} placeholder="ПІБ або посада"/></label>
-          <label><span>Роль</span><select name="role" defaultValue="registrar">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
-          <label><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
-          <input name="active" type="hidden" value="true"/>
-          <button type="submit">Додати працівника</button>
-        </form>
+        <details className="staffCreate">
+          <summary><span>＋</span> Додати працівника</summary>
+          <form className="staffMemberAdd" onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
+            <p className="staffFormGroup">ПІБ</p>
+            <label className="nameField"><span>Прізвище</span><input name="lastName" required maxLength={60} placeholder="Іваненко"/></label>
+            <label className="nameField"><span>Ім’я</span><input name="firstName" required maxLength={60} list="first-name-options" placeholder="Почніть вводити: Іва…"/></label>
+            <label className="nameField"><span>По батькові</span><input name="patronymic" maxLength={60} list="patronymic-options" placeholder="Іванович"/></label>
+            <p className="staffFormGroup">Посада</p>
+            <label className="halfField"><span>Посада</span><select name="positionTitle" required defaultValue="Рентгенолаборант">{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="halfField"><span>Військове звання</span><select name="militaryRank" defaultValue="Цивільний персонал">{RANK_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <p className="staffFormGroup">Контакти та доступ</p>
+            <label className="halfField"><span>Мобільний телефон</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/></label>
+            <label className="halfField"><span>E-mail</span><input name="contactEmail" type="email" maxLength={254} placeholder="name@hospital.ua"/></label>
+            <label className="halfField"><span>Роль доступу</span><select name="role" defaultValue="radiographer">{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+            <label className="halfField"><span>PIN-код для входу</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр"/></label>
+            <input name="active" type="hidden" value="true"/>
+            <button type="submit">Додати працівника</button>
+          </form>
+        </details>
+        <datalist id="first-name-options">{FIRST_NAMES.map(value=><option key={value} value={value}/>)}</datalist>
+        <datalist id="patronymic-options">{PATRONYMICS.map(value=><option key={value} value={value}/>)}</datalist>
         <div className="staffMemberList">
-          {members.map(member=><form key={member.email} onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
-            <input name="phone" type="hidden" value={member.phone}/>
-            <label><span>Телефон</span><b>{member.phone || member.email}</b></label>
-            <label><span>Ім’я</span><input name="displayName" defaultValue={member.displayName} maxLength={120}/></label>
-            <label><span>Роль</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
+          {members.map(member=><details className="staffMemberCard" key={member.email}>
+            <summary><span><b>{member.displayName || member.phone}</b><small>{member.positionTitle || roleLabels[member.role]}{member.militaryRank ? ` · ${member.militaryRank}` : ""}</small></span><em className={member.active ? "active" : "inactive"}>{member.active ? "Активний" : "Вимкнений"}</em></summary>
+            <form onSubmit={event=>{event.preventDefault();void saveStaffMember(event.currentTarget);}}>
+            <label><span>Прізвище</span><input name="lastName" required defaultValue={member.lastName || member.displayName.split(" ")[0] || ""} maxLength={60}/></label>
+            <label><span>Ім’я</span><input name="firstName" required list="first-name-options" defaultValue={member.firstName || member.displayName.split(" ")[1] || ""} maxLength={60}/></label>
+            <label><span>По батькові</span><input name="patronymic" list="patronymic-options" defaultValue={member.patronymic || member.displayName.split(" ").slice(2).join(" ")} maxLength={60}/></label>
+            <label><span>Телефон</span><input name="phone" type="tel" required defaultValue={member.phone}/></label>
+            <label><span>E-mail</span><input name="contactEmail" type="email" defaultValue={member.contactEmail} maxLength={254}/></label>
+            <label><span>Військове звання</span><select name="militaryRank" defaultValue={member.militaryRank || "Цивільний персонал"}>{RANK_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label><span>Посада</span><select name="positionTitle" required defaultValue={member.positionTitle || roleLabels[member.role]}>{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label><span>Роль доступу</span><select name="role" defaultValue={member.role}>{Object.entries(roleLabels).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
             <label><span>Доступ</span><select name="active" defaultValue={member.active ? "true":"false"}><option value="true">Активний</option><option value="false">Вимкнений</option></select></label>
             <label><span>Новий PIN-код</span><input name="password" type="password" inputMode="numeric" minLength={6} maxLength={6} autoComplete="new-password" placeholder="6 цифр (порожньо — без змін)"/></label>
-            <button type="submit">Зберегти</button>
-          </form>)}
+              <button type="submit">Зберегти зміни</button>
+            </form>
+          </details>)}
         </div>
       </section>}
 
@@ -467,17 +558,34 @@ export default function StaffPage() {
         {visible.length === 0 ? <div className="apptEmpty"><span className="apptEmptyIcon" aria-hidden="true">🗓</span><b>Записів немає</b><p>На обрані фільтри записів не знайдено. Змініть дату, статус або пошук.</p></div> :
         groupedByDay.map(([groupDate, rows]) => <div className="apptDay" key={groupDate || "nodate"}>
         <div className="apptDayHead"><b>{formatApptDay(groupDate)}</b><span>{rows.length} {pluralAppt(rows.length)}</span></div>
-        {rows.map(item => <article className="bookingRow appointmentRow" key={item.id}>
-          <div className="bookingPrimary"><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span><b>{item.name}</b><small>{item.code} · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small></div>
-          <div><small>Дослідження</small><b>{item.service}</b><span>Код {item.serviceCode} · {equipment.find(unit=>unit.id===item.equipmentId)?.name || item.equipmentId} · {item.durationMinutes} хв</span><span>{item.desiredDate} · {item.desiredTime}</span></div>
-          <div><small>Контакт і маршрут</small><a href={`tel:${item.phone}`}>{item.phone}</a><a className="crmCardLink" href={`/staff/patients?phone=${encodeURIComponent(item.phone)}`}>Картка пацієнта →</a><span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
+        {rows.map(item => <article id={`booking-${item.id}`} className={`bookingRow appointmentRow route-${item.patientCategory} ${canFinance ? item.paymentStatus==="paid"?"payment-ok":"payment-due" : ""}`} key={item.id}>
+          <div className="bookingPrimary">
+            <div className="bookingBadges"><span className={`patientRoute ${item.patientCategory}`}>{item.patientCategory==="military"?"Військовослужбовець":"Цивільний пацієнт"}</span><span className={`statusTag ${item.status}`}>{labels[item.status] || item.status}</span></div>
+            <b>{item.name}</b>
+            <strong className="appointmentMoment">{item.desiredTime}<small>{item.desiredDate}</small></strong>
+            <small><span className="codeTag">{item.code}</span> · отримано {new Date(item.createdAt).toLocaleString("uk-UA")}</small>
+          </div>
+          <div><small>Дослідження</small><b>{item.service}</b><span>Код {item.serviceCode} · {equipment.find(unit=>unit.id===item.equipmentId)?.name || item.equipmentId} · {item.durationMinutes} хв</span>{canFinance && <span className={`paymentOverview ${item.patientCategory==="military"?"military":item.paymentStatus==="paid"?"paid":"pending"}`}>{item.patientCategory==="military"?"Безоплатно за направленням":item.paymentStatus==="paid"?`✓ Оплату перевірено · ${item.paidAmount || item.paymentAmount || item.listedPrice || 0} грн`:`До перевірки · ${item.paymentAmount || item.listedPrice || 0} грн`}</span>}</div>
+          <div><small>{canViewPatientContact ? "Контакт і маршрут" : "Маршрут"}</small>{canViewPatientContact && item.phone && <><a href={`tel:${item.phone}`}>{item.phone}</a><a className="crmCardLink" href={`/staff/patients?phone=${encodeURIComponent(item.phone)}`}>Картка пацієнта →</a></>}<span>{categoryLabels[item.patientCategory] || item.patientCategory}</span><span>{referralLabels[item.referralType] || item.referral}</span>{item.referralNumber&&<span>№ {item.referralNumber}</span>}{canViewPatientContact&&item.marketingSource&&<span>Джерело: {item.marketingSource}</span>}</div>
           <div className="bookingAction"><small>Статус</small>
             {canManage?<select value={item.status} onChange={e=>void changeStatus(item.id,e.target.value)}>{Object.entries(labels).map(([v,l])=><option value={v} key={v}>{l}</option>)}</select>:<b>{labels[item.status] || item.status}</b>}
             {canManage && (item.status==="new"||item.status==="rescheduled") && <button type="button" className="confirmBooking" onClick={()=>void confirmBooking(item.id)}>✓ Підтвердити й у розклад</button>}
+            {canManage && item.status==="confirmed" && <div className="receptionActions">
+              <button type="button" className="arrivedAction" onClick={()=>void changeStatus(item.id,"arrived")}>✓ Пацієнт прибув</button>
+              <button type="button" className="noShowAction" onClick={()=>void changeStatus(item.id,"no_show")}>Не з’явився</button>
+            </div>}
+            {canFinance && item.patientCategory==="civilian" && item.paymentStatus!=="paid" && <button type="button" className="paymentVerifyAction" onClick={()=>void saveOperations(item.id,{
+              paymentStatus:"paid",
+              paymentAmount:item.paymentAmount || item.listedPrice || 0,
+              paidAmount:item.paymentAmount || item.listedPrice || 0,
+              paymentMethod:item.paymentMethod || "bank_transfer",
+              nszuStatus:item.nszuStatus || "not_applicable",
+              nszuReference:item.nszuReference || "",
+            },"Оплату перевірено та позначено.")}>✓ Перевірив оплату</button>}
             {(() => { const last = notifications.find(note=>note.bookingId===item.id); return last ? <span className={`reminderTag ${last.status}`}>Нагадування: {notificationStatusLabels[last.status]||last.status} · {notificationChannelLabels[last.channel]||last.channel}{last.status==="failed"&&last.error?` — ${last.error}`:""}</span> : null; })()}
           </div>
           <details className="apptManage">
-            <summary>Керування записом · {item.performedAt ? "виконано" : "очікує виконання"} · протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus} · оплата: {paymentLabels[item.paymentStatus] || item.paymentStatus}</summary>
+            <summary>Керування записом · {item.performedAt ? "виконано" : "очікує виконання"} · протокол: {protocolLabels[item.protocolStatus] || item.protocolStatus}{canFinance ? ` · оплата: ${paymentLabels[item.paymentStatus || ""] || item.paymentStatus || "—"}` : ""}</summary>
           {canManage && <RescheduleForm item={item} today={today} onSubmit={(newDate,newTime)=>reschedule(item.id,newDate,newTime)}/>}
           {item.comment && <p className="bookingComment">{item.comment}</p>}
           <form className="staffNoteForm" onSubmit={event=>{event.preventDefault();const data=new FormData(event.currentTarget);void saveNote(item.id,String(data.get("note")));}}>
@@ -553,9 +661,9 @@ export default function StaffPage() {
                   <div><dt>Видано</dt><dd>{item.protocolIssuedAt ? new Date(item.protocolIssuedAt).toLocaleString("uk-UA") : "—"}</dd></div>
                 </dl>}
               </section>
-              <section>
+              {canFinance && <section>
                 <h3>Оплата та НСЗУ</h3>
-                {canFinance ? <form onSubmit={event=>{
+                <form onSubmit={event=>{
                   event.preventDefault();
                   const data = new FormData(event.currentTarget);
                   void saveOperations(item.id,{
@@ -567,22 +675,17 @@ export default function StaffPage() {
                     nszuReference:String(data.get("nszuReference")),
                   },"Дані оплати та НСЗУ збережено.");
                 }}>
-                  <label><span>Статус оплати</span><select name="paymentStatus" defaultValue={item.paymentStatus}>{Object.entries(paymentLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
-                  <label><span>Сума до сплати, грн</span><input name="paymentAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paymentAmount || item.listedPrice}/></label>
-                  <label><span>Фактично сплачено, грн</span><input name="paidAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paidAmount}/></label>
-                  <label><span>Спосіб</span><select name="paymentMethod" defaultValue={item.paymentMethod}>{Object.entries(paymentMethodLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
-                  <label><span>Статус НСЗУ</span><select name="nszuStatus" defaultValue={item.nszuStatus}>{Object.entries(nszuLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
-                  <label><span>Номер підтвердження НСЗУ</span><input name="nszuReference" maxLength={80} defaultValue={item.nszuReference}/></label>
+                  <label><span>Статус оплати</span><select name="paymentStatus" defaultValue={item.paymentStatus || "not_set"}>{Object.entries(paymentLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Сума до сплати, грн</span><input name="paymentAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paymentAmount || item.listedPrice || 0}/></label>
+                  <label><span>Фактично сплачено, грн</span><input name="paidAmount" type="number" min="0" max="100000" step="1" defaultValue={item.paidAmount || 0}/></label>
+                  <label><span>Спосіб</span><select name="paymentMethod" defaultValue={item.paymentMethod || ""}>{Object.entries(paymentMethodLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Статус НСЗУ</span><select name="nszuStatus" defaultValue={item.nszuStatus || "not_applicable"}>{Object.entries(nszuLabels).map(([value,label])=><option value={value} key={value}>{label}</option>)}</select></label>
+                  <label><span>Номер підтвердження НСЗУ</span><input name="nszuReference" maxLength={80} defaultValue={item.nszuReference || ""}/></label>
                   <button type="submit">Зберегти оплату / НСЗУ</button>
-                </form> : <dl className="operationReadOnly">
-                  <div><dt>Оплата</dt><dd>{paymentLabels[item.paymentStatus] || item.paymentStatus}</dd></div>
-                  <div><dt>До сплати</dt><dd>{item.paymentAmount || item.listedPrice} грн</dd></div>
-                  <div><dt>Сплачено</dt><dd>{item.paidAmount} грн</dd></div>
-                  <div><dt>НСЗУ</dt><dd>{nszuLabels[item.nszuStatus] || item.nszuStatus}</dd></div>
-                </dl>}
-              </section>
+                </form>
+              </section>}
             </div>
-            <p className="operationsNote">Це внутрішній облік. Фактичне списання коштів або перевірка в ЕСОЗ/НСЗУ відбуваються лише після підключення офіційного провайдера.</p>
+            {canFinance && <p className="operationsNote">Це внутрішній облік. Фактичне списання коштів або перевірка в ЕСОЗ/НСЗУ відбуваються лише після підключення офіційного провайдера.</p>}
           <details className="bookingHistory">
             <summary>Історія змін ({events.filter(event=>event.bookingId===item.id).length})</summary>
             {events.filter(event=>event.bookingId===item.id).length===0?<p>Змін ще не зафіксовано.</p>:

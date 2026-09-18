@@ -25,12 +25,12 @@ test("messaging provider goes through outbound policy and flags unconfigured cha
   assert.match(msg, /ProviderNotConfiguredError\("email"\)/);
 });
 
-// Резолвер — tenant-контекст; PACS під контролем feature flag профілю.
-test("resolver is tenant-aware and PACS honors the dicom_pacs flag", async () => {
+// Резолвер — tenant-контекст; PACS вмикається лише налаштуванням PACS.
+test("resolver is tenant-aware and PACS honors the PACS setting", async () => {
   const idx = await read("lib/providers/index.ts");
   assert.match(idx, /export async function resolveProviders\(db: D1Database, ctx: OrgContext\)/);
-  assert.match(idx, /getOrgProfile\(db, ctx\)/);
-  assert.match(idx, /profile\.flags\.dicom_pacs.*pacsRow\?\.enabled|Boolean\(profile\.flags\.dicom_pacs\)/);
+  assert.match(idx, /const pacsEnabled = Boolean\(pacsRow\?\.enabled\)/);
+  assert.doesNotMatch(idx, /profile\.flags/); // feature flags прибрано
   assert.match(idx, /createMessagingProvider/);
 });
 

@@ -1,10 +1,20 @@
 /** Cloudflare Worker entry point for the vinext-starter template. */
 import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
+import { getSetting } from "../lib/settings";
+import { parseSiteContent, SITE_CONTENT_KEY } from "../lib/site-content";
+import { runDueReminders } from "../lib/reminders";
+import { runOperationalTasks } from "../lib/operational-tasks";
+import { patientOrderCancellationBlocker, type PatientOrderCancellationBlocker } from "../lib/patient-orders";
+import type { BrowserRunBinding, PrintedFormsBucket } from "../lib/printed-form-runtime";
+import { canAccessBooking, canManageBookings } from "../lib/staff-auth";
+import { requireOrgContext } from "../lib/tenant";
 
 interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  BROWSER?: BrowserRunBinding;
+  PRINTED_FORMS?: PrintedFormsBucket;
   OUTBOUND_ALLOWED_HOSTS?: string;
   IMAGES: {
     input(stream: ReadableStream): {
@@ -42,16 +52,47 @@ const SECURITY_HEADERS: Record<string, string> = {
   "x-frame-options": "DENY",
 };
 
+const LEGACY_HOME_PATHS = new Set(["/index.html", "/site", "/site/", "/site/index.html"]);
+const PUBLIC_CANONICAL_PATHS = new Set(["/", "/site/price.html", "/site/military.html"]);
+const STATIC_ASSET_PREFIXES = ["/assets/", "/fonts/", "/site/assets/"];
+const STATIC_ASSET_PATHS = new Set([
+  "/favicon.svg",
+  "/file.svg",
+  "/globe.svg",
+  "/hospital-emblem.jpg",
+  "/window.svg",
+]);
+
 function secure(response: Response, request?: Request): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(SECURITY_HEADERS)) headers.set(name, value);
   if (request) {
-    const pathname = new URL(request.url).pathname;
-    if (pathname.startsWith("/api/") || pathname.startsWith("/staff")) {
+    const url = new URL(request.url);
+    const pathname = url.pathname;
+    if (PUBLIC_CANONICAL_PATHS.has(pathname)) {
+      headers.set("link", `<${new URL(pathname, url.origin).toString()}>; rel="canonical"`);
+    }
+    if (pathname === "/site/cabinet.html" || pathname === "/cabinet") {
+      headers.set("x-robots-tag", "noindex, nofollow");
+    }
+    const publicCacheable = pathname === "/api/site-content";
+    if (!publicCacheable && (pathname.startsWith("/api/") || pathname.startsWith("/staff"))) {
       headers.set("cache-control", "no-store");
     }
   }
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
+function isStaticAssetPath(pathname: string): boolean {
+  return STATIC_ASSET_PATHS.has(pathname) || STATIC_ASSET_PREFIXES.some((prefix) => pathname.startsWith(prefix));
+}
+
+async function storefrontPaidOnly(db: D1Database): Promise<boolean> {
+  try {
+    return parseSiteContent(await getSetting(db, SITE_CONTENT_KEY)).storefrontType === "paid_only";
+  } catch {
+    return false;
+  }
 }
 
 function unsafeCrossSiteRequest(request: Request): boolean {
@@ -68,17 +109,55 @@ function unsafeCrossSiteRequest(request: Request): boolean {
   }
 }
 
-// Image security config. SVG sources with .svg extension auto-skip the
-// optimization endpoint on the client side (served directly, no proxy).
-// To route SVGs through the optimizer (with security headers), set
-// dangerouslyAllowSVG: true in next.config.js and uncomment below:
-// const imageConfig: ImageConfig = { dangerouslyAllowSVG: true };
+function patientOrderBlockerMessage(blocker: PatientOrderCancellationBlocker): string {
+  if (blocker === "payment_refund_required") return "Спочатку оформіть повернення оплати.";
+  if (blocker === "service_storno_required") return "Послуга вже проведена — спочатку оформіть сторно.";
+  return "Є незавершений пов’язаний документ. Спочатку скасуйте або завершіть його.";
+}
+
+function patientOrderLifecycleConflict(error: unknown): string | null {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("booking_cancel_payment_refund_required")) {
+    return patientOrderBlockerMessage("payment_refund_required");
+  }
+  if (message.includes("booking_cancel_service_storno_required")) {
+    return patientOrderBlockerMessage("service_storno_required");
+  }
+  if (message.includes("booking_cancel_downstream_draft_exists")) {
+    return patientOrderBlockerMessage("downstream_draft_exists");
+  }
+  return null;
+}
+
+async function recoverStaffCancellationConflict(
+  request: Request | null,
+  env: Env,
+  response: Response,
+): Promise<Response | null> {
+  if (!request || response.status !== 500) return null;
+  const body = await request.json().catch(() => ({})) as { id?: unknown; status?: unknown };
+  if (body.status !== "cancelled" || !Number.isInteger(body.id)) return null;
+  const org = await requireOrgContext(request, env.DB);
+  if (!org || !canManageBookings(org.member.role)) return null;
+  const bookingId = Number(body.id);
+  if (!(await canAccessBooking(env.DB, org.member, bookingId, org.organizationId))) return null;
+  const blocker = await patientOrderCancellationBlocker(env.DB, org.organizationId, bookingId);
+  return blocker ? Response.json({ error: patientOrderBlockerMessage(blocker) }, { status: 409 }) : null;
+}
+
+async function runTenantReminders(db: D1Database, now: number): Promise<void> {
+  const rows = await db.prepare("SELECT id FROM organizations WHERE active = 1 ORDER BY id").all<{ id:number }>();
+  await Promise.allSettled((rows.results || []).map((org) => runDueReminders(db, now, Number(org.id))));
+}
 
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-    // Make the site-owned D1 binding available to server route modules without
-    // importing the runtime-only `cloudflare:workers` module into the artifact.
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    // Expose the execution context so routes can defer best-effort side-effects
+    // (notifications) past the response via waitUntil — see lib/after-response.
+    (globalThis as typeof globalThis & { __RADIOLOGY_CTX__?: ExecutionContext }).__RADIOLOGY_CTX__ = ctx;
+    (globalThis as typeof globalThis & { __RADIOLOGY_BROWSER_RUN__?: BrowserRunBinding }).__RADIOLOGY_BROWSER_RUN__ = env.BROWSER;
+    (globalThis as typeof globalThis & { __RADIOLOGY_PRINTED_FORMS__?: PrintedFormsBucket }).__RADIOLOGY_PRINTED_FORMS__ = env.PRINTED_FORMS;
     (globalThis as typeof globalThis & {
       __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
     }).__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ = env.OUTBOUND_ALLOWED_HOSTS || "";
@@ -88,22 +167,27 @@ const worker = {
       return secure(Response.json({ error: "Cross-site request blocked" }, { status: 403 }), request);
     }
 
-    // Public site is the v22 static design served from `public/site`. The root
-    // path renders v22's landing; all other `/site/*` files (pages, assets) are
-    // served by the normal static-asset handler below. The Next app keeps
-    // owning `/staff`, `/api` and everything else.
-    if (url.pathname === "/" || url.pathname === "/index.html") {
-      const landing = await env.ASSETS.fetch(new URL("/site/index.html", request.url));
-      if (landing.ok) {
-        return secure(new Response(landing.body, {
-          status: 200,
-          headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" },
-        }), request);
-      }
+    if ((request.method === "GET" || request.method === "HEAD") && isStaticAssetPath(url.pathname)) {
+      return secure(await env.ASSETS.fetch(request), request);
     }
 
-    // Legacy Next public routes → v22 static pages, so nobody lands on the old
-    // card-grid booking screen. Civilian price list / military free list / cabinet.
+    if ((request.method === "GET" || request.method === "HEAD") && LEGACY_HOME_PATHS.has(url.pathname)) {
+      const canonicalHome = new URL("/", url);
+      canonicalHome.search = url.search;
+      return secure(Response.redirect(canonicalHome.toString(), 308), request);
+    }
+
+    if (url.pathname === "/") {
+      const storefrontRequest = new Request(new URL("/site/index.html", request.url), request);
+      return secure(await env.ASSETS.fetch(storefrontRequest), request);
+    }
+
+    const wantsMilitary = url.pathname === "/site/military.html"
+      || (url.pathname === "/booking" && url.searchParams.get("category") === "military");
+    if (wantsMilitary && await storefrontPaidOnly(env.DB)) {
+      return secure(Response.redirect(new URL("/site/price.html", request.url).toString(), 302), request);
+    }
+
     if (url.pathname === "/booking") {
       const target = url.searchParams.get("category") === "military" ? "/site/military.html" : "/site/price.html";
       return secure(Response.redirect(new URL(target, request.url).toString(), 302), request);
@@ -123,7 +207,27 @@ const worker = {
       }, allowedWidths), request);
     }
 
-    return secure(await handler.fetch(request, env, ctx), request);
+    const staffCancellationProbe = request.method === "PATCH" && url.pathname === "/api/staff/bookings"
+      ? request.clone()
+      : null;
+    try {
+      const response = await handler.fetch(request, env, ctx);
+      const recovered = await recoverStaffCancellationConflict(staffCancellationProbe, env, response);
+      return secure(recovered || response, request);
+    } catch (error) {
+      const conflict = url.pathname.startsWith("/api/") ? patientOrderLifecycleConflict(error) : null;
+      if (conflict) return secure(Response.json({ error: conflict }, { status: 409 }), request);
+      throw error;
+    }
+  },
+
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
+    (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    const now=Date.now();
+    ctx.waitUntil(Promise.allSettled([
+      runTenantReminders(env.DB, now),
+      runOperationalTasks(env.DB, now),
+    ]));
   },
 };
 

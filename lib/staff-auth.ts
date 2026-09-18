@@ -1,6 +1,12 @@
 import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_COOKIE } from "./auth";
 
+// `staff_members.role` remains a legacy identity/bootstrap role so existing
+// installations keep working. Tenant authorization is derived from
+// `memberships.role` and may use a narrower organization-only role.
 export type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
+export type SystemRole = "admin" | "organization_admin";
+export type ManagementRole = "admin" | "department_head";
+export type AccessRole = StaffRole | SystemRole | ManagementRole;
 
 // Resolve the signed-in staff member from the session cookie. Returns null for
 // anonymous or expired sessions.
@@ -37,63 +43,105 @@ export async function destroySession(db: D1Database, rawToken: string): Promise<
   await db.prepare("DELETE FROM staff_sessions WHERE token_hash = ?").bind(tokenHash).run();
 }
 
-export function canManageBookings(role: StaffRole) {
+// Control-plane authority. Legacy `admin` intentionally keeps all existing
+// powers for backwards compatibility; new `organization_admin` is the system
+// administrator and does not inherit medical-data access from this helper.
+export function canManageSystem(role: AccessRole) {
+  return role === "admin" || role === "organization_admin";
+}
+
+// Read-only management authority. `department_head` is intentionally separate
+// from clinical and system-administration capabilities: it may inspect aggregate
+// operational state without inheriting access to patient-level records.
+export function canViewManagementSummary(role: AccessRole) {
+  return role === "admin" || role === "department_head";
+}
+
+export function canManageBookings(role: AccessRole) {
   return role === "admin" || role === "registrar";
 }
 
-export function canWriteNotes(role: StaffRole) {
+export function canWriteNotes(role: AccessRole) {
   return role === "admin" || role === "registrar" || role === "radiologist" || role === "radiographer";
 }
 
-export function canManageProtocols(role: StaffRole) {
+export function canManageProtocols(role: AccessRole) {
   return role === "admin" || role === "radiologist";
 }
 
-export function canManageFinance(role: StaffRole) {
+// Delivery is an administrative transition of already-signed immutable content.
+// Registrar gets this narrow authority without inheriting clinical edit/read
+// privileges from canManageProtocols().
+export function canDeliverResults(role: AccessRole) {
+  return role === "admin" || role === "registrar" || role === "radiologist";
+}
+
+// A clinical signature must identify an actual radiologist membership. Legacy
+// `admin` remains able to prepare and issue documents for compatibility, but is
+// deliberately not treated as a clinical signer.
+export function canSignProtocols(role: AccessRole) {
+  return role === "radiologist";
+}
+
+export function canManageFinance(role: AccessRole) {
   return role === "admin" || role === "registrar";
 }
 
-export function canManageImaging(role: StaffRole) {
+export function canManageImaging(role: AccessRole) {
   return role === "admin" || role === "radiographer" || role === "radiologist";
 }
 
-export function canViewPatientRegistry(role: StaffRole) {
+export function canViewPatientRegistry(role: AccessRole) {
   return role === "admin" || role === "registrar";
 }
 
-export function canExportPatientData(role: StaffRole) {
+export function canExportPatientData(role: AccessRole) {
   return role === "admin";
 }
 
-export function canViewReports(role: StaffRole) {
+// Злиття карток пацієнтів необоротно об'єднує клінічні історії — лише повний
+// адміністратор із доступом до медичних даних (не organization_admin).
+export function canMergePatients(role: AccessRole) {
   return role === "admin";
 }
 
-export function canAccessAllBookings(role: StaffRole) {
+export function canViewReports(role: AccessRole) {
+  return role === "admin";
+}
+
+export function canAccessAllBookings(role: AccessRole) {
   return role === "admin" || role === "registrar";
 }
 
-// Доступ до заявки. Коли передано organizationId — доступ обмежено ще й
-// організацією (tenant isolation): заявка іншої організації недосяжна навіть
-// для admin/registrar і навіть за прямим id.
+// Доступ до заявки завжди перевіряється всередині конкретної організації.
+// Tenant scope є обов'язковою частиною security primitive: навіть admin або
+// registrar не можуть викликати helper у режимі "усі організації".
 export async function canAccessBooking(
   db: D1Database,
-  member: { email: string; role: StaffRole },
+  member: { email: string; role: AccessRole },
   bookingId: number,
-  organizationId?: number,
+  organizationId: number,
 ): Promise<boolean> {
-  const orgClause = organizationId != null ? " AND organization_id = ?" : "";
-  const orgBind = organizationId != null ? [organizationId] : [];
+  if (!Number.isInteger(bookingId) || bookingId <= 0) return false;
+  if (!Number.isInteger(organizationId) || organizationId <= 0) return false;
+
   if (canAccessAllBookings(member.role)) {
-    if (organizationId == null) return true;
-    const row = await db.prepare(`SELECT id FROM bookings WHERE id = ?${orgClause} LIMIT 1`)
-      .bind(bookingId, ...orgBind).first();
+    const row = await db.prepare(
+      "SELECT id FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1"
+    ).bind(bookingId, organizationId).first();
     return Boolean(row);
   }
+
   const column = member.role === "radiologist"
     ? "assigned_radiologist_email"
-    : "assigned_radiographer_email";
-  const row = await db.prepare(`SELECT id FROM bookings WHERE id = ? AND ${column} = ?${orgClause} LIMIT 1`)
-    .bind(bookingId, member.email, ...orgBind).first();
+    : member.role === "radiographer"
+      ? "assigned_radiographer_email"
+      : "";
+  // Non-clinical roles fail closed instead of falling through to a clinician
+  // assignment column. This is essential before activating new membership roles.
+  if (!column) return false;
+  const row = await db.prepare(
+    `SELECT id FROM bookings WHERE id = ? AND ${column} = ? AND organization_id = ? LIMIT 1`
+  ).bind(bookingId, member.email, organizationId).first();
   return Boolean(row);
 }

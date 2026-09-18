@@ -21,13 +21,15 @@ test("normalizeImportDate accepts ISO and DD.MM.YYYY", () => {
   assert.equal(normalizeImportDate("garbage"), "");
 });
 
-test("mapRows maps flexible headers, builds ПІБ and flags bad rows", () => {
-  const csv = "Прізвище,Імʼя,Телефон,Дата народження,Email\n"
-    + "Іваненко,Іван,+380971112233,21.05.1990,a@b.co\n"
-    + ",,+380971112233,,\n" // без імені → помилка
-    + "Петренко,Петро,,1985-01-01,\n"; // без телефону → помилка
+test("mapRows maps flexible headers, patient_id, builds ПІБ and flags bad rows", () => {
+  const exactId = "a".repeat(32);
+  const csv = "patient_id,Прізвище,Імʼя,Телефон,Дата народження,Email\n"
+    + `${exactId},Іваненко,Іван,+380971112233,21.05.1990,a@b.co\n`
+    + ",,,+380971112233,,\n" // без імені → помилка
+    + ",Петренко,Петро,,1985-01-01,\n"; // без телефону → помилка
   const { records, errors } = mapRows(parseCsv(csv));
   assert.equal(records.length, 1);
+  assert.equal(records[0].patientId, exactId);
   assert.equal(records[0].displayName, "Іваненко Іван");
   assert.equal(records[0].phone, "+380971112233");
   assert.equal(records[0].birthDate, "1990-05-21");
@@ -39,18 +41,23 @@ test("mapRows rejects a file without required columns", () => {
   assert.ok(errors.some((e) => /Телефон|імен/i.test(e.error)));
 });
 
-test("import API validates each row and upserts, guarded", async () => {
+test("import API validates each row and uses exact patient_id instead of phone upsert", async () => {
   const route = await read("app/api/staff/patients/import/route.ts");
   assert.match(route, /canManageBookings\(member\.role\)/);
   assert.match(route, /sanitizeProfile\(raw\)/);
+  assert.match(route, /WHERE organization_id = \? AND patient_id = \?/);
   assert.match(route, /INSERT INTO patient_profiles/);
+  assert.doesNotMatch(route, /ON CONFLICT\(organization_id, phone_normalized\)/);
   assert.match(route, /db\.batch\(/);
   assert.match(route, /MAX_ROWS/);
 });
 
-test("import page parses CSV client-side and offers a template", async () => {
+test("import page explains append-only rows without patient_id and offers an exact-id template", async () => {
   const page = await read("app/staff/patients/import/page.tsx");
   assert.match(page, /parseCsv|mapRows/);
+  assert.match(page, /patient_id,Прізвище/);
+  assert.match(page, /телефон не є ідентифікатором пацієнта/i);
+  assert.match(page, /буде створена <b>нова<\/b> картка/);
   assert.match(page, /patients-template\.csv/);
   assert.match(page, /\/api\/staff\/patients\/import/);
   const list = await read("app/staff/patients/page.tsx");

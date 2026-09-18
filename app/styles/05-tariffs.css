@@ -1,0 +1,19 @@
+/* ================= Тарифи (кабінет) ================= */
+.tariffPage{max-width:1000px;margin:0 auto}
+.tariffBar{display:flex;justify-content:space-between;align-items:center;gap:16px;flex-wrap:wrap;background:#fff;border:1px solid #dce4e3;border-radius:8px;padding:14px 16px;margin-bottom:14px;box-shadow:0 8px 24px rgba(23,54,52,.035)}
+.tariffBar>span{color:#66756f;font-size:12.5px;line-height:1.4;max-width:640px}
+.tariffBar .button{min-height:42px;padding:0 20px;border:0;border-radius:7px;background:var(--green);color:#fff;font-weight:800;font-size:13px;cursor:pointer}.tariffBar .button:hover:not(:disabled){background:#0a4b42}.tariffBar .button:disabled{opacity:.5;cursor:not-allowed}
+.tariffGroup{margin-bottom:16px;background:#fff;border:1px solid #dce4e3;border-radius:8px;overflow:hidden;box-shadow:0 8px 24px rgba(23,54,52,.035)}
+.tariffGroup h2{margin:0;padding:14px 18px;background:linear-gradient(135deg,#0d5b50,#124b44);color:#fff;font-size:15px;font-weight:700;letter-spacing:-.01em}
+.tariffTable{width:100%;border-collapse:collapse}
+.tariffTable th{text-align:left;padding:10px 16px;font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#728079;border-bottom:1px solid #e7ecea}
+.tariffTable td{padding:11px 16px;border-bottom:1px solid #eef2f0;font-size:13.5px;color:var(--ink);vertical-align:middle}
+.tariffTable tr:last-child td{border-bottom:0}
+.tariffCode{width:64px;color:#728079;font-variant-numeric:tabular-nums}
+.tariffPrice{width:150px;text-align:right}
+.tariffPrice input{width:110px;text-align:right;padding:8px 10px;border:1px solid var(--field-border);border-radius:8px;font:inherit;font-size:13.5px;color:var(--ink)}
+.tariffPrice input:focus{outline:none;border-color:var(--green);box-shadow:0 0 0 3px rgba(13,91,80,.12)}
+.tariffPrice b{font-variant-numeric:tabular-nums}
+.tariffCustom{display:inline-block;margin-left:8px;padding:2px 7px;border-radius:99px;background:#fef2e0;color:#a15a1e;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+@media(max-width:600px){.tariffPrice{width:120px}.tariffPrice input{width:88px}}
+
