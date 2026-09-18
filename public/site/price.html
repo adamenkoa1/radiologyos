@@ -434,7 +434,7 @@ body{background:#f3f6f8}
 <div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><form class="request-form" id="requestForm" novalidate>
       <div class="form-step">
         <div class="step-title"><span class="step-num">1</span>Ваші дані</div>
-        <p class="cart-note">Онлайн-запис — для пацієнтів <strong>від 18 років</strong>. Для дитини зателефонуйте в реєстратуру: <a href="tel:+380972808899">+380 97 280 88 99</a>.</p>
+        <p class="cart-note">Онлайн-запис — <strong>від 18 років</strong>. Для дитини: <a href="tel:+380972808899">+380 97 280 88 99</a>.</p>
         <div class="field">
           <label for="patientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
           <input autocomplete="name" id="patientName" required placeholder="Іваненко Іван Іванович"/>
@@ -472,11 +472,11 @@ body{background:#f3f6f8}
 
       <div class="form-step">
         <div class="step-title"><span class="step-num">3</span>Надіслати заявку</div>
-        <p class="cart-note"><strong>Візьміть із собою попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
+        <p class="cart-note">Візьміть попередні медичні документи.</p>
         <div class="field">
           <label for="patientEmail">E-mail <span class="opt">(необов’язково)</span></label>
           <input autocomplete="email" id="patientEmail" type="email" inputmode="email" placeholder="you@example.com"/>
-          <span class="field-note">Знадобиться для входу в кабінет за кодом із листа, якщо не пам’ятатимете номер заявки.</span>
+          <span class="field-note">Для входу в кабінет кодом із листа.</span>
           <span class="field-error">Перевірте адресу e-mail</span>
         </div>
         <div class="field">
