@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
@@ -59,6 +59,8 @@ export default function IntakePage() {
   const [data, setData] = useState<Data|null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Мережевий збій завантаження — щоб показати «Повторити», а не вічний спінер.
+  const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState<number|null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
@@ -70,20 +72,48 @@ export default function IntakePage() {
 
   function flash(msg:string) { setToast(msg); window.setTimeout(()=>setToast(""), 2600); }
 
-  async function load(keepSelection = true) {
-    const res = await fetch("/api/staff/bookings", { cache:"no-store" });
-    if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); return; }
-    const payload = await res.json().catch(()=>null) as (Data & { error?:string }) | null;
-    // Помилки (503/500 тощо) не кладемо в data — інакше далі впаде data.staff.
-    if (!res.ok || !payload || !Array.isArray(payload.bookings) || !payload.staff) {
-      flash(payload?.error || "Не вдалося завантажити заявки"); setLoaded(true); return;
+  // background:true — тихе автооновлення: не блимає спінером і не глушить чергу
+  // через тимчасовий мережевий збій (лишає наявні дані до наступної спроби).
+  async function load(keepSelection = true, background = false) {
+    try {
+      const res = await fetch("/api/staff/bookings", { cache:"no-store" });
+      if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); return; }
+      const payload = await res.json().catch(()=>null) as (Data & { error?:string }) | null;
+      // Помилки (503/500 тощо) не кладемо в data — інакше далі впаде data.staff.
+      if (!res.ok || !payload || !Array.isArray(payload.bookings) || !payload.staff) {
+        if (!background) { flash(payload?.error || "Не вдалося завантажити заявки"); setLoaded(true); }
+        return;
+      }
+      setData(payload); setLoaded(true); setLoadError(false);
+      if (!keepSelection) setSelectedId(null);
+    } catch {
+      // Мережевий збій: при першому завантаженні показуємо «Повторити»,
+      // у фоні — мовчки лишаємо наявні дані до наступної спроби.
+      if (!background) { setLoadError(true); setLoaded(true); }
     }
-    setData(payload); setLoaded(true);
-    if (!keepSelection) setSelectedId(null);
   }
+
+  // Не оновлюємо у фоні під час мутації, створення чи незбережених правок —
+  // щоб не смикати чергу під руками реєстратора. Ref оновлюємо в ефекті.
+  const pauseRef = useRef(false);
+  useEffect(() => {
+    pauseRef.current = busy || creating || (!!selected && !formMatchesSelected());
+  });
+
   // Одноразове завантаження на монтуванні (load стабільний за задумом).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(t); }, []);
+
+  // Жива черга: тихо оновлюємо заявки кожні 45 с, тож нові заявки з сайту й
+  // зміни від інших співробітників зʼявляються без ручного перезавантаження.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || pauseRef.current) return;
+      void load(true, true);
+    }, 45000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sourceOf = useMemo(() => {
     const m = new Map<number,"site"|"staff">();
@@ -182,6 +212,8 @@ export default function IntakePage() {
 
   const body = forbidden
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Дошка прийому доступна персоналу реєстратури.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fintake">Увійти</a></section>
+    : loadError && !data
+    ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити заявки. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
     : !loaded ? <p className="dashLoading">Завантаження…</p>
     : <div className="intakeBoard">
         <aside className="intakeQueue">

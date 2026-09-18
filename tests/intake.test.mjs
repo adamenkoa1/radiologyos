@@ -78,3 +78,24 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(shell, /key:"patients",label:"Пацієнти"/);
   assert.match(shell, /\{label:"Прийом пацієнтів",href:"\/staff\/intake"\}/);
 });
+
+test("intake board survives a failed initial load and offers a retry", async () => {
+  const page = await read("app/staff/intake/page.tsx");
+  // load() загорнуто в try/catch і має фоновий режим.
+  assert.match(page, /async function load\(keepSelection = true, background = false\)/);
+  assert.match(page, /catch \{[\s\S]*?setLoadError\(true\); setLoaded\(true\)/);
+  // Мережевий збій показує окремий екран із «Повторити».
+  assert.match(page, /loadError && !data/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /setLoadError\(false\); setLoaded\(false\); void load\(\);/);
+});
+
+test("intake queue auto-refreshes without disrupting active work", async () => {
+  const page = await read("app/staff/intake/page.tsx");
+  // Тихе фонове оновлення кожні 45 с.
+  assert.match(page, /void load\(true, true\)/);
+  assert.match(page, /\}, 45000\)/);
+  // Пропускаємо приховану вкладку й паузу (мутація/створення/незбережені правки).
+  assert.match(page, /document\.hidden \|\| pauseRef\.current/);
+  assert.match(page, /pauseRef\.current = busy \|\| creating \|\| \(!!selected && !formMatchesSelected\(\)\)/);
+});
