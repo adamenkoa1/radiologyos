@@ -68,7 +68,7 @@ const isPayUrl=(s)=>/^https?:\/\//i.test(String(s||''));
 function payQrImg(payload){if(!payload||typeof qrcode!=='function')return '';try{const qr=qrcode(0,'M');qr.addData(payload);qr.make();return qr.createImgTag(4,6)}catch(e){return ''}}
 
 const gate=document.getElementById('gate');const cabinet=document.getElementById('cabinet');const errorBox=document.getElementById('gateError');const identityStep=document.getElementById('identityStep');const otpStep=document.getElementById('otpStep');
-let phoneDigits='';let dobValue='';let challengeId='';let payLink='';
+let phoneDigits='';let dobValue='';let challengeId='';
 function showError(message){errorBox.textContent=message;errorBox.classList.add('show')}
 function clearError(){errorBox.textContent='';errorBox.classList.remove('show')}
 function adultDobLimit(){const today=new Date();const limit=new Date(today.getFullYear()-18,today.getMonth(),today.getDate());return `${limit.getFullYear()}-${String(limit.getMonth()+1).padStart(2,'0')}-${String(limit.getDate()).padStart(2,'0')}`}
@@ -96,7 +96,6 @@ function studyWord(n){const t=n%10,h=n%100;return(t===1&&h!==11)?'дослідж
 function renderBookings(items){let html='',i=0;while(i<items.length){const group=[items[i]];while(i+1<items.length&&items[i + 1].createdAt&&items[i + 1].createdAt === items[i].createdAt){group.push(items[i+1]);i+=1}i+=1;if(group.length>1){const pending=group.filter((b)=>b.paymentStatus==='pending'&&Number(b.paymentAmount)>0&&b.status!=='cancelled'&&b.status!=='completed');const total=pending.reduce((s,b)=>s+Number(b.paymentAmount||0),0);html+=`<div class="visit-head"><b>Візит · ${group.length} ${studyWord(group.length)}</b>${total>0?` · <span>разом до сплати: <strong>${esc(money(total))} грн</strong></span>`:''}</div><div class="visit-group">${group.map(cardHtml).join('')}</div>`}else html+=cardHtml(group[0])}return html}
 
 async function loadBookings(){
-  try{const pr=await fetch('/api/pay-link',{cache:'no-store'});const pd=await pr.json().catch(()=>({}));payLink=pd.payLink||''}catch(e){payLink=''}
   const res=await fetch(MY_BOOKINGS,{method:'POST',headers:{'content-type':'application/json'}});const data=await res.json().catch(()=>({}));if(!res.ok){showError(data.error||'Не вдалося завантажити заявки');return false}
   const list=document.getElementById('appList');const bookings=data.bookings||[];document.getElementById('emptyState').hidden=bookings.length>0;list.innerHTML = renderBookings(bookings);
   list.querySelectorAll('[data-cancel]').forEach((b)=>b.addEventListener('click',()=>cancelBooking(b.dataset.cancel)));list.querySelectorAll('[data-protocol]').forEach((b)=>b.addEventListener('click',()=>toggleProtocol(b.dataset.protocol,b)));list.querySelectorAll('[data-pay-toggle]').forEach((b)=>b.addEventListener('click',()=>{const p=document.getElementById('payment-'+b.dataset.payToggle);p.hidden=!p.hidden}));list.querySelectorAll('[data-copy-value]').forEach((b)=>b.addEventListener('click',()=>navigator.clipboard?.writeText(b.dataset.copyValue||'')));list.querySelectorAll('[data-open-payment]').forEach((b)=>b.addEventListener('click',()=>window.open(b.dataset.url,'_blank','noopener')));return true

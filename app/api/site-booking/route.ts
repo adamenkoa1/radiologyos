@@ -95,7 +95,14 @@ export async function POST(request: Request) {
     const resultNote = resultDelivery === "email"
       ? `Спосіб отримання результату: на email ${patientEmail}`
       : "Спосіб отримання результату: у відділенні";
-    const comment = [commentRaw, resultNote]
+    // Бажаний слот пацієнта (зі слот-пікера). Використовується як м'яка перевага
+    // під час авторозподілу; якщо його зайняли — реєстратор бачить, що просив пацієнт.
+    const preferredDate = /^\d{4}-\d{2}-\d{2}$/.test(clean(body.desiredDate, 10)) ? clean(body.desiredDate, 10) : "";
+    const preferredTime = /^\d{2}:\d{2}$/.test(clean(body.desiredTime, 5)) ? clean(body.desiredTime, 5) : "";
+    const preferenceNote = preferredDate
+      ? `Бажаний час пацієнта: ${preferredDate}${preferredTime ? ` ${preferredTime}` : ""}`
+      : "";
+    const comment = [commentRaw, resultNote, preferenceNote]
       .filter(Boolean).join("\n").slice(0, 700);
     const marketingSource = clean(body.source, 40);
     const consentVersion = clean(body.consentVersion, 20);
@@ -179,6 +186,8 @@ export async function POST(request: Request) {
       blocks: blocksResult.results,
       fromDate,
       fromTime: currentTimeInKyiv(),
+      preferredDate,
+      preferredTime,
     });
     if (!appointments) {
       return Response.json(

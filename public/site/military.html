@@ -379,6 +379,12 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
         <div class="step-title"><span class="step-num">2</span>Надіслати заявку</div>
         <p class="cart-note"><strong>Візьміть із собою направлення, документ, що посвідчує особу, та попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
         <div class="field">
+          <label for="militaryPatientEmail">E-mail <span class="opt">(необов’язково)</span></label>
+          <input autocomplete="email" id="militaryPatientEmail" type="email" inputmode="email" placeholder="you@example.com"/>
+          <span class="field-note">Знадобиться для входу в кабінет за кодом із листа, якщо не пам’ятатимете номер заявки.</span>
+          <span class="field-error">Перевірте адресу e-mail</span>
+        </div>
+        <div class="field">
           <label for="militaryComment">Коментар <span class="opt">(необов’язково)</span></label>
           <textarea id="militaryComment" placeholder="Додаткова інформація для реєстратури"></textarea>
         </div>
@@ -424,6 +430,11 @@ function saveMilitaryCart() {
 function addMilitaryItem(code, name) {
   code = String(code);
   if (!militaryCart.some(item => item.code === code)) {
+    if (militaryCart.length >= 5) {
+      alert('В одну заявку можна додати до 5 досліджень. Для більшого обсягу подайте окрему заявку або зателефонуйте в реєстратуру: +380 97 280 88 99');
+      openMilitaryCart();
+      return;
+    }
     militaryCart.push({ code, name });
     saveMilitaryCart();
   }

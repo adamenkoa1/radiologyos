@@ -44,7 +44,8 @@ test("civilian booking does not ask the patient for a preferred contact channel"
     const html = await read(page);
     assert.doesNotMatch(html, /name="preferredContact"/);
     assert.doesNotMatch(html, /Бажаний спосіб зв’язку/);
-    assert.doesNotMatch(html, /id="patientEmail"/);
+    // Примітка: необов'язкове поле e-mail (для входу в кабінет за кодом із листа)
+    // — це не вибір каналу зв'язку; його наявність перевіряє booking-order-block.
   }
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.doesNotMatch(bridge, /preferredContact/);

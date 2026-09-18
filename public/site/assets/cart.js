@@ -4,6 +4,8 @@
    Дані зберігаються в localStorage під ключем 'radiologyCart'. */
 
 const PHONE = '380972808899';
+// Дзеркалить серверний MAX_SERVICES_PER_REQUEST: одна заявка — до 5 послуг.
+const MAX_SERVICES_PER_REQUEST = 5;
 
 let cart = JSON.parse(localStorage.getItem('radiologyCart') || '[]');
 
@@ -18,6 +20,11 @@ function saveCart() {
 function addToCart(code, name, price) {
   _lastPickerCode = null;
   if (!cart.some(x => x.code === String(code))) {
+    if (cart.length >= MAX_SERVICES_PER_REQUEST) {
+      alert(`В одну заявку можна додати до ${MAX_SERVICES_PER_REQUEST} послуг. Для більшого обсягу подайте окрему заявку або зателефонуйте в реєстратуру: +380 97 280 88 99`);
+      openCart();
+      return;
+    }
     cart.push({ code: String(code), name, price: Number(price) });
     saveCart();
   }
@@ -117,23 +124,6 @@ function refreshSlotPicker() {
   });
 }
 
-function showSuccess(summary) {
-  const box = document.getElementById('successSummary');
-  if (box) box.innerHTML = summary;
-  const off = document.getElementById('offlineNote');
-  if (off) off.hidden = true;
-  requestForm.hidden = true;
-  document.getElementById('successPanel').hidden = false;
-  showPaymentBlock();
-  document.querySelector('.cart-total').style.display = 'none';
-  document.getElementById('cartItems').style.display = 'none';
-  cart = [];
-  saveCart();
-}
-
-
-
-
 /* повертаємо форму при наступному відкритті заявки */
 const _openCart = openCart;
 openCart = function () {
@@ -151,26 +141,5 @@ openCart = function () {
 
 renderCart();
 
-/* Блок оплати для платних (цивільних) заявок: посилання з панелі персоналу */
-async function showPaymentBlock() {
-  const block = document.getElementById('payBlock');
-  if (!block) return;
-  let link = '', qrData = '';
-  if (typeof fetchPublicConfig === 'function') {
-    const cfg = await fetchPublicConfig();
-    if (cfg && cfg.payLink) { link = cfg.payLink; qrData = cfg.payLink; }
-  }
-  if (!link && typeof DEFAULT_PAY_LINK !== 'undefined' && DEFAULT_PAY_LINK) {
-    link = DEFAULT_PAY_LINK;
-    qrData = (typeof DEFAULT_PAY_LINK_RAW !== 'undefined') ? DEFAULT_PAY_LINK_RAW : DEFAULT_PAY_LINK;
-  }
-  if (!link) return;
-  document.getElementById('payBtn').href = link;
-  try {
-    const qr = qrcode(0, 'M');
-    qr.addData(qrData);
-    qr.make();
-    document.getElementById('payQr').innerHTML = qr.createImgTag(4, 6);
-  } catch (e) { document.getElementById('payQr').innerHTML = ''; }
-  block.hidden = false;
-}
+// Екран підтвердження та блок оплати цивільної заявки малює d1-bridge.js
+// (showCivilSuccess / wirePayButton через /api/site-payment).

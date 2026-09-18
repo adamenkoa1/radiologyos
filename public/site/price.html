@@ -464,6 +464,12 @@ body{background:#f3f6f8}
         <div class="step-title"><span class="step-num">3</span>Надіслати заявку</div>
         <p class="cart-note"><strong>Візьміть із собою попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
         <div class="field">
+          <label for="patientEmail">E-mail <span class="opt">(необов’язково)</span></label>
+          <input autocomplete="email" id="patientEmail" type="email" inputmode="email" placeholder="you@example.com"/>
+          <span class="field-note">Знадобиться для входу в кабінет за кодом із листа, якщо не пам’ятатимете номер заявки.</span>
+          <span class="field-error">Перевірте адресу e-mail</span>
+        </div>
+        <div class="field">
           <label for="comment">Коментар <span class="opt">(необов’язково)</span></label>
           <textarea id="comment" placeholder="Додаткова інформація для реєстратури"></textarea>
         </div>
