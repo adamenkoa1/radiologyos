@@ -38,15 +38,21 @@ a{text-decoration:none;color:inherit}
 .nameSuggest li:hover,.nameSuggest li.on{background:#eef7f8}
 
 /* Кнопки запису через месенджер (мінімалістичний хендоф) */
-.book-actions{display:flex;flex-direction:column;gap:10px;margin-top:14px}
-.book-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0 18px;border:0;border-radius:14px;font:inherit;font-weight:800;font-size:16px;color:#fff;text-decoration:none;cursor:pointer}
-.book-btn.viber{background:#7360f2}
-.book-btn.whatsapp{background:#25d366}
-.book-btn.call{background:var(--brand,#12303a)}
-.book-btn:active{transform:translateY(1px)}
-.book-btn:focus-visible{outline:3px solid var(--gold,#c9a227);outline-offset:2px}
-.cabinet-link{display:block;margin-top:16px;text-align:center;color:#5c6c78;font-size:13px;text-decoration:underline}
-@media(min-width:620px){.book-actions{flex-direction:row}.book-actions .book-btn{flex:1}}
+.book-channels{margin-top:18px}
+.book-channels-title{margin:0 0 12px;text-align:center;font-size:14px;font-weight:700;color:#5c6c78}
+.book-channels-row{display:flex;justify-content:center;gap:clamp(18px,7vw,34px)}
+.channel-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;border:0;background:none;font:inherit;color:#42525c;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.channel-ico{display:grid;place-items:center;width:60px;height:60px;border-radius:var(--r-pill);color:#fff;box-shadow:0 8px 20px rgba(18,48,58,.16);transition:transform .12s ease,box-shadow .12s ease}
+.channel-ico svg{width:30px;height:30px;fill:currentColor}
+.channel-btn.viber .channel-ico{background:#7360f2}
+.channel-btn.whatsapp .channel-ico{background:#25d366}
+.channel-btn.call .channel-ico{background:var(--brand,#123d3a)}
+.channel-cap{font-size:13px;font-weight:600;line-height:1}
+.channel-btn:active .channel-ico{transform:translateY(1px) scale(.97)}
+.channel-btn:focus-visible{outline:0}
+.channel-btn:focus-visible .channel-ico{outline:3px solid var(--gold,#c9a227);outline-offset:3px}
+@media(hover:hover){.channel-btn:hover .channel-ico{transform:translateY(-2px);box-shadow:0 12px 26px rgba(18,48,58,.22)}}
+.cabinet-link{display:block;margin-top:18px;text-align:center;color:#5c6c78;font-size:13px;text-decoration:underline}
 
 /* Головна CTA-смуга та заголовок FAQ (мінімалістична головна) */
 .hero-lead{padding:24px 0 4px}
