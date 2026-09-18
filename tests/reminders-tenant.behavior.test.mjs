@@ -17,7 +17,7 @@ async function booking(db, organizationId, code, phoneNormalized) {
 }
 
 test("scheduled reminder SQL isolates bookings, dedupe and exact contact consent by organization", async () => {
-  assert.match(remindersSource, /WHERE b\.organization_id = \? AND b\.desired_date = \? AND b\.status IN \('confirmed','rescheduled'\)/);
+  assert.match(remindersSource, /WHERE b\.organization_id = \? AND b\.desired_date IN \(\?, \?\)\s*\n\s*AND b\.status IN \('confirmed','rescheduled'\)/);
   assert.match(remindersSource, /JOIN bookings b ON b\.id = n\.booking_id[\s\S]*WHERE b\.organization_id = \?/);
   assert.match(remindersSource, /p\.organization_id = b\.organization_id/);
   assert.match(remindersSource, /p\.patient_id = b\.patient_id/);

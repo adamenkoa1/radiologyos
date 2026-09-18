@@ -9,9 +9,13 @@ export async function GET() {
   if (!db) return Response.json({ prices: {} });
 
   const prices: Record<string, number> = {};
+  const titles: Record<string, string> = {};
+  const descriptions: Record<string, string> = {};
   for (const service of await effectiveServices(db)) {
     prices[service.code] = service.price;
+    titles[service.code] = service.title;
+    descriptions[service.code] = service.description;
   }
 
-  return Response.json({ prices }, { headers: { "cache-control": "no-store" } });
+  return Response.json({ prices, titles, descriptions }, { headers: { "cache-control": "no-store" } });
 }

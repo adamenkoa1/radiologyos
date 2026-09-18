@@ -44,6 +44,7 @@ export function validateProtocolInputBounds(input: unknown): ProtocolInputBounds
 
   const topLevelChecks: Array<[unknown, number, string]> = [
     [raw.method, PROTOCOL_LIMITS.method, "Методика"],
+    [raw.methodRef, PROTOCOL_LIMITS.methodRef, "Джерело методики"],
     [raw.findings, PROTOCOL_LIMITS.narrative, "Опис"],
     [raw.conclusion, PROTOCOL_LIMITS.narrative, "Висновок"],
     [raw.recommendations, PROTOCOL_LIMITS.narrative, "Рекомендації"],

@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode } from "react";
 import CommandPalette from "./command-palette";
 
-type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases" | "documents" | "registers" | "directories";
+type WorkspaceSection = "dashboard" | "overview" | "studies" | "patients" | "protocols" | "imaging" | "reports" | "tariffs" | "finance" | "counterparties" | "settings" | "organization" | "site" | "appointments" | "whatsapp" | "chat" | "schedule" | "equipment" | "services" | "structure" | "audit" | "intake" | "board" | "tasks" | "inventory" | "purchases" | "documents" | "registers" | "directories" | "personnel";
 
 type StaffWorkspaceShellProps = {
   active: WorkspaceSection;
@@ -37,6 +37,7 @@ const quickRail:NavLink[]=[
   { label:"Склад",href:"/staff/inventory",section:"inventory",icon:"▣" },
   { label:"Фінанси",href:"/staff/finance",section:"finance",icon:"₴" },
   { label:"Звіти",href:"/staff/reports",section:"reports",icon:"⌁" },
+  { label:"Персонал",href:"/staff/personnel",section:"personnel",icon:"☢" },
 ];
 
 const businessModules:BusinessModule[]=[
@@ -105,6 +106,7 @@ const businessModules:BusinessModule[]=[
   ]},
   { key:"reports",label:"Звіти",items:[
     {label:"Звіти відділення",href:"/staff/reports"},
+    {label:"SEO-аудит сайту",href:"/staff/reports/seo"},
     {label:"Обороти регістрів",href:"/staff/reports/registers"},
     {label:"Дебіторська заборгованість",href:"/staff/reports/receivables"},
     {label:"Маржинальність послуг",href:"/staff/reports/material-margin"},
@@ -119,6 +121,16 @@ const businessModules:BusinessModule[]=[
     {label:"Контрагенти",href:"/staff/counterparties"},
     {label:"Графік кабінетів",href:"/staff/schedule"},
     {label:"Графік змін персоналу",href:"/staff/shifts",hint:"Циклічні зміни, бригади та персональні корекції"},
+  ]},
+  { key:"personnel",label:"Персонал",items:[
+    {label:"Персонал і зміни",href:"/staff/personnel",hint:"Кадрові картки, підрозділ, посада, зв'язок з обліковим записом"},
+    {label:"Норм-календар роботи",href:"/staff/work-calendar",hint:"Виробничий календар: норма днів і годин по місяцях"},
+    {label:"Дозиметрія",href:"/staff/personnel/dosimetry",hint:"Індивідуальні дози опромінення персоналу"},
+    {label:"Радіаційний допуск",href:"/staff/personnel/radiation-clearance"},
+    {label:"Навчання з радіобезпеки",href:"/staff/personnel/radiation-training"},
+    {label:"Черга радіаційного огляду",href:"/staff/personnel/radiation-review-queue"},
+    {label:"Зведення доз",href:"/staff/personnel/radiation-dose-summary"},
+    {label:"ВЛК",href:"/staff/personnel/vlk",hint:"Військово-лікарська комісія"},
   ]},
   { key:"admin",label:"Адміністрування",shortLabel:"Адмін",items:[
     {label:"Налаштування",href:"/staff/settings"},
@@ -138,7 +150,7 @@ const moduleBySection:Record<WorkspaceSection,string>={
   finance:"finance",counterparties:"directories",
   inventory:"inventory",purchases:"purchases",
   documents:"documents",registers:"registers",reports:"reports",directories:"directories",
-  equipment:"directories",schedule:"directories",
+  equipment:"directories",schedule:"directories",personnel:"personnel",
   settings:"admin",organization:"admin",site:"admin",whatsapp:"admin",structure:"admin",audit:"admin",
 };
 
@@ -150,6 +162,7 @@ const sectionLabels:Record<WorkspaceSection,string>={
   equipment:"Обладнання",services:"Послуги",structure:"Структура відділення",audit:"Журнал дій",
   intake:"Прийом",board:"Дошка досліджень",tasks:"Завдання",inventory:"Склад",purchases:"Кредиторка постачальників",
   documents:"Журнал документів",registers:"Регістри",directories:"Довідники",
+  personnel:"Персонал і радіаційна безпека",
 };
 
 function formatDateTime(value:Date) {
@@ -254,6 +267,7 @@ export default function StaffWorkspaceShell({
             <span><b>{identity}</b><small>{staffRole || "Персонал відділення"}</small></span>
           </summary>
           <div>
+            <Link href="/staff/profile">Особистий кабінет</Link>
             <Link href="/staff/documents">Документи</Link>
             <Link href="/staff/registers">Регістри</Link>
             <Link href="/staff/appointments">Календар і записи</Link>

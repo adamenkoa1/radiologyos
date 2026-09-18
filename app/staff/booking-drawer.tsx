@@ -122,6 +122,7 @@ export default function BookingDrawer({
 
       <dl className="apptDrawerFacts">
         <div><dt>Дослідження</dt><dd>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</dd></div>
+        {b.clinicalIndication && <div><dt>Показання</dt><dd>{b.clinicalIndication}</dd></div>}
         <div><dt>Дата й час</dt><dd>{b.desiredDate} · {b.desiredTime || "—"}</dd></div>
         {doctorName && <div><dt>Лікар</dt><dd>{doctorName}</dd></div>}
         <div><dt>Телефон</dt><dd>{b.phone || "—"}</dd></div>

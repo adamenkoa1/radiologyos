@@ -161,7 +161,7 @@ export default function ReportsPage() {
       <section className="reportBuilder">
         <div className="reportBuilderHead">
           <div><p className="eyebrow">Конструктор</p><h2>Оберіть потрібний реєстр</h2></div>
-          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання.</p>
+          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання. Окремо: <a href="/staff/reports/utilization">Завантаженість обладнання →</a></p>
         </div>
         <div className="reportTemplateTabs">
           {(Object.values(REPORT_TEMPLATES)).map((item)=><button
@@ -171,6 +171,7 @@ export default function ReportsPage() {
             onClick={()=>chooseTemplate(item.key)}
           ><b>{item.label}</b><span>{item.description}</span></button>)}
         </div>
+        <p className="reportActiveDesc"><b>{currentTemplate.label}.</b> {currentTemplate.description}</p>
 
         <form className="reportFilterGrid" onSubmit={event=>{event.preventDefault();void load();}}>
           <label><span>Від</span><input type="date" value={from} onChange={event=>setFrom(event.target.value)} required/></label>
@@ -210,7 +211,7 @@ export default function ReportsPage() {
         {error && <p className="staffError" role="alert">{error}</p>}
         {data && <div className="reportPreview">
           <div className="reportPreviewHead"><b>Попередній перегляд</b><span>{data.previewTotal} рядків · показано до 100</span></div>
-          <div className="reportTableScroll"><table><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
+          <div className="financeTableWrap"><table className="financeTable"><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
             <tbody>{data.preview.length === 0 ? <tr><td colSpan={Math.max(1,data.columns.length)}>Даних за обраними фільтрами немає.</td></tr> :
               data.preview.map((row,index)=><tr key={index}>{data.columns.map((item)=><td key={item.key}>{formatCell(row[item.key],item)}</td>)}</tr>)}
             </tbody></table></div>
@@ -218,7 +219,7 @@ export default function ReportsPage() {
       </section>
 
       {data && <div className="reportContent">
-        <section className="reportStats" aria-label="Ключові показники">
+        <section className="financeSummary" aria-label="Ключові показники">
           <article><span>Записів</span><b>{data.summary.total}</b><small>{data.summary.cancelled} скасовано</small></article>
           <article><span>Фактично виконано</span><b>{data.summary.performed}</b><small>{data.summary.regions} анатомічних ділянок</small></article>
           <article><span>Протоколи готові</span><b>{data.summary.protocolsReady}</b><small>{data.summary.awaitingProtocol} очікують</small></article>

@@ -1,0 +1,39 @@
+/* ============================================================
+   RadiologyOS — Пацієнти (CRM) + Протоколи у єдиному журнальному стилі (крок 4).
+   Обидва екрани bespoke (щільнісний шар 23 їх не чіпає). Зводимо ключові
+   журнальні сигнали до системи: KPI-картки, сегментовані таби, картки черги
+   протоколів — тонкі рамки, щільний радіус, білий фон, зелений акцент.
+   Токени --rp-* із 24, --r-sm із 23. Функції/розмітку не чіпаємо.
+   ============================================================ */
+
+/* CRM — підсумкові показники → журнальні картки (без тонування, щільний радіус) */
+.basWorkspaceShell .crmStats article{
+  background:var(--rp-panel);
+  border-color:var(--rp-line);
+  border-radius:var(--r-sm,4px);
+  box-shadow:none;
+  padding:13px 14px;
+}
+.basWorkspaceShell .crmStats span{color:var(--rp-faint)}
+.basWorkspaceShell .crmStats b{font-size:22px;color:var(--rp-ink)}
+
+/* сегментовані таби (CRM + протоколи) → щільний радіус, тонка рамка; зелений active лишається */
+.basWorkspaceShell .crmSegmentTabs button,
+.basWorkspaceShell .protocolFilterTabs button{
+  border-color:var(--rp-line);
+  border-radius:var(--r-sm,4px);
+}
+.basWorkspaceShell .crmSegmentTabs button:hover,
+.basWorkspaceShell .protocolFilterTabs button:hover{border-color:var(--rp-faint)}
+
+/* картки черги протоколів → журнальна картка, без hover-стрибка й тіні */
+.basWorkspaceShell .protocolQueueItem{
+  border-color:var(--rp-line);
+  border-radius:var(--r-sm,4px);
+}
+.basWorkspaceShell .protocolQueueItem:hover{border-color:var(--rp-faint);transform:none}
+.basWorkspaceShell .protocolQueueItem.active{
+  border-color:var(--rp-accent);
+  box-shadow:none;
+  background:var(--rp-tint);
+}

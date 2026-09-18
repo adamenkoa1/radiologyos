@@ -3,6 +3,14 @@ import test from "node:test";
 import { recordAnalyticsEvent } from "../lib/analytics.ts";
 import { callWorker, jsonRequest, seedStaffSession, withD1 } from "./helpers/d1.mjs";
 
+// Analytics events are stored with occurred_at = CURRENT_TIMESTAMP, so the funnel
+// window must include "now"; a hardcoded calendar window drifts out of range.
+const ISO = (ms) => new Date(ms).toISOString().slice(0, 10);
+const NOW = Date.now();
+const REPORT_FROM = ISO(NOW - 20 * 86400000);
+const REPORT_TO = ISO(NOW + 86400000);
+const IN_PERIOD = ISO(NOW - 5 * 86400000);
+
 test("public analytics accepts only anonymous allowlisted funnel fields", async () => {
   await withD1(async (db) => {
     const valid = await callWorker(jsonRequest("/api/analytics", {
@@ -99,13 +107,13 @@ test("staff funnel report is tenant-scoped and derives clinical milestones from 
     const bookingId = Number(booking.meta.last_row_id);
     await db.prepare(
       `INSERT INTO booking_events (organization_id, booking_id, action, details, actor, created_at)
-       VALUES (1, ?, 'status_changed', 'arrived', 'test', '2026-08-20 10:00:00'),
-              (1, ?, 'status_changed', 'completed', 'test', '2026-08-20 10:30:00')`,
-    ).bind(bookingId, bookingId).run();
+       VALUES (1, ?, 'status_changed', 'arrived', 'test', ?),
+              (1, ?, 'status_changed', 'completed', 'test', ?)`,
+    ).bind(bookingId, `${IN_PERIOD} 10:00:00`, bookingId, `${IN_PERIOD} 10:30:00`).run();
 
     const cookie = await seedStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });
     const response = await callWorker(new Request(
-      "https://radiologyos.test/api/staff/analytics?from=2026-08-01&to=2026-08-31",
+      `https://radiologyos.test/api/staff/analytics?from=${REPORT_FROM}&to=${REPORT_TO}`,
       { headers: { cookie } },
     ), db);
     assert.equal(response.status, 200);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
@@ -34,6 +34,13 @@ const EQUIP_UK:Record<string,string> = { ct:"КТ", xray:"Рентген", fluor
 // Ознаки без окремих полів у БД.
 const isContrast = (svc:string) => /контраст|ангіограф/i.test(svc || "");
 const digits = (s:string) => (s || "").replace(/[^\d]/g, "");
+const CONTACT_LABELS:Record<string,string> = { call:"Телефонний дзвінок", whatsapp:"WhatsApp", email:"Email", viber:"Viber", telegram:"Telegram" };
+function preferredContact(comment?:string) {
+  return (comment || "").match(/^\[contact:(call|whatsapp|email|viber|telegram)\](?:\s|$)/i)?.[1]?.toLowerCase() || "";
+}
+function visibleComment(comment?:string) {
+  return (comment || "").replace(/^\[contact:(?:call|whatsapp|email|viber|telegram)\]\s*/i, "").replace(/^Бажаний спосіб зв’язку:[^\n]*(?:\n|$)/i, "").trim();
+}
 // Вік із дати народження (роки), Київ не критичний для року.
 function ageFrom(dob?:string) {
   if (!dob || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) return null;
@@ -52,6 +59,8 @@ export default function IntakePage() {
   const [data, setData] = useState<Data|null>(null);
   const [forbidden, setForbidden] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // Мережевий збій завантаження — щоб показати «Повторити», а не вічний спінер.
+  const [loadError, setLoadError] = useState(false);
   const [selectedId, setSelectedId] = useState<number|null>(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState<Form>(emptyForm);
@@ -63,20 +72,48 @@ export default function IntakePage() {
 
   function flash(msg:string) { setToast(msg); window.setTimeout(()=>setToast(""), 2600); }
 
-  async function load(keepSelection = true) {
-    const res = await fetch("/api/staff/bookings", { cache:"no-store" });
-    if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); return; }
-    const payload = await res.json().catch(()=>null) as (Data & { error?:string }) | null;
-    // Помилки (503/500 тощо) не кладемо в data — інакше далі впаде data.staff.
-    if (!res.ok || !payload || !Array.isArray(payload.bookings) || !payload.staff) {
-      flash(payload?.error || "Не вдалося завантажити заявки"); setLoaded(true); return;
+  // background:true — тихе автооновлення: не блимає спінером і не глушить чергу
+  // через тимчасовий мережевий збій (лишає наявні дані до наступної спроби).
+  async function load(keepSelection = true, background = false) {
+    try {
+      const res = await fetch("/api/staff/bookings", { cache:"no-store" });
+      if (res.status === 401 || res.status === 403) { setForbidden(true); setLoaded(true); return; }
+      const payload = await res.json().catch(()=>null) as (Data & { error?:string }) | null;
+      // Помилки (503/500 тощо) не кладемо в data — інакше далі впаде data.staff.
+      if (!res.ok || !payload || !Array.isArray(payload.bookings) || !payload.staff) {
+        if (!background) { flash(payload?.error || "Не вдалося завантажити заявки"); setLoaded(true); }
+        return;
+      }
+      setData(payload); setLoaded(true); setLoadError(false);
+      if (!keepSelection) setSelectedId(null);
+    } catch {
+      // Мережевий збій: при першому завантаженні показуємо «Повторити»,
+      // у фоні — мовчки лишаємо наявні дані до наступної спроби.
+      if (!background) { setLoadError(true); setLoaded(true); }
     }
-    setData(payload); setLoaded(true);
-    if (!keepSelection) setSelectedId(null);
   }
+
+  // Не оновлюємо у фоні під час мутації, створення чи незбережених правок —
+  // щоб не смикати чергу під руками реєстратора. Ref оновлюємо в ефекті.
+  const pauseRef = useRef(false);
+  useEffect(() => {
+    pauseRef.current = busy || creating || (!!selected && !formMatchesSelected());
+  });
+
   // Одноразове завантаження на монтуванні (load стабільний за задумом).
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { const t = window.setTimeout(() => { void load(); }, 0); return () => window.clearTimeout(t); }, []);
+
+  // Жива черга: тихо оновлюємо заявки кожні 45 с, тож нові заявки з сайту й
+  // зміни від інших співробітників зʼявляються без ручного перезавантаження.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || pauseRef.current) return;
+      void load(true, true);
+    }, 45000);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const sourceOf = useMemo(() => {
     const m = new Map<number,"site"|"staff">();
@@ -151,7 +188,7 @@ export default function IntakePage() {
   function saveEdits() {
     void patch({ edit:{ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, comment:form.comment } }, "Заявку скориговано");
   }
-  function confirmBooking() { void patch({ confirm:true }, "Підтверджено — пацієнту надіслано WhatsApp"); }
+  function confirmBooking() { void patch({ confirm:true }, "Запис підтверджено — канал зв’язку опрацьовано"); }
   function cancelBooking() { if (window.confirm("Скасувати заявку?")) void patch({ status:"cancelled" }, "Скасовано"); }
   function reschedule() { if (form.date && form.time) void patch({ desiredDate:form.date, desiredTime:form.time }, "Перенесено"); }
 
@@ -171,9 +208,12 @@ export default function IntakePage() {
   function startCreate() { if (!guardUnsaved()) return; setCreating(true); setSelectedId(null); setForm({ ...emptyForm, date:todayInKyiv() }); }
 
   const readOnly = !!data && !["admin","registrar"].includes(data.staff.role);
+  const contact = preferredContact(selected?.comment);
 
   const body = forbidden
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Дошка прийому доступна персоналу реєстратури.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fintake">Увійти</a></section>
+    : loadError && !data
+    ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити заявки. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
     : !loaded ? <p className="dashLoading">Завантаження…</p>
     : <div className="intakeBoard">
         <aside className="intakeQueue">
@@ -218,6 +258,9 @@ export default function IntakePage() {
               </div>
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
+                {contact === "viber" && digits(selected.phone) && <a className="intakePatientLink" href={`viber://chat?number=%2B${digits(selected.phone)}`}>Написати у Viber</a>}
+                {contact === "telegram" && digits(selected.phone) && <a className="intakePatientLink" href={`tg://resolve?phone=${digits(selected.phone)}`}>Відкрити Telegram</a>}
+                {contact === "email" && selected.patientEmail && <a className="intakePatientLink" href={`mailto:${selected.patientEmail}`}>Написати email</a>}
                 {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
               </div>
@@ -230,6 +273,7 @@ export default function IntakePage() {
                 {isContrast(selected.service) && <span className="intakeChip contrast">Контраст</span>}
                 {selected.patientCategory==="civilian" && <span className={`intakeChip ${selected.paymentStatus==="paid"?"paid":"pay"}`}>{selected.paymentStatus==="paid"?`Оплачено${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`:`Перевірити оплату${selected.paymentAmount?` · ${selected.paymentAmount} грн`:""}`}</span>}
                 <span className="intakeChip src">{sourceOf.get(selected.id)==="staff"?"✍️ Внесено вручну":"🌐 Через сайт"}</span>
+                {contact && <span className="intakeChip contact">Зв’язок: {CONTACT_LABELS[contact]}</span>}
               </div>
 
               <dl className="intakeFacts">
@@ -241,7 +285,7 @@ export default function IntakePage() {
 
               {isContrast(selected.service) && <p className="intakeNote contrast">Дослідження з контрастуванням — попередьте пацієнта про підготовку (креатинін, алергоанамнез, натще).</p>}
 
-              {selected.comment && <div className="intakeCtxComment"><b>Коментар</b><p>{selected.comment}</p></div>}
+              {visibleComment(selected.comment) && <div className="intakeCtxComment"><b>Коментар</b><p>{visibleComment(selected.comment)}</p></div>}
 
               <div className="intakeHistory">
                 <div className="intakeHistoryHead"><b>Попередні дослідження</b>{digits(selected.phone) ? <a className="intakeHistoryAll" href={`/staff/patients?phone=${digits(selected.phone)}`}>відкрити CRM →</a> : <span>—</span>}</div>

@@ -48,6 +48,11 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(page, /created_by_staff|Нова заявка/); // ручне створення
   assert.match(page, /🌐|✍️/);        // позначка джерела (сайт/вручну)
   assert.match(page, /guardUnsaved/); // попередження про незбережені зміни (D4)
+  assert.match(page, /CONTACT_LABELS/);
+  assert.match(page, /Зв’язок:/);
+  assert.match(page, /viber:\/\/chat\?number=/);
+  assert.match(page, /mailto:/);
+  assert.doesNotMatch(page, /пацієнту надіслано WhatsApp/);
   // Виправлено (аудит): помилки завантаження не кладуться в data (не білий екран).
   assert.match(page, /!Array\.isArray\(payload\.bookings\) \|\| !payload\.staff/);
   // Notion-стиль: картка «живе» — контекст пацієнта та направлення.
@@ -72,4 +77,25 @@ test("intake board page is a two-pane queue + editable detail, wired into the sh
   assert.match(shell, /label:"Прийом", href:"\/staff\/intake", section:"intake"/);
   assert.match(shell, /key:"patients",label:"Пацієнти"/);
   assert.match(shell, /\{label:"Прийом пацієнтів",href:"\/staff\/intake"\}/);
+});
+
+test("intake board survives a failed initial load and offers a retry", async () => {
+  const page = await read("app/staff/intake/page.tsx");
+  // load() загорнуто в try/catch і має фоновий режим.
+  assert.match(page, /async function load\(keepSelection = true, background = false\)/);
+  assert.match(page, /catch \{[\s\S]*?setLoadError\(true\); setLoaded\(true\)/);
+  // Мережевий збій показує окремий екран із «Повторити».
+  assert.match(page, /loadError && !data/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /setLoadError\(false\); setLoaded\(false\); void load\(\);/);
+});
+
+test("intake queue auto-refreshes without disrupting active work", async () => {
+  const page = await read("app/staff/intake/page.tsx");
+  // Тихе фонове оновлення кожні 45 с.
+  assert.match(page, /void load\(true, true\)/);
+  assert.match(page, /\}, 45000\)/);
+  // Пропускаємо приховану вкладку й паузу (мутація/створення/незбережені правки).
+  assert.match(page, /document\.hidden \|\| pauseRef\.current/);
+  assert.match(page, /pauseRef\.current = busy \|\| creating \|\| \(!!selected && !formMatchesSelected\(\)\)/);
 });

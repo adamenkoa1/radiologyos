@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import BookingDrawer from "../booking-drawer";
 import { type CalBooking } from "../week-calendar";
@@ -146,6 +146,9 @@ export default function DashboardPage() {
   const [bookings,setBookings] = useState<CalBooking[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [error,setError] = useState("");
+  // Збій мережі при завантаженні — окремо від «немає доступу», щоб показати
+  // «Повторити», а не помилковий заклик увійти.
+  const [netError,setNetError] = useState("");
   const [toast,setToast] = useState("");
   const [busyId,setBusyId] = useState<number | null>(null);
   // Підтверджені, кому сповіщення НЕ дійшло — робочий список «передзвонити»
@@ -159,35 +162,64 @@ export default function DashboardPage() {
   const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
   const [openId,setOpenId] = useState<number | null>(null);
 
-  async function load() {
-    const [dashRes, bookingsRes] = await Promise.all([
-      fetch("/api/staff/dashboard", { cache:"no-store" }),
-      fetch("/api/staff/bookings", { cache:"no-store" }),
-    ]);
-    // Доступ визначаємо за заявками (доступні реєстратору й лікарям), а не за
-    // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
-    // корисним для всіх ролей, а не блокується стіною «лише адмін».
-    const bookingsData = await bookingsRes.json().catch(() => ({})) as
-      { bookings?:CalBooking[]; staff?:StaffInfo; error?:string };
-    if (!bookingsRes.ok || !bookingsData.staff) { setError(bookingsData.error || "Немає доступу"); return; }
-    setStaff(bookingsData.staff);
-    setBookings(bookingsData.bookings || []);
-    setError("");
-    // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
-    if (dashRes.ok) {
-      const payload = await dashRes.json().catch(() => null) as Data | null;
-      if (payload?.kpi) setData(payload);
-    } else {
-      setData(null);
+  // Фонове (авто)оновлення не має блимати екраном чи глушити робочі дані через
+  // тимчасовий збій — тому background:true не чіпає екрани помилки/входу.
+  async function load({ background = false } = {}) {
+    try {
+      const [dashRes, bookingsRes] = await Promise.all([
+        fetch("/api/staff/dashboard", { cache:"no-store" }),
+        fetch("/api/staff/bookings", { cache:"no-store" }),
+      ]);
+      // Доступ визначаємо за заявками (доступні реєстратору й лікарям), а не за
+      // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
+      // корисним для всіх ролей, а не блокується стіною «лише адмін».
+      const bookingsData = await bookingsRes.json().catch(() => ({})) as
+        { bookings?:CalBooking[]; staff?:StaffInfo; error?:string };
+      if (!bookingsRes.ok || !bookingsData.staff) {
+        if (!background) setError(bookingsData.error || "Немає доступу");
+        return;
+      }
+      setStaff(bookingsData.staff);
+      setBookings(bookingsData.bookings || []);
+      setError("");
+      setNetError("");
+      // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
+      if (dashRes.ok) {
+        const payload = await dashRes.json().catch(() => null) as Data | null;
+        if (payload?.kpi) setData(payload);
+      } else {
+        setData(null);
+      }
+    } catch {
+      // Мережевий збій: під час першого завантаження показуємо «Повторити»,
+      // а у фоні мовчки лишаємо наявні дані до наступної спроби.
+      if (!background) setNetError("Не вдалося завантажити дані. Перевірте зʼєднання та спробуйте ще раз.");
     }
   }
+
+  // Не оновлюємо у фоні під час активної мутації (підтвердження/перенесення),
+  // щоб не перезаписати оптимістичний стан на льоту. Ref оновлюємо в ефекті
+  // (не під час рендеру), а читаємо в інтервалі автооновлення.
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = busyId !== null || batchBusy; }, [busyId, batchBusy]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
-  // «Через N хв» на розкладі має лишатися свіжим — оновлюємо щохвилини.
+  // Пульт — живий екран: тихо оновлюємо заявки/зведення кожні 45 с, щоб нові
+  // заявки й зміни статусів від інших співробітників зʼявлялися без ручного
+  // перезавантаження. Пропускаємо, коли вкладка прихована або триває мутація.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || busyRef.current) return;
+      void load({ background: true });
+    }, 45000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // «Через N хв» на розкладі має лишатися свіжим — оновлюємо кожні 30 секунд.
   useEffect(() => {
     const id = window.setInterval(() => setNowMin(nowMinutesKyiv()), 30000);
     return () => window.clearInterval(id);
@@ -203,6 +235,13 @@ export default function DashboardPage() {
     .filter(b => (b.status === "new" || b.status === "rescheduled") && (b.desiredDate || "") >= today)
     .sort((a, b) => (b.code || "").localeCompare(a.code || "")),
   [bookings, today]);
+
+  // Прострочено: час дослідження на сьогодні вже минув, а заявку ще не
+  // опрацьовано (не прибув / не виконано / не скасовано). Такі — не «нові»,
+  // а неактуальні: позначаємо, а не ховаємо, бо потребують рішення.
+  const isOverdue = (b:CalBooking) =>
+    b.desiredDate === today && !!b.desiredTime && (minsUntil(b.desiredTime, nowMin) ?? 0) < 0;
+  const stillWaiting = (s:string) => s === "new" || s === "rescheduled" || s === "confirmed";
 
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
 
@@ -263,6 +302,25 @@ export default function DashboardPage() {
     setToast((failed || errors ? "⚠ " : "✓ ") + parts.join(" · "));
   }
 
+  // Відмітка прибуття / неявки прямо з Пульта (arrived / no_show).
+  async function setStatus(id:number, status:string, label:string) {
+    setBusyId(id); setToast("");
+    try {
+      const res = await fetch("/api/staff/bookings", {
+        method:"PATCH", headers:{"content-type":"application/json"},
+        body:JSON.stringify({ id, status }),
+      });
+      const data = await res.json().catch(() => ({})) as { error?:string };
+      if (!res.ok) { setToast(data.error || "Не вдалося змінити стан"); return; }
+      setBookings(cur => cur.map(b => b.id === id ? { ...b, status } : b));
+      setToast(`✓ ${label}`);
+    } catch {
+      setToast("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   async function rescheduleBooking(id:number, date:string, time:string) {
     setBusyId(id); setToast("");
     try {
@@ -311,6 +369,7 @@ export default function DashboardPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
+    netError && !staff ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>{netError}</p><button type="button" className="button compact" onClick={()=>{ setNetError(""); void load(); }}>Повторити</button></section> :
     !staff ? <p className="dashLoading">Завантаження зведення…</p> :
     <>
       {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
@@ -382,13 +441,14 @@ export default function DashboardPage() {
           ? <p className="dashListEmpty">Нових непідтверджених заявок немає — усе опрацьовано.</p>
           : <div className="dashCards">
               {pending.map(b => (
-                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}${selected.has(b.id) ? " picked" : ""}`}>
+                <article key={b.id} className={`dashCard ${b.status} ${modClass(b.equipmentId)}${selected.has(b.id) ? " picked" : ""}${isOverdue(b) ? " overdue" : ""}`}>
                   <div className="dashCardTop">
                     {canManage &&
                       <label className="dashCardPick" title="Обрати для пакетного підтвердження">
                         <input type="checkbox" checked={selected.has(b.id)} onChange={()=>toggleSel(b.id)} />
                       </label>}
                     <span className={`dashCardTag ${b.status}`}>{b.status === "rescheduled" ? "Перенесено" : "Нова"}</span>
+                    {isOverdue(b) && <span className="dashCardFlag overdue">Прострочено</span>}
                     {isContrast(b) && <span className="dashCardFlag">Контраст</span>}
                     {needsPay(b) && <span className="dashCardFlag pay">Оплата</span>}
                   </div>
@@ -436,17 +496,27 @@ export default function DashboardPage() {
                 const active = b.status !== "completed" && b.status !== "performed" && b.status !== "issued";
                 const when = active ? whenLabel(minsUntil(b.desiredTime, nowMin)) : null;
                 const doc = doctorShort(b.assignedRadiologistEmail);
+                const overdue = isOverdue(b) && stillWaiting(b.status);
+                const canMark = canManage && (b.status === "new" || b.status === "confirmed" || b.status === "rescheduled");
                 return <li key={b.id}>
-                  <button type="button" className={`dashAgendaRow ${modClass(b.equipmentId)}`} onClick={()=>setOpenId(b.id)}>
-                    <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
-                    <div className="dashAgendaWho">
-                      <b>{b.name || "Без імені"}</b>
-                      <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
-                    </div>
-                    {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
-                    {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
-                    <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
-                  </button>
+                  <div className={`dashAgendaRow ${modClass(b.equipmentId)}${overdue ? " overdue" : ""}`}>
+                    <button type="button" className="dashAgendaMain" onClick={()=>setOpenId(b.id)}>
+                      <time>{b.desiredTime || "—"}{when ? <em className={`dashAgendaWhen ${when.cls}`}>{when.text}</em> : null}</time>
+                      <div className="dashAgendaWho">
+                        <b>{b.name || "Без імені"}</b>
+                        <small>{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doc ? ` · 👨‍⚕️ ${doc}` : ""}</small>
+                      </div>
+                      {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
+                      {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
+                      <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{b.status === "arrived" ? "прибув" : STATUS_UK[b.status] || b.status}</span>
+                    </button>
+                    {canMark
+                      ? <span className="dashAgendaActs">
+                          <button type="button" className="dashMark ok" disabled={busyId===b.id} onClick={()=>void setStatus(b.id, "arrived", "Позначено: пацієнт прибув")} title="Пацієнт прибув">Прибув</button>
+                          <button type="button" className="dashMark no" disabled={busyId===b.id} onClick={()=>void setStatus(b.id, "no_show", "Позначено: неявка")} title="Пацієнт не з'явився">Не з’явився</button>
+                        </span>
+                      : null}
+                  </div>
                 </li>;
               })}
             </ul>}

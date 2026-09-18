@@ -1,9 +1,9 @@
 /* Стилі кабінету й сайту, розбиті на зони. Порядок @import зберігає каскад
    (той самий, що й у попередньому моноліті). Редагуйте відповідний файл у
-   app/styles/, а не цей список. */
+   app/styles/, а не цей список.
+   Карта зон і довідник дизайн-токенів: docs/styles.md */
 @import "./styles/01-base.css";
 @import "./styles/02-workspace.css";
-@import "./styles/03-public-army.css";
 @import "./styles/04-forms.css";
 @import "./styles/05-tariffs.css";
 @import "./styles/06-privat24-cards.css";
@@ -24,3 +24,9 @@
 @import "./styles/21-bas-shell.css";
 @import "./styles/22-shift-calendar.css";
 @import "./styles/23-bas-enterprise-density.css";
+@import "./styles/24-reports-minimal.css";
+@import "./styles/25-dashboard-journal.css";
+@import "./styles/26-intake-journal.css";
+@import "./styles/27-crm-protocol-journal.css";
+@import "./styles/28-board-imaging-journal.css";
+@import "./styles/29-seo-audit.css";

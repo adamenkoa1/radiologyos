@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type Task = {
@@ -32,19 +32,39 @@ export default function TasksPage() {
   const [data,setData] = useState<Payload|null>(null);
   const [error,setError] = useState("");
   const [loaded,setLoaded] = useState(false);
+  // Мережевий збій завантаження — щоб показати «Повторити», а не вічний спінер.
+  const [loadError,setLoadError] = useState(false);
   const [mode,setMode] = useState<"open"|"done">("open");
   const [mine,setMine] = useState(false);
   const [busy,setBusy] = useState<number|null>(null);
   const [creating,setCreating] = useState(false);
   const [form,setForm] = useState({ title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"" });
 
-  async function load() {
-    const res = await fetch("/api/staff/tasks",{cache:"no-store"});
-    const payload = await res.json().catch(()=>({})) as Payload & {error?:string};
-    if (!res.ok || !payload.staff) { setError(payload.error || "Не вдалося завантажити завдання"); setLoaded(true); return; }
-    setData(payload); setError(""); setLoaded(true);
+  // background:true — тихе автооновлення: не блимає спінером і не глушить список
+  // через тимчасовий збій (лишає наявні завдання до наступної спроби).
+  async function load({ background = false } = {}) {
+    try {
+      const res = await fetch("/api/staff/tasks",{cache:"no-store"});
+      const payload = await res.json().catch(()=>({})) as Payload & {error?:string};
+      if (!res.ok || !payload.staff) { if(!background){ setError(payload.error || "Не вдалося завантажити завдання"); setLoaded(true);} return; }
+      setData(payload); setError(""); setLoadError(false); setLoaded(true);
+    } catch {
+      // Мережевий збій першого завантаження — показуємо «Повторити».
+      if(!background){ setLoadError(true); setLoaded(true); }
+    }
   }
   useEffect(()=>{ const t=window.setTimeout(()=>void load(),0); return()=>window.clearTimeout(t); },[]);
+
+  // Не оновлюємо у фоні під час мутації чи створення завдання.
+  const pauseRef = useRef(false);
+  useEffect(()=>{ pauseRef.current = busy!==null || creating; });
+
+  // Живий список: тихо оновлюємо завдання кожні 45 с, тож нові автоматичні й
+  // командні задачі зʼявляються без ручного перезавантаження.
+  useEffect(()=>{
+    const id=window.setInterval(()=>{ if(document.hidden||pauseRef.current) return; void load({background:true}); },45000);
+    return()=>window.clearInterval(id);
+  },[]);
 
   const nameByEmail = useMemo(()=>Object.fromEntries((data?.members||[]).map(m=>[m.email,m.displayName||m.email])),[data]);
   const tasks = useMemo(()=>{
@@ -75,7 +95,8 @@ export default function TasksPage() {
 
   return <StaffWorkspaceShell active="tasks" title="Завдання" description="Особисті, командні й автоматичні задачі відділення: відповідальний, термін, пріоритет і контроль виконання." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
     {error && <p className="notice error" role="alert">{error}</p>}
-    {!loaded ? <p className="dashLoading">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
+    {loadError && !data ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити завдання. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
+      : !loaded ? <p className="dashLoading">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
       <div className="taskToolbar">
         <div className="taskSegments">
           <button className={mode==="open"?"on":""} onClick={()=>setMode("open")}>В роботі</button>
