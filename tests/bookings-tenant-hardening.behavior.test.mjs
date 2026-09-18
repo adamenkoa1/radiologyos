@@ -83,9 +83,12 @@ test("booking staff route keeps sensitive writes and audit reads explicitly tena
   assert.match(src, /m\.organization_id = \? AND m\.member_email = \? AND m\.role = \?/);
   assert.match(src, /assigned_radiographer_email = \?[\s\S]*WHERE organization_id = \? AND id = \?/);
   assert.match(src, /execution_recorded[\s\S]*organization_id/);
-  assert.match(src, /protocol_status AS protocolStatus FROM bookings WHERE organization_id = \? AND id = \?/);
+  // Протокольний write-шлях прибрано з цього маршруту (джерело істини —
+  // /api/staff/protocols); застарілий payload лише відхиляється 409-м.
+  assert.match(src, /змінюються лише через редактор протоколів/);
+  assert.doesNotMatch(src, /UPDATE bookings SET protocol_number/);
   assert.match(src, /military_verified_by[\s\S]*WHERE organization_id = \? AND id = \?/);
-  for (const action of ["staff_note", "staff_assigned", "execution_recorded", "protocol_updated", "finance_updated"]) {
+  for (const action of ["staff_note", "staff_assigned", "execution_recorded", "finance_updated"]) {
     const escaped = action.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     assert.match(src, new RegExp(`INSERT INTO booking_events \\(organization_id, booking_id, action, details, actor\\)[\\s\\S]*?'${escaped}'`));
   }
