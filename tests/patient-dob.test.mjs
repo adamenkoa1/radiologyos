@@ -76,7 +76,7 @@ test("public request is short and receives an automatic appointment", async () =
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /Прізвище, ім’я та по батькові/);
-    assert.match(html, /Завантаження документів через сайт не виконується/);
+    assert.match(html, /попередні медичні документи/); // нагадування взяти документи
     assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час|<label for="(?:military)?[Rr]eferral">/);
     assert.doesNotMatch(html, /type="file"/);
   }

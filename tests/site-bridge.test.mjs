@@ -246,7 +246,7 @@ test("the military free-booking form saves to D1 as category 'military'", async 
 test("civilian booking warns about the 18+ rule up front, not only on submit error", async () => {
   for (const page of ["index", "price"]) {
     const html = await read(`public/site/${page}.html`);
-    assert.match(html, /Онлайн-запис — для пацієнтів <strong>від 18 років<\/strong>/, `${page}: нема проактивної 18\+ нотатки`);
+    assert.match(html, /Онлайн-запис — <strong>від 18 років<\/strong>/, `${page}: нема проактивної 18\+ нотатки`);
     assert.match(html, /tel:\+380972808899/, `${page}: нема телефону реєстратури в нотатці`);
   }
 });
