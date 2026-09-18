@@ -6,6 +6,16 @@
 (function () {
   const PATIENT_PREFILL_KEY = 'radiologyos_patient_prefill_v1';
 
+  // ПІБ пацієнта (клієнтське дзеркало серверного isPlausibleFullName): ≥3 токени
+  // по ≥2 літери, укр-кирилиця/латиниця, апостроф/дефіс; без цифр і суто-
+  // російських літер (ы/ъ/э/ё).
+  const NAME_TOKEN = /^[А-ЩЬЮЯҐЄІЇа-щьюяґєіїA-Za-z][А-ЩЬЮЯҐЄІЇа-щьюяґєіїA-Za-z'’ʼ-]*$/;
+  function fullNameOk(value) {
+    const tokens = String(value || '').trim().split(/\s+/).filter(Boolean);
+    if (tokens.length < 3) return false;
+    return tokens.every((t) => t.length >= 2 && NAME_TOKEN.test(t));
+  }
+
   function adultDobLimit() {
     const today = new Date();
     const limit = new Date(today.getFullYear() - 18, today.getMonth(), today.getDate());
@@ -121,10 +131,12 @@
       enhanceDobInput(dobInput);
     }
     if (nameInput) {
+      // Дзеркалить серверний isPlausibleFullName: ≥3 токени по ≥2 літери,
+      // укр-кирилиця/латиниця, апостроф/дефіс; без цифр і суто-російських літер.
       const validate = () => nameInput.setCustomValidity(
-        nameInput.value.trim().split(/\s+/).filter(Boolean).length >= 3
+        fullNameOk(nameInput.value)
           ? ''
-          : 'Вкажіть прізвище, ім’я та по батькові повністю'
+          : 'Вкажіть справжнє ПІБ українською — прізвище, ім’я та по батькові'
       );
       nameInput.addEventListener('input', validate);
       validate();
@@ -334,16 +346,43 @@
   }
   applyPublicServiceAvailability();
 
+  // ----- Інлайн-валідація: показуємо помилку поля одразу на blur, а не лише
+  // після сабміту. Правила вже задані нативно (pattern телефону, type=email) і
+  // через setCustomValidity (ПІБ — enhanceIdentity, ДН — сегментований віджет),
+  // тож тут лише таймінг фідбеку: підсвічуємо поле й показуємо .field-error, коли
+  // воно «торкнуте» й невалідне; ховаємо, щойно стало валідним.
+  function bindInlineValidation(form) {
+    const fields = form.querySelectorAll('.field input, .field select');
+    const reflect = (input) => {
+      if (input.dataset.touched !== '1') return;
+      const wrap = input.closest('.field');
+      const err = wrap ? wrap.querySelector('.field-error') : null;
+      const bad = !input.checkValidity();
+      input.style.borderColor = bad ? '#d9705f' : '';
+      if (err) err.style.display = bad ? 'block' : '';
+    };
+    fields.forEach((input) => {
+      input.addEventListener('blur', () => { input.dataset.touched = '1'; reflect(input); });
+      input.addEventListener('input', () => reflect(input));
+      input.addEventListener('change', () => reflect(input));
+    });
+    return form;
+  }
+
   // ----- Civilian request (index.html, price.html) -----
   const civilForm = document.getElementById('requestForm');
+  if (civilForm) bindInlineValidation(civilForm);
   if (civilForm) {
     civilForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
       const items = (typeof cart !== 'undefined' && Array.isArray(cart)) ? cart : [];
       if (!items.length) { alert('Спочатку додайте послугу до заявки.'); return; }
-      const nameInput = document.getElementById('patientName');
-      if (nameInput) nameInput.dispatchEvent(new Event('input'));
+      // Оновити кастомну валідність (ПІБ/ДН) перед перевіркою, навіть якщо поля не чіпали.
+      ['patientName', 'patientDob', 'patientPhone'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) { el.dataset.touched = '1'; el.dispatchEvent(new Event('input')); }
+      });
       if (!civilForm.checkValidity()) { civilForm.classList.add('was-validated'); const bad = civilForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       const catSel = document.getElementById('patientCategory');
