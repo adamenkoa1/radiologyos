@@ -6,9 +6,11 @@ import StaffWorkspaceShell from "../workspace-shell";
 type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = {
   telegramConfigured: boolean; telegramChatId: string; payLink: string;
+  liqpayPublicKey: string; liqpayPrivateKeySet: boolean; liqpayConfigured: boolean;
   calendarConfigured: boolean; calendarToken?: string; externalIcsUrl: string;
   remindersEnabled: boolean; reminderLeadHours: string; smsGatewayUrl: string; smsGatewayAuthSet: boolean;
   emailGatewayUrl: string; emailGatewayAuthSet: boolean; emailGatewayFrom: string;
+  bookingNotifyEmail: string;
 };
 
 export default function StaffSettingsPage() {
@@ -17,15 +19,18 @@ export default function StaffSettingsPage() {
   const [forbidden, setForbidden] = useState(false);
   const [chatId, setChatId] = useState("");
   const [payLink, setPayLink] = useState("");
+  const [liqpayPublicKey, setLiqpayPublicKey] = useState("");
+  const [liqpayPrivateKey, setLiqpayPrivateKey] = useState("");
   const [token, setToken] = useState("");
   const [externalIcsUrl, setExternalIcsUrl] = useState("");
   const [remindersEnabled, setRemindersEnabled] = useState(false);
-  const [reminderLeadHours, setReminderLeadHours] = useState("3, 1");
+  const [reminderLeadHours, setReminderLeadHours] = useState("24, 3, 1");
   const [smsGatewayUrl, setSmsGatewayUrl] = useState("");
   const [smsGatewayAuth, setSmsGatewayAuth] = useState("");
   const [emailGatewayUrl, setEmailGatewayUrl] = useState("");
   const [emailGatewayAuth, setEmailGatewayAuth] = useState("");
   const [emailGatewayFrom, setEmailGatewayFrom] = useState("");
+  const [bookingNotifyEmail, setBookingNotifyEmail] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [testing, setTesting] = useState(false);
   const [smsTestTo, setSmsTestTo] = useState("");
@@ -45,12 +50,13 @@ export default function StaffSettingsPage() {
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
       if (!active) return;
       if (data.settings) {
-        setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setExternalIcsUrl(data.settings.externalIcsUrl || "");
+        setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); setExternalIcsUrl(data.settings.externalIcsUrl || "");
         setRemindersEnabled(Boolean(data.settings.remindersEnabled));
-        setReminderLeadHours(data.settings.reminderLeadHours || "3, 1");
+        setReminderLeadHours(data.settings.reminderLeadHours || "24, 3, 1");
         setSmsGatewayUrl(data.settings.smsGatewayUrl || "");
         setEmailGatewayUrl(data.settings.emailGatewayUrl || "");
         setEmailGatewayFrom(data.settings.emailGatewayFrom || "");
+        setBookingNotifyEmail(data.settings.bookingNotifyEmail || "");
       }
       if (data.staff) setStaff(data.staff);
     })();
@@ -64,14 +70,17 @@ export default function StaffSettingsPage() {
       const res = await fetch("/api/staff/settings", {
         method: "PUT", headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          telegramBotToken: token, telegramChatId: chatId, payLink, externalIcsUrl,
+          telegramBotToken: token, telegramChatId: chatId, payLink,
+          liqpayPublicKey, liqpayPrivateKey, externalIcsUrl,
           remindersEnabled, reminderLeadHours, smsGatewayUrl, smsGatewayAuth, emailGatewayUrl, emailGatewayAuth, emailGatewayFrom,
+          bookingNotifyEmail,
         }),
       });
       const data = await res.json().catch(() => ({})) as { ok?: boolean; error?: string; settings?: Settings };
       if (!res.ok || !data.ok) throw new Error(data.error || "Не вдалося зберегти");
-      if (data.settings) setSettings(data.settings);
+      if (data.settings) { setSettings(data.settings); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); }
       setToken("");
+      setLiqpayPrivateKey("");
       setSmsGatewayAuth("");
       setEmailGatewayAuth("");
       setNotice("Налаштування збережено");
@@ -172,6 +181,17 @@ export default function StaffSettingsPage() {
         <label><span>Посилання на оплату</span>
           <input value={payLink} onChange={(e) => setPayLink(e.target.value)} placeholder="https://…" autoComplete="off" inputMode="url" />
         </label>
+        <h3 style={{ margin: "18px 0 4px" }}>LiqPay — автоматична сума</h3>
+        <p>Ключі мерчанта LiqPay (кабінет ПриватБанку). Коли їх заповнено, після заявки пацієнт переходить на оплату вже з підставленою сумою й номером заявки, а статус «Оплачено» проставляється автоматично. Без ключів працює звичайне посилання/QR вище.</p>
+        <span className={`settingsState ${settings?.liqpayConfigured ? "on" : "off"}`}>
+          {settings?.liqpayConfigured ? "✓ LiqPay підключено" : "LiqPay не підключено"}
+        </span>
+        <label><span>Public key</span>
+          <input value={liqpayPublicKey} onChange={(e) => setLiqpayPublicKey(e.target.value)} placeholder="i00000000000 або sandbox_i…" autoComplete="off" />
+        </label>
+        <label><span>Private key</span>
+          <input value={liqpayPrivateKey} onChange={(e) => setLiqpayPrivateKey(e.target.value)} type="password" placeholder={settings?.liqpayPrivateKeySet ? "Збережено — введіть, щоб змінити" : "приватний ключ LiqPay"} autoComplete="off" />
+        </label>
       </section>
 
       <section className="settingsBlock">
@@ -217,8 +237,8 @@ export default function StaffSettingsPage() {
           <span>Надсилати пацієнтам автонагадування про підтвердження та перенесення запису</span>
         </label>
         <label><span>Нагадування за (годин до візиту)</span>
-          <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="3, 1" inputMode="numeric" />
-          <small>Через кому — за скільки годин до візиту слати нагадування (напр. «3, 1»). Працює, коли підключено WhatsApp і увімкнено нагадування вище. Розсилає планувальник кожні ~15 хв.</small>
+          <input value={reminderLeadHours} onChange={(e) => setReminderLeadHours(e.target.value)} placeholder="24, 3, 1" inputMode="numeric" />
+          <small>Через кому — за скільки годин до візиту слати нагадування (напр. «24, 3, 1»; 24 = «напередодні»). Планувальник щоразу пробує канали по черзі Telegram → e-mail → WhatsApp → SMS і зупиняється на першому доступному. Розсилає кожні ~15 хв.</small>
         </label>
         <label><span>Адреса SMS-шлюзу (HTTP POST)</span>
           <input value={smsGatewayUrl} onChange={(e) => setSmsGatewayUrl(e.target.value)} placeholder="https://sms-провайдер/api/send" autoComplete="off" inputMode="url" />
@@ -247,6 +267,10 @@ export default function StaffSettingsPage() {
         <label><span>Адреса відправника e-mail</span>
           <input value={emailGatewayFrom} onChange={(e) => setEmailGatewayFrom(e.target.value)} placeholder="noreply@likarnya.example" autoComplete="off" inputMode="email" />
         </label>
+        <label><span>E-mail для нових заявок</span>
+          <input value={bookingNotifyEmail} onChange={(e) => setBookingNotifyEmail(e.target.value)} placeholder="reyestratura@likarnya.example" autoComplete="off" inputMode="email" />
+        </label>
+        <p className="settingsHint">Кожна нова онлайн-заявка одразу надсилається на цю адресу. Якщо поле порожнє — лист іде на пошту адміністратора(ів). Потрібен налаштований e-mail-шлюз вище.</p>
         <label><span>Перевірка e-mail-шлюзу</span>
           <input value={emailTestTo} onChange={(e) => setEmailTestTo(e.target.value)} placeholder="admin@likarnya.example" autoComplete="off" inputMode="email" />
           <small>Введіть адресу й натисніть «Тест», щоб надіслати пробний лист через збережений шлюз.</small>

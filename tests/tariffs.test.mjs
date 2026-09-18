@@ -59,9 +59,30 @@ test("public catalog and tariff map use the canonical effective service source",
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /id="homeTariffs"/);
   assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
-  assert.match(index, /id="patientCategory"/);
+  // Публічна форма стала месенджер-хендофом: вибір категорії пацієнта прибрано
+  // (її визначає сторінка/персонал), тож селектора patientCategory тут немає.
+  assert.doesNotMatch(index, /id="patientCategory"/);
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientCategory'\)/);
+  assert.doesNotMatch(bridge, /getElementById\('patientCategory'\)/);
+});
+
+test("the Тарифи page can enable/disable a position, written into the service config", async () => {
+  const lib = await read("lib/tariffs.ts");
+  // tariffList now carries the active state resolved from the service config.
+  assert.match(lib, /active: cfg\.active/);
+  assert.match(lib, /parseServiceConfig\(tenantConfig \|\| legacyConfig\)/);
+
+  const route = await read("app/api/staff/tariffs/route.ts");
+  // PUT accepts an `active` map and applies it on top of the current config.
+  assert.match(route, /active\?: Record<string, unknown>/);
+  assert.match(route, /row\.code in active \? \{ \.\.\.row, active: Boolean/);
+  assert.match(route, /setSetting\(db, serviceConfigKey\(ctx\.organizationId\), JSON\.stringify\(sanitizeServiceConfig\(next\)\)\)/);
+  assert.match(route, /validateServiceConfig\(next\)/);
+
+  const page = await read("app/staff/tariffs/page.tsx");
+  assert.match(page, /activeEdits/);
+  assert.match(page, /active: activeEdits/);
+  assert.match(page, /isActive \? "Вимкнути" : "Увімкнути"/);
 });
 
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {

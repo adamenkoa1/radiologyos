@@ -3,12 +3,13 @@
 import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { EQUIP_KEYS, EQUIP_LABELS, SCHEDULE_DEFAULTS, candidateTimesFor, isEquipmentDayOpen, type ScheduleConfig } from "../../../lib/schedule";
-import { SERVICES } from "../../../lib/catalog";
+import { SERVICES, addMinutes } from "../../../lib/catalog";
 import { configuredService, SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
 import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type PersonOption = { email: string; displayName: string; role: string; positionTitle?: string; militaryRank?: string };
+type EquipBlock = { id: number; equipmentId: string; blockedDate: string; startTime: string; endTime: string; reason: string };
 const WEEKDAYS: [number, string][] = [[1, "Пн"], [2, "Вт"], [3, "Ср"], [4, "Чт"], [5, "Пт"], [6, "Сб"]];
 const CALENDAR_DAYS = ["Пн", "Вт", "Ср", "Чт", "Пт", "Сб", "Нд"];
 const EQUIP_ICONS: Record<string, string> = { xray: "XR", fluoro: "FL", ct: "CT" };
@@ -36,23 +37,29 @@ export default function StaffSchedulePage() {
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [blocks, setBlocks] = useState<EquipBlock[]>([]);
+  const [blockForm, setBlockForm] = useState({ startTime: "", endTime: "", reason: "" });
+  const [blockBusy, setBlockBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
     const t = window.setTimeout(async () => {
       try {
-        const [res, servicesRes] = await Promise.all([
+        const [res, servicesRes, blocksRes] = await Promise.all([
           fetch("/api/staff/schedule", { cache: "no-store" }),
           fetch("/api/staff/services", { cache: "no-store" }),
+          fetch("/api/staff/equipment", { cache: "no-store" }),
         ]);
         if (res.status === 401 || res.status === 403) { if (active) { setForbidden(true); setLoaded(true); } return; }
         const data = await res.json().catch(() => ({})) as { schedule?: ScheduleConfig; staff?: StaffInfo; people?: PersonOption[] };
         const servicesData = await servicesRes.json().catch(() => ({})) as { services?: ServiceConfigRecord[] };
+        const blocksData = await blocksRes.json().catch(() => ({})) as { blocks?: EquipBlock[] };
         if (!active) return;
         if (data.schedule) setCfg({ ...JSON.parse(JSON.stringify(SCHEDULE_DEFAULTS)), ...data.schedule });
         if (data.staff) setStaff(data.staff);
         if (Array.isArray(data.people)) setPeople(data.people);
         if (Array.isArray(servicesData.services)) setServiceConfig(servicesData.services);
+        if (Array.isArray(blocksData.blocks)) setBlocks(blocksData.blocks);
       } catch {
         if (active) setError("Не вдалося завантажити графік — перевірте зʼєднання");
       } finally {
@@ -113,6 +120,40 @@ export default function StaffSchedulePage() {
       return { ...prev, equipment: { ...prev.equipment, [activeEquipment]: { ...room, daysOff } } };
     });
     setNewDay("");
+  }
+
+  async function reloadBlocks() {
+    try {
+      const r = await fetch("/api/staff/equipment", { cache: "no-store" });
+      const d = await r.json().catch(() => ({})) as { blocks?: EquipBlock[] };
+      if (Array.isArray(d.blocks)) setBlocks(d.blocks);
+    } catch { /* ignore */ }
+  }
+  async function addBlock() {
+    if (blockBusy || !blockForm.startTime || !blockForm.endTime) return;
+    setBlockBusy(true); setError(""); setNotice("");
+    try {
+      const res = await fetch("/api/staff/equipment", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ equipmentId: activeEquipment, blockedDate: selectedDate, startTime: blockForm.startTime, endTime: blockForm.endTime, reason: blockForm.reason }),
+      });
+      const d = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || "Не вдалося заблокувати час");
+      setBlockForm({ startTime: "", endTime: "", reason: "" });
+      await reloadBlocks();
+      setNotice("Час заблоковано");
+    } catch (e) { setError(e instanceof Error ? e.message : "Не вдалося заблокувати час"); }
+    finally { setBlockBusy(false); }
+  }
+  async function removeBlock(id: number) {
+    setBlockBusy(true); setError("");
+    try {
+      const res = await fetch(`/api/staff/equipment?id=${id}`, { method: "DELETE" });
+      const d = await res.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!res.ok || !d.ok) throw new Error(d.error || "Не вдалося зняти блок");
+      await reloadBlocks();
+    } catch (e) { setError(e instanceof Error ? e.message : "Не вдалося зняти блок"); }
+    finally { setBlockBusy(false); }
   }
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -203,8 +244,30 @@ export default function StaffSchedulePage() {
             </div>
             <div className="selectedDaySchedule">
               <div className="selectedDayHead"><div><b>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long" })}</b><span>{EQUIP_LABELS[activeEquipment]} · крок {cfg.equipment[activeEquipment].slotMinutes} хв</span></div><button type="button" className={isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "dayOpen" : "dayClosed"} onClick={() => toggleCalendarDate(selectedDate)}><i />{isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "Робочий день" : "Неробочий день"}</button></div>
-              {isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? <div className="daySlotTimeline">{candidateTimesFor(cfg.equipment[activeEquipment], cfg.equipment[activeEquipment].slotMinutes).map(time => <span key={time} className="daySlot">{time}</span>)}</div> : <p className="closedDayMessage">Запис на цю дату закритий. Увімкніть робочий день перемикачем вище.</p>}
+              {isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? <div className="daySlotTimeline">{candidateTimesFor(cfg.equipment[activeEquipment], cfg.equipment[activeEquipment].slotMinutes).map(time => {
+                const slotEnd = addMinutes(time, cfg.equipment[activeEquipment].slotMinutes);
+                const isBlocked = blocks.some(b => b.equipmentId === activeEquipment && b.blockedDate === selectedDate && time < b.endTime && slotEnd > b.startTime);
+                return <span key={time} className="daySlot" title={isBlocked ? "Заблоковано" : undefined} style={isBlocked ? { opacity: 0.4, textDecoration: "line-through" } : undefined}>{time}</span>;
+              })}</div> : <p className="closedDayMessage">Запис на цю дату закритий. Увімкніть робочий день перемикачем вище.</p>}
               {isEquipmentDayOpen(selectedDate, cfg, activeEquipment) && cfg.equipment[activeEquipment].breakStart && cfg.equipment[activeEquipment].breakEnd && <p className="lunchNote">Обідня перерва: <b>{cfg.equipment[activeEquipment].breakStart}–{cfg.equipment[activeEquipment].breakEnd}</b> — слоти в цей час не створюються.</p>}
+              {staff?.role === "admin" && isEquipmentDayOpen(selectedDate, cfg, activeEquipment) && (() => {
+                const dayBlocks = blocks.filter(b => b.equipmentId === activeEquipment && b.blockedDate === selectedDate);
+                return <div className="slotBlockPanel" style={{ marginTop: 12, borderTop: "1px solid #e2eae8", paddingTop: 12 }}>
+                  <b style={{ fontSize: 14 }}>Заблокувати окремий час</b>
+                  <p className="settingsHint" style={{ margin: "4px 0 8px" }}>Напр. планове ТО апарата — ці слоти зникнуть з онлайн-запису, не закриваючи весь день.</p>
+                  {dayBlocks.length > 0 && <ul style={{ listStyle: "none", padding: 0, margin: "0 0 8px" }}>{dayBlocks.map(b =>
+                    <li key={b.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "4px 0" }}>
+                      <b>{b.startTime}–{b.endTime}</b>{b.reason ? <span style={{ color: "#677873" }}>{b.reason}</span> : null}
+                      <button type="button" disabled={blockBusy} onClick={() => removeBlock(b.id)} style={{ marginLeft: "auto" }}>Зняти</button>
+                    </li>)}</ul>}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 8, alignItems: "end" }}>
+                    <label style={{ display: "grid", gap: 3 }}><span>З</span><input type="time" value={blockForm.startTime} onChange={e => setBlockForm(f => ({ ...f, startTime: e.target.value }))} /></label>
+                    <label style={{ display: "grid", gap: 3 }}><span>До</span><input type="time" value={blockForm.endTime} onChange={e => setBlockForm(f => ({ ...f, endTime: e.target.value }))} /></label>
+                    <label style={{ display: "grid", gap: 3, flex: 1, minWidth: 160 }}><span>Причина (необов’язково)</span><input type="text" maxLength={240} placeholder="напр. ТО апарата" value={blockForm.reason} onChange={e => setBlockForm(f => ({ ...f, reason: e.target.value }))} /></label>
+                    <button type="button" className="button" disabled={blockBusy || !blockForm.startTime || !blockForm.endTime} onClick={addBlock}>Заблокувати час</button>
+                  </div>
+                </div>;
+              })()}
             </div>
             <button type="button" className="monthReset" onClick={resetMonthOverrides}>Скинути ручні зміни цього місяця</button>
           </section>

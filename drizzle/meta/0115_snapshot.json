@@ -1,8 +1,8 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "5d1d3bc4-8e34-4505-a1c5-b4239ea00368",
-  "prevId": "d8a3f6cc-51bf-4e6d-9d4e-8e7cc08d5f10",
+  "id": "2f356ea6-4a54-418b-8107-e763c542cd6f",
+  "prevId": "5d1d3bc4-8e34-4505-a1c5-b4239ea00368",
   "tables": {
     "analytics_events": {
       "name": "analytics_events",
@@ -698,6 +698,14 @@
         },
         "comment": {
           "name": "comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
+        },
+        "clinical_indication": {
+          "name": "clinical_indication",
           "type": "text",
           "primaryKey": false,
           "notNull": true,
@@ -5216,6 +5224,22 @@
           "notNull": true,
           "autoincrement": false,
           "default": 0
+        },
+        "contrast_alert": {
+          "name": "contrast_alert",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": 0
+        },
+        "allergy_note": {
+          "name": "allergy_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false,
+          "default": "''"
         },
         "telegram_chat_id": {
           "name": "telegram_chat_id",

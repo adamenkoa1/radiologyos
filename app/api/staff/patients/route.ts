@@ -18,11 +18,13 @@ const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, pa
   marketing_source AS marketingSource, protocol_status AS protocolStatus,
   protocol_number AS protocolNumber, payment_status AS paymentStatus,
   payment_amount AS paymentAmount, paid_amount AS paidAmount,
+  clinical_indication AS clinicalIndication,
   performed_at AS performedAt, created_at AS createdAt`;
 
 const PROFILE_COLUMNS = `patient_id AS patientId, phone_normalized AS phoneNormalized, display_name AS displayName,
   birth_year AS birthYear, birth_date AS birthDate, email, address,
   tags, notes, do_not_contact AS doNotContact,
+  contrast_alert AS contrastAlert, allergy_note AS allergyNote,
   updated_by AS updatedBy, updated_at AS updatedAt`;
 
 const COMMUNICATION_COLUMNS = `id, patient_id AS patientId, phone_normalized AS phoneNormalized,
@@ -200,11 +202,13 @@ export async function PUT(request: Request) {
       `UPDATE patient_profiles SET
          phone_normalized = ?, display_name = ?, birth_year = ?, birth_date = ?,
          email = ?, address = ?, tags = ?, notes = ?, do_not_contact = ?,
+         contrast_alert = ?, allergy_note = ?,
          updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE organization_id = ? AND patient_id = ?`
     ).bind(
       profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate,
       profile.email, profile.address, profile.tags, profile.notes, profile.doNotContact,
+      profile.contrastAlert, profile.allergyNote,
       member.email, ctx.organizationId, patientId,
     ).run();
     if (!updated.meta.changes) return Response.json({ error: "Пацієнта не знайдено" }, { status: 404 });
@@ -228,12 +232,12 @@ export async function PUT(request: Request) {
   const newPatientId = crypto.randomUUID().replace(/-/g, "").toLowerCase();
   await db.prepare(
     `INSERT INTO patient_profiles
-       (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+       (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, contrast_alert, allergy_note, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
   ).bind(
     newPatientId, ctx.organizationId, profile.phoneNormalized, profile.displayName,
     profile.birthYear, profile.birthDate, profile.email, profile.address,
-    profile.tags, profile.notes, profile.doNotContact, member.email,
+    profile.tags, profile.notes, profile.doNotContact, profile.contrastAlert, profile.allergyNote, member.email,
   ).run();
 
   const saved = await db.prepare(

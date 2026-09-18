@@ -127,7 +127,7 @@ export default function PersonnelVlkPage(){
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="ВЛК персоналу"
     description="Окрема захищена історія рішень ВЛК. Попередні записи не редагуються і не видаляються; виправлення додається новим записом."
   >

@@ -161,7 +161,7 @@ export default function ReportsPage() {
       <section className="reportBuilder">
         <div className="reportBuilderHead">
           <div><p className="eyebrow">Конструктор</p><h2>Оберіть потрібний реєстр</h2></div>
-          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання.</p>
+          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання. Окремо: <a href="/staff/reports/utilization">Завантаженість обладнання →</a></p>
         </div>
         <div className="reportTemplateTabs">
           {(Object.values(REPORT_TEMPLATES)).map((item)=><button

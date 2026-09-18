@@ -96,6 +96,8 @@
 /* CRM */
 .crmSegmentTabs{display:grid;grid-template-columns:1fr 1fr;gap:6px}.crmSegmentTabs button{display:flex;align-items:center;justify-content:space-between;gap:6px;min-height:36px;padding:0 10px;border:1px solid #d8ddd9;border-radius:6px;background:#fff;color:#39534f;font-size:11px;font-weight:800;cursor:pointer}.crmSegmentTabs button:hover{border-color:#89aca3}.crmSegmentTabs button.active{background:#0d5b50;border-color:#0d5b50;color:#fff}.crmSegmentTabs b{font-family:var(--font-serif);font-size:13px}
 .crmItemTop{display:flex;align-items:center;gap:8px}.crmDnc{display:inline-block;padding:3px 8px;border-radius:20px;background:#fdeaea;color:#a5352a;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.crmDnc.large{padding:6px 12px;font-size:10px}
+.crmAlert{display:inline-block;padding:3px 8px;border-radius:20px;background:#fce8d6;color:#8a4b12;font-size:9px;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.crmAlert.large{padding:6px 12px;font-size:10px}
+.crmAlertBanner{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px;margin:0 0 14px;padding:11px 14px;border:1px solid #eab873;border-left:4px solid #d97706;border-radius:10px;background:#fdf3e6;color:#7a3d06}.crmAlertBanner b{font-size:13px}.crmAlertBanner span{font-size:13px;color:#8a4b12}
 .crmCardActions{display:flex;flex-direction:column;align-items:flex-end;gap:8px;flex:none}
 .crmBookBtn{display:inline-flex;align-items:center;gap:6px;padding:9px 14px;border-radius:8px;background:#0d5b50;color:#fff;font-size:12.5px;font-weight:800;text-decoration:none;white-space:nowrap}.crmBookBtn:hover{background:#0a4a41}
 .themeDark .crmBookBtn{background:#0c7a85}.themeDark .crmBookBtn:hover{background:#0a5f68}
@@ -409,6 +411,7 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeChip.contrast{background:#eae2fb;color:#5a37a3}
 .intakeChip.paid{background:#e2efe0;color:#2f5c2a}.intakeChip.pay{background:#fdece0;color:#a5670f}
 .intakeChip.src{background:#f2f6f4;color:#5b6a66}
+.intakeChip.contact{background:#e0f1f2;color:#0c6670}
 .intakeFacts{display:grid;grid-template-columns:1fr 1fr;gap:1px;margin:0;background:#eef2f0;border:1px solid #eef2f0;border-radius:12px;overflow:hidden}
 .intakeFacts>div{background:#fff;padding:10px 13px}
 .intakeFacts dt{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.04em;color:#8a9995;margin:0 0 3px}
@@ -746,7 +749,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .themeDark .apptDrawerClose{background:#1b2731;color:#cdd9df}
 .themeDark .apptDrawerBtn{background:#161d24;border-color:#2a3843;color:#cdd8de}
 .apptBadge{flex-shrink:0;padding:4px 11px;border-radius:99px;font-size:11px;font-weight:800;white-space:nowrap}
-.apptBadge.grp-planned{background:#fdf2df;color:#8a5a12}
+.apptBadge.grp-planned{background:#fdf2df;color:var(--status-warn-fg)}
 .apptBadge.grp-confirmed{background:#e0eef3;color:#1d5a72}
 .apptBadge.grp-arrived{background:#efe6fa;color:#5b3a99}
 .apptBadge.grp-inroom{background:#e2efe0;color:#2f5c2a}
@@ -767,6 +770,15 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptEvent.grp-inroom{background:#eef5ec;border-left-color:#3f8a37}
 .apptEvent.grp-done{background:#eef1ef;border-left-color:#7a8b88}
 .apptEvent.grp-cancelled{background:#fdefeb;border-left-color:#c85a38}
+.apptStatusLegend{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:8px 2px 2px;font-size:12px;color:#5c6c78}
+.apptStatusLegend span{display:inline-flex;align-items:center;gap:6px;white-space:nowrap}
+.apptStatusLegend i{width:13px;height:13px;border-radius:3px;flex:none;background:#b7c9c5}
+.apptStatusLegend i.grp-planned{background:#e0a638}
+.apptStatusLegend i.grp-confirmed{background:#2f7d99}
+.apptStatusLegend i.grp-arrived{background:#7a53c0}
+.apptStatusLegend i.grp-inroom{background:#3f8a37}
+.apptStatusLegend i.grp-done{background:#7a8b88}
+.apptStatusLegend i.grp-cancelled{background:#c85a38}
 /* Календар: навігація і тижневий вигляд (як Google Calendar) */
 .apptNav{display:inline-flex;align-items:center;gap:6px}
 .apptNav button{border:1px solid #cbd8d6;background:#fff;border-radius:7px;min-width:34px;height:38px;font-size:18px;line-height:1;cursor:pointer;color:#41544f;padding:0 10px}
@@ -800,7 +812,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .chatList{background:#fff;border:1px solid #dce4e3;border-radius:10px;overflow-y:auto;padding:6px}
 .chatList .empty{padding:20px;color:#7a8b88;font-size:13px;text-align:center}
 .chatListItem{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:11px 12px;cursor:pointer;position:relative}
-.chatListItem:hover{background:#f2f6f4}.chatListItem.active{background:#e6f0ec}
+.chatListItem:hover{background:#f2f6f4}.chatListItem.active{background:var(--status-ok-bg)}
 .chatListItem b{display:block;font-size:13.5px;color:var(--ink);margin-bottom:2px}
 .chatListItem small{display:block;font-size:12px;color:#66756f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:230px}
 .chatListTime{position:absolute;top:11px;right:12px;font-size:10.5px;color:#98a6a2}
@@ -851,3 +863,109 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 
 /* Код заявки як компактний моноширинний чип (RD-РРММДД-N) у списках/картках. */
 .codeTag{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-weight:700;letter-spacing:.02em;white-space:nowrap}
+
+/* Аудит неузгодженостей карток пацієнтів (/staff/patients/issues). */
+.consistencySummary{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px}
+.consistencySummary>a{margin-left:auto}
+.consistencyBadge{font-size:11px;font-weight:800;padding:5px 10px;border-radius:999px;background:#edf4f1;color:#164945;white-space:nowrap}
+.consistencyBadge b{font-family:var(--font-serif);font-weight:800}
+.consistencyBadge.sev-high{background:var(--status-alert-bg);color:var(--status-alert-fg)}
+.consistencyBadge.sev-medium{background:var(--status-warn-bg);color:var(--status-warn-fg)}
+.consistencyBadge.sev-low{background:var(--status-ok-bg);color:var(--status-ok-fg)}
+.consistencyList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.consistencyItem{border:1px solid #dce4e3;border-left:4px solid var(--ws-line);border-radius:7px;padding:15px 17px;background:white}
+.consistencyItem.sev-high{border-left-color:var(--status-alert-line)}
+.consistencyItem.sev-medium{border-left-color:var(--status-warn-line)}
+.consistencyItem.sev-low{border-left-color:var(--status-ok-line)}
+.consistencyItemHead{display:flex;gap:9px;align-items:center;margin-bottom:8px}
+.consistencyKind{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#71807c;font-weight:900}
+.consistencyItem>b{display:block;font-size:15px;letter-spacing:-.01em}
+.consistencyDetail{margin:6px 0 4px;font-size:13px;color:#3a4744}
+.consistencySuggestion{margin:0 0 10px;font-size:12px;color:#6b7976}
+
+/* Злиття карток-дублікатів на екрані неузгодженостей. */
+.mergeBox{margin-top:6px;padding:12px 14px;background:#f6f4ee;border:1px dashed #d4cdbf;border-radius:7px}
+.mergeHint{margin:0 0 8px;font-size:12px;color:#5c6a66}
+.mergeMembers{list-style:none;margin:0 0 10px;padding:0;display:grid;gap:6px}
+.mergeMembers li{display:flex;gap:10px;align-items:center;justify-content:space-between;font-size:13px}
+.mergeMembers label{display:flex;gap:8px;align-items:center;cursor:pointer}
+.mergeMembers small{color:#71807c}
+.mergeError{margin:0 0 8px;font-size:12px;color:var(--status-alert-fg)}
+
+/* Підказка під полем «Джерело методики» в редакторі протоколу. */
+.protocolFieldHint{display:block;margin-top:5px;font-size:11px;color:#71807c}
+
+/* Звіт завантаженості обладнання (/staff/reports/utilization). */
+.utilFilters{display:flex;gap:12px;align-items:end;flex-wrap:wrap;margin-bottom:16px}
+.utilFilters label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#5c6a66}
+.utilFilters input{padding:8px 10px;border:1px solid #cdd6d3;border-radius:6px}
+.utilFilters a{margin-left:auto}
+.utilTable{width:100%;border-collapse:collapse;font-size:13px}
+.utilTable th,.utilTable td{padding:9px 12px;border-bottom:1px solid #eceae3;text-align:left}
+.utilTable thead th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:#71807c;font-weight:900}
+.utilTable td.num,.utilTable th.num{text-align:right;font-variant-numeric:tabular-nums}
+.utilTable tfoot th{font-weight:800;border-top:2px solid #dfe4e2}
+.utilTable small{color:#8a9793}
+.utilCell{display:flex;align-items:center;gap:10px;min-width:140px}
+.utilCell .reportBarTrack{flex:1}
+.utilCell b{font-variant-numeric:tabular-nums;font-size:12px}
+.utilHint{margin-top:14px;font-size:11px;color:#71807c;line-height:1.5}
+
+/* Пульт завідувача — червоні зони (/staff/management). */
+.kpiHeader{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.kpiHeader>a{margin-left:auto}
+.kpiAttention{font-size:13px;font-weight:800;padding:6px 12px;border-radius:999px}
+.kpiAttention.clear{background:var(--status-ok-bg);color:var(--status-ok-fg)}
+.kpiAttention.has{background:var(--status-alert-bg);color:var(--status-alert-fg)}
+.kpiGrid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.kpiCard{border:1px solid #dce4e3;border-left:4px solid var(--ws-line);border-radius:8px;padding:14px 16px;background:white;display:flex;flex-direction:column;gap:4px}
+.kpiCard.st-alert{border-left-color:var(--status-alert-line);background:var(--status-alert-bg)}
+.kpiCard.st-warn{border-left-color:var(--status-warn-line);background:var(--status-warn-bg)}
+.kpiCard.st-ok{border-left-color:var(--status-ok-line)}
+.kpiStatus{font-size:10px;text-transform:uppercase;letter-spacing:.08em;font-weight:900;color:#71807c}
+.kpiCard.st-alert .kpiStatus{color:var(--status-alert-fg)}
+.kpiCard.st-warn .kpiStatus{color:var(--status-warn-fg)}
+.kpiCard.st-ok .kpiStatus{color:var(--status-ok-fg)}
+.kpiValue{font-family:var(--font-serif);font-size:28px;line-height:1}
+.kpiLabel{font-size:14px;font-weight:700;letter-spacing:-.01em}
+.kpiHint{margin:4px 0 0;font-size:11px;color:#71807c;line-height:1.4}
+
+/* Критичні знахідки (/staff/critical-findings). */
+.cfList{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+.cfItem{border:1px solid #dce4e3;border-left:4px solid var(--status-alert-line);border-radius:8px;padding:14px 16px;background:var(--status-alert-bg)}
+.cfItem.st-communicated{border-left-color:var(--status-warn-line);background:var(--status-warn-bg)}
+.cfHead{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap}
+.cfHead b{font-size:15px}
+.cfBadge{font-size:10px;text-transform:uppercase;letter-spacing:.06em;font-weight:900;padding:3px 8px;border-radius:999px;background:var(--status-alert-bg);color:var(--status-alert-fg)}
+.cfBadge.st-communicated{background:var(--status-warn-bg);color:var(--status-warn-fg)}
+.cfMeta{font-size:12px;color:#6b7976;margin:2px 0 0}
+.cfNote{margin:8px 0 4px;font-size:14px;color:#2a3633;white-space:pre-wrap}
+.cfActions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px}
+.cfActions input{padding:7px 10px;border:1px solid #cdd6d3;border-radius:6px;font-size:13px;min-width:220px}
+.button.compact.ghost{background:#eef2f0;color:#3a4744}
+
+/* Іконки статусів на бейджах/картках (монохром по currentColor) + м'який hover. */
+.kpiCard .kpiStatus::before,
+.cfBadge::before,
+.consistencyBadge.sev-high::before,
+.consistencyBadge.sev-medium::before,
+.consistencyBadge.sev-low::before{
+  content:"";display:inline-block;width:13px;height:13px;vertical-align:-2px;margin-right:5px;
+  background-color:currentColor;
+  -webkit-mask:var(--status-icon,var(--icon-ok)) center/contain no-repeat;
+  mask:var(--status-icon,var(--icon-ok)) center/contain no-repeat;
+}
+.kpiCard.st-alert{--status-icon:var(--icon-alert)}
+.kpiCard.st-warn{--status-icon:var(--icon-warn)}
+.kpiCard.st-ok{--status-icon:var(--icon-ok)}
+.cfBadge{--status-icon:var(--icon-alert)}
+.cfBadge.st-communicated{--status-icon:var(--icon-warn)}
+.consistencyBadge.sev-high{--status-icon:var(--icon-alert)}
+.consistencyBadge.sev-medium{--status-icon:var(--icon-warn)}
+.consistencyBadge.sev-low{--status-icon:var(--icon-ok)}
+.kpiCard,.cfItem,.consistencyItem{transition:box-shadow .14s ease, transform .14s ease}
+.kpiCard:hover,.cfItem:hover,.consistencyItem:hover{box-shadow:var(--ws-shadow-md);transform:translateY(-1px)}
+@media (prefers-reduced-motion: reduce){
+  .kpiCard,.cfItem,.consistencyItem{transition:none}
+  .kpiCard:hover,.cfItem:hover,.consistencyItem:hover{transform:none}
+}

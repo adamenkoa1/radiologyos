@@ -11,6 +11,7 @@ export const bookings = sqliteTable("bookings", {
 	desiredTime: text("desired_time").notNull(),
 	referral: text().notNull().default("Уточню у адміністратора"),
 	comment: text().notNull().default(""),
+	clinicalIndication: text("clinical_indication").notNull().default(""),
 	status: text().notNull().default("new"),
 	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
 	serviceCode: text("service_code").notNull().default("legacy"),
@@ -103,6 +104,8 @@ export const staffMembers = sqliteTable("staff_members", {
 	contactEmail: text("contact_email").notNull().default(""),
 	militaryRank: text("military_rank").notNull().default(""),
 	positionTitle: text("position_title").notNull().default(""),
+	totpSecret: text("totp_secret").notNull().default(""),
+	totpEnabled: integer("totp_enabled").notNull().default(0),
 },
 table => [
 	uniqueIndex("staff_members_phone_idx").on(table.phone).where(sql.raw("`phone` != ''")),
@@ -141,6 +144,7 @@ export const protocols = sqliteTable("protocols", {
 	bookingId: integer("booking_id").primaryKey().notNull(),
 	templateKey: text("template_key").notNull().default("generic"),
 	method: text().notNull().default(""),
+	methodRef: text("method_ref").notNull().default(""),
 	sectionsJson: text("sections_json").notNull().default("{}"),
 	findings: text().notNull().default(""),
 	conclusion: text().notNull().default(""),
@@ -715,6 +719,8 @@ export const patientProfiles = sqliteTable("patient_profiles", {
 	tags: text().notNull().default(""),
 	notes: text().notNull().default(""),
 	doNotContact: integer("do_not_contact").notNull().default(0),
+	contrastAlert: integer("contrast_alert").notNull().default(0),
+	allergyNote: text("allergy_note").notNull().default(""),
 	telegramChatId: text("telegram_chat_id").notNull().default(""),
 	updatedBy: text("updated_by").notNull(),
 	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
@@ -1631,4 +1637,28 @@ table => [
 	index("saved_report_views_org_report_idx").on(table.organizationId, table.reportKey, table.updatedAt, table.id),
 	check("saved_report_views_report_key_check", sql.raw("`report_key` = 'register_turnover'")),
 	check("saved_report_views_name_check", sql.raw("length(trim(`name`)) BETWEEN 1 AND 80")),
+]);
+
+// Критичні знахідки (за мотивами RIS «critical findings»): ургентна патологія,
+// що потребує термінового доведення лікарю/пацієнту, з фіксацією «донесено».
+// Окрема таблиця — не чіпає незмінний ЖЦ протоколу. Один активний запис на
+// заявку (upsert). Статуси: open → communicated → resolved.
+export const criticalFindings = sqliteTable("critical_findings", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull(),
+	bookingId: integer("booking_id").notNull().references(() => bookings.id),
+	status: text().notNull().default("open"),
+	note: text().notNull().default(""),
+	flaggedBy: text("flagged_by").notNull(),
+	flaggedAt: text("flagged_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	communicatedBy: text("communicated_by").notNull().default(""),
+	communicatedAt: text("communicated_at").notNull().default(""),
+	communicatedVia: text("communicated_via").notNull().default(""),
+	resolvedBy: text("resolved_by").notNull().default(""),
+	resolvedAt: text("resolved_at").notNull().default(""),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	uniqueIndex("critical_findings_booking_unique").on(table.organizationId, table.bookingId),
+	index("critical_findings_org_status_idx").on(table.organizationId, table.status, table.flaggedAt),
 ]);

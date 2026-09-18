@@ -96,7 +96,7 @@ export default function RadiationReviewQueuePage() {
   const policyCount = useMemo(() => records.filter((record) => record.policyReviewReasons.length > 0).length, [records]);
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Радіаційна безпека · черга review"
     description="Read-only робочий список персоналу, для якого зведення ДІВ уже має детерміновані причини ручної перевірки."
   >

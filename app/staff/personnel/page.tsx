@@ -263,6 +263,24 @@ export default function PersonnelPage() {
     finally { setSaving(false); }
   }
 
+  async function remove() {
+    if (!selected) return;
+    if (!window.confirm(`Видалити картку працівника «${selected.displayName}»? Дію не можна скасувати. Обліковий запис (логін/PIN) не видаляється — його вимикають окремо в «Персонал і ролі».`)) return;
+    setSaving(true); setError(""); setNotice("");
+    try {
+      const response = await fetch(`/api/staff/personnel?id=${encodeURIComponent(selected.id)}`, { method:"DELETE" });
+      const body = await response.json().catch(() => ({})) as { ok?:boolean; error?:string };
+      if (!response.ok || !body.ok) throw new Error(body.error || "Не вдалося видалити картку");
+      closeEditor();
+      await load();
+      setNotice("Картку працівника видалено.");
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Не вдалося видалити картку");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const editorRecord = selected;
   const showEditor = creating || Boolean(editorRecord);
   const hierarchyLabel = (departmentId:number | null, departmentName?:string | null) => {
@@ -271,12 +289,12 @@ export default function PersonnelPage() {
     return structure?.parentDepartmentName ? `${structure.parentDepartmentName} → ${structure.departmentName}` : (structure?.departmentName || departmentName || "Підрозділ не вказано");
   };
 
-  return <StaffWorkspaceShell active="directories" title="Персонал" description="Єдина кадрова картка працівника: особа, призначення, підрозділи, посадові обов’язки, графік роботи та кадрові допуски.">
+  return <StaffWorkspaceShell active="personnel" title="Персонал" description="Єдина кадрова картка працівника: особа, призначення, підрозділи, посадові обов’язки, графік роботи та кадрові допуски. Картка працівника відокремлена від облікового запису RadiologyOS.">
     <section className="financeSummary" aria-label="Стан кадрового довідника">
       <article><span>Працівники</span><b>{data?.records.filter((record) => record.active).length || 0}</b><small>активні картки</small></article>
       <article><span>Структура</span><b>{data?.departments.length || 0}</b><small>відділення й підрозділи</small></article>
       <article><span>З акаунтом</span><b>{data?.records.filter((record) => record.accountEmail).length || 0}</b><small>мають вхід у RadiologyOS</small></article>
-      <article><span>Чергування</span><b>Calendar6</b><small><Link href="/staff/shifts">окремий графік змін</Link></small></article>
+      <article><span>Графіки</span><b>Calendar6</b><small><Link href="/staff/shifts">графік змін</Link> · <Link href="/staff/work-calendar">норм-календар</Link></small></article>
     </section>
 
     {notice && <p className="notice success" role="status">{notice}</p>}
@@ -324,7 +342,7 @@ export default function PersonnelPage() {
           <label>Адреса<input name="addressLine" defaultValue={editorRecord?.addressLine || ""} placeholder="Вулиця, будинок, квартира" /></label>
           <label>Поштовий індекс<input name="postalCode" inputMode="numeric" defaultValue={editorRecord?.postalCode || ""} /></label>
           <label><span>Статус</span><span><input name="active" type="checkbox" defaultChecked={editorRecord ? Boolean(editorRecord.active) : true} /> Активний працівник</span></label>
-          <div><button className="button primary" type="submit" disabled={saving}>{saving ? "Зберігаємо…" : "Зберегти картку"}</button></div>
+          <div className="shiftPlannerActions"><button className="button primary" type="submit" disabled={saving}>{saving ? "Зберігаємо…" : "Зберегти картку"}</button>{selected && <button className="button danger" type="button" disabled={saving} onClick={remove}>Видалити картку</button>}</div>
         </form>
       </section>
 

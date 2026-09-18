@@ -153,6 +153,9 @@ async function runTenantReminders(db: D1Database, now: number): Promise<void> {
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__ = env.DB;
+    // Expose the execution context so routes can defer best-effort side-effects
+    // (notifications) past the response via waitUntil — see lib/after-response.
+    (globalThis as typeof globalThis & { __RADIOLOGY_CTX__?: ExecutionContext }).__RADIOLOGY_CTX__ = ctx;
     (globalThis as typeof globalThis & { __RADIOLOGY_BROWSER_RUN__?: BrowserRunBinding }).__RADIOLOGY_BROWSER_RUN__ = env.BROWSER;
     (globalThis as typeof globalThis & { __RADIOLOGY_PRINTED_FORMS__?: PrintedFormsBucket }).__RADIOLOGY_PRINTED_FORMS__ = env.PRINTED_FORMS;
     (globalThis as typeof globalThis & {

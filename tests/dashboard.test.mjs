@@ -121,3 +121,25 @@ test("dashboard reports undelivered notifications (persistent, tenant-scoped)", 
   assert.match(page, /data\.lists\.undelivered/);
   assert.match(page, /className="dashUndItem"/);
 });
+
+test("dashboard survives a failed initial load and offers a retry", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // load() загорнуто в try/catch і має фоновий режим.
+  assert.match(page, /async function load\(\{ background = false \} = \{\}\)/);
+  assert.match(page, /catch \{[\s\S]*?setNetError\(/);
+  // Мережевий збій показує окремий екран із кнопкою «Повторити», а не хибний
+  // заклик увійти.
+  assert.match(page, /netError && !staff \?/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /onClick=\{\(\)=>\{ setNetError\(""\); void load\(\); \}\}/);
+});
+
+test("dashboard auto-refreshes the live board without clobbering edits", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Тихе оновлення кожні 45 с у фоновому режимі.
+  assert.match(page, /void load\(\{ background: true \}\)/);
+  assert.match(page, /\}, 45000\)/);
+  // Пропускаємо приховану вкладку й активну мутацію (busyRef).
+  assert.match(page, /document\.hidden \|\| busyRef\.current/);
+  assert.match(page, /busyRef\.current = busyId !== null \|\| batchBusy/);
+});

@@ -5,6 +5,7 @@
 
 import { SERVICES, serviceByCode } from "./catalog";
 import { getSetting } from "./settings";
+import { configuredService, parseServiceConfig, SERVICE_CONFIG_KEY, serviceConfigKey } from "./service-config";
 
 export interface TariffRow {
   code: string;
@@ -13,6 +14,7 @@ export interface TariffRow {
   defaultPrice: number;
   price: number;
   custom: boolean;
+  active: boolean;
 }
 
 export const TARIFF_OVERRIDES_KEY = "service_price_overrides_v1";
@@ -77,13 +79,22 @@ export async function tariffList(
   db: D1Database,
   organizationId = 1,
 ): Promise<TariffRow[]> {
-  const overrides = await priceOverrides(db, organizationId);
-  return SERVICES.map((service) => ({
-    code: service.code,
-    title: service.title,
-    group: service.group,
-    defaultPrice: service.price,
-    price: overrides[service.code] ?? service.price,
-    custom: overrides[service.code] != null,
-  }));
+  const [overrides, tenantConfig, legacyConfig] = await Promise.all([
+    priceOverrides(db, organizationId),
+    getSetting(db, serviceConfigKey(organizationId)),
+    organizationId === 1 ? getSetting(db, SERVICE_CONFIG_KEY) : Promise.resolve(""),
+  ]);
+  const config = parseServiceConfig(tenantConfig || legacyConfig);
+  return SERVICES.map((service) => {
+    const cfg = configuredService(service, config);
+    return {
+      code: service.code,
+      title: cfg.title,
+      group: service.group,
+      defaultPrice: service.price,
+      price: overrides[service.code] ?? service.price,
+      custom: overrides[service.code] != null,
+      active: cfg.active,
+    };
+  });
 }

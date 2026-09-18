@@ -159,6 +159,8 @@ export default function ServiceAssignmentsPage() {
                 if (!service) return null;
                 return <div className="serviceAssignmentRow" key={row.code}>
                   <div><b>{row.code} · {service.title}</b><small>{service.group}</small></div>
+                  <label style={{ gridColumn: "1 / -1" }}><span>Назва (публічна)</span><input type="text" maxLength={120} value={row.title || ""} placeholder={service.title} onChange={(event) => change(row.code, "title", event.target.value)} /></label>
+                  <label style={{ gridColumn: "1 / -1" }}><span>Що входить (опис)</span><input type="text" maxLength={400} value={row.description || ""} placeholder={service.description} onChange={(event) => change(row.code, "description", event.target.value)} /></label>
                   <label><span>Кабінет</span><select value={row.equipmentId} onChange={(event) => change(row.code, "equipmentId", event.target.value)}>
                     {Object.entries(CABINETS).map(([value, label]) => <option value={value} key={value}>{label}</option>)}
                   </select></label>

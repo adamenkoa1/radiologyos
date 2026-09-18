@@ -127,7 +127,7 @@ export default function PersonnelDosimetryPage(){
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Індивідуальна дозиметрія"
     description="Захищена append-only історія індивідуального дозиметричного контролю, прив’язана до стабільного personnelId."
   >

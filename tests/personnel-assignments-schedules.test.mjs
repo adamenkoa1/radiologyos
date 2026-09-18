@@ -3,7 +3,7 @@ import test from "node:test";
 import { DatabaseSync } from "node:sqlite";
 import { readFile } from "node:fs/promises";
 
-const MIGRATION_URL = new URL("../drizzle/0115_personnel_assignments_schedules.sql", import.meta.url);
+const MIGRATION_URL = new URL("../drizzle/0119_personnel_assignments_schedules.sql", import.meta.url);
 const PERSONNEL_API_URL = new URL("../app/api/staff/personnel/route.ts", import.meta.url);
 const SHIFTS_API_URL = new URL("../app/api/staff/shifts/route.ts", import.meta.url);
 const PERSONNEL_PAGE_URL = new URL("../app/staff/personnel/page.tsx", import.meta.url);

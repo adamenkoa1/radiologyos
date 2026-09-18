@@ -16,6 +16,28 @@
   --ws-radius-md: 12px;
   --ws-shadow-sm: 0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.08);
   --ws-shadow-md: 0 8px 24px rgba(16,24,40,.08);
+  /* Єдина шкала статусів (ok / warn / alert) — фон, текст, акцент-лінія.
+     Використовується всіма статус-картками й бейджами, тож червоний/бурштиновий/
+     зелений всюди однакові й коректно адаптуються до теми. */
+  --status-ok-bg: #e9f3ee;   --status-ok-fg: #166a46;   --status-ok-line: #2f9e6e;
+  --status-warn-bg: #fdf3e1; --status-warn-fg: #8a5411; --status-warn-line: #d99a2b;
+  --status-alert-bg: #fcebe8; --status-alert-fg: #a1301b; --status-alert-line: #d1442b;
+  /* Монохромні line-іконки статусів (маска по currentColor — адаптуються до кольору тексту). */
+  --icon-alert: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z'/%3E%3Cpath d='M12 9v4'/%3E%3Cpath d='M12 17h.01'/%3E%3C/svg%3E");
+  --icon-warn: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='M12 7v5l3 2'/%3E%3C/svg%3E");
+  --icon-ok: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='12' cy='12' r='9'/%3E%3Cpath d='m8 12 2.5 2.5L16 9'/%3E%3C/svg%3E");
+}
+
+/* Спільний поліш кнопок у воркспейсі: м'який hover-лифт, тінь, кільце фокуса. */
+.workspaceShell .button {
+  transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+}
+.workspaceShell .button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: var(--ws-shadow-sm); }
+.workspaceShell .button:active:not(:disabled) { transform: none; box-shadow: none; }
+.workspaceShell :where(button, a):focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+  border-radius: var(--ws-radius-sm);
 }
 
 .workspaceShell.themeDark {
@@ -27,6 +49,9 @@
   --ws-surface-subtle: #101827;
   --ws-shadow-sm: 0 1px 2px rgba(0,0,0,.28);
   --ws-shadow-md: 0 8px 24px rgba(0,0,0,.32);
+  --status-ok-bg: rgba(47,158,110,.16);   --status-ok-fg: #7fe0b4;
+  --status-warn-bg: rgba(217,154,43,.18); --status-warn-fg: #f2c887;
+  --status-alert-bg: rgba(209,68,43,.18); --status-alert-fg: #f2a99b;
 }
 
 /* Sidebar: dense clinical navigation, not decorative app cards. */

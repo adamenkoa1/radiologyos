@@ -132,7 +132,7 @@ export default function PersonnelRadiationClearancePage(){
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Допуск персоналу до ДІВ"
     description="Окремий кадровий реєстр рішень щодо робіт з джерелами іонізуючого випромінювання. Записи незмінні; виправлення додаються новим записом."
   >

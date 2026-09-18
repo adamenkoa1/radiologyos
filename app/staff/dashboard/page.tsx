@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useEffect, useMemo, useState } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import BookingDrawer from "../booking-drawer";
 import { type CalBooking } from "../week-calendar";
@@ -146,6 +146,9 @@ export default function DashboardPage() {
   const [bookings,setBookings] = useState<CalBooking[]>([]);
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [error,setError] = useState("");
+  // Збій мережі при завантаженні — окремо від «немає доступу», щоб показати
+  // «Повторити», а не помилковий заклик увійти.
+  const [netError,setNetError] = useState("");
   const [toast,setToast] = useState("");
   const [busyId,setBusyId] = useState<number | null>(null);
   // Підтверджені, кому сповіщення НЕ дійшло — робочий список «передзвонити»
@@ -159,35 +162,64 @@ export default function DashboardPage() {
   const [nowMin,setNowMin] = useState(() => nowMinutesKyiv());
   const [openId,setOpenId] = useState<number | null>(null);
 
-  async function load() {
-    const [dashRes, bookingsRes] = await Promise.all([
-      fetch("/api/staff/dashboard", { cache:"no-store" }),
-      fetch("/api/staff/bookings", { cache:"no-store" }),
-    ]);
-    // Доступ визначаємо за заявками (доступні реєстратору й лікарям), а не за
-    // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
-    // корисним для всіх ролей, а не блокується стіною «лише адмін».
-    const bookingsData = await bookingsRes.json().catch(() => ({})) as
-      { bookings?:CalBooking[]; staff?:StaffInfo; error?:string };
-    if (!bookingsRes.ok || !bookingsData.staff) { setError(bookingsData.error || "Немає доступу"); return; }
-    setStaff(bookingsData.staff);
-    setBookings(bookingsData.bookings || []);
-    setError("");
-    // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
-    if (dashRes.ok) {
-      const payload = await dashRes.json().catch(() => null) as Data | null;
-      if (payload?.kpi) setData(payload);
-    } else {
-      setData(null);
+  // Фонове (авто)оновлення не має блимати екраном чи глушити робочі дані через
+  // тимчасовий збій — тому background:true не чіпає екрани помилки/входу.
+  async function load({ background = false } = {}) {
+    try {
+      const [dashRes, bookingsRes] = await Promise.all([
+        fetch("/api/staff/dashboard", { cache:"no-store" }),
+        fetch("/api/staff/bookings", { cache:"no-store" }),
+      ]);
+      // Доступ визначаємо за заявками (доступні реєстратору й лікарям), а не за
+      // зведеною аналітикою, яка лише для адміністратора. Так Пульт лишається
+      // корисним для всіх ролей, а не блокується стіною «лише адмін».
+      const bookingsData = await bookingsRes.json().catch(() => ({})) as
+        { bookings?:CalBooking[]; staff?:StaffInfo; error?:string };
+      if (!bookingsRes.ok || !bookingsData.staff) {
+        if (!background) setError(bookingsData.error || "Немає доступу");
+        return;
+      }
+      setStaff(bookingsData.staff);
+      setBookings(bookingsData.bookings || []);
+      setError("");
+      setNetError("");
+      // KPI-аналітика — лише для адміністратора; 403 тут не блокує Пульт.
+      if (dashRes.ok) {
+        const payload = await dashRes.json().catch(() => null) as Data | null;
+        if (payload?.kpi) setData(payload);
+      } else {
+        setData(null);
+      }
+    } catch {
+      // Мережевий збій: під час першого завантаження показуємо «Повторити»,
+      // а у фоні мовчки лишаємо наявні дані до наступної спроби.
+      if (!background) setNetError("Не вдалося завантажити дані. Перевірте зʼєднання та спробуйте ще раз.");
     }
   }
+
+  // Не оновлюємо у фоні під час активної мутації (підтвердження/перенесення),
+  // щоб не перезаписати оптимістичний стан на льоту. Ref оновлюємо в ефекті
+  // (не під час рендеру), а читаємо в інтервалі автооновлення.
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = busyId !== null || batchBusy; }, [busyId, batchBusy]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, []);
 
-  // «Через N хв» на розкладі має лишатися свіжим — оновлюємо щохвилини.
+  // Пульт — живий екран: тихо оновлюємо заявки/зведення кожні 45 с, щоб нові
+  // заявки й зміни статусів від інших співробітників зʼявлялися без ручного
+  // перезавантаження. Пропускаємо, коли вкладка прихована або триває мутація.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || busyRef.current) return;
+      void load({ background: true });
+    }, 45000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  // «Через N хв» на розкладі має лишатися свіжим — оновлюємо кожні 30 секунд.
   useEffect(() => {
     const id = window.setInterval(() => setNowMin(nowMinutesKyiv()), 30000);
     return () => window.clearInterval(id);
@@ -337,6 +369,7 @@ export default function DashboardPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
+    netError && !staff ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>{netError}</p><button type="button" className="button compact" onClick={()=>{ setNetError(""); void load(); }}>Повторити</button></section> :
     !staff ? <p className="dashLoading">Завантаження зведення…</p> :
     <>
       {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}

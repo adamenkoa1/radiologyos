@@ -103,7 +103,7 @@ export default function RadiationReviewPolicyPage(){
   }
 
   return <StaffWorkspaceShell
-    active="directories"
+    active="personnel"
     title="Політика ДІВ · критерії review"
     description="Append-only історія організаційних критеріїв для майбутніх alerts і ручної перевірки даних радіаційної безпеки."
   >
