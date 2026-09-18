@@ -20,6 +20,22 @@ export interface ActionableBookingNotice {
   service:string;
   desiredDate:string;
   desiredTime:string;
+  phone?:string;
+  contactMethod?:string;
+}
+
+const CONTACT_LABEL:Record<string,string> = {
+  call:"Телефонний дзвінок", viber:"Viber", whatsapp:"WhatsApp", telegram:"Telegram",
+};
+
+// Рядок «як зв'язатися» для нотіфікації реєстратору: канал + телефон, а для
+// WhatsApp — ще й пряме https-посилання (Telegram робить його тапабельним).
+function contactLine(phone?:string, method?:string):string {
+  const digits = String(phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  const label = CONTACT_LABEL[String(method || "").toLowerCase()] || "";
+  const waLink = method === "whatsapp" ? ` — https://wa.me/${digits}` : "";
+  return `💬 Звʼязок: ${label ? `${escapeHtml(label)} · ` : ""}+${escapeHtml(digits)}${waLink}`;
 }
 
 export function bookingMessage(notice: BookingNotice): string {
@@ -74,7 +90,8 @@ export async function sendTelegramBookingNotice(
     `🔖 Код: ${escapeHtml(notice.code)}`,
     `🩻 Дослідження: ${escapeHtml(notice.service)}`,
     `📅 Час: ${escapeHtml(when)}`,
-  ].join("\n");
+    contactLine(notice.phone, notice.contactMethod),
+  ].filter(Boolean).join("\n");
   try {
     const controller=new AbortController();
     const timer=setTimeout(()=>controller.abort(),3000);

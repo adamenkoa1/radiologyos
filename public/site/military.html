@@ -369,6 +369,16 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
           <span class="field-error">Введіть 9 цифр після +380</span>
         </div>
         <div class="field">
+          <label for="militaryPatientContact">Як з вами звʼязатися? <span class="req">*</span></label>
+          <select id="militaryPatientContact" required>
+            <option value="call">Телефонний дзвінок</option>
+            <option value="viber">Viber</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+          <span class="field-note">Заявку підтвердять і звʼяжуться з вами обраним способом.</span>
+        </div>
+        <div class="field">
           <label for="militaryPatientDob">Дата народження <span class="req">*</span></label>
           <input id="militaryPatientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
           <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>

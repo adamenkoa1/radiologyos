@@ -49,14 +49,22 @@ test("a valid civilian request creates a booking, priced and pending payment", a
   });
 });
 
-test("public booking no longer stores a preferred contact channel", async () => {
+test("a chosen contact channel is stored as a [contact:x] prefix for the registrar", async () => {
   await withD1(async (db) => {
-    const created = await book(db, validBody({ contactMethod: "email" }), "key-contact-ignored01");
+    const created = await book(db, validBody({ contactMethod: "viber" }), "key-contact-viber01");
     assert.equal(created.status, 201);
-    const row = await db.prepare("SELECT patient_email AS email, comment FROM bookings LIMIT 1").first();
-    assert.equal(row.email, "");
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
+    // Префікс на початку коментаря — його читають дошка прийому й notify.ts.
+    assert.match(row.comment, /^\[contact:viber\]/);
+  });
+});
+
+test("an unknown contact channel is ignored (no stray prefix)", async () => {
+  await withD1(async (db) => {
+    const created = await book(db, validBody({ contactMethod: "email" }), "key-contact-bad-001");
+    assert.equal(created.status, 201);
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
     assert.doesNotMatch(row.comment, /^\[contact:/);
-    assert.doesNotMatch(row.comment, /Бажаний спосіб зв’язку/);
   });
 });
 

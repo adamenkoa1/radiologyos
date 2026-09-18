@@ -95,6 +95,13 @@ export async function POST(request: Request) {
     const resultNote = resultDelivery === "email"
       ? `Спосіб отримання результату: на email ${patientEmail}`
       : "Спосіб отримання результату: у відділенні";
+    // Бажаний канал зв'язку пацієнта (Viber / WhatsApp / Telegram / дзвінок).
+    // Зберігається як префікс [contact:x] на початку коментаря — його читають і
+    // дошка прийому (пряме посилання в месенджер), і автонагадування (notify.ts).
+    const CONTACT_METHODS = ["call", "viber", "whatsapp", "telegram"];
+    const rawContact = clean(body.contactMethod, 20).toLowerCase();
+    const contactMethod = CONTACT_METHODS.includes(rawContact) ? rawContact : "";
+    const contactTag = contactMethod ? `[contact:${contactMethod}]` : "";
     // Бажаний слот пацієнта (зі слот-пікера). Використовується як м'яка перевага
     // під час авторозподілу; якщо його зайняли — реєстратор бачить, що просив пацієнт.
     const preferredDate = /^\d{4}-\d{2}-\d{2}$/.test(clean(body.desiredDate, 10)) ? clean(body.desiredDate, 10) : "";
@@ -102,7 +109,9 @@ export async function POST(request: Request) {
     const preferenceNote = preferredDate
       ? `Бажаний час пацієнта: ${preferredDate}${preferredTime ? ` ${preferredTime}` : ""}`
       : "";
-    const comment = [commentRaw, resultNote, preferenceNote]
+    // Тег каналу — окремим першим рядком, щоб префікс-парсери (^[contact:x])
+    // бачили його на початку.
+    const comment = [contactTag, commentRaw, resultNote, preferenceNote]
       .filter(Boolean).join("\n").slice(0, 700);
     const marketingSource = clean(body.source, 40);
     const consentVersion = clean(body.consentVersion, 20);
@@ -299,6 +308,7 @@ export async function POST(request: Request) {
       ...services.map((service,index)=>sendTelegramBookingNotice(db,{
         code:codes[index],service:service!.title,
         desiredDate:appointments[index].date,desiredTime:appointments[index].time,
+        phone,contactMethod,
       },PUBLIC_ORGANIZATION_ID).catch((error)=>{
         console.error("telegram_notify_failed",codes[index],error);return {ok:false};
       })),

@@ -479,6 +479,16 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           <span class="field-error">Введіть 9 цифр після +380</span>
         </div>
         <div class="field">
+          <label for="patientContact">Як з вами звʼязатися? <span class="req">*</span></label>
+          <select id="patientContact" required>
+            <option value="call">Телефонний дзвінок</option>
+            <option value="viber">Viber</option>
+            <option value="whatsapp">WhatsApp</option>
+            <option value="telegram">Telegram</option>
+          </select>
+          <span class="field-note">Заявку підтвердять і звʼяжуться з вами обраним способом.</span>
+        </div>
+        <div class="field">
           <label for="patientDob">Дата народження <span class="req">*</span></label>
           <input id="patientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
           <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>
