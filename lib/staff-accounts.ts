@@ -3,9 +3,13 @@
 import { hashPassword } from "./auth";
 import type { StaffRole } from "./staff-auth";
 
-export const MIN_PASSWORD_LENGTH = 12;
+// Спрощений код доступу: достатньо 6-значного PIN. Довші паролі також
+// приймаються (сумісність зі старими акаунтами). Зберігається завжди
+// хешованим (PBKDF2), вхід має обмеження спроб — короткий PIN не «голий».
+export const MIN_PASSWORD_LENGTH = 6;
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PIN_RE = /^\d{6}$/;
 
 export function normalizeEmail(value: unknown): string {
   return String(value || "").trim().toLowerCase().slice(0, 254);
@@ -15,15 +19,13 @@ export function isValidEmail(email: string): boolean {
   return EMAIL_RE.test(email);
 }
 
-// Validate a proposed password, returning an error message or null when valid.
-export function passwordProblem(password: string): string | null {
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return `Пароль має містити щонайменше ${MIN_PASSWORD_LENGTH} символів`;
+// Валідація коду доступу: 6-значний PIN або будь-яке значення 6–200 символів.
+export function passwordProblem(secret: string): string | null {
+  if (PIN_RE.test(secret)) return null;
+  if (secret.length < MIN_PASSWORD_LENGTH) {
+    return `Код доступу — щонайменше ${MIN_PASSWORD_LENGTH} символів (напр. 6-значний PIN)`;
   }
-  if (password.length > 200) return "Пароль задовгий";
-  if (!/[A-Za-zА-Яа-яЇїІіЄєҐґ]/.test(password) || !/\d/.test(password)) {
-    return "Пароль має містити щонайменше одну літеру та одну цифру";
-  }
+  if (secret.length > 200) return "Код доступу задовгий";
   return null;
 }
 

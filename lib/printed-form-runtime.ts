@@ -1,0 +1,5 @@
+export type BrowserRunBinding={quickAction(action:"pdf",input:Record<string,unknown>):Promise<Response>};
+export type PrintedFormObject={size:number;httpEtag:string;httpMetadata?:{contentType?:string;contentDisposition?:string;cacheControl?:string};customMetadata?:Record<string,string>;body?:ReadableStream<Uint8Array>};
+export type PrintedFormsBucket={head(key:string):Promise<PrintedFormObject|null>;get(key:string):Promise<PrintedFormObject|null>;put(key:string,value:ArrayBuffer|ArrayBufferView|ReadableStream|string|Blob,options?:{onlyIf?:Headers;httpMetadata?:{contentType?:string;contentDisposition?:string;cacheControl?:string};customMetadata?:Record<string,string>;sha256?:ArrayBuffer}):Promise<PrintedFormObject|null>};
+export function browserRunBinding(){return (globalThis as typeof globalThis&{__RADIOLOGY_BROWSER_RUN__?:BrowserRunBinding}).__RADIOLOGY_BROWSER_RUN__;}
+export function printedFormsBucketBinding(){return (globalThis as typeof globalThis&{__RADIOLOGY_PRINTED_FORMS__?:PrintedFormsBucket}).__RADIOLOGY_PRINTED_FORMS__;}

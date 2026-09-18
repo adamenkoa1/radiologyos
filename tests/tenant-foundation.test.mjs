@@ -89,10 +89,14 @@ test("organization_id scoping isolates bookings across tenants", async () => {
   assert.equal(count2, 1);
 });
 
-// Контекст організації походить лише із серверної сесії, а не з тіла запиту.
-test("requireOrgContext derives the tenant from the session, never from the client", async () => {
+// Контексти організації походять лише із серверної сесії, а medical/system
+// role sets розділені на рівні самого tenant resolver.
+test("tenant contexts derive the tenant from the session and keep medical/system roles separated", async () => {
   const src = await read("lib/tenant.ts");
-  assert.match(src, /export async function requireOrgContext/);
+  assert.match(src, /export function requireOrgContext/);
+  assert.match(src, /return resolveOrgContext\(request, db, MEDICAL_OPERATIONAL_ROLES\)/);
+  assert.match(src, /export function requireSystemOrgContext/);
+  assert.match(src, /return resolveOrgContext\(request, db, SYSTEM_ADMIN_ROLES\)/);
   assert.match(src, /requireStaff\(request, db\)/);
   assert.match(src, /FROM memberships/);
   // Явно не читає organizationId з тіла/параметрів запиту.

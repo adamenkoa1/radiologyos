@@ -24,7 +24,7 @@ test("auth library stores PBKDF2 hashes and hashed session tokens", async () => 
   }
   assert.match(source, /PBKDF2/);
   assert.match(source, /HttpOnly; Secure; SameSite=Strict/);
-  assert.match(source, /PBKDF2_ITERATIONS = 600000/);
+  assert.match(source, /PBKDF2_ITERATIONS = 100000/);
 });
 
 test("requireStaff resolves the member from a session cookie, not an external header", async () => {
@@ -44,9 +44,17 @@ test("login and logout endpoints verify credentials, rate-limit and manage the c
   assert.match(login, /createSession\(/);
   assert.match(login, /isRateLimited\(/);
   assert.match(login, /set-cookie/i);
-  assert.match(login, /Невірний email або пароль/);
+  assert.match(login, /Невірний номер телефону або PIN-код/);
+  assert.match(login, /WHERE phone = \?/); // вхід за телефоном
   assert.match(logout, /destroySession\(/);
   assert.match(logout, /clearedSessionCookie\(/);
+});
+
+test("disabling the final active staff membership revokes existing sessions", async () => {
+  const members = await read("app/api/staff/members/route.ts");
+  assert.match(members, /existing && existing\.active === 1 && active === 0 && !hasOtherActiveMembership/);
+  assert.match(members, /ORDER BY active DESC/);
+  assert.match(members, /DELETE FROM staff_sessions WHERE email = \?/);
 });
 
 test("no ChatGPT sign-in remains anywhere in the app", async () => {
@@ -78,7 +86,7 @@ test("the self-managed login page renders", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Кабінет персоналу/);
-  assert.match(html, /Пароль/);
+  assert.match(html, /PIN-код/);
 });
 
 test("self-service migration creates settings without a shared access code or active default admin", async () => {
@@ -95,7 +103,8 @@ test("account helpers enforce administrator-owned roles, email and password rule
   assert.match(source, /export async function registerStaff/);
   assert.match(source, /export async function resetStaffPassword/);
   assert.match(source, /export function passwordProblem/);
-  assert.match(source, /MIN_PASSWORD_LENGTH = 12/);
+  assert.match(source, /MIN_PASSWORD_LENGTH = 6/);
+  assert.match(source, /PIN_RE = \/\^\\d\{6\}\$\//); // 6-значний PIN приймається
   assert.match(source, /role: StaffRole/);
   assert.doesNotMatch(source, /verifyAccessCode/);
   assert.match(source, /await hashPassword\(/);

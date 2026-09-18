@@ -2,14 +2,10 @@
 //
 // `organizationId` НІКОЛИ не приймається з тіла запиту чи параметрів клієнта —
 // він виводиться виключно з перевіреної серверної сесії персоналу через
-// членство (`memberships`). Це фундамент tenant-isolation: кожна вибірка й
-// мутація бізнес-даних має обмежуватися організацією з цього контексту.
+// членство (`memberships`). Це фундамент tenant-isolation.
 
-import { requireStaff, type StaffRole } from "./staff-auth";
+import { requireStaff, type AccessRole, type ManagementRole, type StaffRole, type SystemRole } from "./staff-auth";
 
-// Канонічний перелік ролей платформи (розширюється еволюційно). Поточні
-// облікові записи персоналу використовують підмножину; deny-by-default —
-// невідома роль не отримує жодних прав.
 export const ORG_ROLES = [
   "platform_owner",
   "organization_admin",
@@ -23,47 +19,116 @@ export const ORG_ROLES = [
 
 export type OrgRole = (typeof ORG_ROLES)[number] | StaffRole;
 
-export interface OrgMember {
+const MEDICAL_OPERATIONAL_ROLES = new Set<StaffRole>([
+  "admin",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
+const SYSTEM_ADMIN_ROLES = new Set<SystemRole>(["admin", "organization_admin"]);
+const MANAGEMENT_ROLES = new Set<ManagementRole>(["admin", "department_head"]);
+const SELF_SERVICE_ROLES = new Set<AccessRole>([
+  "admin",
+  "organization_admin",
+  "department_head",
+  "registrar",
+  "radiologist",
+  "radiographer",
+]);
+
+export interface OrgMember<R extends AccessRole = StaffRole> {
   email: string;
   displayName: string;
-  role: StaffRole;
+  role: R;
 }
 
-export interface OrgContext {
+export interface OrgContext<R extends AccessRole = StaffRole> {
   organizationId: number;
   slug: string;
   organizationName: string;
-  role: OrgRole;
-  member: OrgMember;
+  role: R;
+  member: OrgMember<R>;
 }
 
-// Розв'язує організацію активного співробітника. Повертає null, якщо сесія
-// анонімна/протермінована або співробітник не є учасником жодної активної
-// організації. Пріоритет — початковий tenant (найменший organization_id).
-export async function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext | null> {
-  const member = await requireStaff(request, db);
-  if (!member) return null;
+async function resolveOrgContext<R extends AccessRole>(
+  request: Request,
+  db: D1Database,
+  allowedRoles: ReadonlySet<R>,
+): Promise<OrgContext<R> | null> {
+  const identity = await requireStaff(request, db);
+  if (!identity) return null;
 
-  const row = await db.prepare(
+  let row = await db.prepare(
     `SELECT o.id AS organizationId, o.slug AS slug, o.name AS organizationName, m.role AS role
      FROM memberships m
      JOIN organizations o ON o.id = m.organization_id AND o.active = 1
      WHERE m.member_email = ? AND m.active = 1
      ORDER BY o.id ASC
      LIMIT 1`
-  ).bind(member.email).first<{
+  ).bind(identity.email).first<{
     organizationId: number;
     slug: string;
     organizationName: string;
     role: string;
   }>();
-  if (!row) return null;
 
+  // Legacy bootstrap compatibility is allowed only for a genuinely empty
+  // single-organization installation. Once any membership exists (or more than
+  // one active organization exists), tenant access is explicit and deny-by-default.
+  if (!row) {
+    const bootstrap = await db.prepare(
+      `SELECT
+         (SELECT COUNT(*) FROM memberships) AS membershipCount,
+         (SELECT COUNT(*) FROM organizations WHERE active = 1) AS activeOrgCount`
+    ).first<{ membershipCount: number; activeOrgCount: number }>();
+    if (!bootstrap || Number(bootstrap.membershipCount) !== 0 || Number(bootstrap.activeOrgCount) !== 1) return null;
+    if (!allowedRoles.has(identity.role as R)) return null;
+
+    const org = await db.prepare(
+      "SELECT id AS organizationId, slug, name AS organizationName FROM organizations WHERE active = 1 ORDER BY id ASC LIMIT 1"
+    ).first<{ organizationId: number; slug: string; organizationName: string }>();
+    if (!org) return null;
+    await db.prepare(
+      `INSERT INTO memberships (organization_id, member_email, role, active) VALUES (?, ?, ?, 1)
+       ON CONFLICT(organization_id, member_email) DO UPDATE SET active = 1`
+    ).bind(org.organizationId, identity.email, identity.role).run();
+    row = { ...org, role: identity.role };
+  }
+
+  if (!allowedRoles.has(row.role as R)) return null;
+  const role = row.role as R;
   return {
     organizationId: row.organizationId,
     slug: row.slug,
     organizationName: row.organizationName,
-    role: (row.role as OrgRole) || member.role,
-    member,
+    role,
+    member: { email: identity.email, displayName: identity.displayName, role },
   };
+}
+
+// Medical/operational context used by patient, booking, protocol, imaging and
+// day-to-day workflow routes. System-only administrators and management-only
+// roles are deliberately not admitted here.
+export function requireOrgContext(request: Request, db: D1Database): Promise<OrgContext<StaffRole> | null> {
+  return resolveOrgContext(request, db, MEDICAL_OPERATIONAL_ROLES);
+}
+
+// Dedicated control-plane context. A tenant-local `organization_admin` can
+// manage accounts and integrations without becoming a medical-data authority.
+// Legacy `admin` remains accepted for backwards compatibility.
+export function requireSystemOrgContext(request: Request, db: D1Database): Promise<OrgContext<SystemRole> | null> {
+  return resolveOrgContext(request, db, SYSTEM_ADMIN_ROLES);
+}
+
+// Dedicated management context. `department_head` can read aggregate operational
+// state but is kept outside both medical/operational and system-admin contexts.
+export function requireManagementOrgContext(request: Request, db: D1Database): Promise<OrgContext<ManagementRole> | null> {
+  return resolveOrgContext(request, db, MANAGEMENT_ROLES);
+}
+
+// Neutral self-service identity context. It is intentionally capability-free:
+// it exists only for a user to read/update their own account profile and does
+// not grant access to medical, management, or system-admin resources.
+export function requireSelfServiceOrgContext(request: Request, db: D1Database): Promise<OrgContext<AccessRole> | null> {
+  return resolveOrgContext(request, db, SELF_SERVICE_ROLES);
 }

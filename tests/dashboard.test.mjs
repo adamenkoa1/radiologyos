@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { globalsCss } from "./helpers/css.mjs";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
@@ -15,6 +16,43 @@ test("dashboard API aggregates across pillars and never mutates schema", async (
   assert.doesNotMatch(route, /ALTER\s+TABLE/i);
   assert.doesNotMatch(route, /INSERT\s+INTO/i);
   assert.doesNotMatch(route, /UPDATE\s+bookings/i);
+});
+
+test("dashboard exposes a 7-day per-equipment workload", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  // 7-денне вікно: сьогодні та 6 попередніх днів.
+  assert.match(route, /setUTCDate\(d\.getUTCDate\(\) - 6\)/);
+  assert.match(route, /desired_date BETWEEN \? AND \?/);
+  assert.match(route, /GROUP BY desired_date, equipment_id/);
+  assert.match(route, /equipmentWeek:/);
+  assert.match(route, /weekStart,/);
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /Завантаженість апаратів · 7 днів/);
+  assert.match(page, /equipmentWeek/);
+});
+
+test("dashboard exposes a tenant-scoped clinical queue by machine state", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  // Черга рахує активні стани єдиної state machine.
+  assert.match(route, /CLINICAL_QUEUE_STATES/);
+  assert.match(route, /'queued','in_progress','images_ready','reporting','protocol_ready'/);
+  // Лічильники обмежені організацією зі серверного контексту.
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /organization_id = \?/);
+  assert.match(route, /clinicalQueue/);
+  // Сторінка показує чергу з переходом у реєстр досліджень.
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /dashQueue/);
+  assert.match(page, /clinicalQueue/);
+  assert.match(page, /\/staff\/studies/);
+});
+
+test("pending queue hides bookings whose date has already passed", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Черга «Нові заявки» лишає тільки заявки з датою дослідження ≥ сьогодні.
+  assert.match(page, /\(b\.status === "new" \|\| b\.status === "rescheduled"\) && \(b\.desiredDate \|\| ""\) >= today/);
+  // today визначено до pending, щоб фільтр міг ним користуватися.
+  assert.match(page, /const today = data\?\.today \|\|/);
 });
 
 async function renderPath(path) {
@@ -33,4 +71,75 @@ test("dashboard page renders inside the staff workspace", async () => {
   assert.equal(response.status, 200);
   const html = await response.text();
   assert.match(html, /Пульт відділення/);
+});
+
+test("confirm surfaces a persistent call-back list when notification fails", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // null (крах) і failed>0 трактуються як «не попереджено».
+  assert.match(page, /const notNotified = !r \|\| \(r\.failed \?\? 0\) > 0/);
+  // Невдача → у стійкий список needsCall (а не лише зниклий тост).
+  assert.match(page, /setNeedsCall\(cur =>/);
+  assert.match(page, /const \[needsCall,setNeedsCall\]/);
+  // Попереджувальний тост і блок із дзвінком.
+  assert.match(page, /dashToast\$\{toast\.startsWith\("⚠"\)/);
+  assert.match(page, /className="dashNeedsCall"/);
+  assert.match(page, /href=\{`tel:\$\{b\.phone\}`\}/);
+  // Успіх лишається лише коли реально надіслано.
+  assert.match(page, /\(r\?\.sent \?\? 0\) > 0/);
+  const css = await globalsCss();
+  assert.match(css, /\.dashNeedsCall\{[^}]*var\(--mod-urgent\)/);
+  assert.match(css, /\.dashToast\.warn\{/);
+});
+
+test("pending queue supports batch confirmation", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Спільна логіка одного підтвердження, якою користуються поштучний і пакетний режим.
+  assert.match(page, /async function sendConfirm\(id:number\)/);
+  assert.match(page, /async function confirmSelected\(\)/);
+  // Пакет іде послідовно й агрегує підсумок; невдалі — у needsCall (через sendConfirm).
+  assert.match(page, /for \(const id of ids\)/);
+  assert.match(page, /const \[selected,setSelected\] = useState<Set<number>>/);
+  // UI: чекбокс на картці, кнопки «Обрати всі» / «Підтвердити обрані».
+  assert.match(page, /className="dashCardPick"/);
+  assert.match(page, /Підтвердити обрані · \$\{selected\.size\}/);
+  const css = await globalsCss();
+  assert.match(css, /\.dashCard\.picked\{/);
+  assert.match(css, /\.dashBatchBtn\{/);
+});
+
+test("dashboard reports undelivered notifications (persistent, tenant-scoped)", async () => {
+  const route = await read("app/api/staff/dashboard/route.ts");
+  assert.match(route, /patient_notifications n\s+JOIN bookings b/);
+  assert.match(route, /b\.organization_id = n\.organization_id/);
+  assert.match(route, /n\.status = 'failed'/);
+  assert.match(route, /n\.organization_id = \?/); // tenant-scoped
+  assert.match(route, /undelivered: withTitle\(undeliveredList\)/);
+  // Лишається SELECT-only (жодних мутацій схеми/даних).
+  assert.doesNotMatch(route, /UPDATE\s+patient_notifications/i);
+  const page = await read("app/staff/dashboard/page.tsx");
+  assert.match(page, /Недоставлені сповіщення/);
+  assert.match(page, /data\.lists\.undelivered/);
+  assert.match(page, /className="dashUndItem"/);
+});
+
+test("dashboard survives a failed initial load and offers a retry", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // load() загорнуто в try/catch і має фоновий режим.
+  assert.match(page, /async function load\(\{ background = false \} = \{\}\)/);
+  assert.match(page, /catch \{[\s\S]*?setNetError\(/);
+  // Мережевий збій показує окремий екран із кнопкою «Повторити», а не хибний
+  // заклик увійти.
+  assert.match(page, /netError && !staff \?/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /onClick=\{\(\)=>\{ setNetError\(""\); void load\(\); \}\}/);
+});
+
+test("dashboard auto-refreshes the live board without clobbering edits", async () => {
+  const page = await read("app/staff/dashboard/page.tsx");
+  // Тихе оновлення кожні 45 с у фоновому режимі.
+  assert.match(page, /void load\(\{ background: true \}\)/);
+  assert.match(page, /\}, 45000\)/);
+  // Пропускаємо приховану вкладку й активну мутацію (busyRef).
+  assert.match(page, /document\.hidden \|\| busyRef\.current/);
+  assert.match(page, /busyRef\.current = busyId !== null \|\| batchBusy/);
 });

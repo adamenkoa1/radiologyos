@@ -29,6 +29,9 @@ export type ProtocolTemplate = {
   equipmentId: EquipmentType;
   modalityLabel: string;
   method: string;
+  // Джерело / стандарт методики (галузевий протокол, методика виробника тощо).
+  // Необовʼязкове: якщо порожнє — беремо типове за модальністю (defaultMethodRef).
+  methodRef?: string;
   sections: ProtocolSection[];
 };
 
@@ -39,6 +42,7 @@ export type ProtocolSectionValues = Record<string, Record<string, string>>;
 export type ProtocolDocument = {
   templateKey: string;
   method: string;
+  methodRef: string;
   sections: ProtocolSectionValues;
   findings: string;
   conclusion: string;
@@ -58,6 +62,7 @@ export const PROTOCOL_STATUS_LABELS: Record<ProtocolStatus, string> = {
 // Field length guards used by both the API and the editor.
 export const PROTOCOL_LIMITS = {
   method: 600,
+  methodRef: 300,
   field: 2000,
   narrative: 6000,
   number: 80,
@@ -243,6 +248,161 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     ],
   },
   {
+    key: "ct_sinuses",
+    title: "КТ приносових пазух",
+    equipmentId: "ct",
+    modalityLabel: "Комп’ютерна томографія",
+    method: "Спіральне сканування приносових пазух із товщиною зрізу 0,5–1 мм, кісткові та м’якотканинні реконструкції.",
+    sections: [
+      {
+        key: "parameters",
+        title: "Умови дослідження",
+        fields: [contrast],
+      },
+      {
+        key: "sinuses",
+        title: "Приносові пазухи",
+        fields: [
+          line("maxillary", "Верхньощелепні пазухи", "Пневматизація збережена, патологічного вмісту немає."),
+          line("ethmoid", "Комірки решітчастого лабіринту", "Пневматизовані, без вмісту."),
+          line("frontal", "Лобові пазухи", "Пневматизація збережена."),
+          line("sphenoid", "Клиноподібна пазуха", "Без патологічного вмісту."),
+          line("ostiomeatal", "Остіомеатальний комплекс", "Прохідний з обох боків."),
+        ],
+      },
+      {
+        key: "structures",
+        title: "Прилеглі структури",
+        fields: [
+          line("septum", "Носова перегородка", "Розташована по середній лінії."),
+          line("turbinates", "Носові раковини", "Не гіпертрофовані."),
+          line("bones", "Кісткові стінки", "Цілісні, деструкції не виявлено."),
+        ],
+      },
+    ],
+  },
+  {
+    key: "ct_spine",
+    title: "КТ хребта",
+    equipmentId: "ct",
+    modalityLabel: "Комп’ютерна томографія",
+    method: "Спіральне сканування досліджуваного відділу хребта з мультипланарними реконструкціями.",
+    sections: [
+      {
+        key: "parameters",
+        title: "Умови дослідження",
+        fields: [
+          choice("region", "Відділ хребта", ["Шийний", "Грудний", "Попереково-крижовий"], "Попереково-крижовий"),
+          contrast,
+        ],
+      },
+      {
+        key: "vertebrae",
+        title: "Хребці та диски",
+        fields: [
+          area("bodies", "Тіла хребців", "Форма і висота збережені, деструктивних змін не виявлено."),
+          line("discs", "Міжхребцеві диски", "Висота дисків збережена, протрузій і гриж не виявлено."),
+          line("canal", "Хребтовий канал", "Не звужений."),
+          line("facets", "Дуговідросткові суглоби", "Без ознак вираженого артрозу."),
+          line("alignment", "Вісь хребта", "Фізіологічна."),
+        ],
+      },
+      {
+        key: "soft",
+        title: "М’які тканини",
+        fields: [line("paravertebral", "Паравертебральні м’які тканини", "Без патологічних змін.")],
+      },
+    ],
+  },
+  {
+    key: "ct_urography",
+    title: "КТ нирок і сечовивідних шляхів",
+    equipmentId: "ct",
+    modalityLabel: "Комп’ютерна томографія",
+    method: "Нативне сканування нирок і сечовивідних шляхів; за потреби — екскреторна фаза після внутрішньовенного контрастування.",
+    sections: [
+      {
+        key: "parameters",
+        title: "Умови дослідження",
+        fields: [contrast],
+      },
+      {
+        key: "urinary",
+        title: "Сечовидільна система",
+        fields: [
+          line("rightKidney", "Права нирка", "Розміри, положення і паренхіма в межах норми."),
+          line("leftKidney", "Ліва нирка", "Розміри, положення і паренхіма в межах норми."),
+          line("stones", "Конкременти", "Не візуалізуються."),
+          line("pelvis", "Чашечково-мискова система", "Не розширена."),
+          line("ureters", "Сечоводи", "Не розширені, прохідні."),
+          line("bladder", "Сечовий міхур", "Стінки не потовщені, вміст однорідний."),
+        ],
+      },
+    ],
+  },
+  {
+    key: "xray_abdomen",
+    title: "Оглядова рентгенографія органів черевної порожнини",
+    equipmentId: "xray",
+    modalityLabel: "Цифрова рентгенографія",
+    method: "Оглядова рентгенографія органів черевної порожнини у вертикальному положенні.",
+    sections: [
+      {
+        key: "findings",
+        title: "Опис",
+        fields: [
+          area("gas", "Газовий розподіл", "Звичайний, патологічних горизонтальних рівнів рідини не виявлено."),
+          line("freeAir", "Вільний газ", "Під куполами діафрагми не визначається."),
+          line("shadows", "Патологічні тіні / конкременти", "Не виявлено."),
+          line("bones", "Кістковий каркас", "Без травматичних змін."),
+        ],
+      },
+    ],
+  },
+  {
+    key: "xray_spine",
+    title: "Рентгенографія хребта",
+    equipmentId: "xray",
+    modalityLabel: "Цифрова рентгенографія",
+    method: "Рентгенографія досліджуваного відділу хребта у двох стандартних проєкціях.",
+    sections: [
+      {
+        key: "parameters",
+        title: "Умови дослідження",
+        fields: [choice("region", "Відділ хребта", ["Шийний", "Грудний", "Попереково-крижовий"], "Попереково-крижовий")],
+      },
+      {
+        key: "findings",
+        title: "Опис",
+        fields: [
+          area("bodies", "Тіла хребців", "Форма і висота збережені, деструктивних змін не виявлено."),
+          line("discs", "Висота міжхребцевих проміжків", "Збережена."),
+          line("alignment", "Вісь хребта", "Фізіологічна."),
+          line("spurs", "Крайові кісткові розростання", "Не визначаються."),
+        ],
+      },
+    ],
+  },
+  {
+    key: "xray_sinuses",
+    title: "Рентгенографія приносових пазух",
+    equipmentId: "xray",
+    modalityLabel: "Цифрова рентгенографія",
+    method: "Рентгенографія приносових пазух у носо-підборідній проєкції.",
+    sections: [
+      {
+        key: "findings",
+        title: "Опис",
+        fields: [
+          line("maxillary", "Верхньощелепні пазухи", "Пневматизація збережена, затемнень немає."),
+          line("frontal", "Лобові пазухи", "Пневматизовані."),
+          line("ethmoid", "Решітчастий лабіринт", "Без затемнення."),
+          line("septum", "Носова перегородка", "Без вираженої девіації."),
+        ],
+      },
+    ],
+  },
+  {
     key: "generic",
     title: "Універсальний протокол",
     equipmentId: "ct",
@@ -257,6 +417,21 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
     ],
   },
 ];
+
+// Типове джерело методики за модальністю — чесне узагальнення без вигаданих
+// номерів наказів; лікар уточнює конкретний стандарт у редакторі.
+export function defaultMethodRef(equipmentId: EquipmentType): string {
+  switch (equipmentId) {
+    case "ct":
+      return "Виконано за методикою виробника КТ-системи згідно з чинними галузевими протоколами променевої діагностики.";
+    case "fluoro":
+      return "Виконано за стандартною методикою цифрової флюорографії згідно з чинними галузевими протоколами.";
+    case "xray":
+      return "Виконано за стандартною методикою рентгенографії згідно з чинними галузевими протоколами.";
+    default:
+      return "Виконано згідно з чинними галузевими протоколами променевої діагностики.";
+  }
+}
 
 export function protocolTemplateByKey(key: string | null | undefined): ProtocolTemplate {
   return PROTOCOL_TEMPLATES.find((template) => template.key === key)
@@ -279,9 +454,16 @@ export function suggestTemplateKey(serviceCode: string): string {
   const title = service.title.toLowerCase();
   if (service.equipmentId === "fluoro") return "fluoro_chest";
   if (service.equipmentId === "xray") {
-    return /грудної клітки|легень|органів грудної/.test(title) ? "xray_chest" : "xray_bone";
+    if (/грудної клітки|легень|органів грудної/.test(title)) return "xray_chest";
+    if (/хребт|відділ.*хребт|шийн|попереков|крижов/.test(title)) return "xray_spine";
+    if (/приносов|пазух/.test(title)) return "xray_sinuses";
+    if (/черевної порожнини|оглядова.*живот|органів черевної/.test(title)) return "xray_abdomen";
+    return "xray_bone";
   }
   if (/головного мозку|голови|черепа/.test(title)) return "ct_brain";
+  if (/приносов|пазух/.test(title)) return "ct_sinuses";
+  if (/хребт|шийн|попереков|крижов/.test(title)) return "ct_spine";
+  if (/нирок|сечов|урограф/.test(title)) return "ct_urography";
   if (/грудної клітки/.test(title)) return "ct_chest";
   if (/черевної порожнини|живота|малого таза/.test(title)) return "ct_abdomen";
   return "generic";
@@ -300,6 +482,7 @@ export function normalDocument(templateKey: string): ProtocolDocument {
   return {
     templateKey: template.key,
     method: template.method,
+    methodRef: template.methodRef || defaultMethodRef(template.equipmentId),
     sections,
     findings: "",
     conclusion: "",
@@ -318,6 +501,8 @@ export function renderProtocolText(document: ProtocolDocument): string {
   if (document.number) lines.push(`Протокол № ${document.number}`);
   const method = (document.method || template.method).trim();
   if (method) lines.push("", `Методика: ${method}`);
+  const methodRef = (document.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)).trim();
+  if (methodRef) lines.push(`Джерело методики: ${methodRef}`);
   for (const section of template.sections) {
     const values = document.sections[section.key] || {};
     const rendered = section.fields
@@ -373,6 +558,7 @@ export function sanitizeDocument(input: unknown): ProtocolValidation {
   const document: ProtocolDocument = {
     templateKey,
     method: clip(raw.method, PROTOCOL_LIMITS.method),
+    methodRef: clip(raw.methodRef, PROTOCOL_LIMITS.methodRef),
     sections,
     findings: clip(raw.findings, PROTOCOL_LIMITS.narrative),
     conclusion: clip(raw.conclusion, PROTOCOL_LIMITS.narrative),

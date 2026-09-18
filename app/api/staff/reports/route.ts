@@ -1,7 +1,9 @@
 import { EQUIPMENT, SERVICES, serviceByCode } from "../../../../lib/catalog";
-import { canViewReports, requireStaff } from "../../../../lib/staff-auth";
+import { canViewReports } from "../../../../lib/staff-auth";
+import { requireOrgContext } from "../../../../lib/tenant";
 import { logSecurityEvent } from "../../../../lib/audit";
 import { REPORT_TEMPLATES } from "../../../../lib/reporting";
+import { dbBinding } from "../../../../lib/db";
 import {
   fetchReportSource,
   publicFilters,
@@ -9,22 +11,19 @@ import {
   reportPayload,
 } from "../../../../lib/reporting-server";
 
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
-
 export async function GET(request:Request) {
   const db = dbBinding();
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{ status:503 });
-  const member = await requireStaff(request,db);
-  if (!member) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const ctx = await requireOrgContext(request,db);
+  if (!ctx) return Response.json({ error:"Доступ лише для персоналу" },{ status:403 });
+  const member = ctx.member;
   if (!canViewReports(member.role)) {
     return Response.json({ error:"Звіти з медичними та фінансовими даними доступні лише адміністратору" },{ status:403 });
   }
 
   const filters = readReportFilters(new URL(request.url));
   if (!filters) return Response.json({ error:"Некоректний період або параметри звіту" },{ status:400 });
-  const source = await fetchReportSource(db,filters);
+  const source = await fetchReportSource(db,filters,ctx.organizationId);
   const activeRows = source.filter((row)=>row.status !== "cancelled");
   const completedRows = source.filter((row)=>row.status === "completed");
   const protocolReady = (status:string) => status === "ready" || status === "issued";
@@ -81,8 +80,12 @@ export async function GET(request:Request) {
 
   const [{ results:staffOptions },{ results:exportHistory }] = await Promise.all([
     db.prepare(
-      "SELECT email, display_name AS displayName, role FROM staff_members WHERE active = 1 ORDER BY role, display_name"
-    ).all(),
+      `SELECT s.email, s.display_name AS displayName, m.role AS role
+       FROM memberships m
+       JOIN staff_members s ON s.email = m.member_email
+       WHERE m.organization_id = ? AND m.active = 1 AND s.active = 1
+       ORDER BY m.role, s.display_name`
+    ).bind(ctx.organizationId).all(),
     db.prepare(
       `SELECT e.id, e.requested_by AS requestedBy,
         COALESCE(NULLIF(s.display_name,''), e.requested_by) AS requestedByName,
@@ -91,11 +94,13 @@ export async function GET(request:Request) {
         e.created_at AS createdAt
        FROM report_exports e
        LEFT JOIN staff_members s ON s.email = e.requested_by
+       WHERE e.organization_id = ?
        ORDER BY e.created_at DESC LIMIT 20`
-    ).all(),
+    ).bind(ctx.organizationId).all(),
   ]);
   const report = reportPayload(filters,source);
   await logSecurityEvent(db, {
+    organizationId: ctx.organizationId,
     actorEmail: member.email,
     action: "report_viewed",
     resource: "report",
