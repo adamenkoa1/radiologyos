@@ -39,16 +39,6 @@ test("intake gives a one-tap link for manual messengers and shows the chosen cha
   assert.match(page, /\{CONTACT_LABELS\[contact\]\}/);
 });
 
-test("all booking forms offer the contact-channel selector", async () => {
-  for (const [page, id] of [
-    ["public/site/index.html", "patientContact"],
-    ["public/site/price.html", "patientContact"],
-    ["public/site/military.html", "militaryPatientContact"],
-  ]) {
-    const html = await read(page);
-    assert.match(html, new RegExp(`id="${id}"`), `${page}: селектор`);
-    for (const v of ["viber", "whatsapp", "telegram"]) {
-      assert.match(html, new RegExp(`value="${v}"`), `${page}: ${v}`);
-    }
-  }
-});
+// Примітка: публічна форма більше не має селектора каналу — запис іде прямо в
+// месенджер (див. public-booking-messenger.test). Механізм [contact:x]
+// лишається для заявок, які реєстратор оформлює вручну (сервер/notify/telegram).

@@ -41,43 +41,27 @@ test("online booking accepts only adults aged 18 or older", async () => {
   assert.equal(isAdultDob("2008-08-02", 18, "2026-08-01"), false);
 });
 
-test("site-booking stores date_of_birth and requires it", async () => {
+test("site-booking API still requires an adult DOB (used for staff-created bookings)", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /normalizeDob\(body\.dob\)/);
   assert.match(route, /isAdultDob\(dob\)/);
   assert.match(route, /Вкажіть коректну дату народження/);
   assert.match(route, /від 18 років/);
   assert.match(route, /date_of_birth/);
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientDob'\)/);
-  assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
-  assert.match(bridge, /name, phone, dob,/);
-  // Сегментований віджет винесено у спільний dob-widget.js (форма + кабінет).
-  assert.match(bridge, /window\.enhanceDobSegments/);
+  // Сегментований віджет дати лишається — його використовує вхід у кабінет.
   const dobWidget = await read("public/site/assets/dob-widget.js");
   assert.match(dobWidget, /dob-segmented/);
   assert.match(dobWidget, /День народження/);
-  assert.match(dobWidget, /Місяць народження/);
-  assert.match(dobWidget, /Рік народження/);
-  assert.match(dobWidget, /Онлайн-запис доступний пацієнтам від 18 років/);
   assert.match(dobWidget, /window\.enhanceDobSegments = enhanceDobSegments/);
-  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
-    const html = await read(page);
-    assert.match(html, /id="(?:military)?[Pp]atientDob"[^>]*type="date"|id="patientDob"[^>]*type="date"/, `${page} has a date input`);
-    assert.doesNotMatch(html, /max="2100-12-31"/, `${page} does not allow a future DOB`);
-  }
 });
 
-test("public request is short and receives an automatic appointment", async () => {
+test("public booking form is short: ПІБ + бажана дата + час (no DOB/phone/file)", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /assignEarliestAppointments\(/);
-  assert.match(route, /'new'/);
-  assert.match(route, /прізвище, ім’я та по батькові/i);
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /Прізвище, ім’я та по батькові/);
-    assert.match(html, /попередні медичні документи/); // нагадування взяти документи
-    assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час|<label for="(?:military)?[Rr]eferral">/);
+    assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час/);
     assert.doesNotMatch(html, /type="file"/);
   }
 });

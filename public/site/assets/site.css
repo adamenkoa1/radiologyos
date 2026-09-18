@@ -36,3 +36,25 @@ a{text-decoration:none;color:inherit}
 .nameSuggest{position:fixed;z-index:200;margin:0;padding:4px;list-style:none;background:#fff;border:1px solid #dbe3e8;border-radius:12px;box-shadow:0 12px 30px rgba(18,40,30,.14);max-height:260px;overflow:auto}
 .nameSuggest li{padding:9px 12px;border-radius:8px;font-size:14px;color:#18302f;cursor:pointer}
 .nameSuggest li:hover,.nameSuggest li.on{background:#eef7f8}
+
+/* Кнопки запису через месенджер (мінімалістичний хендоф) */
+.book-actions{display:flex;flex-direction:column;gap:10px;margin-top:14px}
+.book-btn{display:flex;align-items:center;justify-content:center;width:100%;min-height:52px;padding:0 18px;border:0;border-radius:14px;font:inherit;font-weight:800;font-size:16px;color:#fff;text-decoration:none;cursor:pointer}
+.book-btn.viber{background:#7360f2}
+.book-btn.whatsapp{background:#25d366}
+.book-btn.call{background:var(--brand,#12303a)}
+.book-btn:active{transform:translateY(1px)}
+.book-btn:focus-visible{outline:3px solid var(--gold,#c9a227);outline-offset:2px}
+.cabinet-link{display:block;margin-top:16px;text-align:center;color:#5c6c78;font-size:13px;text-decoration:underline}
+@media(min-width:620px){.book-actions{flex-direction:row}.book-actions .book-btn{flex:1}}
+
+/* Головна CTA-смуга та заголовок FAQ (мінімалістична головна) */
+.hero-lead{padding:24px 0 4px}
+.hero-lead-sub{margin:0 auto;max-width:640px;text-align:center;color:#33505a;font-size:clamp(15px,2.4vw,18px);line-height:1.45}
+.hero-cta{display:block;max-width:440px;margin:18px auto 0;text-align:center;padding:17px 22px;border-radius:16px;background:var(--brand,#12303a);color:#fff;font-size:17px;font-weight:850;text-decoration:none;box-shadow:0 14px 34px rgba(18,48,58,.22)}
+.hero-cta:active{transform:translateY(1px)}
+.hero-cta:focus-visible{outline:3px solid var(--gold,#c9a227);outline-offset:3px}
+.hero-lead-hours{margin:14px auto 0;text-align:center;color:#5c6c78;font-size:13px}
+.hero-lead-hours a{color:var(--brand,#12303a);font-weight:700}
+.faq-heading{margin:0 0 14px;text-align:center;color:#12303a;font-size:clamp(20px,3vw,26px);font-weight:800}
+.faq-q{font-size:clamp(16px,2vw,19px)!important}

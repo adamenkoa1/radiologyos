@@ -19,14 +19,10 @@ test("site-booking віддає відповідь, не чекаючи на р�
   assert.match(route, /sendBookingEmail\(db,\s*PUBLIC_ORGANIZATION_ID/);
 });
 
-test("клієнтський postBooking має таймаут, щоб кнопка не зависла назавжди", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /AbortController/);
-  assert.match(bridge, /signal:/);
-  assert.match(bridge, /clearTimeout/);
-  // Той самий idempotency-key зберігається (безпечне повторне надсилання).
-  assert.match(bridge, /idempotency-key/);
-});
+// Примітка: публічна форма більше не POST-ить у /api/site-booking — запис іде
+// у месенджер (public-booking-messenger.test). Клієнтський таймаут постання
+// заявки більше не актуальний. Серверний runAfterResponse-шлях (для заявок,
+// які створює персонал через API) лишається під тестом вище.
 
 test("контекст виконання прокинуто в globalThis у воркері", async () => {
   const worker = await read("worker/index.ts");
