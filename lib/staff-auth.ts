@@ -1,4 +1,4 @@
-import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_COOKIE } from "./auth";
+import { SESSION_TTL_SECONDS, hashToken, newSessionToken, readCookie, SESSION_COOKIE } from "./auth.ts";
 
 // `staff_members.role` remains a legacy identity/bootstrap role so existing
 // installations keep working. Tenant authorization is derived from

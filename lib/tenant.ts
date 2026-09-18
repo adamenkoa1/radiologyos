@@ -4,7 +4,7 @@
 // він виводиться виключно з перевіреної серверної сесії персоналу через
 // членство (`memberships`). Це фундамент tenant-isolation.
 
-import { requireStaff, type AccessRole, type ManagementRole, type StaffRole, type SystemRole } from "./staff-auth";
+import { requireStaff, type AccessRole, type ManagementRole, type StaffRole, type SystemRole } from "./staff-auth.ts";
 
 export const ORG_ROLES = [
   "platform_owner",
