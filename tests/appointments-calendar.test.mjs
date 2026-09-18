@@ -113,3 +113,19 @@ test("dashboard shows a compact today agenda and a one-click confirm queue", asy
   assert.match(dash, /<BookingDrawer/);
   assert.match(dash, /onConfirm=\{canManage/); // мутація підтвердження з панелі
 });
+
+test("appointments calendar survives a failed load and auto-refreshes", async () => {
+  const page = await read("app/staff/appointments/page.tsx");
+  // Завантаження загорнуто в try/catch із фоновим режимом.
+  assert.match(page, /async function load\(\{ background = false \} = \{\}\)/);
+  assert.match(page, /catch \{[\s\S]*?if \(!background\) setLoadError\(true\)/);
+  // Мережевий збій показує «Повторити» замість вічного спінера.
+  assert.match(page, /loadError && !loaded/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /setLoadError\(false\); void load\(\);/);
+  // Живе автооновлення заявок кожні 45 с із пропуском мутації та прихованої вкладки.
+  assert.match(page, /void refetchBookings\(\)/);
+  assert.match(page, /\}, 45000\)/);
+  assert.match(page, /document\.hidden \|\| busyRef\.current/);
+  assert.match(page, /busyRef\.current = busyId !== null/);
+});
