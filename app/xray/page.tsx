@@ -1,0 +1,30 @@
+import type { Metadata } from "next";
+import { PublicLocalSeo } from "../components/public-local-seo";
+import { MedicalPageSchema } from "../components/medical-page-schema";
+import { SeoServiceLanding } from "../components/seo-service-landing";
+import { XRAY_SEO_PAGE } from "../../lib/seo-service-pages";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: XRAY_SEO_PAGE.metaTitle,
+  description: XRAY_SEO_PAGE.description,
+  alternates: { canonical: XRAY_SEO_PAGE.path },
+  openGraph: {
+    title: XRAY_SEO_PAGE.metaTitle,
+    description: XRAY_SEO_PAGE.description,
+    url: XRAY_SEO_PAGE.path,
+    locale: "uk_UA",
+    type: "website",
+  },
+};
+
+export default function XraySeoPage() {
+  return (
+    <>
+      <SeoServiceLanding page={XRAY_SEO_PAGE} />
+      <MedicalPageSchema page={XRAY_SEO_PAGE} />
+      <PublicLocalSeo path={XRAY_SEO_PAGE.path} />
+    </>
+  );
+}

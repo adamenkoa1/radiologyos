@@ -34,7 +34,7 @@ test("DICOM library validates identifiers and builds DICOMweb URLs", async () =>
   assert.match(source, /StudyInstanceUIDs=/);
 });
 
-test("imaging API guards writes, keeps PACS calls best-effort, no runtime DDL", async () => {
+test("imaging API guards medical writes while PACS settings use system authority", async () => {
   const route = await read("app/api/staff/imaging/route.ts");
   const settingsRoute = await read("app/api/staff/imaging/settings/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);
@@ -44,7 +44,8 @@ test("imaging API guards writes, keeps PACS calls best-effort, no runtime DDL", 
   assert.match(route, /safeOutboundUrl\(/);
   assert.match(route, /fetchLimited\(/);
   assert.match(route, /canAccessBooking\(/);
-  assert.match(settingsRoute, /member\.role !== "admin"/);
+  assert.match(settingsRoute, /requireSystemOrgContext\(request, db\)/);
+  assert.match(settingsRoute, /canManageSystem\(ctx\.member\.role\)/);
   assert.match(settingsRoute, /sanitizePacsSettings\(/);
   for (const source of [route, settingsRoute]) {
     assert.doesNotMatch(source, /CREATE\s+TABLE/i);

@@ -19,15 +19,35 @@ test("worker applies browser security headers and rejects cross-site API mutatio
   assert.match(worker, /new URL\(origin\)\.origin !== url\.origin/);
 });
 
-test("patient data requires a short-lived server-side session", async () => {
+test("worker delegates generated and public static assets to the Cloudflare ASSETS binding", async () => {
+  const worker = await read("worker/index.ts");
+  assert.match(worker, /STATIC_ASSET_PREFIXES = \["\/assets\/", "\/fonts\/", "\/site\/assets\/"\]/);
+  assert.match(worker, /isStaticAssetPath\(url\.pathname\)/);
+  assert.match(worker, /env\.ASSETS\.fetch\(request\)/);
+});
+
+test("patient data requires a short-lived OTP-backed tenant + immutable-or-legacy identity-scoped server session", async () => {
   const auth = await read("lib/patient-auth.ts");
+  const otp = await read("app/api/patient-otp/route.ts");
   const bookings = await read("app/api/my-bookings/route.ts");
   const protocol = await read("app/api/my-protocol/route.ts");
   assert.match(auth, /PATIENT_SESSION_TTL_SECONDS = 30 \* 60/);
+  assert.match(auth, /PATIENT_OTP_TTL_SECONDS = 5 \* 60/);
   assert.match(auth, /HttpOnly; Secure; SameSite=Strict/);
-  assert.match(bookings, /createPatientSession\(/);
-  assert.match(bookings, /phone_normalized = \?/);
+  assert.match(auth, /identity_kind AS identityKind, identity_value AS identityValue/);
+  assert.match(auth, /patient_id AS patientId/);
+  assert.match(otp, /createPatientSession\([\s\S]*verified\.organizationId,[\s\S]*verified\.identity,[\s\S]*verified\.patientId/);
+  assert.match(bookings, /requirePatientSession\(/);
+  assert.doesNotMatch(bookings, /createPatientSession\(/);
+  assert.match(bookings, /session\.identityKind === "dob"/);
+  assert.match(bookings, /session\.identityValue/);
+  assert.match(bookings, /session\.patientId[\s\S]*b\.organization_id = \? AND b\.patient_id = \?/);
+  assert.match(bookings, /b\.organization_id = \? AND b\.phone_normalized = \? AND \$\{identityClause\}/);
   assert.match(protocol, /requirePatientSession\(/);
+  assert.match(protocol, /session\.identityKind === "dob"/);
+  assert.match(protocol, /session\.identityValue/);
+  assert.match(protocol, /session\.patientId[\s\S]*organization_id = \? AND code = \? AND patient_id = \?/);
+  assert.match(protocol, /organization_id = \? AND code = \? AND phone_normalized = \? AND \$\{identityClause\}/);
   assert.doesNotMatch(protocol, /substr\(phone_normalized, -4\)/);
 });
 
@@ -54,25 +74,30 @@ test("staff authorization scopes sensitive records and exports", async () => {
   assert.match(reports, /canViewReports\(member\.role\)/);
 });
 
-test("protocols use optimistic concurrency and immutable revision history", async () => {
+test("protocols use optimistic concurrency and database-derived immutable revision history", async () => {
   const route = await read("app/api/staff/protocols/route.ts");
   const migration = await read("drizzle/0016_security_hardening.sql");
+  const derived = await read("drizzle/0104_protocol_revision_derived_history.sql");
   assert.match(route, /baseVersion/);
   assert.match(route, /existing\?\.status === "issued"/);
-  assert.match(route, /INSERT INTO protocol_revisions/);
+  assert.match(route, /INSERT OR IGNORE INTO protocol_revisions/);
   assert.match(route, /await db\.batch\(/);
   assert.match(migration, /UNIQUE\(`booking_id`, `version`\)/);
+  assert.match(derived, /protocol_revisions_snapshot_guard_insert/);
+  assert.match(derived, /protocol_revision_snapshot_next/);
+  assert.match(derived, /protocol edits require next version/);
 });
 
 test("server-side integrations block SSRF and oversized responses", async () => {
   const outbound = await read("lib/outbound.ts");
-  // Доставлення нагадувань перенесено у месенджинг-провайдер; захист від SSRF
-  // лишається на кожному зовнішньому виклику (safeOutboundUrl + fetchLimited).
   const messaging = await read("lib/providers/messaging.ts");
   const telegram = await read("lib/telegram.ts");
   assert.match(outbound, /privateHostname/);
   assert.match(outbound, /url\.protocol !== "https:"/);
-  assert.match(outbound, /redirect: "error"/);
+  // Cloudflare Workers only accept "follow"/"manual"; we use "manual" and reject
+  // any redirect ourselves — same no-follow SSRF guard, compatible runtime.
+  assert.match(outbound, /redirect: "manual"/);
+  assert.match(outbound, /opaqueredirect|redirect_not_allowed/);
   assert.match(outbound, /MAX_RESPONSE_BYTES/);
   assert.match(outbound, /AbortController/);
   assert.match(messaging, /safeOutboundUrl\(url\)/);
@@ -92,12 +117,24 @@ test("legacy browser data gateway and fake document uploads are absent", async (
   assert.doesNotMatch(cart, /radiologyos_applications_v1/);
 });
 
-test("production deployment refuses to migrate without a secure active administrator", async () => {
+test("production deployment bootstraps schema before enforcing a secure active administrator", async () => {
   const workflow = await read(".github/workflows/deploy.yml");
   const guard = workflow.indexOf("Verify a secure active administrator exists");
   const migrations = workflow.indexOf("Apply D1 migrations");
-  assert.ok(guard > -1);
-  assert.ok(migrations > guard);
+  const deploy = workflow.indexOf("Deploy Worker and assets");
+  assert.ok(migrations > -1);
+  assert.ok(guard > migrations);
+  assert.ok(deploy > guard);
   assert.match(workflow, /secure_admins/);
   assert.match(workflow, /count < 1/);
+});
+
+test("Cloudflare deployment uses an apex custom domain, worker-first assets and safe reminder cron", async () => {
+  const config = await read("wrangler.cloudflare.toml");
+  assert.match(config, /\nworkers_dev = false\n/);
+  assert.match(config, /pattern = "radiologyos\.tech", custom_domain = true/);
+  assert.doesNotMatch(config, /pattern = "www\.radiologyos\.tech", custom_domain = true/);
+  assert.match(config, /\nrun_worker_first = true\n/);
+  assert.match(config, /\nhtml_handling = "none"\n/);
+  assert.match(config, /\[triggers\][\s\S]*crons\s*=\s*\[\s*"\*\/15 \* \* \* \*"\s*\]/);
 });

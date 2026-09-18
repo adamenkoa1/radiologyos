@@ -64,11 +64,15 @@ test("bookings route derives tenant from session and org-scopes access", async (
   assert.doesNotMatch(route, /function bookingScope\(member: \{ email: string; role: StaffRole \}\)\s*\{/);
 });
 
-// canAccessBooking отримав необовʼязковий organizationId і застосовує його.
-test("canAccessBooking enforces organization when provided", async () => {
+// Security primitive вимагає tenant завжди: немає optional organizationId
+// і немає admin/registrar fast-path, який повертає true без перевірки заявки.
+test("canAccessBooking requires organization and fails closed", async () => {
   const src = await read("lib/staff-auth.ts");
-  assert.match(src, /organizationId\?: number/);
-  assert.match(src, /AND organization_id = \?/);
+  assert.match(src, /organizationId: number/);
+  assert.doesNotMatch(src, /organizationId\?: number/);
+  assert.match(src, /!Number\.isInteger\(organizationId\) \|\| organizationId <= 0/);
+  assert.match(src, /WHERE id = \? AND organization_id = \? LIMIT 1/);
+  assert.doesNotMatch(src, /organizationId == null\) return true/);
 });
 
 // Протоколи: доступ і черга org-scoped.

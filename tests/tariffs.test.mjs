@@ -4,7 +4,7 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("tariffs migration + schema define the overrides table", async () => {
+test("legacy tariff table remains available as migration fallback", async () => {
   const migration = await read("drizzle/0011_service_prices.sql");
   assert.match(migration, /CREATE TABLE IF NOT EXISTS `service_prices`/);
   assert.match(migration, /`code` text PRIMARY KEY/);
@@ -14,49 +14,83 @@ test("tariffs migration + schema define the overrides table", async () => {
   assert.match(schema, /export const servicePrices = sqliteTable\("service_prices"/);
 });
 
-test("tariffs API: all staff read, only admin writes", async () => {
+test("tariffs API is organization-scoped and only admin writes", async () => {
   const route = await read("app/api/staff/tariffs/route.ts");
-  assert.match(route, /tariffList\(/);
-  assert.match(route, /member\.role !== "admin"/); // PUT is admin-only
-  assert.match(route, /INSERT INTO service_prices/);
-  assert.match(route, /DELETE FROM service_prices WHERE code = \?/); // reset to default
+  assert.match(route, /requireOrgContext\(request, db\)/);
+  assert.match(route, /ctx\.member\.role !== "admin"/);
+  assert.match(route, /tariffList\(db, ctx\.organizationId\)/);
+  assert.match(route, /tariffOverridesKey\(ctx\.organizationId\)/);
+  assert.match(route, /setSetting\(/);
+  assert.doesNotMatch(route, /INSERT INTO service_prices/);
+  assert.doesNotMatch(route, /DELETE FROM service_prices/);
 });
 
-test("bookings charge the effective (override-aware) price", async () => {
+test("tenant tariff storage uses org-specific settings with legacy fallback only for org 1", async () => {
+  const lib = await read("lib/tariffs.ts");
+  assert.match(lib, /export function tariffOverridesKey/);
+  assert.match(lib, /getSetting\(db, tariffOverridesKey\(organizationId\)\)/);
+  assert.match(lib, /organizationId === 1 \? legacyPriceOverrides\(db\) : \{\}/);
+  assert.match(lib, /WHERE organization_id = 1/);
+});
+
+test("booking paths use server-derived effective prices", async () => {
   const lib = await read("lib/tariffs.ts");
   assert.match(lib, /export async function effectivePrice/);
+
   const site = await read("app/api/site-booking/route.ts");
-  assert.match(site, /effectivePrice\(db, service!\.code\)/);
+  assert.match(site, /effectiveServices\(db, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(site, /paymentStatus, verifiedService\.price/);
+  assert.doesNotMatch(site, /effectivePrice\(/);
+
   const legacy = await read("app/api/bookings/route.ts");
-  assert.match(legacy, /effectivePrice\(db, service\.code\)/);
+  assert.match(legacy, /effectiveServiceByCode\(db, serviceCode, PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(legacy, /service\.price/);
+  assert.doesNotMatch(legacy, /effectivePrice\(/);
 });
 
-test("home page shows tariffs (military free / civilian priced) with booking", async () => {
-  const route = await read("app/api/catalog/route.ts");
-  assert.match(route, /priceOverrides\(/);
-  assert.match(route, /groups/);
+test("public catalog and tariff map use the canonical effective service source", async () => {
+  const catalog = await read("app/api/catalog/route.ts");
+  const tariffs = await read("app/api/tariffs/route.ts");
+  assert.match(catalog, /effectiveServices\(db\)/);
+  assert.doesNotMatch(catalog, /priceOverrides\(/);
+  assert.match(tariffs, /effectiveServices\(db\)/);
+  assert.doesNotMatch(tariffs, /priceOverrides\(/);
+
   const index = await read("public/site/index.html");
-  assert.match(index, /id="homeTariffs"/);
-  assert.match(index, /assets\/home-tariffs\.js/);
-  assert.match(index, /id="patientCategory"/); // category chooser on the home form
-  const js = await read("public/site/assets/home-tariffs.js");
-  assert.match(js, /\/api\/catalog/);
-  assert.match(js, /безоплатно/); // military column
-  assert.match(js, /addToCart\(/); // booking from a tariff row
+  assert.doesNotMatch(index, /id="homeTariffs"/);
+  assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
+  // Публічна форма стала месенджер-хендофом: вибір категорії пацієнта прибрано
+  // (її визначає сторінка/персонал), тож селектора patientCategory тут немає.
+  assert.doesNotMatch(index, /id="patientCategory"/);
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientCategory'\)/); // category read at submit
+  assert.doesNotMatch(bridge, /getElementById\('patientCategory'\)/);
+});
+
+test("the Тарифи page can enable/disable a position, written into the service config", async () => {
+  const lib = await read("lib/tariffs.ts");
+  // tariffList now carries the active state resolved from the service config.
+  assert.match(lib, /active: cfg\.active/);
+  assert.match(lib, /parseServiceConfig\(tenantConfig \|\| legacyConfig\)/);
+
+  const route = await read("app/api/staff/tariffs/route.ts");
+  // PUT accepts an `active` map and applies it on top of the current config.
+  assert.match(route, /active\?: Record<string, unknown>/);
+  assert.match(route, /row\.code in active \? \{ \.\.\.row, active: Boolean/);
+  assert.match(route, /setSetting\(db, serviceConfigKey\(ctx\.organizationId\), JSON\.stringify\(sanitizeServiceConfig\(next\)\)\)/);
+  assert.match(route, /validateServiceConfig\(next\)/);
+
+  const page = await read("app/staff/tariffs/page.tsx");
+  assert.match(page, /activeEdits/);
+  assert.match(page, /active: activeEdits/);
+  assert.match(page, /isActive \? "Вимкнути" : "Увімкнути"/);
 });
 
 test("the Тарифи tab is wired into the workspace and the public price list syncs", async () => {
-  // Бічна панель тепер = модулі «Карти системи», що ведуть на робочі сторінки;
-  // Тарифи доступні через клікабельний шлях /staff/tariffs у дереві структури.
   const shell = await read("app/staff/workspace-shell.tsx");
-  assert.match(shell, /systemModules/);
-  assert.match(shell, /href:"\/staff\/reports"/);
-  const map = await read("app/staff/system-map/page.tsx");
-  assert.match(map, /\/staff\/tariffs/);
+  assert.match(shell, /key:"services",label:"Послуги"/);
+  assert.match(shell, /label:"Тарифи",href:"\/staff\/tariffs"/);
   const page = await read("app/staff/tariffs/page.tsx");
   assert.match(page, /active="tariffs"/);
   const priceHtml = await read("public/site/price.html");
-  assert.match(priceHtml, /\/api\/tariffs/); // public prices reflect overrides
+  assert.match(priceHtml, /\/api\/tariffs/);
 });

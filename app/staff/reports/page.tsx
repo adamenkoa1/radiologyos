@@ -78,6 +78,8 @@ export default function ReportsPage() {
   );
   const [data,setData] = useState<ReportData | null>(null);
   const [error,setError] = useState("");
+  const [authErr,setAuthErr] = useState(false);
+  const [appliedQuery,setAppliedQuery] = useState("");
   const [loading,setLoading] = useState(true);
 
   function queryString(includeColumns = true) {
@@ -94,35 +96,39 @@ export default function ReportsPage() {
   async function load() {
     setLoading(true);
     setError("");
-    const response = await fetch(`/api/staff/reports?${queryString()}`,{ cache:"no-store" });
-    const result = await response.json() as ReportData & { error?:string };
-    if (!response.ok) {
-      setData(null);
-      setError(result.error || "Не вдалося сформувати звіт");
-    } else {
-      setData(result);
+    const query = queryString();
+    try {
+      const response = await fetch(`/api/staff/reports?${query}`,{ cache:"no-store" });
+      const result = await response.json() as ReportData & { error?:string };
+      if (!response.ok) {
+        setData(null);
+        setAuthErr(response.status === 401 || response.status === 403);
+        setError(result.error || "Не вдалося сформувати звіт");
+      } else {
+        setData(result);
+        setAppliedQuery(query);
+        setAuthErr(false);
+      }
+    } catch {
+      setError("Не вдалося сформувати звіт — перевірте зʼєднання");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(()=>{
-    const timer = window.setTimeout(()=>{
-      void fetch(`/api/staff/reports?from=${initialFrom}&to=${initialToday}&template=studies`,{cache:"no-store"})
-        .then(async(response)=>({response,result:await response.json() as ReportData & {error?:string}}))
-        .then(({response,result})=>{
-          if (response.ok) setData(result);
-          else setError(result.error || "Не вдалося сформувати звіт");
-          setLoading(false);
-        });
-    },0);
+    const timer = window.setTimeout(()=>{ void load(); },0);
     return ()=>window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   },[]);
 
   const maxDay = useMemo(()=>Math.max(1,...(data?.byDay.map((row)=>row.total) || [1])),[data]);
   const currentTemplate = REPORT_TEMPLATES[template];
   const radiologists = data?.filterOptions.staff.filter((item)=>item.role === "radiologist") || [];
   const radiographers = data?.filterOptions.staff.filter((item)=>item.role === "radiographer") || [];
-  const exportHref = `/api/staff/reports/export?${queryString()}`;
+  // Експорт має віддавати саме те, що показано (застосований запит), а не
+  // поточні незастосовані значення форми.
+  const exportHref = `/api/staff/reports/export?${appliedQuery || queryString()}`;
 
   function chooseTemplate(value:ReportTemplateKey) {
     setTemplate(value);
@@ -143,15 +149,19 @@ export default function ReportsPage() {
     staffRole={data?.staff ? roleLabels[data.staff.role] || data.staff.role : undefined}
   >
 
-    {error && !data ? <section className="accessDenied">
+    {loading && !data ? <p className="dashLoading">Завантаження звіту…</p> :
+    error && !data ? (authErr ? <section className="accessDenied">
       <b>Захищений розділ</b>
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
       <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Freports">Увійти для роботи</a>
-    </section> : <>
+    </section> : <section className="accessDenied">
+      <b>Не вдалося сформувати звіт</b>
+      <p>{error}.</p>
+    </section>) : <>
       <section className="reportBuilder">
         <div className="reportBuilderHead">
           <div><p className="eyebrow">Конструктор</p><h2>Оберіть потрібний реєстр</h2></div>
-          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання.</p>
+          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання. Окремо: <a href="/staff/reports/utilization">Завантаженість обладнання →</a></p>
         </div>
         <div className="reportTemplateTabs">
           {(Object.values(REPORT_TEMPLATES)).map((item)=><button
@@ -161,6 +171,7 @@ export default function ReportsPage() {
             onClick={()=>chooseTemplate(item.key)}
           ><b>{item.label}</b><span>{item.description}</span></button>)}
         </div>
+        <p className="reportActiveDesc"><b>{currentTemplate.label}.</b> {currentTemplate.description}</p>
 
         <form className="reportFilterGrid" onSubmit={event=>{event.preventDefault();void load();}}>
           <label><span>Від</span><input type="date" value={from} onChange={event=>setFrom(event.target.value)} required/></label>
@@ -200,7 +211,7 @@ export default function ReportsPage() {
         {error && <p className="staffError" role="alert">{error}</p>}
         {data && <div className="reportPreview">
           <div className="reportPreviewHead"><b>Попередній перегляд</b><span>{data.previewTotal} рядків · показано до 100</span></div>
-          <div className="reportTableScroll"><table><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
+          <div className="financeTableWrap"><table className="financeTable"><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
             <tbody>{data.preview.length === 0 ? <tr><td colSpan={Math.max(1,data.columns.length)}>Даних за обраними фільтрами немає.</td></tr> :
               data.preview.map((row,index)=><tr key={index}>{data.columns.map((item)=><td key={item.key}>{formatCell(row[item.key],item)}</td>)}</tr>)}
             </tbody></table></div>
@@ -208,7 +219,7 @@ export default function ReportsPage() {
       </section>
 
       {data && <div className="reportContent">
-        <section className="reportStats" aria-label="Ключові показники">
+        <section className="financeSummary" aria-label="Ключові показники">
           <article><span>Записів</span><b>{data.summary.total}</b><small>{data.summary.cancelled} скасовано</small></article>
           <article><span>Фактично виконано</span><b>{data.summary.performed}</b><small>{data.summary.regions} анатомічних ділянок</small></article>
           <article><span>Протоколи готові</span><b>{data.summary.protocolsReady}</b><small>{data.summary.awaitingProtocol} очікують</small></article>

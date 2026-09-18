@@ -69,12 +69,15 @@ const SITECONTENT_STORE = 'radiologyos_sitecontent_v1';
 const DEFAULT_SITECONTENT = {
   brandTitle: 'Чернігівський військовий госпіталь',
   brandSubtitle: 'Відділення променевої діагностики',
+  slogan: 'Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.',
   milTitle: 'Військовослужбовцям',
   milSub: 'Безоплатні дослідження за направленням',
   civTitle: 'Цивільним особам',
   civSub: 'Платні дослідження — повний прайс і запис',
   phone: '+380 97 280 88 99',
   address: 'м. Чернігів, вул. Полуботка, 40',
+  workHours: '08:30–17:30 · екстрені дослідження для військовослужбовців — цілодобово (24/7)',
+  about: 'Екстрені дослідження для військовослужбовців проводяться цілодобово — 24/7. Планові дослідження проводяться відповідно до режиму роботи відділення: 08:30–17:30. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.',
   /* сторінка цін */
   pricePageTitle: 'Платні дослідження',
   pricePageSub: 'Вартість указана відповідно до чинних тарифів.',
@@ -87,7 +90,6 @@ const DEFAULT_SITECONTENT = {
   milNotice: 'Оберіть потрібний розділ. Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.',
   milLead: 'Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.',
   brandColor: '#0c7a85',
-  logoUrl: '',
   storefrontType: 'paid_and_free'
 };
 
@@ -102,7 +104,25 @@ function applyBrandColor(c) {
   r.style.setProperty('--brand', c.brandColor);
   r.style.setProperty('--brand-dark', dark);
 }
-try { applyBrandColor(getSiteContent()); } catch (e) {}
+// Застосовуємо контент вітрини на сторінках прайсу/військових/про нас:
+// колір теми + тексти груп «Сторінка цивільних» і «Сторінка військових»
+// з редактора. Спершу з кешу localStorage (миттєво), потім свіже значення
+// з /api/site-content (єдине джерело, як на головній).
+function applySiteContent(c) {
+  if (!c || typeof c !== 'object') return;
+  applyBrandColor(c);
+  var set = function (id, v) { var el = document.getElementById(id); if (el && v) { el.textContent = v; } };
+  set('scPriceTitle', c.pricePageTitle); set('scPriceSub', c.pricePageSub);
+  set('scPriceIntro', c.priceIntro); set('scPriceListTitle', c.priceListTitle); set('scPriceLead', c.priceLead);
+  set('scMilPageTitle', c.milPageTitle); set('scMilPageSub', c.milPageSub);
+  set('scMilNotice', c.milNotice); set('scMilLead', c.milLead);
+}
+try { applySiteContent(getSiteContent()); } catch (e) {}
+try {
+  fetch('/api/site-content').then(function (r) { return r.json(); }).then(function (d) {
+    if (d && d.content) { applySiteContent(d.content); try { saveSiteContent(d.content); } catch (e) {} }
+  }).catch(function () {});
+} catch (e) {}
 
 function getSiteContent() {
   try {

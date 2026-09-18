@@ -1,0 +1,89 @@
+/* ================= Темна тема кабінету («негатоскоп») ================= */
+.workspaceThemeToggle{width:38px;height:38px;flex:0 0 38px;display:grid;place-items:center;border:1px solid #d7e1e1;border-radius:6px;background:#fff;color:#355b57;font-size:15px;cursor:pointer;transition:.15s}
+.workspaceThemeToggle:hover{border-color:#0c7a85;color:#0c7a85}
+.workspaceThemeToggle:focus-visible{outline:2px solid #0c7a85;outline-offset:1px}
+
+.workspaceShell.themeDark{--green:#25b4c0;--ws-accent:#25b4c0;--ws-deep:#25b4c0;--ws-soft:#123139;--ink:#e6edf1;background:#0a0f13;color:#e6edf1}
+/* Топбар і хедер */
+.themeDark .workspaceTopbar{background:rgba(16,23,29,.96)!important;border-bottom-color:#22303a!important;box-shadow:none!important}
+.themeDark .workspaceTopTitle b{color:#e6edf1}.themeDark .workspaceTopTitle small{color:#7c8a94}
+.themeDark .workspaceClock{border-right-color:#22303a}.themeDark .workspaceClock b{color:#e6edf1}.themeDark .workspaceClock span{color:#8b98a1}
+.themeDark .workspaceMenuButton{background:#121a20;border-color:#2a3843}.themeDark .workspaceMenuButton span{background:#9fb0bb}
+.themeDark .workspaceThemeToggle{background:#121a20;border-color:#2a3843;color:#cdd8de}.themeDark .workspaceThemeToggle:hover{border-color:#25b4c0;color:#25b4c0}
+.themeDark .workspaceProfile summary:hover{background:#17212a}.themeDark .workspaceProfile>div{background:#121a20;border-color:#22303a}
+.themeDark .workspaceProfile b{color:#e6edf1}.themeDark .workspaceProfile small{color:#8b98a1}.themeDark .workspaceProfile>div a{color:#cdd8de}.themeDark .workspaceProfile>div a:hover{background:#17212a;color:#25b4c0}
+.themeDark .workspaceAvatar{background:#123139;color:#25b4c0}
+.themeDark .workspaceBreadcrumb{color:#7c8a94!important}.themeDark .workspaceBreadcrumb span{color:#25b4c0}
+.themeDark .workspacePageHead h1{color:#e6edf1}.themeDark .workspacePageHead>div:first-child>p:last-child{color:#93a3ad}
+.themeDark .workspacePageActions a{background:#121a20;border-color:#2a3843;color:#cdd8de}
+/* Панелі-картки → темні */
+.themeDark .staffStats article,.themeDark .bookingRow,.themeDark .staffMemberAdd,.themeDark .staffMemberList form,
+.themeDark .reportBuilder,.themeDark .reportPanel,.themeDark .reportStats article,.themeDark .dashKpi,.themeDark .dashList,
+.themeDark .settingsBlock,.themeDark .protocolQueue,.themeDark .protocolEditor,.themeDark .crmProfile,.themeDark .crmStats article,
+.themeDark .pacsSettings,.themeDark .tariffBar,.themeDark .tariffGroup,.themeDark .workspaceQuickGrid>a,.themeDark .accessDenied,
+.themeDark .empty,.themeDark .aiDraftBlock,.themeDark .equipmentAdmin,.themeDark .protocolQueueItem,.themeDark .operationsGrid>section,
+.themeDark .reportPreview,.themeDark .reportColumns,.themeDark .pacsBanner,.themeDark .crmVisits li{
+  background:#121a20!important;border-color:#22303a!important;box-shadow:0 1px 2px rgba(0,0,0,.3),0 10px 28px rgba(0,0,0,.32)!important}
+.workspaceShell.themeDark .workspaceQuickGrid .workspaceTodayCard{background:#121a20!important;border-color:#22303a!important}
+.workspaceShell.themeDark .workspaceTodayCard>span{color:#7fd4dc!important}.workspaceShell.themeDark .workspaceTodayCard>strong{color:#25b4c0!important}
+.themeDark .workspaceTodayCard>b{color:#e6edf1!important}.themeDark .workspaceTodayCard>small{color:#93a3ad!important}
+/* Вкладені/тоновані панелі → глибший фон */
+.themeDark .staffAdmin,.themeDark .protocolQueueTools,.themeDark .protocolSection,.themeDark .crmComms .crmCommForm,
+.themeDark .aiAssist,.themeDark .bookingComment,.themeDark .staffNoteForm,.themeDark .bookingOperations,.themeDark .operationDates,
+.themeDark .dashListEmpty,.themeDark .settingsCard input[readonly],.themeDark .reportPreviewHead{
+  background:#0e151a!important;border-color:#22303a!important}
+.themeDark .staffAdmin{border:1px solid #22303a!important}
+/* Заголовки, підписи, значення */
+.themeDark h1,.themeDark h2,.themeDark h3{color:#e6edf1!important}
+.themeDark .dashKpi>b{color:#e6edf1}.themeDark .dashList li b{color:#e6edf1}
+.themeDark .staffStats span,.themeDark .crmStats span,.themeDark .reportStats span,.themeDark .dashKpi>span,.themeDark .dashList li small{color:#8b98a1}
+.themeDark .dashListHead h3{color:#e6edf1}.themeDark .dashListHead{border-bottom-color:#22303a}.themeDark .dashListHead span{background:#0e151a;border-color:#22303a;color:#9fb0bb}
+.themeDark .dashList li a:hover{background:#17212a}.themeDark .dashList ul li span{color:#7c8a94}
+.themeDark .bookingRow small,.themeDark .bookingRow span,.themeDark .operationReadOnly dt,.themeDark .reportPeriod,.themeDark .scheduleCaption,.themeDark .operationsNote,.themeDark .settingsBlock>p,.themeDark .settingsCard label>small,.themeDark .settingsHint{color:#93a3ad!important}
+.themeDark .bookingRow b,.themeDark .operationReadOnly dd,.themeDark .crmStats b{color:#e6edf1}
+/* Пультова героїчна плитка */
+.themeDark .dashKpi.dashHero{background:linear-gradient(150deg,#123139,#121a20)!important;border-color:rgba(37,180,192,.4)!important}
+.themeDark .dashKpi.dashHero>span{color:#7fd4dc!important}.themeDark .dashKpi.dashHero>b{color:#25b4c0!important}.themeDark .dashKpi.dashHero>small{color:#9fb7bb!important}
+.themeDark .dashEquip>div{background:#0e151a}.themeDark .dashEquip small{color:#8b98a1}
+/* Поля вводу */
+.themeDark input,.themeDark select,.themeDark textarea{background:#0e151a!important;border-color:#26333d!important;color:#e6edf1!important}
+.themeDark ::placeholder{color:#6b7a84}
+.themeDark .settingsCard input[readonly]{color:#9fb0bb}
+/* Панелі-фільтри й шапки таблиць (були світлі) → темні */
+.themeDark .staffTools,.themeDark .reportFilterGrid{background:#0e151a!important;border-color:#22303a!important;color:#cdd8de!important}
+.themeDark .staffTools label,.themeDark .reportFilterGrid label>span,.themeDark .staffTools select~*{color:#93a3ad!important}
+.themeDark .reportTableScroll th,.themeDark .pacsSeriesTable th{background:#0e151a!important;color:#cdd8de!important}
+.themeDark .reportTableScroll td,.themeDark .pacsSeriesTable td{border-bottom-color:#22303a}
+.themeDark .reportTableScroll tr:nth-child(even) td,.themeDark .pacsSeriesTable tr:nth-child(even) td{background:#0e151a}
+.themeDark .tariffTable th,.themeDark .tariffTable td{border-bottom-color:#22303a}.themeDark .tariffGroup h2{background:#0e151a!important;color:#e6edf1!important;border-bottom-color:#22303a!important}
+/* Первинні кнопки — темний текст на яскравому teal */
+.themeDark .workspacePageActions a.primary,.themeDark .protocolActions button.primary,.themeDark .crmProfile button,.themeDark .crmCommForm button,.themeDark .pacsViewerButton,.themeDark .pacsFormActions button,.themeDark .pacsSettings button,.themeDark .aiAssistHead button,.themeDark .aiDraftMeta button,.themeDark .tariffBar .button,.themeDark .settingsCard .button,.themeDark .equipmentAdmin form button,.themeDark .staffMemberAdd button,.themeDark .staffMemberList button,.themeDark .rescheduleForm button,.themeDark .staffTools button,.themeDark .reportFilters button,.themeDark .reportFormActions button,.themeDark .confirmBooking,.themeDark .protocolFilterTabs button.active,.themeDark .crmSegmentTabs button.active,.themeDark .reportTemplateTabs button.active{color:#06131a!important}
+/* Неактивні вкладки/світлі кнопки */
+.themeDark .protocolFilterTabs button,.themeDark .crmSegmentTabs button,.themeDark .reportTemplateTabs button{background:#0e151a;border-color:#26333d;color:#aebeca}
+.themeDark .reportTemplateTabs button span{color:#93a3ad}
+.themeDark .protocolActions button,.themeDark .pacsFormActions button.ghost{background:#0e151a;border-color:#26333d;color:#cdd8de}
+
+/* Пункти-модулі «Карти системи» в бічній панелі — номерні бейджі */
+.workspaceNavigation a.workspaceModuleLink>span{display:grid;place-items:center;width:24px;height:24px;flex:0 0 24px;border-radius:7px;background:rgba(37,180,192,.14);font-size:14px;line-height:1}
+.workspaceNavigation a.workspaceModuleLink.active>span,.workspaceNavigation a.workspaceModuleLink:hover>span{background:rgba(37,180,192,.28);color:#bff0f5}
+/* Зручність: повний підпис модуля (перенос замість обрізання) + читабельний
+   активний бейдж-номер (на білому боксі — суцільний teal з білою цифрою). */
+.workspaceNavigation a.workspaceModuleLink{gap:9px;padding-top:6px;padding-bottom:6px;align-items:center}
+.workspaceNavigation a.workspaceModuleLink>b{white-space:normal;overflow:visible;line-height:1.16}
+.workspaceNavigation a.workspaceModuleLink.active>span{background:#0c7a85;color:#fff}
+
+/* Розгортувані модулі з підпунктами в бічній панелі */
+.workspaceModuleGroup{display:block}
+.workspaceModuleRow{display:flex;align-items:stretch;gap:2px}
+.workspaceModuleRow>a{flex:1;min-width:0}
+.workspaceSubToggle{flex:0 0 26px;width:26px;margin:2px 0;border:0;border-radius:6px;background:transparent;color:#7c8a94;font-size:10px;cursor:pointer;display:grid;place-items:center;transition:transform .18s,background .15s}
+.workspaceSubToggle:hover{background:rgba(255,255,255,.08);color:#e6edf1}
+.workspaceSubToggle[aria-expanded="true"]{transform:rotate(180deg)}
+.workspaceSubToggle:focus-visible{outline:2px solid #25b4c0;outline-offset:1px}
+.workspaceSubList{display:flex;flex-direction:column;margin:1px 0 6px;padding-left:31px;border-left:1px solid rgba(255,255,255,.07);margin-left:15px}
+.workspaceSubLink{display:block;padding:6px 12px;margin:1px 0;border-radius:6px;color:#9fb0bb;font-size:11.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:.12s}
+.workspaceSubLink:hover{background:rgba(255,255,255,.07);color:#fff}
+/* У згорнутій/мобільній панелі підпункти й перемикач ховаються */
+.workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}
+@media(max-width:820px){.workspaceSubList,.workspaceSubToggle{display:none}.workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}}
+

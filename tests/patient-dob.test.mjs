@@ -5,8 +5,6 @@ import test from "node:test";
 
 const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 
-// Міграція 0018 додає date_of_birth до bookings; вхід у кабінет — за
-// збігом телефону і дати народження.
 test("migration adds date_of_birth to bookings and phone+dob lookup works", async () => {
   const dir = new URL("../drizzle/", import.meta.url);
   const files = (await readdir(dir)).filter((f) => f.endsWith(".sql")).sort();
@@ -30,37 +28,64 @@ test("migration adds date_of_birth to bookings and phone+dob lookup works", asyn
   assert.ok(!wrong, "wrong dob does not match");
 });
 
-// normalizeDob приймає лише правдоподібну YYYY-MM-DD.
 test("normalizeDob validates the date shape and range", async () => {
-  const src = await read("lib/dob.ts");
-  assert.match(src, /\^\(\\d\{4\}\)-\(\\d\{2\}\)-\(\\d\{2\}\)\$/);
-  assert.match(src, /y < 1900 \|\| y > 2100/);
+  const { normalizeDob } = await import("../lib/dob.ts");
+  assert.equal(normalizeDob("1990-05-21"), "1990-05-21");
+  assert.equal(normalizeDob("2026-02-31"), "");
+  assert.equal(normalizeDob("not-a-date"), "");
 });
 
-// Публічний запис (обидві форми) збирає й зберігає дату народження.
-test("site-booking stores date_of_birth and requires it", async () => {
+test("online booking accepts only adults aged 18 or older", async () => {
+  const { isAdultDob } = await import("../lib/dob.ts");
+  assert.equal(isAdultDob("2008-08-01", 18, "2026-08-01"), true);
+  assert.equal(isAdultDob("2008-08-02", 18, "2026-08-01"), false);
+});
+
+test("site-booking API still requires an adult DOB (used for staff-created bookings)", async () => {
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /normalizeDob\(body\.dob\)/);
+  assert.match(route, /isAdultDob\(dob\)/);
   assert.match(route, /Вкажіть коректну дату народження/);
+  assert.match(route, /від 18 років/);
   assert.match(route, /date_of_birth/);
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientDob'\)/);
-  assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
-  assert.match(bridge, /name, phone, dob,/); // dob потрапляє у payload
-  for (const page of ["public/site/price.html", "public/site/military.html"]) {
+  // Сегментований віджет дати лишається — його використовує вхід у кабінет.
+  const dobWidget = await read("public/site/assets/dob-widget.js");
+  assert.match(dobWidget, /dob-segmented/);
+  assert.match(dobWidget, /День народження/);
+  assert.match(dobWidget, /window\.enhanceDobSegments = enhanceDobSegments/);
+});
+
+test("public booking form is short: ПІБ + бажана дата + час (no DOB/phone/file)", async () => {
+  const route = await read("app/api/site-booking/route.ts");
+  assert.match(route, /assignEarliestAppointments\(/);
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
-    assert.match(html, /type="date"/, `${page} has a date input`);
+    assert.match(html, /Прізвище, ім’я та по батькові/);
+    assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час/);
+    assert.doesNotMatch(html, /type="file"/);
   }
 });
 
-// Кабінет пацієнта: вхід за телефоном + датою народження (не за кодом).
-test("patient cabinet logs in by phone and date of birth", async () => {
+test("patient cabinet uses DOB only to request a possession OTP, then verifies six digits", async () => {
+  const otp = await read("app/api/patient-otp/route.ts");
+  assert.match(otp, /normalizeDob\(body\.dob\)/);
+  assert.match(otp, /createPatientOtpChallenge/);
+  assert.match(otp, /verifyPatientOtpChallenge/);
+  assert.match(otp, /patientSessionCookie/);
+
   const bookings = await read("app/api/my-bookings/route.ts");
-  assert.match(bookings, /normalizeDob\(body\.dob\)/);
-  assert.match(bookings, /phone_normalized = \? AND date_of_birth = \?/);
-  assert.match(bookings, /дату народження/);
+  assert.match(bookings, /requirePatientSession/);
+  assert.doesNotMatch(bookings, /normalizeDob\(body\.dob\)/);
+  assert.doesNotMatch(bookings, /createPatientSession/);
+
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /id="gateDob"/);
-  assert.match(cabinet, /dob: dobValue/);
-  assert.doesNotMatch(cabinet, /id="gateCode"/);
+  // Кабінет використовує той самий сегментований віджет дати, що й форма запису.
+  assert.match(cabinet, /assets\/dob-widget\.js/);
+  assert.match(cabinet, /enhanceDobSegments\(document\.getElementById\('gateDob'\)\)/);
+  assert.match(cabinet, /\/api\/patient-otp/);
+  assert.match(cabinet, /6.{0,20}(?:циф|знач)/i);
+  assert.match(cabinet, /radiologyos_patient_prefill_v1/);
+  assert.match(cabinet, /№ заявки:/);
+  assert.match(cabinet, /statusMeta/);
 });

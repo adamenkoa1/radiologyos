@@ -1,0 +1,122 @@
+import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
+import test from "node:test";
+import { auditLabel } from "../lib/audit.ts";
+
+const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
+
+test("auditLabel maps known codes and falls back to the raw code", () => {
+  assert.equal(auditLabel("login"), "Вхід у систему");
+  assert.equal(auditLabel("login_failed"), "Невдала спроба входу");
+  assert.equal(auditLabel("schedule_update"), "Змінено графік і слоти");
+  assert.equal(auditLabel("unknown_code_xyz"), "unknown_code_xyz");
+});
+
+test("audit() swallows write errors so it never breaks the main action", async () => {
+  const { audit } = await import("../lib/audit.ts");
+  const throwingDb = { prepare() { throw new Error("no such table: security_audit_log"); } };
+  // Не повинно кинути — навіть якщо БД падає.
+  await audit(throwingDb, { organizationId: 1, actorEmail: "a@b.c", action: "login", resource: "auth" });
+});
+
+test("logSecurityEvent writes org-scoped rows with all columns", async () => {
+  const { logSecurityEvent } = await import("../lib/audit.ts");
+  let bound = null;
+  const db = { prepare(sql) { return { bind(...args) { bound = { sql, args }; return { async run() {} }; } }; } };
+  await logSecurityEvent(db, { organizationId: 7, actorEmail: "x@y.z", action: "logout", resource: "auth", targetId: 42, details: { a: 1 } });
+  assert.match(bound.sql, /INSERT INTO security_audit_log/);
+  assert.match(bound.sql, /organization_id/);
+  assert.equal(bound.args[0], 7);            // organization_id
+  assert.equal(bound.args[1], "x@y.z");      // actor_email
+  assert.equal(bound.args[2], "logout");     // action
+  assert.equal(bound.args[4], "42");         // target_id → string
+});
+
+test("security audit refuses missing or invalid tenant ownership instead of defaulting to org1", async () => {
+  const { logSecurityEvent } = await import("../lib/audit.ts");
+  let prepareCalls = 0;
+  const db = { prepare() { prepareCalls += 1; throw new Error("must not reach SQL"); } };
+
+  await assert.rejects(
+    () => logSecurityEvent(db, { actorEmail: "x@y.z", action: "login", resource: "auth" }),
+    /valid organizationId/,
+  );
+  await assert.rejects(
+    () => logSecurityEvent(db, { organizationId: 0, actorEmail: "x@y.z", action: "login", resource: "auth" }),
+    /valid organizationId/,
+  );
+  assert.equal(prepareCalls, 0, "invalid tenant ownership must fail before any audit INSERT");
+
+  const source = await read("lib/audit.ts");
+  assert.match(source, /organizationId: number/);
+  assert.doesNotMatch(source, /organizationId\?: number/);
+  assert.doesNotMatch(source, /event\.organizationId \|\| 1/);
+});
+
+test("migration 0023 creates the security_audit_log table and index", async () => {
+  const sql = await read("drizzle/0023_security_audit_log.sql");
+  assert.match(sql, /CREATE TABLE IF NOT EXISTS `security_audit_log`/);
+  assert.match(sql, /`organization_id` integer NOT NULL DEFAULT 1/);
+  assert.match(sql, /CREATE INDEX IF NOT EXISTS `security_audit_created_idx`/);
+});
+
+test("toAuditCsv builds an Excel-friendly CSV with a BOM and escaped fields", async () => {
+  const { toAuditCsv } = await import("../lib/audit.ts");
+  const csv = toAuditCsv([
+    { id: 2, actorEmail: "a@b.c", action: "login", resource: "auth", targetId: "", detailsJson: "{}", createdAt: "2026-08-03 10:00:00" },
+    { id: 1, actorEmail: "x@y.z", action: "settings_update", resource: "settings", targetId: "380,99", detailsJson: '{"a":"b, c"}', createdAt: "2026-08-03 09:00:00" },
+  ]);
+  assert.ok(csv.startsWith("﻿"), "starts with UTF-8 BOM");
+  const lines = csv.slice(1).split("\r\n");
+  assert.match(lines[0], /^Дата \(UTC\),Код події,Подія,Ресурс,Хто,/);
+  assert.match(lines[1], /login,Вхід у систему,auth,a@b\.c/);
+  // Кома всередині поля → значення в лапках.
+  assert.match(lines[2], /"380,99"/);
+  assert.match(lines[2], /"\{""a"":""b, c""\}"/);
+});
+
+test("toAuditCsv neutralizes formula-injection cells", async () => {
+  const { toAuditCsv } = await import("../lib/audit.ts");
+  const csv = toAuditCsv([
+    { id: 1, actorEmail: "=HYPERLINK(\"http://evil\")", action: "login_failed", resource: "auth", targetId: "+1", detailsJson: "@x", createdAt: "2026-08-03 10:00:00" },
+  ]);
+  const row = csv.slice(1).split("\r\n")[1];
+  // Небезпечні клітинки префіксуються апострофом (і беруться в лапки через ").
+  assert.match(row, /"'=HYPERLINK/);
+  assert.match(row, /'\+1/);
+  assert.match(row, /'@x/);
+});
+
+test("audit API is admin-only and org-scoped", async () => {
+  const route = await read("app/api/staff/audit/route.ts");
+  assert.match(route, /requireOrgContext/);
+  assert.match(route, /ctx\.role !== "admin"/);
+  assert.match(route, /listAuditEvents\(db, ctx\.organizationId/);
+  // CSV-експорт: гілка format=csv віддає text/csv як завантаження.
+  assert.match(route, /format"\) === "csv"/);
+  assert.match(route, /toAuditCsv/);
+  assert.match(route, /text\/csv/);
+  assert.match(route, /attachment; filename="audit-log\.csv"/);
+});
+
+test("sensitive actions are wired to the audit log", async () => {
+  const login = await read("app/api/staff/login/route.ts");
+  assert.match(login, /action: "login_failed"/);
+  assert.match(login, /action: "login"/);
+  const logout = await read("app/api/staff/logout/route.ts");
+  assert.match(logout, /action: "logout"/);
+  const schedule = await read("app/api/staff/schedule/route.ts");
+  assert.match(schedule, /action: "schedule_update"/);
+  const settings = await read("app/api/staff/settings/route.ts");
+  assert.match(settings, /action: "settings_update"/);
+  const members = await read("app/api/staff/members/route.ts");
+  assert.match(members, /action: existing \? "member_role" : "member_add"/);
+});
+
+test("audit page and nav are wired", async () => {
+  const page = await read("app/staff/audit/page.tsx");
+  assert.match(page, /active="audit"/);
+  assert.match(page, /\/api\/staff\/audit/);
+  const shell = await read("app/staff/workspace-shell.tsx");
+  assert.match(shell, /href:"\/staff\/audit"/);
+});

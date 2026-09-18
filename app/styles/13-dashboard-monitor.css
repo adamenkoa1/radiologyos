@@ -1,0 +1,334 @@
+/* BAS-inspired manager monitor for RadiologyOS.
+   Uses existing dashboard data and workflow; this file changes presentation only. */
+
+.workspaceShell .dashMc {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin: 4px 0 20px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+}
+
+.workspaceShell .dashMcItem {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 72px;
+  padding: 12px 14px;
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface);
+  color: var(--ws-ink);
+  box-shadow: var(--ws-shadow-sm);
+  overflow: hidden;
+}
+
+.workspaceShell .dashMcItem::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: var(--dash-kpi, var(--ws-accent));
+}
+
+.workspaceShell .dashMcItem.red { --dash-kpi: #dc2626; }
+.workspaceShell .dashMcItem.orange { --dash-kpi: #d97706; }
+.workspaceShell .dashMcItem.green { --dash-kpi: #16a34a; }
+.workspaceShell .dashMcItem.blue { --dash-kpi: #2563eb; }
+.workspaceShell .dashMcItem.violet { --dash-kpi: #7c3aed; }
+
+.workspaceShell .dashMcItem b {
+  min-width: 46px;
+  font-size: 28px;
+  line-height: 1;
+  letter-spacing: -.04em;
+  color: var(--ws-ink);
+}
+
+.workspaceShell .dashMcItem span {
+  font-size: 12px;
+  line-height: 1.25;
+  font-weight: 700;
+  color: var(--ws-muted);
+}
+
+.workspaceShell .dashTier {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 24px 0 10px;
+  color: var(--ws-muted);
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.workspaceShell .dashTier::after {
+  content: "";
+  height: 1px;
+  flex: 1;
+  background: var(--ws-line);
+}
+
+.workspaceShell .dashPending,
+.workspaceShell .dashCalendar,
+.workspaceShell .dashNeedsCall,
+.workspaceShell .dashList {
+  border: 1px solid var(--ws-line);
+  border-radius: var(--ws-radius-md);
+  background: var(--ws-surface);
+  box-shadow: var(--ws-shadow-sm);
+}
+
+.workspaceShell .dashPending,
+.workspaceShell .dashCalendar {
+  margin-bottom: 14px;
+}
+
+.workspaceShell .dashPendingHead,
+.workspaceShell .dashCalendarHead,
+.workspaceShell .dashNeedsCallHead,
+.workspaceShell .dashListHead {
+  border-bottom: 1px solid var(--ws-line);
+}
+
+.workspaceShell .dashPendingHead h2,
+.workspaceShell .dashCalendarHead h2,
+.workspaceShell .dashListHead h3 {
+  color: var(--ws-ink);
+  letter-spacing: -.015em;
+}
+
+.workspaceShell .dashPendingHead small,
+.workspaceShell .dashNeedsCallHead small,
+.workspaceShell .dashListHint {
+  color: var(--ws-muted);
+}
+
+.workspaceShell .dashPendingBadge,
+.workspaceShell .dashAgendaCount {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 7px;
+  border-radius: 999px;
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.workspaceShell .dashPendingTools,
+.workspaceShell .dashCalActions,
+.workspaceShell .dashCardActions,
+.workspaceShell .dashNeedsCallActions {
+  gap: 7px;
+}
+
+.workspaceShell .dashSelAll,
+.workspaceShell .dashBatchBtn,
+.workspaceShell .dashCalActions a,
+.workspaceShell .dashCardBtn,
+.workspaceShell .dashChip {
+  min-height: 31px;
+  border-radius: var(--ws-radius-sm);
+  font-weight: 700;
+}
+
+.workspaceShell .dashBatchBtn,
+.workspaceShell .dashCalNew,
+.workspaceShell .dashCardBtn.ok {
+  box-shadow: none;
+}
+
+.workspaceShell .dashCards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.workspaceShell .dashCard {
+  border: 1px solid var(--ws-line);
+  border-radius: 10px;
+  box-shadow: none;
+  transition: border-color .14s ease, box-shadow .14s ease, transform .14s ease;
+}
+
+.workspaceShell .dashCard:hover {
+  border-color: rgba(37,99,235,.35);
+  box-shadow: 0 5px 16px rgba(16,24,40,.08);
+  transform: translateY(-1px);
+}
+
+.workspaceShell .dashCard.picked {
+  border-color: var(--ws-accent);
+  box-shadow: 0 0 0 2px rgba(37,99,235,.12);
+}
+
+.workspaceShell .dashCardName {
+  color: var(--ws-ink);
+}
+
+.workspaceShell .dashCardSvc,
+.workspaceShell .dashCardWhen {
+  color: var(--ws-muted);
+}
+
+.workspaceShell .dashCardTag,
+.workspaceShell .dashCardFlag,
+.workspaceShell .dashAgendaFlag,
+.workspaceShell .dashAgendaStatus {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .02em;
+}
+
+.workspaceShell .dashChips {
+  display: flex;
+  gap: 6px;
+  padding: 10px 14px;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--ws-line);
+}
+
+.workspaceShell .dashChip {
+  flex: 0 0 auto;
+  padding-inline: 11px;
+  border: 1px solid var(--ws-line);
+  background: var(--ws-surface-subtle);
+  color: var(--ws-muted);
+}
+
+.workspaceShell .dashChip.on {
+  border-color: rgba(37,99,235,.32);
+  background: var(--ws-accent-soft);
+  color: var(--ws-accent);
+}
+
+.workspaceShell .dashChip i {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: rgba(148,163,184,.14);
+  font-style: normal;
+  font-size: 10px;
+}
+
+.workspaceShell .dashAgenda {
+  margin: 0;
+  padding: 0;
+}
+
+.workspaceShell .dashAgenda > li + li {
+  border-top: 1px solid var(--ws-line);
+}
+
+.workspaceShell .dashAgendaRow {
+  min-height: 56px;
+  border-radius: 0;
+  background: transparent;
+  transition: background-color .12s ease;
+}
+
+.workspaceShell .dashAgendaRow:hover {
+  background: rgba(37,99,235,.04);
+}
+
+.workspaceShell .dashAgendaRow time {
+  color: var(--ws-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.workspaceShell .dashAgendaWho b {
+  color: var(--ws-ink);
+}
+
+.workspaceShell .dashAgendaWho small,
+.workspaceShell .dashAgendaWhen {
+  color: var(--ws-muted);
+}
+
+.workspaceShell .dashNeedsCall {
+  margin: 0 0 14px;
+  border-color: rgba(217,119,6,.34);
+  background: color-mix(in srgb, var(--ws-surface) 94%, #f59e0b 6%);
+}
+
+.workspaceShell .dashNeedsCallHead {
+  border-color: rgba(217,119,6,.2);
+}
+
+.workspaceShell .dashToast {
+  border-radius: var(--ws-radius-sm);
+  box-shadow: var(--ws-shadow-sm);
+}
+
+.workspaceShell .dashList {
+  overflow: hidden;
+}
+
+.workspaceShell .dashList ul li + li {
+  border-top: 1px solid var(--ws-line);
+}
+
+.workspaceShell .dashList li a {
+  transition: background-color .12s ease;
+}
+
+.workspaceShell .dashList li a:hover {
+  background: rgba(37,99,235,.04);
+}
+
+.workspaceShell .dashListEmpty {
+  color: var(--ws-muted);
+}
+
+.workspaceShell.themeDark .dashMcItem,
+.workspaceShell.themeDark .dashPending,
+.workspaceShell.themeDark .dashCalendar,
+.workspaceShell.themeDark .dashList {
+  box-shadow: none;
+}
+
+.workspaceShell.themeDark .dashCard:hover {
+  box-shadow: 0 5px 18px rgba(0,0,0,.18);
+}
+
+@media (max-width: 1100px) {
+  .workspaceShell .dashMc {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 720px) {
+  .workspaceShell .dashMc {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .workspaceShell .dashMcItem {
+    min-height: 64px;
+  }
+  .workspaceShell .dashMcItem b {
+    font-size: 24px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspaceShell .dashCard,
+  .workspaceShell .dashAgendaRow,
+  .workspaceShell .dashList li a { transition: none; }
+  .workspaceShell .dashCard:hover { transform: none; }
+}

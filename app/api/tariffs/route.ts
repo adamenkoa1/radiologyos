@@ -1,14 +1,21 @@
-// Public: price overrides for the static price list. Only changed prices are
-// returned; the page keeps its built-in defaults for everything else.
+// Public tariff map for the static price page. Prices are resolved through the
+// same effective-service source as booking and availability.
 
-import { priceOverrides } from "../../../lib/tariffs";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { effectiveServices } from "../../../lib/effective-services";
+import { dbBinding } from "../../../lib/db";
 
 export async function GET() {
   const db = dbBinding();
   if (!db) return Response.json({ prices: {} });
-  return Response.json({ prices: await priceOverrides(db) }, { headers: { "cache-control": "no-store" } });
+
+  const prices: Record<string, number> = {};
+  const titles: Record<string, string> = {};
+  const descriptions: Record<string, string> = {};
+  for (const service of await effectiveServices(db)) {
+    prices[service.code] = service.price;
+    titles[service.code] = service.title;
+    descriptions[service.code] = service.description;
+  }
+
+  return Response.json({ prices, titles, descriptions }, { headers: { "cache-control": "no-store" } });
 }

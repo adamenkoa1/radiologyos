@@ -1,0 +1,94 @@
+/* ================= Негатоскоп-акцент для кабінету персоналу =================
+   Scoped до .workspaceShell: зелений брендовий акцент → клінічний teal.
+   Семантичні кольори (успіх, «онлайн», попередження, помилки, статуси) не чіпаємо.
+   Публічний сайт (поза .workspaceShell) лишається у своїй айдентиці. */
+.workspaceShell{--green:#0c7a85;--ws-accent:#0c7a85;--ws-deep:#0a5f68;--ws-soft:#e2f4f5;--ws-sidebar:#0d2a2e;background:#eef2f5}
+.workspaceSidebar{background:var(--ws-sidebar)}
+.workspaceBrandMark{color:var(--ws-accent)}
+.workspaceNavigation a.active{color:var(--ws-accent)}
+.workspaceNavigation a.active:before{background:var(--ws-accent)}
+.workspaceBreadcrumb span{color:var(--ws-accent)}
+.workspaceShell .workspacePageActions a{color:var(--ws-deep)}
+.workspaceShell .workspacePageActions a.primary{border-color:var(--ws-accent);background:var(--ws-accent)}
+.workspaceShell .workspaceQuickGrid .workspaceTodayCard{background:linear-gradient(125deg,#0c7a85,#0a464d);border-color:#0c7a85}
+.workspaceShell .quickGlyph,.workspaceShell .workspaceAvatar{background:var(--ws-soft);color:var(--ws-accent)}
+.workspaceShell .workspaceProfile>div a:hover{background:var(--ws-soft);color:var(--ws-accent)}
+/* Первинні (заповнені) кнопки модулів */
+.workspaceShell .protocolActions button.primary,
+.workspaceShell .crmProfile button,.workspaceShell .crmCommForm button,
+.workspaceShell .pacsViewerButton,.workspaceShell .pacsFormActions button,.workspaceShell .pacsSettings button,
+.workspaceShell .aiAssistHead button,.workspaceShell .aiDraftMeta button,
+.workspaceShell .tariffBar .button,.workspaceShell .settingsCard .button,
+.workspaceShell .equipmentAdmin form button,.workspaceShell .staffMemberAdd button,.workspaceShell .staffMemberList button,
+.workspaceShell .rescheduleForm button,
+.workspaceShell .staffTools button,.workspaceShell .reportFilters button,.workspaceShell .reportFormActions button{
+  background:var(--ws-accent)!important;border-color:var(--ws-accent)!important;color:#fff!important}
+.workspaceShell .pacsFormActions button.ghost,.workspaceShell .protocolActions button.ghost{background:#fff!important;color:var(--ws-accent)!important}
+/* Активні вкладки */
+.workspaceShell .protocolFilterTabs button.active,.workspaceShell .crmSegmentTabs button.active,.workspaceShell .reportTemplateTabs button.active{
+  background:var(--ws-accent)!important;border-color:var(--ws-accent)!important;color:#fff!important}
+/* М'які (світлі) акцентні кнопки й теги */
+.workspaceShell .protocolNormButton,.workspaceShell .protocolActions button.secondary,
+.workspaceShell .aiDraftBlockHead button,.workspaceShell .crmExport,
+.workspaceShell .excelButton,.workspaceShell .csvButton,.workspaceShell .settingsBlock .button.secondary{
+  background:var(--ws-soft)!important;border-color:var(--ws-accent)!important;color:var(--ws-deep)!important}
+.workspaceShell .crmTag{background:var(--ws-soft)!important;color:var(--ws-deep)!important}
+/* Акцентні посилання */
+.workspaceShell .bookingRow a,.workspaceShell .crmCardLink,.workspaceShell .crmVisitLink,
+.workspaceShell .protocolBuilderLink,.workspaceShell .settingsCard .linkBtn,
+.workspaceShell .protocolEditorHead .eyebrow,.workspaceShell .aiAssistHead .eyebrow,.workspaceShell .reportBuilderHead .eyebrow{
+  color:var(--ws-accent)!important}
+/* Дата-смуги звітів (день) — теплий помаранчевий → teal, узгоджено з акцентом */
+.workspaceShell .reportBarTrack span,.workspaceShell .reportBarTrack i{background:var(--ws-accent)!important}
+/* Фокус-обведення полів у кабінеті */
+.workspaceShell input:focus,.workspaceShell select:focus,.workspaceShell textarea:focus{
+  box-shadow:0 0 0 3px rgba(12,122,133,.14)!important}
+@media print{.workspaceShell{background:#fff}}
+
+/* Підтвердження заявки одним рухом + статус нагадування */
+.bookingAction .confirmBooking{margin-top:8px;width:100%;border:0;border-radius:8px;background:var(--green);color:#fff;padding:10px 12px;font:inherit;font-size:12px;font-weight:800;cursor:pointer;transition:filter .15s}
+.bookingAction .confirmBooking:hover{filter:brightness(1.06)}
+.reminderTag{display:inline-block;margin-top:8px;padding:4px 9px;border-radius:20px;font-size:10px;font-weight:800;line-height:1.35;background:#eef1f0;color:#5f706c}
+.reminderTag.sent{background:#daf0e5;color:#145b44}
+.reminderTag.failed{background:#f9e1da;color:#983b24}
+.reminderTag.skipped{background:#eef1f0;color:#5f706c}
+.reminderTag.queued{background:#fdeede;color:#9a5a1c}
+
+/* ===== Негатоскоп-вигляд кабінету v2: прибрати темно-зелені блоки ===== */
+.workspaceShell{--green:#0c7a85;--ws-accent:#0c7a85;--ws-deep:#0a5f68;--ws-soft:#e2f4f5;background:#eef2f5}
+/* Бічна панель — холодний графіт замість темно-зеленого */
+.workspaceSidebar{background:#111820!important;border-right:1px solid #1f2a33}
+.workspaceBrand{border-bottom-color:#1f2a33}
+.workspaceBrandMark{background:#0c7a85!important;color:#fff!important}
+.workspaceBrandCopy small{color:#7c93a0}
+.workspaceNavigation p{color:#6f8695}
+.workspaceNavigation a{color:#aebeca}
+.workspaceNavigation a:hover{background:rgba(255,255,255,.06);color:#fff}
+.workspaceNavigation a.active{background:#fff;color:#0a5f68}
+.workspaceNavigation a.active:before{background:#0c7a85}
+.workspaceSidebarFoot{color:#c3d2da;border-top-color:#1f2a33}
+.workspaceSidebarFoot small{color:#6f8695}
+/* Заголовки без серифу — як в артефакті */
+.workspaceShell h1,.workspaceShell h2,.workspaceShell h3{font-family:var(--font-sans)!important;letter-spacing:-.02em;font-weight:680}
+.workspaceBreadcrumb span{color:#0c7a85}
+/* Картка «сьогодні» — світла плитка з teal-акцентом (без темно-зеленого) */
+.workspaceShell .workspaceQuickGrid .workspaceTodayCard{background:#fff!important;color:var(--ink)!important;border:1px solid #dbe7ea!important;box-shadow:0 1px 2px rgba(16,32,44,.05),0 8px 24px rgba(16,32,44,.05)!important}
+.workspaceShell .workspaceTodayCard:after{border-color:rgba(12,122,133,.1)!important}
+.workspaceShell .workspaceTodayCard>span{color:#0a5f68!important}
+.workspaceShell .workspaceTodayCard>strong{font-family:var(--font-sans)!important;color:#0c7a85!important;font-weight:750}
+.workspaceShell .workspaceTodayCard>b{color:var(--ink)!important}
+.workspaceShell .workspaceTodayCard>small{color:#66787f!important}
+/* Числові плитки — teal-акцент, табличні цифри */
+.workspaceShell .staffStats b,.workspaceShell .crmStats b,.workspaceShell .reportStats b,.workspaceShell .dashEquip b{font-family:var(--font-sans)!important;color:#0c7a85!important;font-variant-numeric:tabular-nums}
+/* Пульт: героїчна плитка зі світлим teal замість зеленого градієнта */
+.workspaceShell .dashKpi.dashHero{background:linear-gradient(150deg,#e6f4f5,#fff)!important;border-color:rgba(12,122,133,.28)!important}
+.workspaceShell .dashKpi.dashHero>span{color:#0a5f68!important}
+.workspaceShell .dashKpi.dashHero>b{color:#0c7a85!important}
+.workspaceShell .dashKpi.dashHero>small{color:#5f7a7d!important}
+/* Зелено-тоновані секції → холодні нейтральні панелі */
+.workspaceShell .staffAdmin{background:#f4f7f9!important;border-color:#e0e7ec!important}
+.workspaceShell .staffAdmin>div>p:last-child{color:#5c6b74!important}
+.workspaceShell .aiAssist{background:#f4f7f9!important;border-color:#dbe7ea!important}
+/* Дата-смуги звітів → teal */
+.workspaceShell .reportBarTrack span,.workspaceShell .reportBarTrack i{background:#0c7a85!important}
+

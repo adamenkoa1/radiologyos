@@ -1,9 +1,11 @@
-import { normalizeBookingCode, requirePatientSession } from "../../../lib/patient-auth";
+import { audit } from "../../../lib/audit";
+import {
+  normalizeBookingCode,
+  patientSessionScopeIsUnambiguous,
+  requirePatientSession,
+} from "../../../lib/patient-auth";
 import { isRateLimited } from "../../../lib/rate-limit";
-
-function dbBinding() {
-  return (globalThis as typeof globalThis & { __RADIOLOGY_DB__?: D1Database }).__RADIOLOGY_DB__;
-}
+import { dbBinding } from "../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();
@@ -13,15 +15,29 @@ export async function POST(request: Request) {
   }
   const session = await requirePatientSession(request, db);
   if (!session) return Response.json({ error: "Сесію завершено. Увійдіть до кабінету повторно." }, { status: 401 });
+  if (!await patientSessionScopeIsUnambiguous(db, session)) {
+    return Response.json(
+      { error: "За цим номером і датою народження знайдено кілька записів. Увійдіть за кодом конкретної заявки." },
+      { status: 409, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const body = await request.json().catch(() => ({})) as { code?: string };
   const code = normalizeBookingCode(body.code);
   if (!code) return Response.json({ error: "Некоректний код заявки" }, { status: 400 });
 
+  const identityClause = session.identityKind === "dob" ? "date_of_birth = ?" : "code = ?";
+  const whereClause = session.patientId
+    ? "organization_id = ? AND code = ? AND patient_id = ?"
+    : `organization_id = ? AND code = ? AND phone_normalized = ? AND ${identityClause}`;
+  const bindings = session.patientId
+    ? [session.organizationId, code, session.patientId]
+    : [session.organizationId, code, session.phoneNormalized, session.identityValue];
   const booking = await db.prepare(
     `SELECT id, name, service, protocol_status AS protocolStatus, protocol_issued_at AS issuedAt
-     FROM bookings WHERE code = ? AND phone_normalized = ? LIMIT 1`
-  ).bind(code, session.phoneNormalized).first<{
+     FROM bookings
+     WHERE ${whereClause} LIMIT 1`,
+  ).bind(...bindings).first<{
     id: number; name: string; service: string; protocolStatus: string; issuedAt: string;
   }>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
@@ -31,11 +47,49 @@ export async function POST(request: Request) {
 
   const proto = await db.prepare(
     `SELECT number, method, findings, conclusion, recommendations
-     FROM protocols WHERE booking_id = ? AND status = 'issued' LIMIT 1`
-  ).bind(booking.id).first<{
+     FROM protocols WHERE organization_id = ? AND booking_id = ? AND status = 'issued' LIMIT 1`,
+  ).bind(session.organizationId, booking.id).first<{
     number: string; method: string; findings: string; conclusion: string; recommendations: string;
   }>();
   if (!proto) return Response.json({ error: "Протокол ще не готовий" }, { status: 409 });
+
+  const addenda = await db.prepare(
+    `SELECT id,
+            base_protocol_version AS baseProtocolVersion,
+            reason,
+            correction_text AS correctionText,
+            version,
+            signed_by AS signedBy,
+            signed_at AS signedAt,
+            created_at AS createdAt,
+            updated_at AS updatedAt
+     FROM protocol_addenda
+     WHERE organization_id = ? AND booking_id = ? AND status = 'issued'
+     ORDER BY created_at ASC, id ASC`,
+  ).bind(session.organizationId, booking.id).all<{
+    id: string;
+    baseProtocolVersion: number;
+    reason: string;
+    correctionText: string;
+    version: number;
+    signedBy: string;
+    signedAt: string;
+    createdAt: string;
+    updatedAt: string;
+  }>();
+
+  await audit(db, {
+    organizationId: session.organizationId,
+    actorEmail: "patient_session",
+    action: "patient_protocol_viewed",
+    resource: "protocol",
+    targetId: booking.id,
+    details: {
+      channel: "patient_cabinet",
+      identityKind: session.patientId ? "patient_id" : session.identityKind,
+      issuedAddenda: addenda.results.length,
+    },
+  });
 
   return Response.json({
     protocol: {
@@ -47,6 +101,7 @@ export async function POST(request: Request) {
       findings: proto.findings,
       conclusion: proto.conclusion,
       recommendations: proto.recommendations,
+      addenda: addenda.results,
     },
   }, { headers: { "cache-control": "no-store" } });
 }
