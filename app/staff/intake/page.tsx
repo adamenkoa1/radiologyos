@@ -34,12 +34,12 @@ const EQUIP_UK:Record<string,string> = { ct:"КТ", xray:"Рентген", fluor
 // Ознаки без окремих полів у БД.
 const isContrast = (svc:string) => /контраст|ангіограф/i.test(svc || "");
 const digits = (s:string) => (s || "").replace(/[^\d]/g, "");
-const CONTACT_LABELS:Record<string,string> = { call:"Телефонний дзвінок", whatsapp:"WhatsApp", email:"Email", viber:"Viber" };
+const CONTACT_LABELS:Record<string,string> = { call:"Телефонний дзвінок", whatsapp:"WhatsApp", email:"Email", viber:"Viber", telegram:"Telegram" };
 function preferredContact(comment?:string) {
-  return (comment || "").match(/^\[contact:(call|whatsapp|email|viber)\](?:\s|$)/i)?.[1]?.toLowerCase() || "";
+  return (comment || "").match(/^\[contact:(call|whatsapp|email|viber|telegram)\](?:\s|$)/i)?.[1]?.toLowerCase() || "";
 }
 function visibleComment(comment?:string) {
-  return (comment || "").replace(/^\[contact:(?:call|whatsapp|email|viber)\]\s*/i, "").replace(/^Бажаний спосіб зв’язку:[^\n]*(?:\n|$)/i, "").trim();
+  return (comment || "").replace(/^\[contact:(?:call|whatsapp|email|viber|telegram)\]\s*/i, "").replace(/^Бажаний спосіб зв’язку:[^\n]*(?:\n|$)/i, "").trim();
 }
 // Вік із дати народження (роки), Київ не критичний для року.
 function ageFrom(dob?:string) {
@@ -259,6 +259,7 @@ export default function IntakePage() {
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
                 {contact === "viber" && digits(selected.phone) && <a className="intakePatientLink" href={`viber://chat?number=%2B${digits(selected.phone)}`}>Написати у Viber</a>}
+                {contact === "telegram" && digits(selected.phone) && <a className="intakePatientLink" href={`tg://resolve?phone=${digits(selected.phone)}`}>Відкрити Telegram</a>}
                 {contact === "email" && selected.patientEmail && <a className="intakePatientLink" href={`mailto:${selected.patientEmail}`}>Написати email</a>}
                 {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}

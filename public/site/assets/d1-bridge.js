@@ -293,6 +293,7 @@
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('patientDob') || {}).value || '';
       const email = ((document.getElementById('patientEmail') || {}).value || '').trim();
+      const contactMethod = ((document.getElementById('patientContact') || {}).value) || 'call';
       const desiredDate = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.date) ? pickedSlot.date : '';
       const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
       const referralType = category === 'military' ? 'military_referral' : 'other';
@@ -308,6 +309,7 @@
       try {
         const result = await postBooking({
           name, phone, dob, email, category, referralType, comment, desiredDate, desiredTime, source,
+          contactMethod,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
@@ -342,6 +344,7 @@
       const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
       const email = ((document.getElementById('militaryPatientEmail') || {}).value || '').trim();
+      const contactMethod = ((document.getElementById('militaryPatientContact') || {}).value) || 'call';
       const commentRaw = (document.getElementById('militaryComment') || {}).value || '';
       const comment = commentRaw.trim();
       const desiredDate = '';
@@ -357,7 +360,7 @@
       try {
         const result = await postBooking({
           name, phone, dob, email, category: 'military', referralType: 'military_referral',
-          comment, desiredDate, desiredTime, source,
+          comment, desiredDate, desiredTime, source, contactMethod,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);

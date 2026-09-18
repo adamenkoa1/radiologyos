@@ -38,18 +38,19 @@ export interface ReminderSummary {
 
 const DEPARTMENT = "Відділення променевої діагностики, Чернігівський військовий госпіталь";
 
-export type PreferredContact = "call" | "whatsapp" | "email" | "viber";
+export type PreferredContact = "call" | "whatsapp" | "email" | "viber" | "telegram";
 
 export function preferredContactFromComment(comment?: string): PreferredContact | "" {
-  const match = (comment || "").match(/^\[contact:(call|whatsapp|email|viber)\](?:\s|$)/i);
+  const match = (comment || "").match(/^\[contact:(call|whatsapp|email|viber|telegram)\](?:\s|$)/i);
   return (match?.[1]?.toLowerCase() || "") as PreferredContact | "";
 }
 
 function channelAllowed(preferred: PreferredContact | "", channel: Channel): boolean {
   if (!preferred) return true; // legacy bookings keep the existing multi-channel behaviour
   return preferred === "whatsapp" ? channel === "whatsapp"
-    : preferred === "email" ? channel === "email"
-      : false; // call and Viber are handled manually by the registrar
+    : preferred === "telegram" ? channel === "telegram"
+      : preferred === "email" ? channel === "email"
+        : false; // call and Viber are handled manually by the registrar
 }
 
 export function reminderText(kind: ReminderKind, booking: ReminderBooking): string {

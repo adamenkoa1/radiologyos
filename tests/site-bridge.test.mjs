@@ -39,16 +39,18 @@ test("the booking pages load the D1 bridge after cart.js", async () => {
   }
 });
 
-test("civilian booking does not ask the patient for a preferred contact channel", async () => {
+test("civilian booking lets the patient pick a contact channel (Viber/WhatsApp/Telegram)", async () => {
   for (const page of ["public/site/index.html", "public/site/price.html"]) {
     const html = await read(page);
-    assert.doesNotMatch(html, /name="preferredContact"/);
-    assert.doesNotMatch(html, /Бажаний спосіб зв’язку/);
-    // Примітка: необов'язкове поле e-mail (для входу в кабінет за кодом із листа)
-    // — це не вибір каналу зв'язку; його наявність перевіряє booking-order-block.
+    assert.match(html, /id="patientContact"/);
+    for (const v of ["call", "viber", "whatsapp", "telegram"]) {
+      assert.match(html, new RegExp(`value="${v}"`), `${page}: канал ${v}`);
+    }
   }
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.doesNotMatch(bridge, /preferredContact/);
+  assert.match(bridge, /getElementById\('patientContact'\)/);
+  assert.match(bridge, /contactMethod,/);
+  // Стара пряма-WhatsApp інтеграція реєстратора лишається прибраною.
   const route = await read("app/api/site-booking/route.ts");
   assert.doesNotMatch(route, /REGISTRAR_WHATSAPP/);
   assert.doesNotMatch(route, /registrar_whatsapp_failed/);
