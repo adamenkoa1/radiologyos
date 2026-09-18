@@ -33,14 +33,13 @@ test("the public homepage combines hospital information, services and booking", 
   assert.match(contentDefaults, /Досвід, якому можна довіряти/);
 });
 
-test("public booking collects a complete identity and assigns a free visit time", async () => {
+test("public booking is a minimalist messenger handoff (name + date + time)", async () => {
   const page = await read("public/site/index.html");
-  const route = await read("app/api/site-booking/route.ts");
-  assert.match(page, /id="patientPhone"/);
-  assert.match(page, /id="patientDob"/);
   assert.match(page, /Прізвище, ім’я та по батькові/);
-  assert.match(page, /id="patientCategory"/);
-  assert.doesNotMatch(page, /id="desiredDate"|id="desiredTime"/);
-  assert.match(route, /assignEarliestAppointments\(/);
-  assert.match(route, /Спосіб отримання результату:/);
+  assert.match(page, /id="desiredDate"[^>]*type="date"/);
+  assert.match(page, /id="desiredTime"[^>]*type="time"/);
+  // Прибрано складні поля.
+  assert.doesNotMatch(page, /id="patientPhone"|id="patientDob"|id="patientCategory"/);
+  // Одна головна CTA веде до вибору досліджень.
+  assert.match(page, /class="hero-cta" href="\/site\/price\.html">Записатися на дослідження/);
 });

@@ -44,7 +44,6 @@ function renderCart() {
     ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small>Код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
     : '<div class="cart-empty">Ви ще не додали жодної послуги.</div>';
   document.getElementById('cartTotal').textContent = money(cart.reduce((s, x) => s + x.price, 0));
-  refreshSlotPicker();
 }
 
 function openCart() {
@@ -86,60 +85,7 @@ document.addEventListener('click', e => { if (!e.target.closest('.login-menu-wra
 document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLoginMenu(); });
 document.getElementById('cartOverlay')?.addEventListener('click', e => { if (e.target.id === 'cartOverlay') closeCart(); });
 
-/* --- Формування заявки --- */
-
-const requestForm = document.getElementById('requestForm');
-let pickedSlot = { date: '', time: '' };
-
-/* Апарат за вмістом кошика: якщо є хоч одне КТ — КТ, інакше рентген */
-function cartApparatus() {
-  if (typeof apparatusForCode !== 'function') return 'xray';
-  return cart.some(x => apparatusForCode(x.code) === 'ct') ? 'ct' : 'xray';
-}
-
-let _lastPickerCode = null;
-function refreshSlotPicker() {
-  const box = document.getElementById('slotPicker');
-  if (!box || typeof initSlotPicker !== 'function') return;
-  if (!cart.length) {
-    box.innerHTML = '<div class="sp-loading">Оберіть послугу — і тут з’явиться вільний час</div>';
-    _lastPickerCode = null;
-    return;
-  }
-  // Real free times come from the department schedule for the first service in
-  // the cart (see /api/availability). The chosen time is a preferred slot the
-  // registrar confirms for every service in the request.
-  const code = String(cart[0].code);
-  if (code === _lastPickerCode) return;
-  _lastPickerCode = code;
-  pickedSlot = { date: '', time: '' };
-  initSlotPicker({
-    container: box,
-    serviceCode: code,
-    onPick: s => {
-      pickedSlot = s;
-      const dd = document.getElementById('desiredDate');
-      if (dd && s.date) dd.value = s.date;
-    }
-  });
-}
-
-/* повертаємо форму при наступному відкритті заявки */
-const _openCart = openCart;
-openCart = function () {
-  if (requestForm) {
-    requestForm.hidden = false;
-    requestForm.classList.remove('was-validated');
-    document.getElementById('successPanel').hidden = true;
-    const totalRow = document.querySelector('.cart-total');
-    if (totalRow) totalRow.style.display = '';
-    const items = document.getElementById('cartItems');
-    if (items) items.style.display = '';
-  }
-  _openCart();
-};
-
 renderCart();
 
-// Екран підтвердження та блок оплати цивільної заявки малює d1-bridge.js
-// (showCivilSuccess / wirePayButton через /api/site-payment).
+// Надсилання заявки в месенджер (Viber/WhatsApp) або дзвінок обробляє
+// d1-bridge.js — валідація ПІБ/дати/часу й кнопки [data-book].

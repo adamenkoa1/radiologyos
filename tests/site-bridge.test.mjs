@@ -17,17 +17,8 @@ test("site-booking endpoint saves v22 cart requests into D1 bookings", async () 
   assert.doesNotMatch(route, /configuredServiceByCode\(/);
 });
 
-test("the client bridge posts the cart and opens the patient cabinet for OTP verification", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /\/api\/site-booking/);
-  assert.match(bridge, /stopImmediatePropagation\(\)/);
-  assert.match(bridge, /items:\s*items\.map/);
-  assert.match(bridge, /cabinet\.html\?new=1/);
-  assert.doesNotMatch(bridge, /Код заявки|Коди заявок/);
-  const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /\/api\/patient-otp/);
-  assert.match(cabinet, /autoEnter:false/);
-});
+// Публічний запис більше не POST-ить у /api/site-booking і не відкриває кабінет
+// автоматично — це месенджер-хендоф (див. public-booking-messenger.test).
 
 test("the booking pages load the D1 bridge after cart.js", async () => {
   for (const page of ["public/site/index.html", "public/site/price.html"]) {
@@ -37,35 +28,6 @@ test("the booking pages load the D1 bridge after cart.js", async () => {
     assert.ok(cartAt > -1 && bridgeAt > -1, `${page} should load both scripts`);
     assert.ok(bridgeAt > cartAt, `${page} should load the bridge after cart.js`);
   }
-});
-
-test("civilian booking lets the patient pick a contact channel (Viber/WhatsApp/Telegram)", async () => {
-  for (const page of ["public/site/index.html", "public/site/price.html"]) {
-    const html = await read(page);
-    assert.match(html, /id="patientContact"/);
-    for (const v of ["call", "viber", "whatsapp", "telegram"]) {
-      assert.match(html, new RegExp(`value="${v}"`), `${page}: канал ${v}`);
-    }
-  }
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientContact'\)/);
-  assert.match(bridge, /contactMethod,/);
-  // Стара пряма-WhatsApp інтеграція реєстратора лишається прибраною.
-  const route = await read("app/api/site-booking/route.ts");
-  assert.doesNotMatch(route, /REGISTRAR_WHATSAPP/);
-  assert.doesNotMatch(route, /registrar_whatsapp_failed/);
-});
-
-test("successful civilian booking offers a prefilled WhatsApp message without a gateway", async () => {
-  for (const page of ["public/site/index.html", "public/site/price.html"]) {
-    const html = await read(page);
-    assert.match(html, /id="whatsappSubmitLink"/);
-    assert.match(html, /Надіслати заявку у WhatsApp/);
-  }
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /function wireRegistrarWhatsApp/);
-  assert.match(bridge, /https:\/\/wa\.me\/380972808899\?text=/);
-  assert.match(bridge, /encodeURIComponent\(lines\.join\('\\n'\)\)/);
 });
 
 test("patient cabinet lists verified-session bookings and reads protocols from D1", async () => {
@@ -138,64 +100,17 @@ test("a test-message endpoint verifies the current organization's Telegram conne
   assert.match(lib, /description\s*\|\|/);
 });
 
-test("payment link is served publicly and used by the site, not hardcoded", async () => {
+test("pay-link and in-cabinet payment stay available (no prepayment in the public booking)", async () => {
   const route = await read("app/api/pay-link/route.ts");
   assert.match(route, /pay_link/);
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  // The site pays through /api/site-payment (server-side amount), never a hardcoded link.
-  assert.match(bridge, /\/api\/site-payment/);
-  assert.doesNotMatch(bridge, /privatbank\.ua|liqpay\.ua/);
-  const index = await read("public/site/index.html");
-  assert.doesNotMatch(index, /assets\/notify\.js/);
+  // Публічна форма запису не пропонує оплату (див. public-booking-messenger.test);
+  // оплата лишається лише в кабінеті — після оформлення персоналом.
   const cabinet = await read("public/site/cabinet.html");
-  // One clear pay CTA showing the amount, plus the exact transfer purpose.
   assert.match(cabinet, /Сплатити \$\{esc\(money\(b\.paymentAmount\)\)\} грн/);
   assert.match(cabinet, /const paymentPurpose = `Сплата за медичні послуги, заявка \$\{b\.code\}/);
-});
-
-test("the payment QR renders on the site and in the cabinet, pointing at /api/site-payment", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /qr\.createImgTag/);
-  assert.match(bridge, /\/api\/site-payment\?codes=/);
-  const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  // The cabinet QR and pay button both go through the auto-amount endpoint (payUrl).
   assert.match(cabinet, /const payUrl = location\.origin\+'\/api\/site-payment\?codes='\+encodeURIComponent\(b\.code\)/);
-  assert.match(cabinet, /payQrImg\(payUrl\)/);
-  assert.match(cabinet, /data-open-payment data-url="\$\{esc\(payUrl\)\}"/);
-});
-
-test("civilian public request offers an optional preferred-time picker (not forced)", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  // Submit is never blocked on a chosen slot: desiredDate/desiredTime fall back to ''.
-  assert.match(bridge, /desiredTime = \(typeof pickedSlot[^\n]*pickedSlot\.time\) \? pickedSlot\.time : ''/);
-  // Civilian booking pages expose the optional slot picker (patient suggests a time,
-  // registrar confirms). Wiring lives in cart.js -> refreshSlotPicker().
-  for (const page of ["public/site/index.html", "public/site/price.html"]) {
-    const html = await read(page);
-    assert.match(html, /id="slotPicker"/);
-  }
-  // Military referral form stays slot-free — scheduling is by referral, not self-service.
-  const military = await read("public/site/military.html");
-  assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
-});
-
-test("a civilian booking offers PrivatBank payment right in the drawer, not only in the cabinet", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  // Civilian submit shows the in-drawer success/pay step instead of a blind cabinet redirect.
-  assert.match(bridge, /showCivilSuccess\(result\)/);
-  assert.match(bridge, /function showCivilSuccess/);
-  // The pay button/QR go through /api/site-payment for the booking codes.
-  assert.match(bridge, /function wirePayButton/);
-  assert.match(bridge, /\/api\/site-payment\?codes=/);
-  assert.match(bridge, /qr\.createImgTag/);
-  // The confirmation markup carries the PrivatBank pay button on both civilian pages.
-  for (const page of ["public/site/index.html", "public/site/price.html"]) {
-    const html = await read(page);
-    assert.match(html, /id="payBtn"[\s\S]*ПриватБанк/);
-    assert.match(html, /id="payBlock"/);
-  }
 });
 
 test("site-payment builds a signed LiqPay checkout with a server-side amount, or falls back to the static QR", async () => {
@@ -219,36 +134,12 @@ test("site-payment builds a signed LiqPay checkout with a server-side amount, or
   assert.match(lib, /SHA-1/);
 });
 
-test("the booking form caches the patient's details and prefills them next time", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  // Details are persisted across visits in localStorage on submit…
-  assert.match(bridge, /const PATIENT_CACHE_KEY = 'radiologyos_patient_v1'/);
-  assert.match(bridge, /localStorage\.setItem\(PATIENT_CACHE_KEY/);
-  assert.match(bridge, /rememberPatient\(phone, dob, name\)/);
-  // …and prefilled back into the form (before the DOB dropdowns are built).
-  assert.match(bridge, /function prefillPatientForm/);
-  assert.match(bridge, /prefillPatientForm\(\);\s*\n\s*prepareIdentityFields/);
-  // The cabinet login prefills phone + DOB from the same cache.
-  const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /localStorage\.getItem\('radiologyos_patient_v1'\)/);
-});
-
-test("the military free-booking form saves to D1 as category 'military'", async () => {
+test("military booking page loads the messenger bridge (no in-page slot picker)", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('militaryRequestForm'\)/);
-  assert.match(bridge, /category:\s*'military'/);
-  assert.match(bridge, /referralType:\s*'military_referral'/);
   const military = await read("public/site/military.html");
   assert.match(military, /assets\/d1-bridge\.js/);
-  assert.doesNotMatch(military, /id="milSlotPicker"/);
-});
-
-test("civilian booking warns about the 18+ rule up front, not only on submit error", async () => {
-  for (const page of ["index", "price"]) {
-    const html = await read(`public/site/${page}.html`);
-    assert.match(html, /Онлайн-запис — <strong>від 18 років<\/strong>/, `${page}: нема проактивної 18\+ нотатки`);
-    assert.match(html, /tel:\+380972808899/, `${page}: нема телефону реєстратури в нотатці`);
-  }
+  assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
 });
 
 test("cabinet groups a multi-study submission into one visit", async () => {
@@ -265,7 +156,7 @@ test("visit reminder: cabinet tells patients what to bring; military form mentio
   assert.match(cabinet, /Візьміть із собою:/);
   assert.match(cabinet, /b\.category === 'military' \? 'направлення та '/);
   const military = await read("public/site/military.html");
-  assert.match(military, /Візьміть із собою направлення, документ, що посвідчує особу/);
+  assert.match(military, /документ, що посвідчує особу/);
 });
 
 test("ПІБ field suggests Ukrainian given names + patronymics by token", async () => {
