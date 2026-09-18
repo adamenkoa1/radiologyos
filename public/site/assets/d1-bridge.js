@@ -393,6 +393,7 @@
       const name = document.getElementById('patientName').value.trim();
       const phone = '+380' + document.getElementById('patientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('patientDob') || {}).value || '';
+      const email = ((document.getElementById('patientEmail') || {}).value || '').trim();
       const desiredDate = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.date) ? pickedSlot.date : '';
       const desiredTime = (typeof pickedSlot !== 'undefined' && pickedSlot && pickedSlot.time) ? pickedSlot.time : '';
       const referralType = category === 'military' ? 'military_referral' : 'other';
@@ -407,7 +408,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const result = await postBooking({
-          name, phone, dob, category, referralType, comment, desiredDate, desiredTime, source,
+          name, phone, dob, email, category, referralType, comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),
         }, requestKey);
@@ -424,19 +425,24 @@
 
   // ----- Military request — free, category "military" (military.html) -----
   const milForm = document.getElementById('militaryRequestForm');
+  if (milForm) bindInlineValidation(milForm);
   if (milForm) {
     milForm.addEventListener('submit', async (event) => {
       event.preventDefault();
       event.stopImmediatePropagation();
       const items = (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart)) ? militaryCart : [];
       if (!items.length) { alert('Оберіть хоча б одне дослідження.'); return; }
-      const nameInput = document.getElementById('militaryPatientName');
-      if (nameInput) nameInput.dispatchEvent(new Event('input'));
+      // Оновити кастомну валідність (ПІБ/ДН) перед перевіркою, навіть якщо поля не чіпали.
+      ['militaryPatientName', 'militaryPatientDob', 'militaryPatientPhone'].forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) { el.dataset.touched = '1'; el.dispatchEvent(new Event('input')); }
+      });
       if (!milForm.checkValidity()) { milForm.classList.add('was-validated'); const bad = milForm.querySelector(':invalid'); if (bad) bad.focus(); return; }
 
       const name = document.getElementById('militaryPatientName').value.trim();
       const phone = '+380' + document.getElementById('militaryPatientPhone').value.replace(/\D/g, '');
       const dob = (document.getElementById('militaryPatientDob') || {}).value || '';
+      const email = ((document.getElementById('militaryPatientEmail') || {}).value || '').trim();
       const commentRaw = (document.getElementById('militaryComment') || {}).value || '';
       const comment = commentRaw.trim();
       const desiredDate = '';
@@ -451,7 +457,7 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Надсилаємо…'; }
       try {
         const result = await postBooking({
-          name, phone, dob, category: 'military', referralType: 'military_referral',
+          name, phone, dob, email, category: 'military', referralType: 'military_referral',
           comment, desiredDate, desiredTime, source,
           consent: true, consentVersion: '2026-07-29',
           items: items.map((x) => ({ code: String(x.code) })),

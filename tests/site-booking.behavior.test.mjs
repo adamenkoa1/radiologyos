@@ -60,6 +60,37 @@ test("public booking no longer stores a preferred contact channel", async () => 
   });
 });
 
+test("a valid e-mail is stored so the cabinet e-mail login works", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ email: "Patient@Example.COM" }), "key-email-store-0001");
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT patient_email AS email FROM bookings LIMIT 1").first();
+    assert.equal(row.email, "patient@example.com"); // normalized lowercase, kept on file
+  });
+});
+
+test("an invalid e-mail is dropped rather than stored", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ email: "not-an-email" }), "key-email-bad-00001a");
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT patient_email AS email FROM bookings LIMIT 1").first();
+    assert.equal(row.email, "");
+  });
+});
+
+test("the patient's preferred slot is recorded for the registrar", async () => {
+  await withD1(async (db) => {
+    const res = await book(
+      db,
+      validBody({ desiredDate: "2026-12-15", desiredTime: "10:00" }),
+      "key-preferred-slot-01",
+    );
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
+    assert.match(row.comment, /Бажаний час пацієнта: 2026-12-15 10:00/);
+  });
+});
+
 test("the same idempotency key never creates a second booking", async () => {
   await withD1(async (db) => {
     const first = await book(db, validBody(), "same-key-0001aaaa");
