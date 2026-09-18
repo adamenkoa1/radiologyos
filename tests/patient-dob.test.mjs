@@ -52,11 +52,15 @@ test("site-booking stores date_of_birth and requires it", async () => {
   assert.match(bridge, /getElementById\('patientDob'\)/);
   assert.match(bridge, /getElementById\('militaryPatientDob'\)/);
   assert.match(bridge, /name, phone, dob,/);
-  assert.match(bridge, /dob-segmented/);
-  assert.match(bridge, /День народження/);
-  assert.match(bridge, /Місяць народження/);
-  assert.match(bridge, /Рік народження/);
-  assert.match(bridge, /Онлайн-запис доступний пацієнтам від 18 років/);
+  // Сегментований віджет винесено у спільний dob-widget.js (форма + кабінет).
+  assert.match(bridge, /window\.enhanceDobSegments/);
+  const dobWidget = await read("public/site/assets/dob-widget.js");
+  assert.match(dobWidget, /dob-segmented/);
+  assert.match(dobWidget, /День народження/);
+  assert.match(dobWidget, /Місяць народження/);
+  assert.match(dobWidget, /Рік народження/);
+  assert.match(dobWidget, /Онлайн-запис доступний пацієнтам від 18 років/);
+  assert.match(dobWidget, /window\.enhanceDobSegments = enhanceDobSegments/);
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /id="(?:military)?[Pp]atientDob"[^>]*type="date"|id="patientDob"[^>]*type="date"/, `${page} has a date input`);
@@ -92,6 +96,9 @@ test("patient cabinet uses DOB only to request a possession OTP, then verifies s
 
   const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /id="gateDob"/);
+  // Кабінет використовує той самий сегментований віджет дати, що й форма запису.
+  assert.match(cabinet, /assets\/dob-widget\.js/);
+  assert.match(cabinet, /enhanceDobSegments\(document\.getElementById\('gateDob'\)\)/);
   assert.match(cabinet, /\/api\/patient-otp/);
   assert.match(cabinet, /6.{0,20}(?:циф|знач)/i);
   assert.match(cabinet, /radiologyos_patient_prefill_v1/);
