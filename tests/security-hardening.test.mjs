@@ -94,7 +94,10 @@ test("server-side integrations block SSRF and oversized responses", async () => 
   const telegram = await read("lib/telegram.ts");
   assert.match(outbound, /privateHostname/);
   assert.match(outbound, /url\.protocol !== "https:"/);
-  assert.match(outbound, /redirect: "error"/);
+  // Cloudflare Workers only accept "follow"/"manual"; we use "manual" and reject
+  // any redirect ourselves — same no-follow SSRF guard, compatible runtime.
+  assert.match(outbound, /redirect: "manual"/);
+  assert.match(outbound, /opaqueredirect|redirect_not_allowed/);
   assert.match(outbound, /MAX_RESPONSE_BYTES/);
   assert.match(outbound, /AbortController/);
   assert.match(messaging, /safeOutboundUrl\(url\)/);

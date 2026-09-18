@@ -17,17 +17,8 @@ test("site-booking endpoint saves v22 cart requests into D1 bookings", async () 
   assert.doesNotMatch(route, /configuredServiceByCode\(/);
 });
 
-test("the client bridge posts the cart and opens the patient cabinet for OTP verification", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /\/api\/site-booking/);
-  assert.match(bridge, /stopImmediatePropagation\(\)/);
-  assert.match(bridge, /items:\s*items\.map/);
-  assert.match(bridge, /cabinet\.html\?new=1/);
-  assert.doesNotMatch(bridge, /Код заявки|Коди заявок/);
-  const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /\/api\/patient-otp/);
-  assert.match(cabinet, /autoEnter:false/);
-});
+// Публічний запис більше не POST-ить у /api/site-booking і не відкриває кабінет
+// автоматично — це месенджер-хендоф (див. public-booking-messenger.test).
 
 test("the booking pages load the D1 bridge after cart.js", async () => {
   for (const page of ["public/site/index.html", "public/site/price.html"]) {
@@ -76,8 +67,8 @@ test("new public bookings notify the registrar via the public organization's Tel
   assert.match(lib, /getOrganizationIntegrationSettings\(db, organizationId/);
   assert.match(lib, /if \(!token \|\| !chatId\) return \{ ok:\s*false/);
   const route = await read("app/api/site-booking/route.ts");
-  assert.match(route, /sendTelegram\(db,\s*bookingMessage\([\s\S]*?\),\s*PUBLIC_ORGANIZATION_ID\)/);
-  assert.match(route, /bookingMessage\(/);
+  assert.match(route, /sendTelegramBookingNotice\(db,[\s\S]*?PUBLIC_ORGANIZATION_ID\)/);
+  assert.match(route, /desiredDate:appointments\[index\]\.date/);
 });
 
 test("department settings use system-admin authority and validate input", async () => {
@@ -109,56 +100,46 @@ test("a test-message endpoint verifies the current organization's Telegram conne
   assert.match(lib, /description\s*\|\|/);
 });
 
-test("payment link is served publicly and used by the site, not hardcoded", async () => {
+test("pay-link and in-cabinet payment stay available (no prepayment in the public booking)", async () => {
   const route = await read("app/api/pay-link/route.ts");
   assert.match(route, /pay_link/);
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /\/api\/pay-link/);
-  const index = await read("public/site/index.html");
-  assert.doesNotMatch(index, /assets\/notify\.js/);
+  // Публічна форма запису не пропонує оплату (див. public-booking-messenger.test);
+  // оплата лишається лише в кабінеті — після оформлення персоналом.
   const cabinet = await read("public/site/cabinet.html");
-  assert.match(cabinet, /До сплати/);
+  assert.match(cabinet, /Сплатити \$\{esc\(money\(b\.paymentAmount\)\)\} грн/);
   assert.match(cabinet, /const paymentPurpose = `Сплата за медичні послуги, заявка \$\{b\.code\}/);
-});
-
-test("the payment QR renders on the site and in the cabinet; button only for real URLs", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /if \(\/\^https\?:/);
-  assert.match(bridge, /btn\.removeAttribute\('href'\); btn\.hidden = true/);
-  assert.match(bridge, /qr\.createImgTag/);
-  const cabinet = await read("public/site/cabinet.html");
   assert.match(cabinet, /assets\/qrgen\.js/);
   assert.match(cabinet, /function payQrImg/);
-  assert.match(cabinet, /payLink \? `<div class="pay-qr"/);
-  assert.match(cabinet, /isPayUrl\(payLink\)/);
+  assert.match(cabinet, /const payUrl = location\.origin\+'\/api\/site-payment\?codes='\+encodeURIComponent\(b\.code\)/);
 });
 
-test("the public request does not force patients to choose a slot", async () => {
-  const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /const desiredDate = ''/);
-  assert.match(bridge, /const desiredTime = ''/);
-  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
-    const html = await read(page);
-    assert.doesNotMatch(html, /id="(?:mil)?[Ss]lotPicker"/);
-  }
+test("site-payment builds a signed LiqPay checkout with a server-side amount, or falls back to the static QR", async () => {
+  const route = await read("app/api/site-payment/route.ts");
+  // Amount comes from D1, never the query string.
+  assert.match(route, /SELECT[\s\S]*payment_amount AS amount[\s\S]*FROM bookings/);
+  assert.match(route, /row\.category === "civilian" && row\.amount > 0/);
+  assert.match(route, /buildLiqpayCheckout/);
+  assert.match(route, /LIQPAY_CHECKOUT_URL/);
+  // No keys → static PrivatBank fallback (previous behavior preserved).
+  assert.match(route, /if \(!publicKey \|\| !privateKey\) return staticFallback/);
+  // The callback settles paid bookings through the shared manual-payment ledger path.
+  const cb = await read("app/api/liqpay-callback/route.ts");
+  assert.match(cb, /verifyLiqpayCallback/);
+  assert.match(cb, /if \(!result\.paid\) return ok\(\)/);
+  assert.match(cb, /settleVerifiedProviderPayment/);
+  assert.match(cb, /payment_already_settled/);
+  // Signing/verification contract lives in lib/liqpay.
+  const lib = await read("lib/liqpay.ts");
+  assert.match(lib, /private_key.*data.*private_key|privateKey.*data.*privateKey/s);
+  assert.match(lib, /SHA-1/);
 });
 
-test("the military free-booking form saves to D1 as category 'military'", async () => {
+test("military booking page loads the messenger bridge (no in-page slot picker)", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('militaryRequestForm'\)/);
-  assert.match(bridge, /category:\s*'military'/);
-  assert.match(bridge, /referralType:\s*'military_referral'/);
   const military = await read("public/site/military.html");
   assert.match(military, /assets\/d1-bridge\.js/);
-  assert.doesNotMatch(military, /id="milSlotPicker"/);
-});
-
-test("civilian booking warns about the 18+ rule up front, not only on submit error", async () => {
-  for (const page of ["index", "price"]) {
-    const html = await read(`public/site/${page}.html`);
-    assert.match(html, /Онлайн-запис — для пацієнтів <strong>від 18 років<\/strong>/, `${page}: нема проактивної 18\+ нотатки`);
-    assert.match(html, /tel:\+380972808899/, `${page}: нема телефону реєстратури в нотатці`);
-  }
+  assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
 });
 
 test("cabinet groups a multi-study submission into one visit", async () => {
@@ -175,7 +156,7 @@ test("visit reminder: cabinet tells patients what to bring; military form mentio
   assert.match(cabinet, /Візьміть із собою:/);
   assert.match(cabinet, /b\.category === 'military' \? 'направлення та '/);
   const military = await read("public/site/military.html");
-  assert.match(military, /Візьміть із собою направлення, документ, що посвідчує особу/);
+  assert.match(military, /документ, що посвідчує особу/);
 });
 
 test("ПІБ field suggests Ukrainian given names + patronymics by token", async () => {

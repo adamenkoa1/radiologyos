@@ -55,8 +55,13 @@ test("account rate-limit keys are hashed and never stored as raw identifiers", a
 test("successful staff login clears the canonical account failure bucket", async () => {
   const login = await read("app/api/staff/login/route.ts");
   const clearIndex = login.indexOf("clearIdentifierRateLimit(db, \"staff-login-account\", accountIdentifier)");
-  const successAuditIndex = login.indexOf('action: "login", resource: "auth"');
+  const successAuditIndex = login.indexOf('action: "login",');
 
   assert.ok(clearIndex >= 0, "successful login must clear accumulated canonical account failures");
-  assert.ok(successAuditIndex > clearIndex, "account failures must be cleared on the verified-success path");
+  assert.ok(successAuditIndex > clearIndex, "account failures must be cleared on the verified-success path before login audit");
+  assert.match(
+    login,
+    /async function auditAuthEvent[\s\S]*resource: "auth"/,
+    "tenant-aware auth audit helper must keep login events in the auth resource",
+  );
 });

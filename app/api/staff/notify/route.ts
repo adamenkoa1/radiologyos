@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
   const booking = await db.prepare(
     `SELECT id, name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail,
-            service, desired_date AS desiredDate, desired_time AS desiredTime
+            service, desired_date AS desiredDate, desired_time AS desiredTime, comment
      FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
   ).bind(bookingId, ctx.organizationId).first<ReminderBooking>();
   if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });

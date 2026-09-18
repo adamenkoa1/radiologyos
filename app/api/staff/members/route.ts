@@ -91,8 +91,11 @@ export async function POST(request: Request) {
       "SELECT role, active FROM memberships WHERE organization_id = ? AND member_email = ? LIMIT 1"
     ).bind(ctx.organizationId, email).first<{ role:string; active:number }>(),
     db.prepare(
-      "SELECT 1 AS ok FROM memberships WHERE member_email = ? AND organization_id <> ? LIMIT 1"
-    ).bind(email, ctx.organizationId).first<{ ok:number }>(),
+      `SELECT active FROM memberships
+       WHERE member_email = ? AND organization_id <> ?
+       ORDER BY active DESC
+       LIMIT 1`
+    ).bind(email, ctx.organizationId).first<{ active:number }>(),
   ]);
   if (!identity && !password) {
     return Response.json({ error: "Для нового працівника потрібно задати PIN-код" }, { status: 400 });
@@ -103,6 +106,7 @@ export async function POST(request: Request) {
   }
 
   const sharedIdentity = Boolean(identity && otherMembership);
+  const hasOtherActiveMembership = Number(otherMembership?.active) === 1;
   if (sharedIdentity && identity) {
     const sameProfile =
       String(identity.phone || "") === phone &&
@@ -146,6 +150,13 @@ export async function POST(request: Request) {
          role=excluded.role, active=excluded.active`
     ).bind(ctx.organizationId, email, role, active),
   );
+
+  // Identity sessions are shared across tenants. Revoke them only when this
+  // deactivation removes the member's final active organization access; otherwise
+  // preserve sessions that are still legitimately needed by another organization.
+  if (existing && existing.active === 1 && active === 0 && !hasOtherActiveMembership) {
+    statements.push(db.prepare("DELETE FROM staff_sessions WHERE email = ?").bind(email));
+  }
 
   if (password) {
     statements.push(

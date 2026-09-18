@@ -1,10 +1,27 @@
 const MAX_RESPONSE_BYTES = 1_000_000;
 
+// Reputable transactional e-mail / SMS provider APIs are always allowed, so an
+// administrator can point the messaging gateway at one without editing the
+// Cloudflare OUTBOUND_ALLOWED_HOSTS variable. This stays an allowlist — every
+// other host still requires the env var — and these are public provider HTTPS
+// APIs (no SSRF-to-internal exposure).
+const BUILT_IN_ALLOWED_HOSTS = [
+  "api.resend.com",
+  "api.sendgrid.com",
+  "api.mailgun.net",
+  "api.brevo.com",
+  "api.postmarkapp.com",
+  "api.elasticemail.com",
+  "api.turbosms.ua",
+];
+
 function allowedHosts(): Set<string> {
   const raw = (globalThis as typeof globalThis & {
     __RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__?: string;
   }).__RADIOLOGY_OUTBOUND_ALLOWED_HOSTS__ || "";
-  return new Set(raw.split(",").map((host) => host.trim().toLowerCase()).filter(Boolean));
+  const hosts = new Set<string>(BUILT_IN_ALLOWED_HOSTS);
+  for (const host of raw.split(",").map((h) => h.trim().toLowerCase()).filter(Boolean)) hosts.add(host);
+  return hosts;
 }
 
 function privateIpv4(hostname: string): boolean {
@@ -52,7 +69,13 @@ export async function fetchLimited(
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    const response = await fetch(url, { ...init, redirect: "error", signal: controller.signal });
+    // "manual" (not "error") — the Cloudflare Workers runtime only accepts
+    // "follow"/"manual". We still refuse to follow redirects (SSRF guard):
+    // any 3xx / opaque redirect is treated as a failure.
+    const response = await fetch(url, { ...init, redirect: "manual", signal: controller.signal });
+    if (response.type === "opaqueredirect" || (response.status >= 300 && response.status < 400)) {
+      throw new Error("redirect_not_allowed");
+    }
     const length = Number(response.headers.get("content-length") || 0);
     if (length > MAX_RESPONSE_BYTES) throw new Error("response_too_large");
     return response;

@@ -32,6 +32,27 @@ test("logSecurityEvent writes org-scoped rows with all columns", async () => {
   assert.equal(bound.args[4], "42");         // target_id → string
 });
 
+test("security audit refuses missing or invalid tenant ownership instead of defaulting to org1", async () => {
+  const { logSecurityEvent } = await import("../lib/audit.ts");
+  let prepareCalls = 0;
+  const db = { prepare() { prepareCalls += 1; throw new Error("must not reach SQL"); } };
+
+  await assert.rejects(
+    () => logSecurityEvent(db, { actorEmail: "x@y.z", action: "login", resource: "auth" }),
+    /valid organizationId/,
+  );
+  await assert.rejects(
+    () => logSecurityEvent(db, { organizationId: 0, actorEmail: "x@y.z", action: "login", resource: "auth" }),
+    /valid organizationId/,
+  );
+  assert.equal(prepareCalls, 0, "invalid tenant ownership must fail before any audit INSERT");
+
+  const source = await read("lib/audit.ts");
+  assert.match(source, /organizationId: number/);
+  assert.doesNotMatch(source, /organizationId\?: number/);
+  assert.doesNotMatch(source, /event\.organizationId \|\| 1/);
+});
+
 test("migration 0023 creates the security_audit_log table and index", async () => {
   const sql = await read("drizzle/0023_security_audit_log.sql");
   assert.match(sql, /CREATE TABLE IF NOT EXISTS `security_audit_log`/);

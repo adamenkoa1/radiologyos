@@ -157,3 +157,31 @@ test("the palette is mounted in the workspace shell and renders typed global res
   assert.match(cp, /accession, протокол, обладнання/);
   assert.match(cp, /window\.location\.assign\(r\.href\)/);
 });
+
+test("command palette covers every top-level staff section, not a partial list", async () => {
+  const cp = await read("app/staff/command-palette.tsx");
+  // One representative route per navigation area — regression guard so newly
+  // added sections are also wired into the palette (the audit's 🟡 gap).
+  const routes = [
+    "/staff/dashboard", "/staff/intake", "/staff/appointments", "/staff/board", "/staff/tasks",
+    "/staff/protocols", "/staff/studies", "/staff/patients", "/staff/patients/import", "/staff/chat",
+    "/staff/imaging", "/staff/integrations/health", "/staff/integrations/mwl",
+    "/staff/services", "/staff/finance/services", "/staff/tariffs",
+    "/staff/finance", "/staff/cash-accounts", "/staff/reports/receivables",
+    "/staff/documents", "/staff/registers", "/staff/reports/registers", "/staff/reports",
+    "/staff/reports/material-margin", "/staff/reports/material-consumption-control",
+    "/staff/inventory", "/staff/inventory/transfers", "/staff/inventory/counts",
+    "/staff/inventory/material-consumption", "/staff/warehouses",
+    "/staff/supplier-payables", "/staff/counterparties",
+    "/staff/personnel", "/staff/personnel/dosimetry", "/staff/personnel/radiation-clearance",
+    "/staff/personnel/radiation-training", "/staff/personnel/radiation-review-queue",
+    "/staff/personnel/radiation-dose-summary", "/staff/personnel/vlk",
+    "/staff/directories", "/staff/equipment", "/staff/maintenance", "/staff/schedule",
+    "/staff/shifts", "/staff/structure", "/staff/custom-fields",
+    "/staff/settings", "/staff/organization", "/staff/audit", "/staff/whatsapp",
+    "/staff/system/health", "/staff/profile",
+  ];
+  for (const href of routes) {
+    assert.ok(cp.includes(`href: "${href}" `) || cp.includes(`href: "${href}"`), `palette missing ${href}`);
+  }
+});

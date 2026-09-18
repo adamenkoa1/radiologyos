@@ -66,14 +66,16 @@ SEO використовується лише для публічних стор
 
 ## Schema.org
 
-Можливі типи:
+Реалізовано:
 
-- `MedicalOrganization`;
-- `Hospital`;
-- `MedicalClinic`;
-- `Physician`;
-- `Service`;
-- `FAQPage`;
-- `BreadcrumbList`.
+- `MedicalClinic` + `FAQPage` — головна (`public/site/index.html`) і компонент
+  `PublicLocalSeo` (NAP із єдиного профілю `lib/public-profile`).
+- `MedicalWebPage` + `BreadcrumbList` + `MedicalProcedure` — медичні сторінки
+  послуг (КТ / рентген / флюорографія) через компонент `MedicalPageSchema`,
+  граф будує `lib/structured-data` (мова `uk`, `lastReviewed`, прив'язка до
+  клініки за `@id`).
 
-Перед публікацією перевірити відповідність фактичним даним.
+Джерело істини — генератори в `lib/structured-data.ts`; валідатор
+`validateJsonLd` перевіряє обов'язкові поля, а тести
+(`tests/structured-data.test.mjs`) — що кожна реальна сторінка дає валідний граф.
+NAP і назви беруться з фактичних даних, а не хардкодяться на сторінках.

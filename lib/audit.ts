@@ -2,7 +2,7 @@
 // подій; читає лише адміністратор. Записи скоупляться за організацією.
 
 export type AuditEvent = {
-  organizationId?: number; // за замовчуванням 1 (єдина організація)
+  organizationId: number;
   actorEmail: string;
   action: string;   // машинний код події, напр. "login", "booking_confirm"
   resource: string; // домен, напр. "auth", "booking", "settings", "staff"
@@ -51,6 +51,23 @@ export const AUDIT_LABELS: Record<string, string> = {
   patient_protocol_viewed: "Пацієнт переглянув протокол",
   profile_update: "Змінено профіль співробітника",
   profile_security_update: "Змінено параметри безпеки профілю",
+  personnel_registry_viewed: "Переглянуто кадровий довідник",
+  personnel_created: "Створено кадрову картку",
+  personnel_updated: "Оновлено кадрову картку",
+  personnel_vlk_viewed: "Переглянуто історію ВЛК працівника",
+  personnel_vlk_recorded: "Додано рішення ВЛК працівника",
+  personnel_radiation_clearance_viewed: "Переглянуто історію допусків працівника до ДІВ",
+  personnel_radiation_clearance_recorded: "Додано рішення щодо допуску працівника до ДІВ",
+  personnel_radiation_training_viewed: "Переглянуто історію навчання працівника з радіаційної безпеки",
+  personnel_radiation_training_recorded: "Додано запис навчання працівника з радіаційної безпеки",
+  personnel_dosimetry_viewed: "Переглянуто індивідуальну дозиметрію працівника",
+  personnel_dosimetry_recorded: "Додано результат індивідуальної дозиметрії працівника",
+  personnel_radiation_monitoring_scope_viewed: "Переглянуто контингент радіаційного контролю працівника",
+  personnel_radiation_monitoring_scope_recorded: "Додано запис контингенту радіаційного контролю працівника",
+  personnel_radiation_dose_summary_viewed: "Переглянуто дозове зведення індивідуальної дозиметрії",
+  personnel_radiation_compliance_viewed: "Переглянуто зведення радіаційної безпеки персоналу",
+  personnel_radiation_review_policy_viewed: "Переглянуто політику review радіаційної безпеки",
+  personnel_radiation_review_policy_recorded: "Додано ревізію політики review радіаційної безпеки",
   report_viewed: "Переглянуто звіт",
   report_exported: "Експортовано звіт",
   service_material_requirement_created: "Створено норму матеріалів",
@@ -62,13 +79,17 @@ export function auditLabel(action: string): string {
 }
 
 export async function logSecurityEvent(db: D1Database, event: AuditEvent): Promise<void> {
+  const organizationId = Number(event.organizationId);
+  if (!Number.isInteger(organizationId) || organizationId <= 0) {
+    throw new Error("security audit requires a valid organizationId");
+  }
   const details = JSON.stringify(event.details || {}).slice(0, 4000);
   await db.prepare(
     `INSERT INTO security_audit_log
        (organization_id, actor_email, action, resource, target_id, details_json)
      VALUES (?, ?, ?, ?, ?, ?)`
   ).bind(
-    event.organizationId || 1,
+    organizationId,
     String(event.actorEmail || "").slice(0, 254),
     event.action.slice(0, 80),
     event.resource.slice(0, 80),

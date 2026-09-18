@@ -2,6 +2,17 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { callWorker,jsonRequest,seedStaffSession,withD1 } from "./helpers/d1.mjs";
 
+// Dates are anchored relative to "now" so the report window always contains the
+// documents that the payment/refund/storno API calls create with CURRENT_TIMESTAMP.
+// A fixed calendar window (e.g. hardcoded August) silently falls out of range once
+// the wall clock moves past it, which is what previously broke this suite.
+const ISO = (ms) => new Date(ms).toISOString().slice(0, 10);
+const NOW = Date.now();
+const REPORT_FROM = ISO(NOW - 20 * 86400000);
+const REPORT_TO = ISO(NOW + 86400000); // tomorrow: safely covers now-dated documents in any timezone
+const IN_PERIOD = ISO(NOW - 5 * 86400000);
+const BEFORE_PERIOD = ISO(NOW - 40 * 86400000); // strictly before REPORT_FROM → opening balances
+
 async function seedCompleted(db,{organizationId=1,code,amount=0,category="civilian",performedAt,duration=30,regions=2}={}) {
   const result=await db.prepare(
     `INSERT INTO bookings (
@@ -47,7 +58,7 @@ async function storno(db,cookie,sourceDocumentId) {
   },{headers:{cookie}}),db);
 }
 
-async function report(db,cookie,from="2026-08-01",to="2026-08-31") {
+async function report(db,cookie,from=REPORT_FROM,to=REPORT_TO) {
   return callWorker(new Request(`http://localhost/api/staff/reports/registers?from=${from}&to=${to}`,{headers:{cookie}}),db);
 }
 
@@ -67,9 +78,9 @@ async function seedInventory(db,organizationId=1) {
   ).bind(organizationId).first();
   assert.ok(warehouse?.id,"default warehouse must exist");
   for(const movement of [
-    {date:"2026-07-31 09:00:00",delta:10,type:"receipt"},
-    {date:"2026-08-05 09:00:00",delta:5,type:"receipt"},
-    {date:"2026-08-10 09:00:00",delta:-3,type:"writeoff"},
+    {date:`${BEFORE_PERIOD} 09:00:00`,delta:10,type:"receipt"},
+    {date:`${IN_PERIOD} 09:00:00`,delta:5,type:"receipt"},
+    {date:`${IN_PERIOD} 09:00:00`,delta:-3,type:"writeoff"},
   ]){
     await db.prepare(
       `INSERT INTO inventory_movements
@@ -85,10 +96,10 @@ test("register report derives opening, period turnovers and closing balances fro
     const admin=await seedStaffSession(db,{email:"turnover-admin@example.com",role:"admin",organizationId:1});
 
     // Previous-period unpaid civilian service creates opening patient debt of 1000.
-    await seedCompleted(db,{code:"RD-TURN-JUL",amount:1000,performedAt:"2026-07-31T10:00:00",duration:25,regions:1});
+    await seedCompleted(db,{code:"RD-TURN-JUL",amount:1000,performedAt:`${BEFORE_PERIOD}T10:00:00`,duration:25,regions:1});
 
-    // August civilian service is fully neutralized by payment + refund + service storno.
-    const civilian=await seedCompleted(db,{code:"RD-TURN-AUG",amount:3000,performedAt:"2026-08-10T10:00:00",duration:30,regions:2});
+    // In-period civilian service is fully neutralized by payment + refund + service storno.
+    const civilian=await seedCompleted(db,{code:"RD-TURN-AUG",amount:3000,performedAt:`${IN_PERIOD}T10:00:00`,duration:30,regions:2});
     const paid=await pay(db,admin,civilian,"TURNOVER-PAY");
     assert.equal(paid.status,200);
     const returned=await refund(db,admin,civilian);
@@ -98,14 +109,14 @@ test("register report derives opening, period turnovers and closing balances fro
     assert.equal(reversed.status,201);
 
     // Military service has operational movements but no revenue/settlement charge.
-    await seedCompleted(db,{code:"RD-TURN-MIL",amount:5000,category:"military",performedAt:"2026-08-12T12:00:00",duration:20,regions:1});
+    await seedCompleted(db,{code:"RD-TURN-MIL",amount:5000,category:"military",performedAt:`${IN_PERIOD}T12:00:00`,duration:20,regions:1});
     const {itemId,warehouse}=await seedInventory(db);
 
     const response=await report(db,admin);
     assert.equal(response.status,200);
     const body=await response.json();
 
-    assert.deepEqual(body.period,{from:"2026-08-01",to:"2026-08-31"});
+    assert.deepEqual(body.period,{from:REPORT_FROM,to:REPORT_TO});
     assert.equal(body.registers.revenue.increase,3000);
     assert.equal(body.registers.revenue.decrease,3000);
     assert.equal(body.registers.revenue.net,0);
@@ -164,8 +175,8 @@ test("register report is tenant scoped and excludes another organization movemen
     raw.exec("INSERT OR IGNORE INTO organizations (id,name,slug,active) VALUES (2,'Turnover Org 2','turnover-org-2',1)");
     const org1=await seedStaffSession(db,{email:"turnover-org1@example.com",role:"admin",organizationId:1});
     const org2=await seedStaffSession(db,{email:"turnover-org2@example.com",role:"admin",organizationId:2});
-    await seedCompleted(db,{organizationId:1,code:"RD-TURN-ORG1",amount:1200,performedAt:"2026-08-05T10:00:00",regions:1});
-    await seedCompleted(db,{organizationId:2,code:"RD-TURN-ORG2",amount:8800,performedAt:"2026-08-05T10:00:00",regions:1});
+    await seedCompleted(db,{organizationId:1,code:"RD-TURN-ORG1",amount:1200,performedAt:`${IN_PERIOD}T10:00:00`,regions:1});
+    await seedCompleted(db,{organizationId:2,code:"RD-TURN-ORG2",amount:8800,performedAt:`${IN_PERIOD}T10:00:00`,regions:1});
 
     const one=await report(db,org1);const oneBody=await one.json();
     const two=await report(db,org2);const twoBody=await two.json();

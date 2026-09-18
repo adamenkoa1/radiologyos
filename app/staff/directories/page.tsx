@@ -2,6 +2,16 @@ import Link from "next/link";
 import StaffWorkspaceShell from "../workspace-shell";
 
 const directories=[
+  {name:"Персонал",description:"Кадрові картки працівників: підрозділ, посада, контакти, адреса та зв’язок з обліковим записом.",href:"/staff/personnel"},
+  {name:"ВЛК персоналу",description:"Окрема захищена append-only історія рішень ВЛК, прив’язана до стабільного personnelId.",href:"/staff/personnel/vlk"},
+  {name:"Допуск до ДІВ",description:"Append-only історія кадрових рішень щодо робіт з джерелами іонізуючого випромінювання.",href:"/staff/personnel/radiation-clearance"},
+  {name:"Радіаційна безпека",description:"Навчання, перевірки знань та інструктажі з окремою історією сертифікатів і строків дії.",href:"/staff/personnel/radiation-training"},
+  {name:"Індивідуальна дозиметрія",description:"Захищена append-only історія персонального дозиметричного контролю Hp(10), Hp(0.07) та Hp(3).",href:"/staff/personnel/dosimetry"},
+  {name:"Контингент радіаційного контролю",description:"Явний append-only організаційний scope персоналу для радіаційного review без автоматичної правової категоризації.",href:"/staff/personnel/radiation-monitoring-scope"},
+  {name:"Дозове зведення",description:"Read-only subtotal тільки виміряних Hp(10), Hp(0.07) та Hp(3) за період; ненумеричні статуси не трактуються як нуль.",href:"/staff/personnel/radiation-dose-summary"},
+  {name:"Зведення ДІВ",description:"Read-only проекція допуску, навчання, перевірок знань і стану дозиметрії без автоматичного блокування роботи.",href:"/staff/personnel/radiation-compliance"},
+  {name:"Черга review ДІВ",description:"Read-only робочий список детермінованих review-причин зі зведення ДІВ без alerts, дозових порогів або operational enforcement.",href:"/staff/personnel/radiation-review-queue"},
+  {name:"Політика ДІВ",description:"Append-only організаційні критерії review без прихованих нормативів, дозових лімітів або operational enforcement.",href:"/staff/personnel/radiation-review-policy"},
   {name:"Обладнання",description:"Апарати, кабінети та технічні атрибути, що використовуються в записах і виконанні.",href:"/staff/equipment"},
   {name:"Послуги",description:"Канонічний каталог послуг, тривалість, правила і матеріальні норми.",href:"/staff/services"},
   {name:"Тарифи",description:"Ціни та правила оплати, які використовуються при формуванні замовлення і послуги.",href:"/staff/tariffs"},
@@ -9,7 +19,7 @@ const directories=[
   {name:"Контрагенти",description:"Постачальники та інші сторони господарських операцій.",href:"/staff/counterparties"},
   {name:"Графік кабінетів",description:"Робочі інтервали, що визначають доступність запису.",href:"/staff/schedule"},
   {name:"Графік змін персоналу",description:"Циклічні зміни, бригади та персональні корекції.",href:"/staff/shifts"},
-  {name:"Персонал і ролі",description:"Користувачі, ролі та права доступу в межах організації.",href:"/staff#staff-admin"},
+  {name:"Облікові записи і ролі",description:"Доступ до RadiologyOS: користувачі, ролі та права. Обліковий запис не є кадровою карткою.",href:"/staff#staff-admin"},
 ];
 
 export default function DirectoriesPage(){

@@ -750,6 +750,83 @@
       "when": 1787179061327,
       "tag": "0107_signed_protocol_imaging_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "6",
+      "when": 1787266380000,
+      "tag": "0108_personnel_directory",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "6",
+      "when": 1787268000000,
+      "tag": "0109_personnel_vlk_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "6",
+      "when": 1787271600000,
+      "tag": "0110_personnel_radiation_clearance",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "6",
+      "when": 1787275200000,
+      "tag": "0111_personnel_radiation_training",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "6",
+      "when": 1787278800000,
+      "tag": "0112_personnel_dosimetry",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "6",
+      "when": 1787282400000,
+      "tag": "0113_personnel_radiation_review_policy",
+      "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "6",
+      "when": 1787286000000,
+      "tag": "0114_personnel_radiation_monitoring_scope",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "6",
+      "when": 1788771358737,
+      "tag": "0115_patient_clinical_fields",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "6",
+      "when": 1788789947517,
+      "tag": "0116_protocol_method_ref",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "6",
+      "when": 1788810293111,
+      "tag": "0117_staff_totp",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "6",
+      "when": 1788815209471,
+      "tag": "0118_critical_findings",
+      "breakpoints": true
     }
   ]
 }
