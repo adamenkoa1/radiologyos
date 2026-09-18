@@ -1,5 +1,6 @@
-// «Додати в календар»: коректний Google Calendar URL і його наявність у
-// відповіді запису та на екрані підтвердження.
+// «Додати в календар»: коректний Google Calendar URL. Серверний /api/site-booking
+// (яким користується персонал) досі повертає calendarUrl; публічна форма стала
+// месенджер-хендофом без екрана підтвердження, тож блок календаря там прибрано.
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -34,11 +35,16 @@ test("некоректні дата/час/назва → порожній ря�
   assert.equal(googleCalendarUrl({ title: "", date: "2026-09-18", time: "09:45", durationMinutes: 15 }), "");
 });
 
-test("екран підтвердження має контейнер і клієнтський рендер", async () => {
+test("серверний запис досі будує calendarUrl для персоналу", async () => {
+  const route = await read("app/api/site-booking/route.ts");
+  assert.match(route, /import \{ googleCalendarUrl \}/);
+  assert.match(route, /calendarUrl: googleCalendarUrl\(/);
+});
+
+test("публічний месенджер-хендоф не має екрана підтвердження з календарем", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /function renderCalendarLinks/);
-  assert.match(bridge, /appt\.calendarUrl/);
+  assert.doesNotMatch(bridge, /renderCalendarLinks|appt\.calendarUrl/);
   for (const page of ["public/site/price.html", "public/site/index.html"]) {
-    assert.match(await read(page), /id="calendarBlock"/, `${page} має контейнер календаря`);
+    assert.doesNotMatch(await read(page), /id="calendarBlock"/, `${page} без контейнера календаря`);
   }
 });

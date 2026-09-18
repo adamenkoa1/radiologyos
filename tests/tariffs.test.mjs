@@ -59,9 +59,11 @@ test("public catalog and tariff map use the canonical effective service source",
   const index = await read("public/site/index.html");
   assert.doesNotMatch(index, /id="homeTariffs"/);
   assert.doesNotMatch(index, /assets\/home-tariffs\.js/);
-  assert.match(index, /id="patientCategory"/);
+  // Публічна форма стала месенджер-хендофом: вибір категорії пацієнта прибрано
+  // (її визначає сторінка/персонал), тож селектора patientCategory тут немає.
+  assert.doesNotMatch(index, /id="patientCategory"/);
   const bridge = await read("public/site/assets/d1-bridge.js");
-  assert.match(bridge, /getElementById\('patientCategory'\)/);
+  assert.doesNotMatch(bridge, /getElementById\('patientCategory'\)/);
 });
 
 test("the Тарифи page can enable/disable a position, written into the service config", async () => {
