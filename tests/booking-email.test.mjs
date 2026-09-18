@@ -16,7 +16,9 @@ test("a new public booking e-mails the registrar when a gateway + recipient are 
 
   const route = await read("app/api/site-booking/route.ts");
   assert.match(route, /import \{ sendBookingEmail \} from "\.\.\/\.\.\/\.\.\/lib\/booking-email"/);
-  assert.match(route, /await sendBookingEmail\(db, PUBLIC_ORGANIZATION_ID, \{/);
+  // Розсилку відкладено за межі відповіді (waitUntil), а не awaited на її шляху.
+  assert.match(route, /sendBookingEmail\(db, PUBLIC_ORGANIZATION_ID, \{/);
+  assert.doesNotMatch(route, /await sendBookingEmail\(/);
   assert.match(route, /items: services\.map\(/);
 });
 

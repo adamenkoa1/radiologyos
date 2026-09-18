@@ -2,6 +2,14 @@
 
 <html lang="uk"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Повний прайс — RadiologyOS</title>
 <meta name="description" content="Повний прайс відділення променевої діагностики: цифрова флюорографія, рентгенографія, КТ з контрастуванням та без, КТ-ангіографія. Онлайн-заявка на обстеження у Чернігові."/>
+<meta property="og:title" content="Повний прайс досліджень у Чернігові | RadiologyOS"/>
+<meta property="og:description" content="Актуальні ціни на КТ, рентгенографію та флюорографію у відділенні променевої діагностики у Чернігові."/>
+<meta property="og:url" content="https://radiologyos.tech/site/price.html"/>
+<meta property="og:type" content="website"/>
+<meta property="og:image" content="https://radiologyos.tech/hospital-emblem.jpg"/>
+<meta property="og:locale" content="uk_UA"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="canonical" href="https://radiologyos.tech/site/price.html"/>
 <meta name="theme-color" content="#123d3a"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23123d3a'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23d8b55e'/%3E%3C/svg%3E"/>
 <link rel="stylesheet" href="/site/assets/site.css">
@@ -145,7 +153,6 @@ header .brand{flex:1;min-width:0}
 
 .was-validated .field input:invalid,.was-validated .field select:invalid{border-color:#d9705f;background:#fdf0ee}
 .was-validated .field input:invalid ~ .field-error,.was-validated .field:has(input:invalid) .field-error{display:block}
-.was-validated:has(#dataConsent:invalid) .consent-error{display:block}
 .btn.secondary{background:#eef2f5;color:#0e454c}
 
 .upload-box{border:1.5px dashed #9fb0bb;border-radius:var(--r-lg);padding:14px;background:#f7fafb}
@@ -424,64 +431,29 @@ body{background:#f3f6f8}
 <div class="fixed"><a href="tel:+380972808899">Записатися</a><a href="https://wa.me/380972808899">WhatsApp</a></div>
 
 <div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><form class="request-form" id="requestForm" novalidate>
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">1</span>Ваші дані</div>
-        <p class="cart-note">Онлайн-запис — для пацієнтів <strong>від 18 років</strong>. Для дитини зателефонуйте в реєстратуру: <a href="tel:+380972808899">+380 97 280 88 99</a>.</p>
-        <div class="field">
-          <label for="patientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
-          <input autocomplete="name" id="patientName" required placeholder="Іваненко Іван Іванович"/>
-          <span class="field-error">Вкажіть прізвище, ім’я та по батькові повністю</span>
-        </div>
-        <div class="field">
-          <label for="patientPhone">Номер телефону <span class="req">*</span></label>
-          <div class="phone-wrap">
-            <span class="phone-prefix">+380</span>
-            <input autocomplete="tel-national" id="patientPhone" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="97 000 00 00" required/>
-          </div>
-          <span class="field-error">Введіть 9 цифр після +380</span>
-        </div>
-        <div class="field">
-          <label for="patientDob">Дата народження <span class="req">*</span></label>
-          <input id="patientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
-          <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>
-        </div>
+      <div class="field">
+        <label for="patientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
+        <input autocomplete="name" id="patientName" required placeholder="Іваненко Іван Іванович"/>
+        <span class="field-error">Вкажіть прізвище, ім’я та по батькові</span>
       </div>
-
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">2</span>Оберіть зручний час</div>
-        <div class="slot-picker" id="slotPicker"></div>
+      <div class="field">
+        <label for="desiredDate">Бажана дата <span class="req">*</span></label>
+        <input id="desiredDate" type="date" required/>
+        <span class="field-error">Оберіть бажану дату</span>
       </div>
-
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">3</span>Надіслати заявку</div>
-        <p class="cart-note"><strong>Візьміть із собою попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
-        <div class="field">
-          <label for="comment">Коментар <span class="opt">(необов’язково)</span></label>
-          <textarea id="comment" placeholder="Додаткова інформація для реєстратури"></textarea>
-        </div>
-        <label class="consent">
-          <input id="dataConsent" required type="checkbox"/>
-          <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження та ознайомився(-лася) з <a href="/privacy" rel="noopener" target="_blank">політикою конфіденційності</a>.</span>
-        </label>
-        <span class="field-error consent-error">Потрібна згода на обробку даних</span>
-        <button class="btn send-request" type="submit">Сформувати заявку</button>
+      <div class="field">
+        <label for="desiredTime">Бажаний час <span class="req">*</span></label>
+        <input id="desiredTime" type="time" required/>
+        <span class="field-error">Оберіть бажаний час</span>
       </div>
-    </form>
-
-    <div class="success-panel" id="successPanel" hidden>
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <h3>Заявку отримано</h3>
-      <div class="success-summary" id="successSummary"></div>
-      <p id="successText">Найближчий вільний слот попередньо зарезервовано. Остаточний статус «Запис підтверджено» з’явиться в особистому кабінеті.</p>
-      <div id="payBlock" hidden style="border:1px solid #cfe9ec;background:#f3fafb;border-radius:var(--r-lg);padding:14px;margin:0 0 12px;text-align:center">
-        <div style="font-weight:700;font-size:14px;margin-bottom:8px">Оплата дослідження</div>
-        <div id="payQr" style="display:flex;justify-content:center;margin-bottom:8px"></div>
-        <a id="payBtn" class="btn send-request" href="#" target="_blank" rel="noopener" style="background:#1e7a3d">Оплатити (ПриватБанк)</a>
-        <p style="font-size:12px;color:#7c8a94;margin:8px 0 0">Скануйте QR або натисніть кнопку. Квитанцію збережіть чи покажіть у реєстратурі.</p>
+      <p class="cart-note">Попередня оплата не потрібна. Оплата — після проведення дослідження.</p>
+      <div class="book-actions">
+        <button type="button" class="book-btn viber" data-book="viber">Записатися через Viber</button>
+        <button type="button" class="book-btn whatsapp" data-book="whatsapp">Записатися через WhatsApp</button>
+        <a class="book-btn call" href="tel:+380972808899">Зателефонувати</a>
       </div>
-      <a class="btn send-request" href="/site/cabinet.html?new=1" style="margin-bottom:8px">Особистий кабінет</a>
-      <button class="btn send-request" type="button" onclick="closeCart()" style="background:#eef2f5;color:#0e454c">Готово</button>
-    </div></aside></div><button class="floating-cart" onclick="openCart()" type="button">Моя заявка <span class="cart-count" data-cart-count="">0</span></button>
+      <a class="cabinet-link" href="/site/cabinet.html">Створити особистий кабінет</a>
+    </form></aside></div><button class="floating-cart" onclick="openCart()" type="button">Моя заявка <span class="cart-count" data-cart-count="">0</span></button>
 <script src="/site/assets/department.js"></script>
 <script>
 (function(){
@@ -523,8 +495,6 @@ body{background:#f3f6f8}
   document.querySelectorAll('.price-group h2').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
 })();
 </script>
-<script src="/site/assets/qrgen.js"></script>
-<script src="/site/assets/slots.js"></script>
 <script src="/site/assets/cart.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
 <script src="/site/assets/name-suggest.js" defer></script>

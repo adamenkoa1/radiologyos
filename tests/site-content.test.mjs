@@ -28,7 +28,7 @@ test("legacy branding migrates to the exact current slogan and no logo", () => {
     slogan: "Точна діагностика. Вчасна допомога. Підтримка військових.",
     logoUrl: "/hospital-emblem.jpg",
   });
-  assert.equal(migrated.slogan, "Точна діагностика-вчасна допомога. Досвід, якому можна довіряти.");
+  assert.equal(migrated.slogan, SITE_CONTENT_DEFAULTS.slogan);
   assert.equal(migrated.logoUrl, "");
 });
 

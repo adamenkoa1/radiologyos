@@ -2,6 +2,14 @@
 
 <html lang="uk"><head><meta charset="utf-8"/><meta content="width=device-width,initial-scale=1" name="viewport"/><title>Дослідження для військовослужбовців</title>
 <meta name="description" content="Безоплатні дослідження для військовослужбовців у відділенні променевої діагностики Чернігівського військового госпіталю: КТ, рентгенографія, флюорографія."/>
+<meta property="og:title" content="Дослідження для військовослужбовців | RadiologyOS"/>
+<meta property="og:description" content="Безоплатні КТ, рентгенографія та флюорографія для військовослужбовців у Чернігові за направленням."/>
+<meta property="og:url" content="https://radiologyos.tech/site/military.html"/>
+<meta property="og:type" content="website"/>
+<meta property="og:image" content="https://radiologyos.tech/hospital-emblem.jpg"/>
+<meta property="og:locale" content="uk_UA"/>
+<meta name="twitter:card" content="summary_large_image"/>
+<link rel="canonical" href="https://radiologyos.tech/site/military.html"/>
 <meta name="theme-color" content="#123d3a"/>
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23123d3a'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23d8b55e'/%3E%3C/svg%3E"/>
 <link rel="stylesheet" href="/site/assets/site.css">
@@ -237,7 +245,6 @@ header .brand{flex:1;min-width:0}
 .field-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 
 .was-validated .field:has(input:invalid) .field-error{display:block}
-.was-validated:has(#militaryConsent:invalid) .consent-error{display:block}
 .was-validated .field input:invalid{border-color:#d9705f;background:#fdf0ee}
 .upload-help{font-size:13px;color:#5c6c78;margin-bottom:10px}
 .file-input{width:100%;padding:11px;background:#fff;border:1px solid #dbe3e8;border-radius:var(--r-md)}
@@ -345,53 +352,29 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
 </div>
 <div id="militaryCartItems"></div>
 <form class="request-form" id="militaryRequestForm" novalidate>
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">1</span>Ваші дані</div>
-        <div class="field">
-          <label for="militaryPatientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
-          <input autocomplete="name" id="militaryPatientName" required placeholder="Іваненко Іван Іванович"/>
-          <span class="field-error">Вкажіть прізвище, ім’я та по батькові повністю</span>
-        </div>
-        <div class="field">
-          <label for="militaryPatientPhone">Номер телефону <span class="req">*</span></label>
-          <div class="phone-wrap">
-            <span class="phone-prefix">+380</span>
-            <input autocomplete="tel-national" id="militaryPatientPhone" inputmode="numeric" pattern="[0-9]{9}" maxlength="9" placeholder="97 000 00 00" required/>
-          </div>
-          <span class="field-error">Введіть 9 цифр після +380</span>
-        </div>
-        <div class="field">
-          <label for="militaryPatientDob">Дата народження <span class="req">*</span></label>
-          <input id="militaryPatientDob" type="date" min="1900-01-01" required autocomplete="bday"/>
-          <span class="field-error">Онлайн-запис доступний пацієнтам від 18 років</span>
-          <div class="upload-help" style="margin:6px 0 0">Вкажіть дату правильно — разом із номером телефону це ваш спосіб входу до особистого кабінету.</div>
-        </div>
+      <div class="field">
+        <label for="militaryPatientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
+        <input autocomplete="name" id="militaryPatientName" required placeholder="Іваненко Іван Іванович"/>
+        <span class="field-error">Вкажіть прізвище, ім’я та по батькові</span>
       </div>
-      <div class="form-step">
-        <div class="step-title"><span class="step-num">2</span>Надіслати заявку</div>
-        <p class="cart-note"><strong>Візьміть із собою направлення, документ, що посвідчує особу, та попередні медичні документи.</strong> Завантаження документів через сайт не виконується.</p>
-        <div class="field">
-          <label for="militaryComment">Коментар <span class="opt">(необов’язково)</span></label>
-          <textarea id="militaryComment" placeholder="Додаткова інформація для реєстратури"></textarea>
-        </div>
-        <label class="consent">
-          <input id="militaryConsent" required type="checkbox"/>
-          <span>Погоджуюся на обробку персональних і медичних даних з метою організації діагностичного дослідження та ознайомився(-лася) з <a href="/privacy" rel="noopener" target="_blank">політикою конфіденційності</a>.</span>
-        </label>
-        <span class="field-error consent-error">Потрібна згода на обробку даних</span>
-        <p class="cart-note">Після надсилання заявка збережеться в системі. В особистому кабінеті буде видно номер, попередній слот і статус підтвердження.</p>
-        <button class="btn send-request" type="submit">Сформувати заявку</button>
+      <div class="field">
+        <label for="militaryDesiredDate">Бажана дата <span class="req">*</span></label>
+        <input id="militaryDesiredDate" type="date" required/>
+        <span class="field-error">Оберіть бажану дату</span>
       </div>
+      <div class="field">
+        <label for="militaryDesiredTime">Бажаний час <span class="req">*</span></label>
+        <input id="militaryDesiredTime" type="time" required/>
+        <span class="field-error">Оберіть бажаний час</span>
+      </div>
+      <p class="cart-note">Візьміть направлення та документ, що посвідчує особу. Оплата не потрібна.</p>
+      <div class="book-actions">
+        <button type="button" class="book-btn viber" data-book="viber">Записатися через Viber</button>
+        <button type="button" class="book-btn whatsapp" data-book="whatsapp">Записатися через WhatsApp</button>
+        <a class="book-btn call" href="tel:+380972808899">Зателефонувати</a>
+      </div>
+      <a class="cabinet-link" href="/site/cabinet.html">Створити особистий кабінет</a>
     </form>
-
-    <div class="success-panel" id="milSuccessPanel" hidden>
-      <div class="success-icon" aria-hidden="true">✓</div>
-      <h3>Заявку отримано</h3>
-      <div class="success-summary" id="milSuccessSummary"></div>
-      <p>Найближчий вільний слот попередньо зарезервовано. Номер заявки та статус підтвердження доступні в особистому кабінеті.</p>
-      <a class="btn send-request" href="/site/cabinet.html" style="margin-bottom:8px">Особистий кабінет</a>
-      <button class="btn send-request" type="button" onclick="closeMilitaryCart()" style="background:#eef2f5;color:#0e454c">Готово</button>
-    </div>
 </aside>
 </div>
 <button class="floating-cart" onclick="openMilitaryCart()" type="button">
@@ -416,6 +399,11 @@ function saveMilitaryCart() {
 function addMilitaryItem(code, name) {
   code = String(code);
   if (!militaryCart.some(item => item.code === code)) {
+    if (militaryCart.length >= 5) {
+      alert('В одну заявку можна додати до 5 досліджень. Для більшого обсягу подайте окрему заявку або зателефонуйте в реєстратуру: +380 97 280 88 99');
+      openMilitaryCart();
+      return;
+    }
     militaryCart.push({ code, name });
     saveMilitaryCart();
   }
@@ -470,17 +458,6 @@ function openMilitaryCart() {
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
-
-  /* повертаємо форму після попередньої відправки */
-  const f = document.getElementById('militaryRequestForm');
-  if (f) {
-    f.hidden = false;
-    f.classList.remove('was-validated');
-    document.getElementById('milSuccessPanel').hidden = true;
-    const milList = document.getElementById('militaryCartItems');
-    if (milList) milList.style.display = '';
-  }
-
   renderMilitaryCart();
 }
 

@@ -10,6 +10,7 @@ import {
   type PatientIdentityScope,
   verifyPatientOtpChallenge,
 } from "../../../lib/patient-auth";
+import { provePatientDobIdentity } from "../../../lib/patient-identity";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { createMessagingProvider } from "../../../lib/providers/messaging";
 import { isRateLimited } from "../../../lib/rate-limit";
@@ -90,52 +91,14 @@ async function provePatientIdentity(
 ): Promise<ProvenPatientIdentity | null> {
   const dob = normalizeDob(body.dob);
   if (dob) {
-    const summary = await db.prepare(
-      `SELECT COUNT(*) AS total,
-         SUM(CASE WHEN b.patient_id != '' THEN 1 ELSE 0 END) AS linkedCount,
-         COUNT(DISTINCT CASE WHEN b.patient_id != '' THEN b.patient_id END) AS patientCount,
-         MAX(CASE WHEN b.patient_id != '' THEN b.patient_id ELSE '' END) AS patientId,
-         SUM(CASE
-           WHEN b.patient_id != '' AND COALESCE(p.phone_normalized, '') = ? THEN 1
-           ELSE 0
-         END) AS currentPhoneCount
-       FROM bookings b
-       LEFT JOIN patient_profiles p
-         ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
-       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.date_of_birth = ?`,
-    ).bind(
-      phoneNormalized,
-      PRIMARY_ORGANIZATION_ID,
-      phoneNormalized,
-      dob,
-    ).first<{
-      total:number;
-      linkedCount:number;
-      patientCount:number;
-      patientId:string;
-      currentPhoneCount:number;
-    }>();
-
-    const total = Number(summary?.total || 0);
-    if (!total) return null;
-    const linkedCount = Number(summary?.linkedCount || 0);
-    if (!linkedCount) {
-      return {
-        organizationId: PRIMARY_ORGANIZATION_ID,
-        identity: { kind:"dob", value:dob },
-        patientId:"",
-      };
-    }
-
-    const exact = linkedCount === total
-      && Number(summary?.patientCount || 0) === 1
-      && Number(summary?.currentPhoneCount || 0) === linkedCount
-      && !!summary?.patientId;
-    if (!exact) return null;
+    // Спільна перевірка phone+DOB (fail-closed на неоднозначність). Тут ambiguous
+    // і none однаково не дають доказу — далі йде опак-відповідь без витоку.
+    const proof = await provePatientDobIdentity(db, PRIMARY_ORGANIZATION_ID, phoneNormalized, dob);
+    if (proof.status !== "ok") return null;
     return {
       organizationId: PRIMARY_ORGANIZATION_ID,
       identity: { kind:"dob", value:dob },
-      patientId: summary.patientId,
+      patientId: proof.patientId,
     };
   }
 

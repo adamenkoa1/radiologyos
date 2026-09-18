@@ -3,9 +3,12 @@ import { todayInKyiv } from "../../../lib/booking-rules";
 import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-services";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
+import { isPlausibleFullName } from "../../../lib/patient-name";
 import { isRateLimited } from "../../../lib/rate-limit";
-import { bookingMessage, sendTelegram } from "../../../lib/telegram";
+import { sendTelegramBookingNotice } from "../../../lib/telegram";
 import { sendBookingEmail } from "../../../lib/booking-email";
+import { runAfterResponse } from "../../../lib/after-response";
+import { googleCalendarUrl } from "../../../lib/calendar-link";
 import { getSetting } from "../../../lib/settings";
 import { parseSiteContent, SITE_CONTENT_KEY } from "../../../lib/site-content";
 import { parseSchedule, SCHEDULE_KEY } from "../../../lib/schedule";
@@ -92,7 +95,24 @@ export async function POST(request: Request) {
     const resultNote = resultDelivery === "email"
       ? `Спосіб отримання результату: на email ${patientEmail}`
       : "Спосіб отримання результату: у відділенні";
-    const comment = [commentRaw, resultNote].filter(Boolean).join("\n").slice(0, 700);
+    // Бажаний канал зв'язку пацієнта (Viber / WhatsApp / Telegram / дзвінок).
+    // Зберігається як префікс [contact:x] на початку коментаря — його читають і
+    // дошка прийому (пряме посилання в месенджер), і автонагадування (notify.ts).
+    const CONTACT_METHODS = ["call", "viber", "whatsapp", "telegram"];
+    const rawContact = clean(body.contactMethod, 20).toLowerCase();
+    const contactMethod = CONTACT_METHODS.includes(rawContact) ? rawContact : "";
+    const contactTag = contactMethod ? `[contact:${contactMethod}]` : "";
+    // Бажаний слот пацієнта (зі слот-пікера). Використовується як м'яка перевага
+    // під час авторозподілу; якщо його зайняли — реєстратор бачить, що просив пацієнт.
+    const preferredDate = /^\d{4}-\d{2}-\d{2}$/.test(clean(body.desiredDate, 10)) ? clean(body.desiredDate, 10) : "";
+    const preferredTime = /^\d{2}:\d{2}$/.test(clean(body.desiredTime, 5)) ? clean(body.desiredTime, 5) : "";
+    const preferenceNote = preferredDate
+      ? `Бажаний час пацієнта: ${preferredDate}${preferredTime ? ` ${preferredTime}` : ""}`
+      : "";
+    // Тег каналу — окремим першим рядком, щоб префікс-парсери (^[contact:x])
+    // бачили його на початку.
+    const comment = [contactTag, commentRaw, resultNote, preferenceNote]
+      .filter(Boolean).join("\n").slice(0, 700);
     const marketingSource = clean(body.source, 40);
     const consentVersion = clean(body.consentVersion, 20);
 
@@ -116,8 +136,8 @@ export async function POST(request: Request) {
       return Response.json({ error: "Одна з обраних послуг зараз недоступна для цієї категорії пацієнтів" }, { status: 400 });
     }
 
-    if (name.split(/\s+/).filter(Boolean).length < 3) {
-      return Response.json({ error: "Вкажіть прізвище, ім’я та по батькові повністю" }, { status: 400 });
+    if (!isPlausibleFullName(name)) {
+      return Response.json({ error: "Вкажіть справжнє прізвище, ім’я та по батькові українською. Для нетипового написання зателефонуйте в реєстратуру: +380 97 280 88 99" }, { status: 400 });
     }
     if (!phoneNormalized) {
       return Response.json({ error: "Вкажіть коректний номер телефону" }, { status: 400 });
@@ -131,6 +151,25 @@ export async function POST(request: Request) {
     const schedule = parseSchedule(await getSetting(db, SCHEDULE_KEY));
     if (body.consent !== true || consentVersion !== CONSENT_VERSION) {
       return Response.json({ error: "Потрібно підтвердити актуальну політику обробки даних" }, { status: 400 });
+    }
+
+    // Захист від дублів/спаму: якщо на цей номер уже є АКТИВНА заявка на одну з
+    // обраних послуг — не створюємо ще одну (і не займаємо ще один слот).
+    // Скасовані/завершені не рахуються; інші послуги дозволені. Це зупиняє
+    // повторні надсилання (нова вкладка = новий idempotency-key) і базовий спам.
+    const dupPlaceholders = serviceCodes.map(() => "?").join(",");
+    const activeDuplicate = await db.prepare(
+      `SELECT 1 FROM bookings
+       WHERE organization_id = ? AND phone_normalized = ?
+         AND status IN ('new','confirmed','rescheduled')
+         AND service_code IN (${dupPlaceholders})
+       LIMIT 1`
+    ).bind(PUBLIC_ORGANIZATION_ID, phoneNormalized, ...serviceCodes).first();
+    if (activeDuplicate) {
+      return Response.json(
+        { error: "На цей номер уже є активна заявка на обрану послугу. Для змін зверніться до реєстратури: +380 97 280 88 99" },
+        { status: 409 },
+      );
     }
 
     const fromDate = todayInKyiv();
@@ -156,6 +195,8 @@ export async function POST(request: Request) {
       blocks: blocksResult.results,
       fromDate,
       fromTime: currentTimeInKyiv(),
+      preferredDate,
+      preferredTime,
     });
     if (!appointments) {
       return Response.json(
@@ -166,7 +207,20 @@ export async function POST(request: Request) {
 
     const codes: string[] = [];
     for (let i = 0; i < services.length; i += 1) codes.push(await nextBookingCode(db));
-    const responseBody = { codes, code: codes[0], appointments, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
+    // «Додати в календар» на екрані підтвердження — менше неявок.
+    const CLINIC_LOCATION = "Відділення променевої діагностики, м. Чернігів";
+    const appointmentsWithCalendar = appointments.map((appt, i) => ({
+      ...appt,
+      calendarUrl: googleCalendarUrl({
+        title: `Дослідження: ${appt.service}`,
+        date: appt.date,
+        time: appt.time,
+        durationMinutes: appt.durationMinutes,
+        details: `Заявка ${codes[i]}. Візьміть документ, що посвідчує особу, та попередні дослідження. Реєстратура: +380 97 280 88 99`,
+        location: CLINIC_LOCATION,
+      }),
+    }));
+    const responseBody = { codes, code: codes[0], appointments: appointmentsWithCalendar, status: "new", statusLabel: "Заявку отримано — очікує підтвердження" };
     const statements: D1PreparedStatement[] = [];
 
     services.forEach((service, index) => {
@@ -246,20 +300,27 @@ export async function POST(request: Request) {
       source: "server",
     })));
 
-    await sendTelegram(db, bookingMessage({
-      codes,
-      desiredDate: appointments[0].date,
-      desiredTime: appointments[0].time,
-    }), PUBLIC_ORGANIZATION_ID).catch((error) => { console.error("telegram_notify_failed", codes[0], error); return false; });
-
-    // E-mail the registrar when an e-mail gateway + recipient are configured.
-    await sendBookingEmail(db, PUBLIC_ORGANIZATION_ID, {
-      codes, name, phone, category, comment,
-      items: services.map((service, index) => ({
-        code: service!.code, title: service!.title,
-        date: appointments[index].date, time: appointments[index].time,
+    // Сповіщення реєстратора — best-effort і НЕ на шляху відповіді: заявку вже
+    // збережено, тож клієнт не має чекати на Telegram/e-mail (повільний або
+    // недоступний шлюз інакше тримав би кнопку «Надсилаємо…»). waitUntil дає їм
+    // дожити після повернення 201.
+    runAfterResponse(Promise.allSettled([
+      ...services.map((service,index)=>sendTelegramBookingNotice(db,{
+        code:codes[index],service:service!.title,
+        desiredDate:appointments[index].date,desiredTime:appointments[index].time,
+        phone,contactMethod,
+      },PUBLIC_ORGANIZATION_ID).catch((error)=>{
+        console.error("telegram_notify_failed",codes[index],error);return {ok:false};
       })),
-    });
+      // E-mail the registrar when an e-mail gateway + recipient are configured.
+      sendBookingEmail(db, PUBLIC_ORGANIZATION_ID, {
+        codes, name, phone, category, comment,
+        items: services.map((service, index) => ({
+          code: service!.code, title: service!.title,
+          date: appointments[index].date, time: appointments[index].time,
+        })),
+      }),
+    ]));
 
     return Response.json(responseBody, { status: 201, headers: { "cache-control": "no-store" } });
   } catch (error) {

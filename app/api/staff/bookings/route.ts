@@ -529,9 +529,9 @@ export async function PATCH(request: Request) {
   if (body.desiredDate && body.desiredTime) {
     const booking = await db.prepare(
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
-        name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
+        name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service, comment
        FROM bookings WHERE organization_id = ? AND id = ?`
-    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
+    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string;comment:string}>();
     const rSched = await getOrganizationSchedule(db, ctx.organizationId);
     if (!booking || !isBookableDate(body.desiredDate) || !isEquipmentDayOpen(body.desiredDate, rSched, booking.equipmentId)
         || !candidateTimesFor(hoursFor(rSched, booking.equipmentId), booking.durationMinutes).includes(body.desiredTime)) {
@@ -558,7 +558,7 @@ export async function PATCH(request: Request) {
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
-      desiredDate: body.desiredDate, desiredTime: body.desiredTime,
+      desiredDate: body.desiredDate, desiredTime: body.desiredTime, comment: booking.comment,
     };
     const reminder = await sendPatientReminder(db, "rescheduled", reminderTarget)
       .catch((error) => { console.error("reminder_failed", "rescheduled", body.id, error); return null; });
@@ -569,9 +569,9 @@ export async function PATCH(request: Request) {
     const booking = await db.prepare(
       `SELECT service_code AS serviceCode, equipment_id AS equipmentId, duration_minutes AS durationMinutes,
         desired_date AS desiredDate, desired_time AS desiredTime, status,
-        name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service
+        name, phone, phone_normalized AS phoneNormalized, patient_email AS patientEmail, service, comment
        FROM bookings WHERE organization_id = ? AND id = ?`
-    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string}>();
+    ).bind(ctx.organizationId, body.id).first<{serviceCode:string;equipmentId:string;durationMinutes:number;desiredDate:string;desiredTime:string;status:string;name:string;phone:string;phoneNormalized:string;patientEmail:string;service:string;comment:string}>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
     if (booking.status === "cancelled" || booking.status === "completed") {
       return Response.json({ error: "Заявку вже закрито — підтвердження недоступне" }, { status: 400 });
@@ -600,7 +600,7 @@ export async function PATCH(request: Request) {
     const reminderTarget: ReminderBooking = {
       id: body.id!, name: booking.name, phone: booking.phone, phoneNormalized: booking.phoneNormalized,
       patientEmail: booking.patientEmail, service: booking.service,
-      desiredDate: booking.desiredDate, desiredTime: booking.desiredTime,
+      desiredDate: booking.desiredDate, desiredTime: booking.desiredTime, comment: booking.comment,
     };
     const reminder = await sendPatientReminder(db, "confirmed", reminderTarget)
       .catch((error) => { console.error("reminder_failed", "confirmed", body.id, error); return null; });

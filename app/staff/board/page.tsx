@@ -74,24 +74,42 @@ export default function StudyBoardPage() {
   const [query,setQuery] = useState("");
   const [loaded,setLoaded] = useState(false);
   const [error,setError] = useState("");
+  // Мережевий збій завантаження — окремо від «немає доступу», щоб показати
+  // «Повторити», а не заклик увійти.
+  const [loadError,setLoadError] = useState(false);
 
-  async function load() {
-    const res = await fetch("/api/staff/bookings", { cache:"no-store" });
-    const payload = await res.json().catch(()=>({})) as { bookings?:Booking[]; staff?:StaffInfo; error?:string };
-    if (!res.ok || !payload.staff) {
-      setError(payload.error || "Немає доступу");
-      setLoaded(true);
-      return;
+  // background:true — тихе автооновлення: не блимає спінером і не глушить дошку
+  // через тимчасовий збій (лишає наявні картки до наступної спроби).
+  async function load({ background = false } = {}) {
+    try {
+      const res = await fetch("/api/staff/bookings", { cache:"no-store" });
+      const payload = await res.json().catch(()=>({})) as { bookings?:Booking[]; staff?:StaffInfo; error?:string };
+      if (!res.ok || !payload.staff) {
+        if (!background) { setError(payload.error || "Немає доступу"); setLoaded(true); }
+        return;
+      }
+      setBookings(payload.bookings || []);
+      setStaff(payload.staff);
+      setError(""); setLoadError(false); setLoaded(true);
+    } catch {
+      // Мережевий збій: при першому завантаженні показуємо «Повторити».
+      if (!background) { setLoadError(true); setLoaded(true); }
     }
-    setBookings(payload.bookings || []);
-    setStaff(payload.staff);
-    setError("");
-    setLoaded(true);
   }
 
   useEffect(()=>{
     const timer = window.setTimeout(()=>{ void load(); },0);
     return ()=>window.clearTimeout(timer);
+  },[]);
+
+  // Жива дошка (read-only): тихо оновлюємо потік кожні 45 с, тож зміни станів
+  // досліджень від інших співробітників зʼявляються без ручного «Оновити».
+  useEffect(()=>{
+    const id = window.setInterval(()=>{
+      if (document.hidden) return;
+      void load({ background:true });
+    }, 45000);
+    return ()=>window.clearInterval(id);
   },[]);
 
   const scoped = useMemo(()=>{
@@ -116,6 +134,7 @@ export default function StudyBoardPage() {
     staffRole={staff?.role}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fboard">Увійти</a></section>
+      : loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити дошку. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
       : !loaded ? <p className="dashLoading">Завантаження дошки…</p>
       : <section className="studyBoardShell">
           <div className="studyBoardToolbar">

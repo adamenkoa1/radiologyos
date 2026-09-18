@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { PublicLocalSeo } from "../../components/public-local-seo";
+import { MedicalPageSchema } from "../../components/medical-page-schema";
 import { SeoServiceLanding } from "../../components/seo-service-landing";
 import { CT_SEO_PAGES } from "../../../lib/seo-service-pages";
 
@@ -39,6 +40,7 @@ export default async function CtSeoPage({ params }: Props) {
   return (
     <>
       <SeoServiceLanding page={page} />
+      <MedicalPageSchema page={page} />
       <PublicLocalSeo path={page.path} />
     </>
   );

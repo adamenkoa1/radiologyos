@@ -140,6 +140,7 @@
 ### Звіти — *Адмін*
 
 - Звіти відділення — `/staff/reports`
+- SEO-аудит сайту — `/staff/reports/seo` *(здоров'я публічних сторінок; також Завідувач)*
 - Завантаженість обладнання — `/staff/reports/utilization` *(також Завідувач)*
 - Обороти регістрів — `/staff/reports/registers`
 - Дебіторська заборгованість — `/staff/reports/receivables`

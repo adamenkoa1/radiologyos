@@ -21,52 +21,57 @@ function loginRequest(body) {
   });
 }
 
-test("cabinet login without SMS: phone + DOB + booking code opens a working session", async () => {
+const myBookings = (raw) => new Request("http://localhost/api/my-bookings", {
+  method: "POST", headers: { cookie: raw, "content-type": "application/json" }, body: "{}",
+});
+
+test("phone + DOB alone opens a session for a single record; booking code still works", async () => {
   await withD1(async (db) => {
     await seedBooking(db, { code: "RD-260826-001" });
 
-    // Missing the code is rejected.
-    assert.equal((await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08" }), db)).status, 400);
+    // Phone or DOB missing → rejected.
+    assert.equal((await callWorker(loginRequest({ phone: "+380639982282" }), db)).status, 400);
 
-    // Wrong code — no session.
-    const wrong = await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08", bookingCode: "RD-000000-000" }), db);
-    assert.equal(wrong.status, 401);
-    assert.equal(wrong.headers.get("set-cookie"), null);
+    // Phone + DOB alone, one matching record → session cookie issued (no code needed).
+    const dobOnly = await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08" }), db);
+    assert.equal(dobOnly.status, 200);
+    const rawDob = (dobOnly.headers.get("set-cookie") || "").split(";")[0];
+    assert.match(rawDob, /rid_patient=/);
+    const mineDob = await callWorker(myBookings(rawDob), db);
+    assert.equal(mineDob.status, 200);
+    assert.ok((await mineDob.json()).bookings.some((b) => b.code === "RD-260826-001"));
 
-    // Wrong DOB with a real code — still rejected (all three must match one booking).
-    assert.equal((await callWorker(loginRequest({ phone: "+380639982282", dob: "1980-01-01", bookingCode: "RD-260826-001" }), db)).status, 401);
+    // Wrong DOB → rejected, no session.
+    const wrongDob = await callWorker(loginRequest({ phone: "+380639982282", dob: "1980-01-01" }), db);
+    assert.equal(wrongDob.status, 401);
+    assert.equal(wrongDob.headers.get("set-cookie"), null);
 
-    // All three correct — session cookie issued.
+    // Booking-code path still works: wrong code rejected, correct code accepted.
+    assert.equal((await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08", bookingCode: "RD-000000-000" }), db)).status, 401);
     const good = await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08", bookingCode: "RD-260826-001" }), db);
     assert.equal(good.status, 200);
-    const cookie = good.headers.get("set-cookie") || "";
-    assert.match(cookie, /rid_patient=/);
-
-    // The session lists this patient's bookings.
-    const raw = cookie.split(";")[0];
-    const mine = await callWorker(
-      new Request("http://localhost/api/my-bookings", { method: "POST", headers: { cookie: raw, "content-type": "application/json" }, body: "{}" }),
-      db,
-    );
-    assert.equal(mine.status, 200);
-    const data = await mine.json();
-    assert.ok(Array.isArray(data.bookings));
-    assert.ok(data.bookings.some((b) => b.code === "RD-260826-001"));
+    assert.match(good.headers.get("set-cookie") || "", /rid_patient=/);
   });
 });
 
-test("with several records under one phone+DOB, login scopes to the exact code used (fail-closed)", async () => {
+test("several records under one phone+DOB: phone+DOB alone is fail-closed (409 + needBookingCode); the exact code scopes in", async () => {
   await withD1(async (db) => {
     await seedBooking(db, { code: "RD-260826-010", time: "09:00" });
     await seedBooking(db, { code: "RD-260826-011", time: "09:30" });
 
+    // Without a code, phone+DOB maps to several records → fail-closed, no session.
+    const amb = await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08" }), db);
+    assert.equal(amb.status, 409);
+    assert.equal(amb.headers.get("set-cookie"), null);
+    assert.equal((await amb.json()).needBookingCode, true);
+
+    // The exact booking code scopes the session to that one record.
     const good = await callWorker(loginRequest({ phone: "+380639982282", dob: "1990-10-08", bookingCode: "RD-260826-010" }), db);
     assert.equal(good.status, 200);
     const raw = (good.headers.get("set-cookie") || "").split(";")[0];
-    const mine = await callWorker(new Request("http://localhost/api/my-bookings", { method: "POST", headers: { cookie: raw, "content-type": "application/json" }, body: "{}" }), db);
+    const mine = await callWorker(myBookings(raw), db);
     assert.equal(mine.status, 200);
-    const data = await mine.json();
-    const codes = (data.bookings || []).map((b) => b.code);
+    const codes = (await mine.json()).bookings.map((b) => b.code);
     // The session sees the booking it authenticated with, not the unrelated one.
     assert.deepEqual(codes, ["RD-260826-010"]);
   });

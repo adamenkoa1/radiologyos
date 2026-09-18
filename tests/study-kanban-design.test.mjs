@@ -36,3 +36,18 @@ test("study Kanban is integrated into the staff workspace and visual cascade", a
   assert.match(css, /grid-template-columns: repeat\(5, minmax\(245px, 1fr\)\)/);
   assert.match(css, /prefers-reduced-motion/);
 });
+
+test("study board survives a failed load and auto-refreshes", async () => {
+  const page = await read("app/staff/board/page.tsx");
+  // load() загорнуто в try/catch із фоновим режимом.
+  assert.match(page, /async function load\(\{ background = false \} = \{\}\)/);
+  assert.match(page, /catch \{[\s\S]*?setLoadError\(true\); setLoaded\(true\)/);
+  // Мережевий збій показує «Повторити» замість вічного спінера.
+  assert.match(page, /loadError \?/);
+  assert.match(page, /Повторити/);
+  assert.match(page, /setLoadError\(false\); setLoaded\(false\); void load\(\);/);
+  // Read-only дошка автооновлюється кожні 45 с (без busy-паузи, лише прихована вкладка).
+  assert.match(page, /void load\(\{ background:true \}\)/);
+  assert.match(page, /\}, 45000\)/);
+  assert.match(page, /if \(document\.hidden\) return/);
+});

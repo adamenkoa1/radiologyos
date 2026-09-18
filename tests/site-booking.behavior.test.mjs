@@ -49,6 +49,56 @@ test("a valid civilian request creates a booking, priced and pending payment", a
   });
 });
 
+test("a chosen contact channel is stored as a [contact:x] prefix for the registrar", async () => {
+  await withD1(async (db) => {
+    const created = await book(db, validBody({ contactMethod: "viber" }), "key-contact-viber01");
+    assert.equal(created.status, 201);
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
+    // Префікс на початку коментаря — його читають дошка прийому й notify.ts.
+    assert.match(row.comment, /^\[contact:viber\]/);
+  });
+});
+
+test("an unknown contact channel is ignored (no stray prefix)", async () => {
+  await withD1(async (db) => {
+    const created = await book(db, validBody({ contactMethod: "email" }), "key-contact-bad-001");
+    assert.equal(created.status, 201);
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
+    assert.doesNotMatch(row.comment, /^\[contact:/);
+  });
+});
+
+test("a valid e-mail is stored so the cabinet e-mail login works", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ email: "Patient@Example.COM" }), "key-email-store-0001");
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT patient_email AS email FROM bookings LIMIT 1").first();
+    assert.equal(row.email, "patient@example.com"); // normalized lowercase, kept on file
+  });
+});
+
+test("an invalid e-mail is dropped rather than stored", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ email: "not-an-email" }), "key-email-bad-00001a");
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT patient_email AS email FROM bookings LIMIT 1").first();
+    assert.equal(row.email, "");
+  });
+});
+
+test("the patient's preferred slot is recorded for the registrar", async () => {
+  await withD1(async (db) => {
+    const res = await book(
+      db,
+      validBody({ desiredDate: "2026-12-15", desiredTime: "10:00" }),
+      "key-preferred-slot-01",
+    );
+    assert.equal(res.status, 201);
+    const row = await db.prepare("SELECT comment FROM bookings LIMIT 1").first();
+    assert.match(row.comment, /Бажаний час пацієнта: 2026-12-15 10:00/);
+  });
+});
+
 test("the same idempotency key never creates a second booking", async () => {
   await withD1(async (db) => {
     const first = await book(db, validBody(), "same-key-0001aaaa");
@@ -90,5 +140,57 @@ test("a request without an idempotency key is refused", async () => {
   await withD1(async (db) => {
     const res = await callWorker(jsonRequest("/api/site-booking", validBody()), db);
     assert.equal(res.status, 400);
+  });
+});
+
+test("a second request from the same phone for the same active service is refused (no slot-spam)", async () => {
+  await withD1(async (db) => {
+    const first = await book(db, validBody(), "dedup-key-first-00001");
+    assert.equal(first.status, 201);
+    // Нова вкладка → інший idempotency-key, але той самий телефон і послуга.
+    const second = await book(db, validBody(), "dedup-key-second-0001");
+    assert.equal(second.status, 409);
+    const count = await db.prepare("SELECT COUNT(*) AS n FROM bookings").first("n");
+    assert.equal(count, 1); // рівно одна активна заявка, слот не задубльовано
+  });
+});
+
+test("the same phone can still book a DIFFERENT service", async () => {
+  await withD1(async (db) => {
+    const a = await book(db, validBody({ items: [{ code: "201" }] }), "diff-svc-key-000001");
+    assert.equal(a.status, 201);
+    const b = await book(db, validBody({ items: [{ code: "101" }] }), "diff-svc-key-000002");
+    assert.equal(b.status, 201); // інша послуга — дозволено
+  });
+});
+
+test("re-booking the same service is allowed after the previous one is cancelled", async () => {
+  await withD1(async (db) => {
+    const first = await book(db, validBody(), "recancel-key-000001");
+    const { code } = await first.json();
+    await db.prepare("UPDATE bookings SET status='cancelled' WHERE code = ?").bind(code).run();
+    const again = await book(db, validBody(), "recancel-key-000002");
+    assert.equal(again.status, 201); // скасована заявка не блокує
+  });
+});
+
+test("the confirmation response carries an add-to-calendar link per appointment", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody(), "calendar-key-000001");
+    assert.equal(res.status, 201);
+    const data = await res.json();
+    const appt = data.appointments[0];
+    const calUrl = new URL(appt.calendarUrl); // парсимо, а не шукаємо підрядок (CodeQL-safe)
+    assert.equal(calUrl.hostname, "calendar.google.com");
+    assert.match(calUrl.search, /dates=\d{8}T\d{6}/); // старт візиту у датах
+  });
+});
+
+test("gibberish full name is refused server-side", async () => {
+  await withD1(async (db) => {
+    const res = await book(db, validBody({ name: "выв Володимир Павлівна" }), "gibber-key-0000001");
+    assert.equal(res.status, 400);
+    const count = await db.prepare("SELECT COUNT(*) AS n FROM bookings").first("n");
+    assert.equal(count, 0);
   });
 });

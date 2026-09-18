@@ -29,7 +29,9 @@ test("the patient cabinet offers an email one-time-code login path", async () =>
   assert.match(cabinet, /id="emailOtpBtn"/);
   assert.match(cabinet, /async function requestEmailOtp\(\)/);
   // Uses the OTP request endpoint and then reveals the existing code-entry step.
-  assert.match(cabinet, /fetch\(OTP_API,\{method:'POST'[\s\S]*bookingCode:code/);
+  // Номер заявки більше не обов'язковий — додається до тіла лише якщо введений.
+  assert.match(cabinet, /fetch\(OTP_API,\{method:'POST'[\s\S]*body:JSON\.stringify\(otpBody\)/);
+  assert.match(cabinet, /if\(code\)otpBody\.bookingCode=code/);
   assert.match(cabinet, /challengeId=data\.challengeId/);
   assert.match(cabinet, /getElementById\('emailOtpBtn'\)\.addEventListener\('click',requestEmailOtp\)/);
 });
