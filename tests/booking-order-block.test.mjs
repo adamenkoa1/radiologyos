@@ -57,3 +57,13 @@ test("військова форма має інлайн-валідацію на 
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /if \(milForm\) bindInlineValidation\(milForm\)/);
 });
+
+test("сторінки з формою підключають спільний dob-widget до d1-bridge", async () => {
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+    const html = await read(page);
+    const widgetAt = html.indexOf("assets/dob-widget.js");
+    const bridgeAt = html.indexOf("assets/d1-bridge.js");
+    assert.ok(widgetAt > -1, `${page}: підключено dob-widget.js`);
+    assert.ok(bridgeAt > -1 && widgetAt < bridgeAt, `${page}: dob-widget до d1-bridge`);
+  }
+});

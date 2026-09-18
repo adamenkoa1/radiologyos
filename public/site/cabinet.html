@@ -51,6 +51,7 @@ header{padding:0 14px;margin-bottom:18px}.header-row{width:min(760px,100%);margi
   </div>
 </main>
 <script src="/site/assets/qrgen.js"></script>
+<script src="/site/assets/dob-widget.js"></script>
 <script>
 const MY_BOOKINGS = '/api/my-bookings';
 const STATUS_API = '/api/booking-status';
@@ -75,6 +76,9 @@ function adultDobLimit(){const today=new Date();const limit=new Date(today.getFu
 document.getElementById('gateDob').max=adultDobLimit();
 try{const saved=JSON.parse(sessionStorage.getItem(PATIENT_PREFILL_KEY)||'null');if(saved&&/^\d{9}$/.test(String(saved.phone||'')))document.getElementById('gatePhone').value=saved.phone;if(saved&&/^\d{4}-\d{2}-\d{2}$/.test(String(saved.dob||'')))document.getElementById('gateDob').value=saved.dob}catch(e){}
 try{const p=JSON.parse(localStorage.getItem('radiologyos_patient_v1')||'null');if(p){const ph=String(p.phone||'').replace(/\D/g,'').slice(-9);if(ph&&/^\d{9}$/.test(ph)&&!document.getElementById('gatePhone').value)document.getElementById('gatePhone').value=ph;if(/^\d{4}-\d{2}-\d{2}$/.test(String(p.dob||''))&&!document.getElementById('gateDob').value)document.getElementById('gateDob').value=p.dob}}catch(e){}
+// Той самий сегментований віджет дати (День/Місяць/Рік), що й у формі запису —
+// застосовуємо після префілу, щоб підхопити збережену дату.
+try{if(typeof window.enhanceDobSegments==='function')window.enhanceDobSegments(document.getElementById('gateDob'))}catch(e){}
 try{const last=JSON.parse(sessionStorage.getItem('radiologyos_last_booking_v1')||'null');const c=last&&(Array.isArray(last.codes)&&last.codes.length?last.codes[0]:last.code);if(c&&!document.getElementById('gateCode').value)document.getElementById('gateCode').value=String(c)}catch(e){}
 
 function cardHtml(b){
