@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import {
   PROTOCOL_TEMPLATES,
@@ -73,6 +73,9 @@ export default function ProtocolsPage() {
   const [booking,setBooking] = useState<BookingDetail | null>(null);
   const [doc,setDoc] = useState<EditorDoc | null>(null);
   const [error,setError] = useState("");
+  // Мережевий збій завантаження черги — щоб показати «Повторити», а не тиху
+  // порожню чергу (яка виглядає як «роботи немає»).
+  const [loadError,setLoadError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [saving,setSaving] = useState(false);
@@ -89,18 +92,42 @@ export default function ProtocolsPage() {
     setDirty(true);
   }
 
-  async function loadQueue() {
-    const response = await fetch("/api/staff/protocols", { cache:"no-store" });
-    const data = await response.json() as { queue?:QueueItem[]; staff?:StaffInfo; error?:string };
-    if (!response.ok) { setError(data.error || "Немає доступу"); return; }
-    setQueue(data.queue || []);
-    setStaff(data.staff || null);
-    setError("");
+  // background:true — тихе автооновлення черги: не показує екран помилки через
+  // тимчасовий збій (лишає наявну чергу до наступної спроби).
+  async function loadQueue({ background = false } = {}) {
+    try {
+      const response = await fetch("/api/staff/protocols", { cache:"no-store" });
+      const data = await response.json() as { queue?:QueueItem[]; staff?:StaffInfo; error?:string };
+      if (!response.ok) { if (!background) setError(data.error || "Немає доступу"); return; }
+      setQueue(data.queue || []);
+      setStaff(data.staff || null);
+      setError(""); setLoadError(false);
+    } catch {
+      // Мережевий збій першого завантаження — явна помилка з «Повторити»,
+      // а не мовчазна порожня черга.
+      if (!background) setLoadError(true);
+    }
   }
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void loadQueue(); }, 0);
     return () => window.clearTimeout(timer);
+  }, []);
+
+  // Не оновлюємо у фоні під час збереження, відкриття протоколу чи генерації
+  // AI-чернетки — щоб не смикати чергу під час активної роботи.
+  const busyRef = useRef(false);
+  useEffect(() => { busyRef.current = saving || bookingLoading || aiLoading; });
+
+  // Жива черга «Очікують опису»: тихо оновлюємо ліву чергу кожні 45 с, тож нові
+  // виконані дослідження зʼявляються без ручного перезавантаження. Правий
+  // редактор має окремий стан і від фонового оновлення не страждає.
+  useEffect(() => {
+    const id = window.setInterval(() => {
+      if (document.hidden || busyRef.current) return;
+      void loadQueue({ background:true });
+    }, 45000);
+    return () => window.clearInterval(id);
   }, []);
 
   // Захист незбережених змін перед перемиканням на інший протокол.
@@ -351,6 +378,7 @@ export default function ProtocolsPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fprotocols">Увійти для роботи</a></section> :
+    loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити чергу протоколів. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); void loadQueue(); }}>Повторити</button></section> :
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Черга протоколів">
         <div className="protocolQueueTools">
