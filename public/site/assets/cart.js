@@ -8,6 +8,8 @@ const PHONE = '380972808899';
 const MAX_SERVICES_PER_REQUEST = 5;
 
 let cart = JSON.parse(localStorage.getItem('radiologyCart') || '[]');
+let _lastPickerCode = null;
+let pickedSlot = { date: '', time: '' };
 
 const humanDate = iso => iso ? iso.split('-').reverse().join('.') : '';
 const money = n => new Intl.NumberFormat('uk-UA').format(n) + ' грн';
@@ -44,6 +46,35 @@ function renderCart() {
     ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small>Код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
     : '<div class="cart-empty">Ви ще не додали жодної послуги.</div>';
   document.getElementById('cartTotal').textContent = money(cart.reduce((s, x) => s + x.price, 0));
+  refreshSlotPicker();
+}
+
+// «Оберіть зручний час»: реальні вільні слоти з розкладу відділення для першої
+// послуги в кошику (/api/availability). Обраний слот заповнює бажану дату й час,
+// які потім ідуть у повідомлення месенджера.
+function refreshSlotPicker() {
+  const box = document.getElementById('slotPicker');
+  if (!box || typeof initSlotPicker !== 'function') return;
+  if (!cart.length) {
+    box.innerHTML = '<div class="sp-loading">Оберіть дослідження — і тут з’явиться вільний час</div>';
+    _lastPickerCode = null;
+    return;
+  }
+  const code = String(cart[0].code);
+  if (code === _lastPickerCode) return;
+  _lastPickerCode = code;
+  pickedSlot = { date: '', time: '' };
+  initSlotPicker({
+    container: box,
+    serviceCode: code,
+    onPick: s => {
+      pickedSlot = s;
+      const dd = document.getElementById('desiredDate');
+      const dt = document.getElementById('desiredTime');
+      if (dd && s.date) dd.value = s.date;
+      if (dt && s.time) dt.value = s.time;
+    },
+  });
 }
 
 function openCart() {
