@@ -61,7 +61,9 @@ test("public booking form is short: ПІБ + бажана дата + час (no 
   for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
     const html = await read(page);
     assert.match(html, /Прізвище, ім’я та по батькові/);
-    assert.doesNotMatch(html, /Або вкажіть дату вручну|Зручний час/);
+    // Прибрано старий сегментований DOB-віджет і завантаження файлів; пікер
+    // «Оберіть зручний час» лишається (заповнює бажану дату/час).
+    assert.doesNotMatch(html, /Або вкажіть дату вручну/);
     assert.doesNotMatch(html, /type="file"/);
   }
 });

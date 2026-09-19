@@ -134,12 +134,29 @@ test("site-payment builds a signed LiqPay checkout with a server-side amount, or
   assert.match(lib, /SHA-1/);
 });
 
-test("military booking page loads the messenger bridge (no in-page slot picker)", async () => {
+test("military booking page loads the messenger bridge and the free-time slot picker", async () => {
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /getElementById\('militaryRequestForm'\)/);
   const military = await read("public/site/military.html");
   assert.match(military, /assets\/d1-bridge\.js/);
-  assert.doesNotMatch(military, /id="(?:mil)?[Ss]lotPicker"/);
+  // «Оберіть зручний час»: пікер вільних слотів із розкладу відділення.
+  assert.match(military, /assets\/slots\.js/);
+  assert.match(military, /id="militarySlotPicker"/);
+  assert.match(military, /refreshMilitarySlotPicker\(/);
+});
+
+test("public booking pages offer the free-time slot picker feeding desired date/time", async () => {
+  const cart = await read("public/site/assets/cart.js");
+  assert.match(cart, /function refreshSlotPicker\(/);
+  assert.match(cart, /serviceCode: code/);
+  assert.match(cart, /getElementById\('desiredDate'\)/);
+  assert.match(cart, /getElementById\('desiredTime'\)/);
+  for (const page of ["public/site/index.html", "public/site/price.html"]) {
+    const html = await read(page);
+    assert.match(html, /id="slotPicker"/, `${page}: slot picker container`);
+    assert.match(html, /assets\/slots\.js/, `${page}: slots.js`);
+    assert.match(html, /Оберіть зручний час/, `${page}: heading`);
+  }
 });
 
 test("cabinet groups a multi-study submission into one visit", async () => {
