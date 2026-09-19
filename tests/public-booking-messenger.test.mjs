@@ -30,9 +30,15 @@ test("booking forms keep only ПІБ + бажана дата + бажаний ч
 test("each form offers Viber, WhatsApp and a call button", async () => {
   for (const page of FORMS) {
     const html = await read(page);
-    assert.match(html, /data-book="viber"[^>]*>Записатися через Viber/);
-    assert.match(html, /data-book="whatsapp"[^>]*>Записатися через WhatsApp/);
-    assert.match(html, /class="book-btn call" href="tel:\+380972808899">Зателефонувати/);
+    // Мінімалістичний блок: заголовок + три круглі іконки з підписами.
+    assert.match(html, /class="book-channels-title">Записатися через</);
+    assert.match(html, /class="channel-btn viber" data-book="viber" aria-label="Записатися через Viber"/);
+    assert.match(html, /class="channel-btn whatsapp" data-book="whatsapp" aria-label="Записатися через WhatsApp"/);
+    assert.match(html, /class="channel-btn call" href="tel:\+380972808899" aria-label="Зателефонувати"/);
+    // Підписи під іконками.
+    for (const cap of ["Viber", "WhatsApp", "Дзвінок"]) {
+      assert.match(html, new RegExp(`class="channel-cap">${cap}<`));
+    }
   }
 });
 
