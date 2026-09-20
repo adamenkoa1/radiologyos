@@ -44,12 +44,12 @@ async function initSlotPicker({ container, serviceCode, onPick }) {
   const pad = (n) => String(n).padStart(2, '0');
   const dayNames = ['Нд', 'Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб'];
 
-  // Наступні робочі дні (Пн–Сб). Недоступні дати сервер поверне порожніми.
+  // Наступні робочі дні (Пн–Пт). Недоступні дати сервер поверне порожніми.
   const days = [];
   for (let i = 0; i < 21 && days.length < 12; i++) {
     const d = new Date();
     d.setDate(d.getDate() + i);
-    if (d.getDay() === 0) continue; // неділя — вихідний
+    if (d.getDay() === 0 || d.getDay() === 6) continue; // субота й неділя — вихідні
     const iso = d.toISOString().slice(0, 10);
     days.push({ iso, label: dayNames[d.getDay()] + ' ' + pad(d.getDate()) + '.' + pad(d.getMonth() + 1) });
   }
