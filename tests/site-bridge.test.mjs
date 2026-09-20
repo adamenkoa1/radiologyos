@@ -157,6 +157,10 @@ test("public booking pages offer the free-time slot picker feeding desired date/
     assert.match(html, /assets\/slots\.js/, `${page}: slots.js`);
     assert.match(html, /Оберіть зручний час/, `${page}: heading`);
   }
+  // Плановий запис — лише робочі дні (Пн–Пт): субота й неділя пропускаються.
+  const slots = await read("public/site/assets/slots.js");
+  assert.match(slots, /getDay\(\) === 0 \|\| .*getDay\(\) === 6/);
+  assert.doesNotMatch(slots, /Пн–Сб/);
 });
 
 test("cabinet groups a multi-study submission into one visit", async () => {
