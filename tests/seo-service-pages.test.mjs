@@ -44,6 +44,19 @@ test("every SEO landing has a direct booking CTA and canonical metadata", async 
   for (const route of [ct, xray, fluoro]) assert.match(route, /alternates:\s*\{ canonical:/);
 });
 
+test("public site cross-links to the service landing pages (internal linking)", async () => {
+  // Головна, прайс і сторінка для військових ведуть на посадкові сторінки
+  // послуг канонічною non-slash формою (200 без 308-редиректу), щоб ті не
+  // лишалися orphan-сторінками лише в sitemap.
+  const pages = ["public/site/index.html", "public/site/price.html", "public/site/military.html"];
+  for (const page of pages) {
+    const html = await read(page);
+    for (const href of ["/ct", "/ct/contrast", "/xray", "/fluorography"]) {
+      assert.match(html, new RegExp(`href="${href}"`), `${page}: посилання на ${href}`);
+    }
+  }
+});
+
 test("sitemap includes the public service landing collection", async () => {
   const sitemap = await read("app/sitemap.ts");
   assert.match(sitemap, /CT_SEO_PAGES/);
