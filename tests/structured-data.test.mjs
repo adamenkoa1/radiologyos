@@ -5,7 +5,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   breadcrumbList, medicalWebPage, medicalProcedure, medicalPageGraph,
-  validateJsonLd, safeJsonLd,
+  validateJsonLd, safeJsonLd, breadcrumbTrail,
 } from "../lib/structured-data.ts";
 import { CT_SEO_PAGES, XRAY_SEO_PAGE, FLUORO_SEO_PAGE } from "../lib/seo-service-pages.ts";
 
@@ -17,6 +17,31 @@ const profile = {
   address: "вул. Гетьмана Полуботка, 40, Чернігів",
 };
 const DATE = "2026-09-08";
+
+test("breadcrumbTrail: видимий трейл з проміжною секцією та non-slash шляхами", () => {
+  // Підсторінка КТ: Головна → КТ → <сторінка>, останній елемент — поточний.
+  const sub = breadcrumbTrail(CT_SEO_PAGES.head);
+  assert.deepEqual(sub.map((c) => c.name), ["Головна", "КТ", CT_SEO_PAGES.head.title]);
+  assert.deepEqual(sub.map((c) => c.path), ["/", "/ct", "/ct/head"]);
+  assert.deepEqual(sub.map((c) => c.current), [false, false, true]);
+  // Хаб-сторінка КТ: Головна → <сторінка>.
+  const hub = breadcrumbTrail(CT_SEO_PAGES.index);
+  assert.deepEqual(hub.map((c) => c.path), ["/", "/ct"]);
+  assert.equal(hub[hub.length - 1].current, true);
+  // Шляхи без хвостового слеша (канонічна 200-форма).
+  for (const page of [XRAY_SEO_PAGE, FLUORO_SEO_PAGE]) {
+    const t = breadcrumbTrail(page);
+    assert.ok(t.every((c) => c.path === "/" || !c.path.endsWith("/")), `${page.path}: non-slash`);
+  }
+});
+
+test("seo landing renders a semantic breadcrumb nav from breadcrumbTrail", async () => {
+  const { readFile } = await import("node:fs/promises");
+  const src = await readFile(new URL("../app/components/seo-service-landing.tsx", import.meta.url), "utf8");
+  assert.match(src, /aria-label="Хлібні крихти"/);
+  assert.match(src, /breadcrumbTrail\(page\)/);
+  assert.match(src, /aria-current="page"/);
+});
 
 test("breadcrumbList: Головна → секція → сторінка з коректними позиціями й абсолютними URL", () => {
   const page = CT_SEO_PAGES.head;
