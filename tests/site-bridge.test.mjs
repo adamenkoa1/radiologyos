@@ -161,6 +161,14 @@ test("public booking pages offer the free-time slot picker feeding desired date/
   const slots = await read("public/site/assets/slots.js");
   assert.match(slots, /getDay\(\) === 0 \|\| .*getDay\(\) === 6/);
   assert.doesNotMatch(slots, /Пн–Сб/);
+  // Слот-пікер основний; ручні дата/час — у згорнутому fallback.
+  for (const page of ["public/site/index.html", "public/site/price.html", "public/site/military.html"]) {
+    const html = await read(page);
+    assert.match(html, /<details class="manual-time">[\s\S]*?type="date"[\s\S]*?type="time"[\s\S]*?<\/details>/, `${page}: manual fallback`);
+  }
+  // markInvalid розгортає прихований fallback, щоб показати помилку.
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /closest\('details'\)[\s\S]*?\.open = true/);
 });
 
 test("cabinet groups a multi-study submission into one visit", async () => {
