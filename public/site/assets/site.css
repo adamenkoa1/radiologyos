@@ -64,3 +64,8 @@ a{text-decoration:none;color:inherit}
 .hero-lead-hours a{color:var(--brand,#12303a);font-weight:700}
 .faq-heading{margin:0 0 14px;text-align:center;color:#12303a;font-size:clamp(20px,3vw,26px);font-weight:800}
 .faq-q{font-size:clamp(16px,2vw,19px)!important}
+
+.manual-time{margin-top:4px}
+.manual-time>summary{list-style:none;cursor:pointer;font-size:13px;color:var(--brand,#123d3a);text-decoration:underline;padding:4px 0}
+.manual-time>summary::-webkit-details-marker{display:none}
+.manual-time[open]>summary{margin-bottom:6px}

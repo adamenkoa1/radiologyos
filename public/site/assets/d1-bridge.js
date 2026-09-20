@@ -65,6 +65,9 @@
 
   function markInvalid(input) {
     if (!input) return;
+    // Розгорнути згорнутий fallback (ручні дата/час), щоб помилку було видно.
+    const det = input.closest('details');
+    if (det) det.open = true;
     input.style.borderColor = '#d9705f';
     const wrap = input.closest('.field');
     const err = wrap ? wrap.querySelector('.field-error') : null;
