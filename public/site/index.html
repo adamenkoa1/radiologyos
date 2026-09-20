@@ -100,13 +100,9 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 /* ===== Картки аудиторій ===== */
 .hero{padding:16px 0 0}
 .photo-audience{display:grid;grid-template-columns:1fr;gap:16px;width:100%}
-/* Десктоп: дві аудиторні пари (військові / цивільні) поруч, а не одним стовпцем */
+/* Десктоп: дві аудиторні картки (військові / цивільні) поруч */
 @media(min-width:760px){
-  .photo-audience{grid-template-columns:1fr 1fr;column-gap:14px;align-items:start}
-  .photo-audience>:nth-child(1){grid-column:1;grid-row:1}
-  .photo-audience>:nth-child(2){grid-column:1;grid-row:2}
-  .photo-audience>:nth-child(3){grid-column:2;grid-row:1}
-  .photo-audience>:nth-child(4){grid-column:2;grid-row:2}
+  .photo-audience{grid-template-columns:1fr 1fr;column-gap:14px;align-items:stretch}
 }
 .promo-card{
   display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:20px;
@@ -139,6 +135,22 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 @media(max-width:900px){.how-steps.civilian{grid-template-columns:1fr 1fr}.barium-grid{grid-template-columns:1fr}}@media(max-width:760px){.how-steps,.how-steps.civilian{grid-template-columns:1fr}.how-card{padding:22px 18px}.fold-card>summary{min-height:62px;padding:15px 17px}.fold-card .fold-body{padding:0 17px 18px}.how-exception,.how-result,.access-notice{display:block}.how-exception strong,.how-result strong,.access-notice strong{display:block;margin-bottom:4px}.barium-card{padding:16px}}
 .promo-civil .promo-text span{color:#5d4700}
 .promo-arrow{font-size:44px;line-height:1;font-weight:400;opacity:.85}
+
+/* ===== Які дослідження проводимо ===== */
+.modalities{padding:18px 0 0}
+.modalities-heading{margin:0 0 12px;font-size:clamp(20px,2.6vw,26px);letter-spacing:-.015em;color:#12303a}
+.modality-list{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.modality-list li{display:flex;align-items:center;gap:11px;padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-lg);background:#fff;box-shadow:0 8px 22px rgba(24,34,19,.06);font-weight:700;color:#173f46;font-size:14px;line-height:1.3}
+.modality-list li::before{content:"";flex:0 0 8px;width:8px;height:8px;border-radius:50%;background:var(--brand)}
+@media(max-width:760px){.modality-list{grid-template-columns:1fr 1fr}}
+@media(max-width:460px){.modality-list{grid-template-columns:1fr}}
+
+/* ===== «Як записатися» (розгорнуті сценарії) ===== */
+.how-heading{margin:0 0 14px;font-size:clamp(22px,2.6vw,28px);letter-spacing:-.02em;color:#12303a}
+.how-flow-title{margin:4px 0 8px;font-size:clamp(18px,2.2vw,22px);line-height:1.16;color:#12303a}
+.how-card + .how-card{margin-top:16px}
+.how-card.military-how{border-top:4px solid var(--brand)}
+.how-card.civilian-how{border-top:4px solid #b9dfe3}
 
 /* ===== Адреса ===== */
 .contact{padding:12px 0 0}
@@ -340,27 +352,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     </div>
   </section>
 
-  <section class="experience" id="experience">
-    <div class="wrap">
-      <details class="experience-card experience-fold">
-        <summary><span><span class="experience-kicker">Про відділення</span><strong class="experience-summary-title">Флюорографія, рентгенографія та КТ у Чернігові</strong></span></summary>
-        <div class="experience-body">
-        <p class="experience-lead" id="scAbout">Екстрені дослідження для військовослужбовців проводяться цілодобово — 24/7. Планові дослідження проводяться відповідно до режиму роботи відділення: 08:30–17:30. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
-        <p class="experience-answer">У відділенні доступні КТ у Чернігові, КТ з внутрішньовенним контрастуванням, цифрова рентгенографія та флюорографія. Цивільні пацієнти можуть обрати дослідження й подати онлайн-заявку на вільний час.</p>
-        <p class="experience-volume">Щороку наші фахівці виконують близько <strong id="statTotalInline">29 700 досліджень</strong> — понад <strong>80 досліджень щодня</strong>. Такий обсяг роботи підтверджує значний практичний досвід, відпрацьовані процеси та постійну готовність до проведення діагностики.</p>
-        <div class="experience-stats" aria-label="Показники роботи за 2025 рік">
-          <div class="experience-stat"><strong id="statTotal">29 700</strong><span>досліджень за 2025 рік</span></div>
-          <div class="experience-stat"><strong id="statFluoro">16 500</strong><span>флюорографічних досліджень</span></div>
-          <div class="experience-stat"><strong id="statRadiographs">10 400</strong><span>рентгенографічних досліджень</span></div>
-          <div class="experience-stat"><strong id="statCt">2 800</strong><span>комп’ютерних томографій</span></div>
-        </div>
-        <p class="experience-audience">Військовослужбовцям дослідження проводяться <b>безоплатно за направленням</b>. Для цивільних пацієнтів доступна <b>платна діагностика за попереднім записом</b>.</p>
-        </div>
-      </details>
-    </div>
-  </section>
-
-  <section class="hero">
+  <section class="hero" aria-label="Кому підходить">
     <div class="wrap">
       <div class="photo-audience">
         <a class="promo-card promo-military" id="scMilCard" href="/site/military.html">
@@ -371,26 +363,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           </span>
           <span class="promo-arrow" aria-hidden="true">›</span>
         </a>
-        <details class="fold-card audience-how military-fold">
-          <summary id="scHowTitle">Як пройти дослідження військовослужбовцю</summary>
-          <div class="fold-body"><div class="how-card military-how">
-          <p class="how-intro" id="scHowIntro">Візьміть направлення у військового лікаря та зверніться до відділення у години прийому.</p>
-          <div class="how-steps">
-            <article class="how-step"><span class="how-num">1</span><div><strong id="scHowQueueTitle">Направлення і жива черга</strong><p id="scHowQueue">Усі дослідження, крім рентгенографії з барієм та комп’ютерної томографії, проводяться в порядку живої черги.</p></div></article>
-            <article class="how-step"><span class="how-num">2</span><div><strong id="scHowFluoroTitle">До 12:00</strong><p id="scHowFluoro">До 12:00 — флюорографія, зокрема для проходження ВЛК.</p></div></article>
-            <article class="how-step"><span class="how-num">3</span><div><strong id="scHowXrayTitle">Після 13:00</strong><p id="scHowXray">Після 13:00 — рентгенографія кісток і суглобів та інші рентгенографічні дослідження за направленням.</p></div></article>
-          </div>
-          <div class="how-exception"><strong id="scHowExceptionsTitle">За попереднім записом</strong><span id="scHowExceptions">Рентгенографія з барієм і комп’ютерна томографія проводяться за попереднім записом.</span></div>
-          <section class="barium-card">
-            <h3 id="scBariumTitle">Як підготуватися до рентгенографії з барієм</h3>
-            <div class="barium-links">
-              <details><summary>301 — стравохід, шлунок і дванадцятипала кишка</summary><div class="barium-detail"><p><strong>Для чого:</strong> <span id="scBariumPurpose">Дослідження призначають для оцінювання стравоходу, шлунка та дванадцятипалої кишки, зокрема при підозрі на грижу стравохідного отвору діафрагми або виразкові зміни. При виразці шлунка чи дванадцятипалої кишки через 1 годину може виконуватися контрольний знімок для оцінки евакуації контрасту зі шлунка та дванадцятипалої кишки.</span></p><p><strong>Підготовка:</strong> <span id="scBariumPreparation">Дослідження проводиться натще: щонайменше за 6 годин не їжте, не пийте та не жуйте гумку. Необхідні ліки, діабет і можливу вагітність обговоріть під час запису. Наявність барію та порядок його надання підтвердить відділення.</span></p><p><strong>Як проходить:</strong> <span id="scBariumProcedure">Пацієнт випиває суспензію барію, а лікар-рентгенолог у режимі рентгеноскопії спостерігає за її проходженням.</span></p></div></details>
-              <details><summary>302 — проходження барію тонкою кишкою</summary><div class="barium-detail"><p><strong>Погодинне дослідження:</strong> <span id="scBariumTransit">Після приймання барію контрольні знімки зазвичай виконують через 1 і 2 години, а далі — приблизно кожні 3 години за вказівкою лікаря-рентгенолога. Дослідження може тривати до 24 годин, тому необхідно підходити на повторні знімки у визначений час.</span></p></div></details>
-            </div>
-          </section>
-          <div class="how-result"><strong id="scHowResultTitle">Коли буде опис</strong><span id="scHowResult">Опис дослідження разом із рентгенівськими знімками вноситься до електронної медичної карти в медичній інформаційній системі та через добу після дослідження доступний лікарям. Тому забирати паперовий примірник не обов’язково. За потреби паперовий опис можна отримати через добу на другому поверсі — там, де проводилося дослідження. Екстрені дослідження проводяться цілодобово — 24/7, а опис надається одразу.</span></div>
-          </div></div>
-        </details>
         <a class="promo-card promo-civil" href="/site/price.html">
           <span class="promo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M9.5 4h5v5.5H20v5h-5.5V20h-5v-5.5H4v-5h5.5V4z"/></svg></span>
           <span class="promo-text">
@@ -399,18 +371,74 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           </span>
           <span class="promo-arrow" aria-hidden="true">›</span>
         </a>
-        <details class="fold-card audience-how civilian-fold">
-          <summary id="scCivHowTitle">Як пройти дослідження цивільному пацієнту</summary>
-          <div class="fold-body"><div class="how-card civilian-how">
-          <div class="how-steps civilian">
-            <article class="how-step"><span class="how-num">1</span><div><strong>Запис на сайті</strong><p id="scCivHowBooking">Оберіть потрібне дослідження на сайті та запишіться на зручний доступний час.</p></div></article>
-            <article class="how-step"><span class="how-num">2</span><div><strong>Прибуття</strong><p id="scCivHowArrival">Приїдьте до госпіталю у підтверджений час і пред’явіть документ, що посвідчує особу.</p></div></article>
-            <article class="how-step"><span class="how-num">3</span><div><strong>Оплата після дослідження</strong><p id="scCivHowPayment">Попередня оплата не потрібна — оплата здійснюється після проведення дослідження.</p></div></article>
-            <article class="how-step"><span class="how-num">4</span><div><strong>Дослідження і результат</strong><p id="scCivHowResult">Пройдіть дослідження та отримайте результат у відділенні або на електронну пошту.</p></div></article>
+      </div>
+    </div>
+  </section>
+
+  <section class="modalities" id="modalities" aria-label="Які дослідження проводимо">
+    <div class="wrap">
+      <h2 class="modalities-heading">Які дослідження проводимо</h2>
+      <ul class="modality-list">
+        <li>Флюорографія</li>
+        <li>Цифрова рентгенографія</li>
+        <li>Рентгенографія з барієм</li>
+        <li>Комп’ютерна томографія (КТ)</li>
+        <li>КТ з внутрішньовенним контрастуванням</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="how-section" id="how" aria-label="Як записатися">
+    <div class="wrap">
+      <h2 class="how-heading">Як записатися</h2>
+      <div class="how-card military-how">
+        <p class="how-kicker">Військовослужбовцям</p>
+        <h3 class="how-flow-title" id="scHowTitle">Як пройти дослідження військовослужбовцю</h3>
+        <p class="how-intro" id="scHowIntro">Візьміть направлення у військового лікаря та зверніться до відділення у години прийому.</p>
+        <div class="how-steps">
+          <article class="how-step"><span class="how-num">1</span><div><strong id="scHowQueueTitle">Направлення і жива черга</strong><p id="scHowQueue">Усі дослідження, крім рентгенографії з барієм та комп’ютерної томографії, проводяться в порядку живої черги.</p></div></article>
+          <article class="how-step"><span class="how-num">2</span><div><strong id="scHowFluoroTitle">До 12:00</strong><p id="scHowFluoro">До 12:00 — флюорографія, зокрема для проходження ВЛК.</p></div></article>
+          <article class="how-step"><span class="how-num">3</span><div><strong id="scHowXrayTitle">Після 13:00</strong><p id="scHowXray">Після 13:00 — рентгенографія кісток і суглобів та інші рентгенографічні дослідження за направленням.</p></div></article>
+        </div>
+        <div class="how-exception"><strong id="scHowExceptionsTitle">За попереднім записом</strong><span id="scHowExceptions">Рентгенографія з барієм і комп’ютерна томографія проводяться за попереднім записом.</span></div>
+        <section class="barium-card">
+          <h3 id="scBariumTitle">Як підготуватися до рентгенографії з барієм</h3>
+          <div class="barium-links">
+            <details><summary>301 — стравохід, шлунок і дванадцятипала кишка</summary><div class="barium-detail"><p><strong>Для чого:</strong> <span id="scBariumPurpose">Дослідження призначають для оцінювання стравоходу, шлунка та дванадцятипалої кишки, зокрема при підозрі на грижу стравохідного отвору діафрагми або виразкові зміни. При виразці шлунка чи дванадцятипалої кишки через 1 годину може виконуватися контрольний знімок для оцінки евакуації контрасту зі шлунка та дванадцятипалої кишки.</span></p><p><strong>Підготовка:</strong> <span id="scBariumPreparation">Дослідження проводиться натще: щонайменше за 6 годин не їжте, не пийте та не жуйте гумку. Необхідні ліки, діабет і можливу вагітність обговоріть під час запису. Наявність барію та порядок його надання підтвердить відділення.</span></p><p><strong>Як проходить:</strong> <span id="scBariumProcedure">Пацієнт випиває суспензію барію, а лікар-рентгенолог у режимі рентгеноскопії спостерігає за її проходженням.</span></p></div></details>
+            <details><summary>302 — проходження барію тонкою кишкою</summary><div class="barium-detail"><p><strong>Погодинне дослідження:</strong> <span id="scBariumTransit">Після приймання барію контрольні знімки зазвичай виконують через 1 і 2 години, а далі — приблизно кожні 3 години за вказівкою лікаря-рентгенолога. Дослідження може тривати до 24 годин, тому необхідно підходити на повторні знімки у визначений час.</span></p></div></details>
           </div>
-          <div class="access-notice"><strong>Важливо перед візитом</strong><span id="scAccessNotice">Вхід на територію госпіталю для військовослужбовців і цивільних пацієнтів здійснюється після ідентифікації особи. Обов’язково майте при собі документ, що посвідчує особу.</span></div>
-          </div></div>
-        </details>
+        </section>
+        <div class="how-result"><strong id="scHowResultTitle">Коли буде опис</strong><span id="scHowResult">Опис дослідження разом із рентгенівськими знімками вноситься до електронної медичної карти в медичній інформаційній системі та через добу після дослідження доступний лікарям. Тому забирати паперовий примірник не обов’язково. За потреби паперовий опис можна отримати через добу на другому поверсі — там, де проводилося дослідження. Екстрені дослідження проводяться цілодобово — 24/7, а опис надається одразу.</span></div>
+      </div>
+      <div class="how-card civilian-how">
+        <p class="how-kicker">Цивільним пацієнтам</p>
+        <h3 class="how-flow-title" id="scCivHowTitle">Як пройти дослідження цивільному пацієнту</h3>
+        <div class="how-steps civilian">
+          <article class="how-step"><span class="how-num">1</span><div><strong>Запис на сайті</strong><p id="scCivHowBooking">Оберіть потрібне дослідження на сайті та запишіться на зручний доступний час.</p></div></article>
+          <article class="how-step"><span class="how-num">2</span><div><strong>Прибуття</strong><p id="scCivHowArrival">Приїдьте до госпіталю у підтверджений час і пред’явіть документ, що посвідчує особу.</p></div></article>
+          <article class="how-step"><span class="how-num">3</span><div><strong>Оплата після дослідження</strong><p id="scCivHowPayment">Попередня оплата не потрібна — оплата здійснюється після проведення дослідження.</p></div></article>
+          <article class="how-step"><span class="how-num">4</span><div><strong>Дослідження і результат</strong><p id="scCivHowResult">Пройдіть дослідження та отримайте результат у відділенні або на електронну пошту.</p></div></article>
+        </div>
+        <div class="access-notice"><strong>Важливо перед візитом</strong><span id="scAccessNotice">Вхід на територію госпіталю для військовослужбовців і цивільних пацієнтів здійснюється після ідентифікації особи. Обов’язково майте при собі документ, що посвідчує особу.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="experience" id="experience">
+    <div class="wrap">
+      <div class="experience-card">
+        <span class="experience-kicker">Про відділення</span>
+        <h2>Флюорографія, рентгенографія та КТ у Чернігові</h2>
+        <p class="experience-lead" id="scAbout">Екстрені дослідження для військовослужбовців проводяться цілодобово — 24/7. Планові дослідження проводяться відповідно до режиму роботи відділення: 08:30–17:30. Цивільні пацієнти можуть пройти платні дослідження за попереднім записом.</p>
+        <p class="experience-answer">У відділенні доступні КТ у Чернігові, КТ з внутрішньовенним контрастуванням, цифрова рентгенографія та флюорографія. Цивільні пацієнти можуть обрати дослідження й подати онлайн-заявку на вільний час.</p>
+        <p class="experience-volume">Щороку наші фахівці виконують близько <strong id="statTotalInline">29 700 досліджень</strong> — понад <strong>80 досліджень щодня</strong>. Такий обсяг роботи підтверджує значний практичний досвід, відпрацьовані процеси та постійну готовність до проведення діагностики.</p>
+        <div class="experience-stats" aria-label="Показники роботи за 2025 рік">
+          <div class="experience-stat"><strong id="statTotal">29 700</strong><span>досліджень за 2025 рік</span></div>
+          <div class="experience-stat"><strong id="statFluoro">16 500</strong><span>флюорографічних досліджень</span></div>
+          <div class="experience-stat"><strong id="statRadiographs">10 400</strong><span>рентгенографічних досліджень</span></div>
+          <div class="experience-stat"><strong id="statCt">2 800</strong><span>комп’ютерних томографій</span></div>
+        </div>
+        <p class="experience-audience">Військовослужбовцям дослідження проводяться <b>безоплатно за направленням</b>. Для цивільних пацієнтів доступна <b>платна діагностика за попереднім записом</b>.</p>
       </div>
     </div>
   </section>
