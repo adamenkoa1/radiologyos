@@ -1,10 +1,12 @@
 name: Deploy to Cloudflare
 
 on:
-  # Автозапуск на злиття в main. Фактичний викат у прод усе одно чекає на
-  # ручне підтвердження через protection-правило середовища "production"
-  # (Settings → Environments → production → Required reviewers). Без цього
-  # правила деплой піде без паузи — гейт вмикає саме required reviewer.
+  # Автозапуск і автоматичний викат на злиття в main — без ручної паузи.
+  # Раніше job був прив'язаний до GitHub-environment "production" з правилом
+  # Required reviewers, тож деплой зупинявся й чекав на схвалення людини.
+  # Прив'язку прибрано на прохання власника продукту, тому кожне злиття в main
+  # виконує міграції D1 і викат у прод автоматично. Ручний запуск через
+  # workflow_dispatch усе ще потребує явного вибору DEPLOY.
   push:
     branches: [main]
   workflow_dispatch:
@@ -31,7 +33,6 @@ jobs:
     if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY') }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
-    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v7

@@ -33,6 +33,38 @@ test("the public homepage combines hospital information, services and booking", 
   assert.match(contentDefaults, /Досвід, якому можна довіряти/);
 });
 
+test("homepage IA: for-whom → modalities → how-to-book → about → FAQ → contacts", async () => {
+  const page = await read("public/site/index.html");
+  // Порядок секцій головної (за зростанням позиції у розмітці).
+  const order = [
+    'class="hero-lead"',
+    'class="hero" aria-label="Кому підходить"',
+    'id="modalities"',
+    'class="how-section" id="how"',
+    '<section class="experience" id="experience"',
+    'id="faq"',
+    'id="contacts"',
+  ];
+  let prev = -1;
+  for (const marker of order) {
+    const at = page.indexOf(marker);
+    assert.ok(at > prev, `секція "${marker}" має йти після попередньої (знайдено на ${at}, попередня ${prev})`);
+    prev = at;
+  }
+  // Сценарії «Як записатися» показані розгорнуто, а не в акордеонах.
+  assert.doesNotMatch(page, /fold-card audience-how/);
+  assert.match(page, /class="how-card military-how"/);
+  assert.match(page, /class="how-card civilian-how"/);
+  // Блок «Про відділення» — звичайна картка, не згорнутий accordion
+  // (FAQ нижче лишається акордеоном — це навмисно).
+  assert.match(page, /<section class="experience" id="experience">\s*<div class="wrap">\s*<div class="experience-card">/);
+  // Секція модальностей перелічує погоджені дослідження без цін/тарифів.
+  assert.match(page, /class="modality-list"/);
+  for (const m of ["Флюорографія", "Цифрова рентгенографія", "Рентгенографія з барієм", "Комп’ютерна томографія", "контрастуванням"]) {
+    assert.match(page, new RegExp(m), `модальність: ${m}`);
+  }
+});
+
 test("public booking is a minimalist messenger handoff (name + date + time)", async () => {
   const page = await read("public/site/index.html");
   assert.match(page, /Прізвище, ім’я та по батькові/);
