@@ -63,6 +63,12 @@ test("homepage IA: for-whom → modalities → how-to-book → about → FAQ →
   for (const m of ["Флюорографія", "Цифрова рентгенографія", "Рентгенографія з барієм", "Комп’ютерна томографія", "контрастуванням"]) {
     assert.match(page, new RegExp(m), `модальність: ${m}`);
   }
+  // SEO: модальності лінкуються на посадкові сторінки (внутрішня перелінковка,
+  // без хвостового слеша — канонічна форма, що віддає 200 без редиректу).
+  assert.match(page, /<a href="\/fluorography">Флюорографія<\/a>/);
+  assert.match(page, /<a href="\/xray">Цифрова рентгенографія<\/a>/);
+  assert.match(page, /<a href="\/ct">Комп’ютерна томографія \(КТ\)<\/a>/);
+  assert.match(page, /<a href="\/ct\/contrast">КТ з внутрішньовенним контрастуванням<\/a>/);
 });
 
 test("public booking is a minimalist messenger handoff (name + date + time)", async () => {
