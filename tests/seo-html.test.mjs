@@ -20,6 +20,10 @@ for (const file of INDEXABLE) {
     assert.match(h, /<html[^>]*\blang="uk"/, "lang=uk");
     const title = h.match(/<title>([^<]*)<\/title>/);
     assert.ok(title && title[1].trim().length > 0, "непорожній <title>");
+    // Локальний ключ у title — індексовані сторінки мають бути впізнавані у
+    // локальному пошуку (docs/seo.md).
+    assert.match(title[1], /Чернігов/, "локальний ключ у <title>");
+    assert.ok([...title[1]].length <= 60, `<title> ≤60 символів (${[...title[1]].length})`);
     assert.match(h, /name="description"[^>]*content="[^"]{40,}"/, "опис ≥40 символів");
     assert.match(h, /rel="canonical"/, "canonical");
     assert.match(h, /property="og:title"/, "og:title");
