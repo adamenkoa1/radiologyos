@@ -83,6 +83,27 @@ test("WhatsApp uses wa.me with URL-encoded text; Viber copies to clipboard with 
   assert.match(bridge, /viber:\/\/chat\?number=%2B\$\{ADMIN_PHONE_INTL\}/);
 });
 
+test("after opening a messenger the form shows a confirmation with copy/call fallback", async () => {
+  const bridge = await read("public/site/assets/d1-bridge.js");
+  assert.match(bridge, /function showBookConfirm\(/);
+  assert.match(bridge, /showBookConfirm\(form, 'WhatsApp', text\)/);
+  assert.match(bridge, /showBookConfirm\(form, 'Viber', text\)/);
+  assert.match(bridge, /Майже готово/);
+  assert.match(bridge, /book-confirm-copy/);
+  assert.match(bridge, /href="tel:' \+ ADMIN_TEL/);
+});
+
+test("booking cart explains the estimate and the optional cabinet", async () => {
+  for (const page of ["public/site/index.html", "public/site/price.html"]) {
+    const html = await read(page);
+    assert.match(html, /class="cart-total-note">Орієнтовна вартість/, `${page}: sum note`);
+  }
+  for (const page of FORMS) {
+    const html = await read(page);
+    assert.match(html, /class="cabinet-note">Необов'язково/, `${page}: cabinet note`);
+  }
+});
+
 test("home page has one primary CTA and a single FAQ accordion", async () => {
   const html = await read("public/site/index.html");
   assert.match(html, /class="hero-cta" href="\/site\/price\.html">Записатися на дослідження/);

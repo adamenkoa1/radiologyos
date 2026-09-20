@@ -69,3 +69,14 @@ a{text-decoration:none;color:inherit}
 .manual-time>summary{list-style:none;cursor:pointer;font-size:13px;color:var(--brand,#123d3a);text-decoration:underline;padding:4px 0}
 .manual-time>summary::-webkit-details-marker{display:none}
 .manual-time[open]>summary{margin-bottom:6px}
+
+/* Підтвердження після відкриття месенджера + пояснення суми/кабінету */
+.book-confirm{margin-top:14px;padding:14px 16px;border:1px solid #cfe6d8;border-radius:var(--r-md,12px);background:#f2fbf5}
+.book-confirm-title{margin:0 0 4px;font-weight:800;color:#1e7a3d;font-size:14px}
+.book-confirm-text{margin:0;font-size:13px;line-height:1.5;color:#33505a}
+.book-confirm-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.book-confirm-copy,.book-confirm-call{flex:1;min-width:140px;text-align:center;padding:10px 12px;border-radius:var(--r-sm,8px);font:inherit;font-size:13px;font-weight:700;cursor:pointer}
+.book-confirm-copy{border:1.5px solid var(--brand,#123d3a);background:#fff;color:var(--brand,#123d3a)}
+.book-confirm-call{border:0;background:var(--brand,#123d3a);color:#fff}
+.cart-total-note{margin:6px 0 0;font-size:12px;color:#5c6c78;line-height:1.4}
+.cabinet-note{margin:6px 0 0;text-align:center;font-size:12px;color:#8a98a2;line-height:1.4}

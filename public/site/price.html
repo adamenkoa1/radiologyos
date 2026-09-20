@@ -430,7 +430,7 @@ body{background:#f3f6f8}
 </div></main>
 <div class="fixed"><a href="tel:+380972808899">Записатися</a><a href="https://wa.me/380972808899">WhatsApp</a></div>
 
-<div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><form class="request-form" id="requestForm" novalidate>
+<div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><p class="cart-total-note">Орієнтовна вартість. Остаточну суму підтвердить реєстратура; оплата — після проведення дослідження.</p><form class="request-form" id="requestForm" novalidate>
       <div class="field">
         <label for="patientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
         <input autocomplete="name" id="patientName" required placeholder="Іваненко Іван Іванович"/>
@@ -473,6 +473,7 @@ body{background:#f3f6f8}
         </div>
       </div>
       <a class="cabinet-link" href="/site/cabinet.html">Створити особистий кабінет</a>
+      <p class="cabinet-note">Необов'язково. У кабінеті — статус заявки та готовий висновок після дослідження.</p>
     </form></aside></div><button class="floating-cart" onclick="openCart()" type="button">Моя заявка <span class="cart-count" data-cart-count="">0</span></button>
 <script src="/site/assets/department.js"></script>
 <script>

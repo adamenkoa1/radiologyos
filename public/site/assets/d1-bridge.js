@@ -112,15 +112,44 @@
         const text = bookingMessage(data.name, data.studies, data.date, data.time);
         if (btn.dataset.book === 'whatsapp') {
           window.open(`https://wa.me/${ADMIN_PHONE_INTL}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
+          showBookConfirm(form, 'WhatsApp', text);
         } else if (btn.dataset.book === 'viber') {
           // Viber не дає підставити текст у чат конкретного контакту, тож
           // копіюємо заявку в буфер і відкриваємо чат адміністратора.
           await copyText(text);
           toast('Текст заявки скопійовано. Вставте його у повідомлення Viber');
           window.location.href = `viber://chat?number=%2B${ADMIN_PHONE_INTL}`;
+          showBookConfirm(form, 'Viber', text);
         }
       });
     });
+  }
+
+  // Підтвердження після відкриття месенджера: заявка вважається надісланою лише
+  // після того, як користувач натисне «Надіслати». Нагадуємо про це й даємо
+  // запасні шляхи (скопіювати текст / зателефонувати), якщо месенджер не відкрився.
+  function showBookConfirm(form, channel, text) {
+    let box = form.querySelector('.book-confirm');
+    if (!box) {
+      box = document.createElement('div');
+      box.className = 'book-confirm';
+      const anchor = form.querySelector('.book-channels');
+      if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(box, anchor.nextSibling);
+      else form.appendChild(box);
+    }
+    box.innerHTML =
+      '<p class="book-confirm-title">Майже готово</p>' +
+      '<p class="book-confirm-text">Ми відкрили ' + channel + '. Щоб завершити запис, <strong>надішліть підготовлене повідомлення</strong> адміністратору. Якщо ' + channel + ' не відкрився — скопіюйте текст заявки або зателефонуйте.</p>' +
+      '<div class="book-confirm-actions">' +
+        '<button type="button" class="book-confirm-copy">Скопіювати текст заявки</button>' +
+        '<a class="book-confirm-call" href="tel:' + ADMIN_TEL + '">Зателефонувати</a>' +
+      '</div>';
+    const copyBtn = box.querySelector('.book-confirm-copy');
+    if (copyBtn) copyBtn.addEventListener('click', async () => {
+      await copyText(text);
+      toast('Текст заявки скопійовано');
+    });
+    try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
   }
 
   // Вимикає кнопки додавання для тимчасово недоступних послуг (сервер — джерело
