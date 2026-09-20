@@ -26,11 +26,31 @@ const abs = (base: string, path: string) => new URL(path, base).toString();
 const CLINIC_ID = "#clinic";
 
 // Людські назви секцій для «хлібних крихт».
-const SECTION_LABELS: Record<string, string> = {
+export const SECTION_LABELS: Record<string, string> = {
   ct: "КТ",
   xray: "Рентгенографія",
   fluorography: "Флюорографія",
 };
+
+// Видимий трейл «хлібних крихт» для сторінки послуги. Спільне джерело істини з
+// BreadcrumbList (нижче): та сама логіка сегментів і ті самі назви секцій, але
+// відносні шляхи без хвостового слеша (канонічна 200-форма, без 308-редиректу).
+export type BreadcrumbCrumb = { name: string; path: string; current: boolean };
+export function breadcrumbTrail(page: Pick<StructuredPage, "path" | "title">): BreadcrumbCrumb[] {
+  const segments = page.path.split("/").filter(Boolean);
+  const trail: BreadcrumbCrumb[] = [
+    { name: "Головна", path: "/", current: segments.length === 0 },
+  ];
+  segments.forEach((seg, i) => {
+    const last = i === segments.length - 1;
+    trail.push({
+      name: last ? page.title : SECTION_LABELS[seg] || seg,
+      path: "/" + segments.slice(0, i + 1).join("/"),
+      current: last,
+    });
+  });
+  return trail;
+}
 
 export function breadcrumbList(page: StructuredPage, profile: StructuredProfile): JsonLdNode {
   const segments = page.path.split("/").filter(Boolean);

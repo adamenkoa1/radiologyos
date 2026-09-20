@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { trackClientAnalytics } from "../../lib/client-analytics";
 import type { SeoServicePage } from "../../lib/seo-service-pages";
+import { breadcrumbTrail } from "../../lib/structured-data";
 
 type PublicService = {
   code: string;
@@ -66,7 +67,16 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
       </header>
 
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "54px 24px 24px" }}>
-        <div style={{ fontSize: 14, marginBottom: 16 }}><Link href="/">Головна</Link> → <span>{page.title}</span></div>
+        <nav aria-label="Хлібні крихти" style={{ fontSize: 14, marginBottom: 16 }}>
+          {breadcrumbTrail(page).map((crumb, i) => (
+            <span key={crumb.path}>
+              {i > 0 ? <span aria-hidden="true" style={{ margin: "0 8px", opacity: 0.5 }}>›</span> : null}
+              {crumb.current
+                ? <span aria-current="page">{crumb.name}</span>
+                : <Link href={crumb.path}>{crumb.name}</Link>}
+            </span>
+          ))}
+        </nav>
         <h1 style={{ fontSize: "clamp(34px, 6vw, 60px)", lineHeight: 1.05, margin: 0, maxWidth: 900 }}>{page.title}</h1>
         <p style={{ fontSize: 20, lineHeight: 1.65, maxWidth: 850, marginTop: 22 }}>{page.intro}</p>
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 }}>
