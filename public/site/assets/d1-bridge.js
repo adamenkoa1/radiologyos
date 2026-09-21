@@ -10,21 +10,30 @@
   const ADMIN_TEL = '+380972808899';             // для tel:
 
   const humanDate = (iso) => (iso ? String(iso).split('-').reverse().join('.') : '');
+  const money = (n) => new Intl.NumberFormat('uk-UA').format(Number(n) || 0) + ' грн';
 
-  function studyNames(cartArr) {
+  // Нормалізує кошик до {code, name, price} — усе, що бачить пацієнт на сторінці.
+  function cartItems(cartArr) {
     return (Array.isArray(cartArr) ? cartArr : [])
-      .map((x) => (x && x.name ? String(x.name) : '')).filter(Boolean);
+      .filter((x) => x && x.name)
+      .map((x) => ({ code: x.code ? String(x.code) : '', name: String(x.name), price: Number(x.price) || 0 }));
   }
 
-  // Текст заявки для месенджера (URL-кодування — на місці відправлення).
-  function bookingMessage(name, studies, date, time) {
-    return [
-      'Добрий день! Хочу записатися на дослідження.',
-      `Пацієнт: ${name}`,
-      `Дослідження: ${studies.join(', ')}`,
-      `Бажана дата: ${humanDate(date)}`,
-      `Бажаний час: ${time}`,
-    ].join('\n');
+  // Текст заявки для месенджера. Передає адміністратору те саме, що пацієнт бачить
+  // на сторінці: категорію, коди й назви досліджень, орієнтовну суму, бажаний слот.
+  function bookingMessage(name, category, items, date, time) {
+    const lines = ['Добрий день! Хочу записатися на дослідження.', `Пацієнт: ${name}`];
+    if (category) lines.push(`Категорія: ${category}`);
+    lines.push('Дослідження:');
+    let total = 0;
+    items.forEach((it) => {
+      total += it.price;
+      lines.push(`- ${it.code ? it.code + ' — ' : ''}${it.name}${it.price > 0 ? ' (' + money(it.price) + ')' : ''}`);
+    });
+    if (total > 0) lines.push(`Орієнтовна сума: ${money(total)} (уточнює реєстратура)`);
+    lines.push(`Бажана дата: ${humanDate(date)}`);
+    lines.push(`Бажаний час: ${time}`);
+    return lines.join('\n');
   }
 
   async function copyText(text) {
@@ -84,7 +93,7 @@
 
   // Прив'язує кнопки Viber/WhatsApp форми до месенджер-хендофу.
   // getCart() повертає масив обраних досліджень.
-  function bindBooking(form, ids, getCart) {
+  function bindBooking(form, ids, getCart, category) {
     if (!form) return;
     const nameEl = document.getElementById(ids.name);
     const dateEl = document.getElementById(ids.date);
@@ -94,15 +103,15 @@
     });
 
     function collect() {
-      const studies = studyNames(getCart());
+      const items = cartItems(getCart());
       const name = (nameEl && nameEl.value || '').trim();
       const date = (dateEl && dateEl.value) || '';
       const time = (timeEl && timeEl.value) || '';
-      if (!studies.length) { alert('Оберіть щонайменше одне дослідження.'); return null; }
+      if (!items.length) { alert('Оберіть щонайменше одне дослідження.'); return null; }
       if (!name) { markInvalid(nameEl); return null; }
       if (!date) { markInvalid(dateEl); return null; }
       if (!time) { markInvalid(timeEl); return null; }
-      return { studies, name, date, time };
+      return { items, name, date, time };
     }
 
     form.querySelectorAll('[data-book]').forEach((btn) => {
@@ -115,7 +124,7 @@
           const first = getCart()[0] || {};
           window.rosTrack('booking_started', { serviceCode: first.code || '' });
         }
-        const text = bookingMessage(data.name, data.studies, data.date, data.time);
+        const text = bookingMessage(data.name, category, data.items, data.date, data.time);
         if (btn.dataset.book === 'whatsapp') {
           window.open(`https://wa.me/${ADMIN_PHONE_INTL}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
           showBookConfirm(form, 'WhatsApp', text);
@@ -189,10 +198,12 @@
     document.getElementById('requestForm'),
     { name: 'patientName', date: 'desiredDate', time: 'desiredTime' },
     () => (typeof cart !== 'undefined' && Array.isArray(cart) ? cart : []),
+    'Цивільний пацієнт',
   );
   bindBooking(
     document.getElementById('militaryRequestForm'),
     { name: 'militaryPatientName', date: 'militaryDesiredDate', time: 'militaryDesiredTime' },
     () => (typeof militaryCart !== 'undefined' && Array.isArray(militaryCart) ? militaryCart : []),
+    'Військовослужбовець',
   );
 })();

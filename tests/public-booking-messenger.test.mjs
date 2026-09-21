@@ -63,11 +63,19 @@ test("d1-bridge builds the request message and validates before opening a messen
   const bridge = await read("public/site/assets/d1-bridge.js");
   assert.match(bridge, /Добрий день! Хочу записатися на дослідження\./);
   assert.match(bridge, /Пацієнт: \$\{name\}/);
-  assert.match(bridge, /Дослідження: \$\{studies\.join\(', '\)\}/);
+  // Заявка передає адміністратору те саме, що бачить пацієнт: категорію, коди й
+  // назви досліджень, орієнтовну суму, бажаний слот.
+  assert.match(bridge, /Категорія: \$\{category\}/);
+  assert.match(bridge, /lines\.push\('Дослідження:'\)/);
+  assert.match(bridge, /\$\{it\.code \? it\.code \+ ' — ' : ''\}\$\{it\.name\}/);
+  assert.match(bridge, /Орієнтовна сума: \$\{money\(total\)\} \(уточнює реєстратура\)/);
   assert.match(bridge, /Бажана дата: /);
   assert.match(bridge, /Бажаний час: /);
+  // Категорія проставляється зі сторінки (цивільний / військовослужбовець).
+  assert.match(bridge, /'Цивільний пацієнт'/);
+  assert.match(bridge, /'Військовослужбовець'/);
   // Гейт: без досліджень/ПІБ/дати/часу месенджер не відкривається.
-  assert.match(bridge, /if \(!studies\.length\)/);
+  assert.match(bridge, /if \(!items\.length\)/);
   assert.match(bridge, /if \(!name\)/);
   assert.match(bridge, /if \(!date\)/);
   assert.match(bridge, /if \(!time\)/);
