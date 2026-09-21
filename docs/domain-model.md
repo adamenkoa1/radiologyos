@@ -158,6 +158,17 @@ tenant-scoped довідники (`{ id, organizationId, name, active }`, уні
 зворотної сумісності — деактивація значення не змінює вже збережені картки.
 Керуються на `/staff/directories/personnel-refs` (адмін / керівник підрозділу).
 
+### PersonnelCardSnapshot (друкована кадрова картка)
+
+`personnel_card_snapshots` — immutable, версійований snapshot друкованої кадрової
+картки (`{ id, organizationId, personnelId, templateVersion, payloadJson, sha256,
+generatedBy, generatedAt }`). Аналог `printed_form_snapshots`, але для HR-сутності:
+`personnel_id` рядковий, **без FK на `business_documents`** (кадрова картка не
+перетворюється на господарський факт). `payload_json` самодостатній (усі значення,
+не лише id) → форма відтворювана з конкретного snapshot; унікальний індекс за
+`(org, personnel_id, template_version, sha256)` згортає однакові рендери; тригери
+`no-update`/`no-delete` роблять запис незмінним. Друк на `/staff/personnel/print`.
+
 ## Role
 
 ```ts

@@ -1406,6 +1406,28 @@ table => [
 	check("personnel_ranks_check_1", sql.raw("`active` IN (0,1)")),
 ]);
 
+// Друкована кадрова картка — immutable snapshot (як printed_form_snapshots для
+// business-документів, але для HR-сутності: personnel_id — рядковий, без FK на
+// business_documents, щоб не перетворювати кадрову картку на господарський факт).
+// Payload самодостатній (усі значення, не лише id), тож форма відтворювана з
+// конкретного snapshot навіть після зміни довідника. Незмінність гарантують
+// тригери no-update / no-delete (додаються в міграції).
+export const personnelCardSnapshots = sqliteTable("personnel_card_snapshots", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().references(() => organizations.id),
+	personnelId: text("personnel_id").notNull(),
+	templateVersion: integer("template_version").notNull().default(1),
+	payloadJson: text("payload_json").notNull(),
+	sha256: text().notNull(),
+	generatedBy: text("generated_by").notNull(),
+	generatedAt: text("generated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("personnel_card_snapshots_person_idx").on(table.organizationId, table.personnelId, table.id),
+	uniqueIndex("personnel_card_snapshots_same_render_idx").on(table.organizationId, table.personnelId, table.templateVersion, table.sha256),
+	check("personnel_card_snapshots_check_1", sql.raw("`template_version` > 0")),
+]);
+
 export const supplierPaymentDocuments = sqliteTable("supplier_payment_documents", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),

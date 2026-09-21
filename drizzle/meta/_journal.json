@@ -841,6 +841,13 @@
 			"when": 1789982410119,
 			"tag": "0120_personnel_position_rank_refs",
 			"breakpoints": true
+		},
+		{
+			"idx": 121,
+			"version": "6",
+			"when": 1789986492989,
+			"tag": "0121_personnel_card_snapshots",
+			"breakpoints": true
 		}
 	]
 }
