@@ -1374,6 +1374,38 @@ table => [
 	check("warehouses_check_2", sql.raw("`is_default` IN (0,1)")),
 ]);
 
+// Кадрові довідники: посади та військові звання. Раніше були захардкоджені
+// у клієнті (app/staff/personnel); тепер — tenant-scoped довідники, які
+// живлять datalist-підказки над free-text полями (значення лишаються вільними
+// для зворотної сумісності з уже збереженими картками).
+export const personnelPositions = sqliteTable("personnel_positions", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().references(() => organizations.id),
+	name: text().notNull(),
+	active: integer().notNull().default(1),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("personnel_positions_org_active_name_idx").on(table.organizationId, table.active, table.name, table.id),
+	uniqueIndex("personnel_positions_org_name_idx").on(table.organizationId, table.name),
+	check("personnel_positions_check_1", sql.raw("`active` IN (0,1)")),
+]);
+
+export const personnelRanks = sqliteTable("personnel_ranks", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().references(() => organizations.id),
+	name: text().notNull(),
+	active: integer().notNull().default(1),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("personnel_ranks_org_active_name_idx").on(table.organizationId, table.active, table.name, table.id),
+	uniqueIndex("personnel_ranks_org_name_idx").on(table.organizationId, table.name),
+	check("personnel_ranks_check_1", sql.raw("`active` IN (0,1)")),
+]);
+
 export const supplierPaymentDocuments = sqliteTable("supplier_payment_documents", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),

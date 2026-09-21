@@ -149,6 +149,15 @@ Employee {
 }
 ```
 
+### PersonnelPositionRef / PersonnelRankRef (кадрові довідники)
+
+Посади (`personnel_positions`) та військові звання (`personnel_ranks`) — окремі
+tenant-scoped довідники (`{ id, organizationId, name, active }`, унікальні за
+`organization_id + name`). Значення живлять datalist-підказки у формі працівника,
+а поля `position_title` / `military_rank` кадрової картки лишаються free-text для
+зворотної сумісності — деактивація значення не змінює вже збережені картки.
+Керуються на `/staff/directories/personnel-refs` (адмін / керівник підрозділу).
+
 ## Role
 
 ```ts
