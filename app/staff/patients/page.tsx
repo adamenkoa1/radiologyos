@@ -396,7 +396,10 @@ export default function PatientsPage() {
                     {booking.performedAt && <span>Виконано: {formatDateTime(booking.performedAt)}</span>}
                   </div>
                   {booking.performedAt || ["ready","issued","in_progress"].includes(booking.protocolStatus)
-                    ? <a className="crmVisitLink" href={`/staff/protocols?open=${booking.id}`}>Протокол дослідження →</a>
+                    ? <div className="crmVisitLinks">
+                        <a className="crmVisitLink" href={`/staff/protocols?open=${booking.id}`}>Протокол дослідження →</a>
+                        <a className="crmVisitLink" href={`/staff/imaging?open=${booking.id}`}>Знімки →</a>
+                      </div>
                     : <a className="crmVisitLink" href={`/staff/appointments?date=${booking.desiredDate}&view=day`}>Відкрити в календарі →</a>}
                 </li>)}
               </ol>}
