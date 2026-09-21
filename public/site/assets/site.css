@@ -53,10 +53,11 @@ a{text-decoration:none;color:inherit}
 .channel-btn:focus-visible .channel-ico{outline:3px solid var(--gold,#c9a227);outline-offset:3px}
 @media(hover:hover){.channel-btn:hover .channel-ico{transform:translateY(-2px);box-shadow:0 12px 26px rgba(18,48,58,.22)}}
 .cabinet-link{display:block;margin-top:18px;text-align:center;color:#5c6c78;font-size:13px;text-decoration:underline}
+.cabinet-link:focus-visible{outline:3px solid var(--gold,#d8b55e);outline-offset:3px;border-radius:6px}
 
 /* Головна CTA-смуга та заголовок FAQ (мінімалістична головна) */
 .hero-lead{padding:24px 0 4px}
-.hero-lead-sub{margin:0 auto;max-width:640px;text-align:center;color:#33505a;font-size:clamp(15px,2.4vw,18px);line-height:1.45}
+.hero-lead-sub{margin:0 auto;max-width:640px;text-align:center;color:#33505a;font-size:clamp(15px,2.4vw,18px);line-height:1.45;font-weight:400}
 .hero-cta{display:block;max-width:440px;margin:18px auto 0;text-align:center;padding:17px 22px;border-radius:16px;background:var(--brand,#12303a);color:#fff;font-size:17px;font-weight:850;text-decoration:none;box-shadow:0 14px 34px rgba(18,48,58,.22)}
 .hero-cta:active{transform:translateY(1px)}
 .hero-cta:focus-visible{outline:3px solid var(--gold,#c9a227);outline-offset:3px}
@@ -79,7 +80,7 @@ a{text-decoration:none;color:inherit}
 .book-confirm-copy{border:1.5px solid var(--brand,#123d3a);background:#fff;color:var(--brand,#123d3a)}
 .book-confirm-call{border:0;background:var(--brand,#123d3a);color:#fff}
 .cart-total-note{margin:6px 0 0;font-size:12px;color:#5c6c78;line-height:1.4}
-.cabinet-note{margin:6px 0 0;text-align:center;font-size:12px;color:#8a98a2;line-height:1.4}
+.cabinet-note{margin:6px 0 0;text-align:center;font-size:12px;color:#5c6c78;line-height:1.4}
 
 /* Посилання на інформаційні сторінки послуг — внутрішня перелінковка/SEO
    (price.html, military.html → посадкові /ct, /xray, /fluorography). */
