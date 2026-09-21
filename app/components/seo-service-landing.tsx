@@ -14,6 +14,10 @@ type PublicService = {
   availableToCivilian: boolean;
 };
 
+const CLINIC_ADDRESS = "м. Чернігів, вул. Полуботка, 40";
+const CLINIC_PHONE = "+380 97 280 88 99";
+const CLINIC_PHONE_TEL = "+380972808899";
+
 function money(value: number) {
   return new Intl.NumberFormat("uk-UA").format(value) + " грн";
 }
@@ -82,6 +86,13 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         <div style={{ display: "flex", gap: 12, flexWrap: "wrap", marginTop: 28 }}>
           <Link onClick={() => bookingStarted()} href="/site/price.html" style={{ background: "#0d6b68", color: "white", padding: "13px 20px", borderRadius: 10, textDecoration: "none", fontWeight: 700 }}>Записатися на дослідження</Link>
         </div>
+        {page.walkIn ? (
+          <div style={{ marginTop: 22, background: "#fff7e6", border: "1px solid #f0d9a8", borderRadius: 14, padding: "16px 20px", maxWidth: 850 }}>
+            <div style={{ fontWeight: 800, fontSize: 17 }}>Можна без запису — жива черга</div>
+            <p style={{ margin: "6px 0 0", fontSize: 16, lineHeight: 1.55 }}>Це дослідження можна пройти без попереднього запису, {page.walkIn.schedule}. Направлення не потрібне.</p>
+            <p style={{ margin: "8px 0 0", fontSize: 15, lineHeight: 1.5, opacity: 0.85 }}>Прийти: {CLINIC_ADDRESS} · реєстратура <a href={`tel:${CLINIC_PHONE_TEL}`} style={{ color: "#0d6b68", fontWeight: 700 }}>{CLINIC_PHONE}</a>. Онлайн-запис нижче — за бажанням.</p>
+          </div>
+        ) : null}
       </section>
 
       <section style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 24px" }}>

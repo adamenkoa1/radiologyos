@@ -7,6 +7,10 @@ export type SeoServicePage = {
   serviceCodes: string[];
   preparation: string[];
   whatToBring: string[];
+  // Задано лише для досліджень «живої черги» (флюорографія, рентгенографія):
+  // пацієнт може прийти без попереднього запису у вказаний час. КТ і барій —
+  // за попереднім записом, тож у них це поле відсутнє.
+  walkIn?: { schedule: string };
 };
 
 export const CT_SEO_PAGES: Record<string, SeoServicePage> = {
@@ -91,6 +95,7 @@ export const XRAY_SEO_PAGE: SeoServicePage = {
   serviceCodes: ["201", "202", "203", "204", "205"],
   preparation: ["Для більшості стандартних рентгенографічних досліджень спеціальна підготовка не потрібна."],
   whatToBring: ["Документ, що посвідчує особу.", "Направлення та попередні знімки, якщо вони є."],
+  walkIn: { schedule: "у робочі дні (рентгенографія кісток і суглобів — після 13:00)" },
 };
 
 export const FLUORO_SEO_PAGE: SeoServicePage = {
@@ -102,4 +107,5 @@ export const FLUORO_SEO_PAGE: SeoServicePage = {
   serviceCodes: ["101"],
   preparation: ["Спеціальна підготовка до флюорографії не потрібна."],
   whatToBring: ["Документ, що посвідчує особу.", "Попередні дослідження грудної клітки, якщо вони мають значення для порівняння."],
+  walkIn: { schedule: "у робочі дні до 12:00 (зокрема для проходження ВЛК)" },
 };
