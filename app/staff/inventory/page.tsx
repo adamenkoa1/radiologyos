@@ -84,6 +84,8 @@ export default function InventoryPage() {
     finally { setLoaded(true); }
   }
   useEffect(()=>{ const t=window.setTimeout(()=>void load(),0); return ()=>window.clearTimeout(t); },[]);
+  // Тост зникає сам за ~4с; клік прибирає одразу.
+  useEffect(()=>{ if(!toast) return; const t=window.setTimeout(()=>setToast(""),4000); return ()=>window.clearTimeout(t); },[toast]);
 
   const items = useMemo(() => {
     const q=query.trim().toLowerCase();
@@ -101,7 +103,9 @@ export default function InventoryPage() {
   },[data,writeoff.warehouseId]);
   const metrics = useMemo(() => {
     const all=(data?.items || []).filter(i=>i.active);
-    return { active:all.length, low:all.filter(i=>i.stock <= i.minStock).length, expiring:all.filter(i=>i.expiringStock > 0).length, empty:all.filter(i=>i.stock <= 0).length };
+    // «Нижче мінімуму» — лише позиції з визначеним мінімумом (>0), що ще мають
+    // залишок; порожні рахуються окремо в «немає залишку», не подвійно.
+    return { active:all.length, low:all.filter(i=>i.minStock > 0 && i.stock > 0 && i.stock <= i.minStock).length, expiring:all.filter(i=>i.expiringStock > 0).length, empty:all.filter(i=>i.stock <= 0).length };
   },[data]);
 
   async function postInventory(body:Record<string,unknown>,ok:string) {
@@ -207,7 +211,7 @@ export default function InventoryPage() {
         <section className="inventoryToolbar"><input type="search" placeholder="Пошук за назвою або кодом" value={query} onChange={e=>setQuery(e.target.value)} /><select value={category} onChange={e=>setCategory(e.target.value)}><option value="all">Усі категорії</option>{CATEGORY_OPTIONS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><label><input type="checkbox" checked={showOnlyAlert} onChange={e=>setShowOnlyAlert(e.target.checked)} /> Лише потребують уваги</label></section>
         <div className="inventoryGrid">
           <section className="inventoryMainTable"><div className="inventorySectionHead"><h2>Номенклатура</h2><span>{items.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Матеріал</th><th>Категорія</th><th>Залишок</th><th>Мін.</th><th>Найбл. термін</th><th>Стан</th></tr></thead><tbody>
-            {items.map(i=>{ const low=i.stock<=i.minStock; const exp=i.expiringStock>0; return <tr key={i.id} className={`${!i.active?"inactive ":""}${low?"low":""}`}><td><b>{i.name}</b><small>{i.sku || "без коду"} · {i.unit}</small></td><td>{CATEGORY_UK[i.category] || i.category}</td><td className="num"><strong>{fmt(i.stock)}</strong> {i.unit}</td><td className="num">{fmt(i.minStock)}</td><td>{i.nextExpiry || "—"}{exp?<small className="expiryWarn"> ≤ 30 днів</small>:null}</td><td><span className={`inventoryState ${i.stock<=0?"empty":low?"low":"ok"}`}>{i.stock<=0?"Немає":low?"Поповнити":"Достатньо"}</span></td></tr>;})}
+            {items.map(i=>{ const low=i.minStock>0&&i.stock>0&&i.stock<=i.minStock; const exp=i.expiringStock>0; return <tr key={i.id} className={`${!i.active?"inactive ":""}${low?"low":""}`}><td><b>{i.name}</b><small>{i.sku || "без коду"} · {i.unit}</small></td><td>{CATEGORY_UK[i.category] || i.category}</td><td className="num"><strong>{fmt(i.stock)}</strong> {i.unit}</td><td className="num">{fmt(i.minStock)}</td><td>{i.nextExpiry || "—"}{exp?<small className="expiryWarn"> ≤ 30 днів</small>:null}</td><td><span className={`inventoryState ${i.stock<=0?"empty":low?"low":"ok"}`}>{i.stock<=0?"Немає":low?"Поповнити":"Достатньо"}</span></td></tr>;})}
             {items.length===0 && <tr><td colSpan={6} className="emptyCell">Немає позицій за фільтром.</td></tr>}
           </tbody></table></div></section>
           <aside className="inventorySide"><section><div className="inventorySectionHead"><h2>Залишки по складах</h2><span>{data.warehouseBalances.length}</span></div><ul className="inventoryLots">{data.warehouseBalances.map(l=><li key={`${l.warehouseId}-${l.lotId}`}><div><b>{l.itemName}</b><small>{l.warehouseName} · партія {l.lotNumber || "—"}</small></div><span><b>{fmt(l.stock)}</b></span></li>)}{data.warehouseBalances.length===0 && <li className="inventoryEmpty">Залишків немає.</li>}</ul></section></aside>
