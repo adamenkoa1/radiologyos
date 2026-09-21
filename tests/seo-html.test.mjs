@@ -29,3 +29,11 @@ for (const file of INDEXABLE) {
     assert.match(h, /property="og:title"/, "og:title");
   });
 }
+
+test("кожна публічна сторінка має рівно один <h1>", async () => {
+  for (const file of INDEXABLE) {
+    const html = await readFile(new URL(`../public/site/${file}`, import.meta.url), "utf8");
+    const count = (html.match(/<h1[\s>]/g) || []).length;
+    assert.equal(count, 1, `${file}: очікували рівно один <h1>, знайдено ${count}`);
+  }
+});
