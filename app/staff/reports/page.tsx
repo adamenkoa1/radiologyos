@@ -42,6 +42,17 @@ const roleLabels:Record<string,string> = {
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
 };
 
+// Окремі підзвіти (мають власні сторінки). Раніше з хаба лінкувався лише
+// utilization, решта — тільки з бічного меню; тут зведено всі в одному місці.
+const OTHER_REPORTS = [
+  { href:"/staff/reports/utilization", label:"Завантаженість обладнання" },
+  { href:"/staff/reports/receivables", label:"Дебіторська заборгованість" },
+  { href:"/staff/reports/registers", label:"Обороти і залишки" },
+  { href:"/staff/reports/material-margin", label:"Маржинальність послуг — матеріали" },
+  { href:"/staff/reports/material-consumption-control", label:"Матеріали: план / факт списання" },
+  { href:"/staff/reports/seo", label:"SEO-аудит сайту" },
+];
+
 function todayInKyiv() {
   return new Intl.DateTimeFormat("en-CA",{
     timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit",
@@ -96,6 +107,7 @@ export default function ReportsPage() {
   async function load() {
     setLoading(true);
     setError("");
+    if (from && to && from > to) { setError("Дата «Від» не може бути пізнішою за «До»"); setLoading(false); return; }
     const query = queryString();
     try {
       const response = await fetch(`/api/staff/reports?${query}`,{ cache:"no-store" });
@@ -129,6 +141,9 @@ export default function ReportsPage() {
   // Експорт має віддавати саме те, що показано (застосований запит), а не
   // поточні незастосовані значення форми.
   const exportHref = `/api/staff/reports/export?${appliedQuery || queryString()}`;
+  // Прев'ю/експорт показують ЗАСТОСОВАНИЙ запит; зміни шаблону/колонок/фільтрів
+  // діють лише після «Застосувати». Підказуємо, коли форма розійшлася з даними.
+  const dirty = Boolean(data && appliedQuery && queryString() !== appliedQuery);
 
   function chooseTemplate(value:ReportTemplateKey) {
     setTemplate(value);
@@ -161,8 +176,12 @@ export default function ReportsPage() {
       <section className="reportBuilder">
         <div className="reportBuilderHead">
           <div><p className="eyebrow">Конструктор</p><h2>Оберіть потрібний реєстр</h2></div>
-          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання. Окремо: <a href="/staff/reports/utilization">Завантаженість обладнання →</a></p>
+          <p>Усі шаблони експортуються у справжній Excel. ПІБ і телефони не включаються, але деталізовані медичні реєстри все одно потребують захищеного зберігання.</p>
         </div>
+        <nav className="otherReports" aria-label="Інші звіти">
+          <span>Інші звіти:</span>
+          {OTHER_REPORTS.map((item)=><a key={item.href} href={item.href}>{item.label}</a>)}
+        </nav>
         <div className="reportTemplateTabs">
           {(Object.values(REPORT_TEMPLATES)).map((item)=><button
             type="button"
@@ -193,6 +212,7 @@ export default function ReportsPage() {
           <div className="reportFormActions">
             <button type="submit" disabled={loading}>{loading ? "Формування…" : "Застосувати фільтри"}</button>
             {data && <a className="excelButton" href={exportHref}>Завантажити Excel</a>}
+            {dirty && <span className="reportDirtyHint" role="status">Є незастосовані зміни — натисніть «Застосувати фільтри»</span>}
           </div>
         </form>
 
