@@ -109,6 +109,12 @@
       btn.addEventListener('click', async () => {
         const data = collect();
         if (!data) return; // блокуємо відкриття месенджера без обов'язкових полів
+        // Конверсійна подія (best-effort, без персональних даних): пацієнт
+        // почав запис через месенджер. Код першої обраної послуги — для воронки.
+        if (window.rosTrack) {
+          const first = getCart()[0] || {};
+          window.rosTrack('booking_started', { serviceCode: first.code || '' });
+        }
         const text = bookingMessage(data.name, data.studies, data.date, data.time);
         if (btn.dataset.book === 'whatsapp') {
           window.open(`https://wa.me/${ADMIN_PHONE_INTL}?text=${encodeURIComponent(text)}`, '_blank', 'noopener');
