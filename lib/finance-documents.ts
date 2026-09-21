@@ -23,6 +23,37 @@ function positiveInt(value:unknown){const result=Number(value);return Number.isI
 function prefix(type:FinanceDocumentType){return type==="payment"?"ОП":"ПВ";}
 export function isFinanceDocumentType(value:unknown):value is FinanceDocumentType{return value==="payment"||value==="refund";}
 
+export type FinancePeriod={from?:string;to?:string};
+function periodDate(value:unknown){const result=clean(value,10);return /^\d{4}-\d{2}-\d{2}$/.test(result)?result:"";}
+// Inclusive date-range filter on an occurred_at column. Column name is a trusted
+// literal supplied by callers, not user input; only the boundary dates bind.
+function dateRange(column:string,period?:FinancePeriod){
+  const parts:string[]=[];const binds:string[]=[];
+  const from=periodDate(period?.from);const to=periodDate(period?.to);
+  if(from){parts.push(`date(${column})>=date(?)`);binds.push(from);}
+  if(to){parts.push(`date(${column})<=date(?)`);binds.push(to);}
+  return {clause:parts.length?` AND ${parts.join(" AND ")}`:"",binds};
+}
+
+export type CashRegisterSummaryRow={currency:string;incoming:number;outgoing:number;net:number;movements:number};
+// Register-wide totals straight from cash_movements (AGENTS.md: підсумки походять із
+// рухів, не з урізаного вікна сторінки), grouped per currency so different currencies
+// are never summed into one number.
+export async function summarizeCashRegister(db:D1Database,organizationId:number,period?:FinancePeriod):Promise<CashRegisterSummaryRow[]>{
+  const range=dateRange("occurred_at",period);
+  const rows=await db.prepare(
+    `SELECT currency,
+            SUM(CASE WHEN amount_delta>0 THEN amount_delta ELSE 0 END) AS incoming,
+            SUM(CASE WHEN amount_delta<0 THEN -amount_delta ELSE 0 END) AS outgoing,
+            SUM(amount_delta) AS net,COUNT(*) AS movements
+     FROM cash_movements WHERE organization_id=?${range.clause} GROUP BY currency ORDER BY currency`
+  ).bind(organizationId,...range.binds).all<{currency:string;incoming:number;outgoing:number;net:number;movements:number}>();
+  return rows.results.map(row=>({
+    currency:String(row.currency||"UAH"),incoming:Number(row.incoming||0),
+    outgoing:Number(row.outgoing||0),net:Number(row.net||0),movements:Number(row.movements||0),
+  }));
+}
+
 export async function getFinanceDocument(db:D1Database,organizationId:number,documentId:number):Promise<FinanceDocument|null>{
   const row=await db.prepare(
     `SELECT d.id,d.organization_id AS organizationId,d.document_type AS documentType,d.number,
@@ -49,8 +80,9 @@ export async function getFinanceDocument(db:D1Database,organizationId:number,doc
   };
 }
 
-export async function listFinanceDocuments(db:D1Database,organizationId:number,limit=200){
+export async function listFinanceDocuments(db:D1Database,organizationId:number,period?:FinancePeriod,limit=200){
   const safeLimit=Math.max(1,Math.min(500,Math.trunc(limit)));
+  const range=dateRange("d.occurred_at",period);
   const rows=await db.prepare(
     `SELECT d.id,d.document_type AS documentType,d.number,d.occurred_at AS occurredAt,d.state,
             d.created_by AS createdBy,d.posted_by AS postedBy,d.posted_at AS postedAt,
@@ -62,14 +94,15 @@ export async function listFinanceDocuments(db:D1Database,organizationId:number,l
      FROM business_documents d
      JOIN finance_document_details f ON f.document_id=d.id AND f.organization_id=d.organization_id
      JOIN bookings b ON b.id=f.booking_id AND b.organization_id=f.organization_id
-     WHERE d.organization_id=? AND d.document_type IN ('payment','refund')
+     WHERE d.organization_id=? AND d.document_type IN ('payment','refund')${range.clause}
      ORDER BY d.occurred_at DESC,d.id DESC LIMIT ${safeLimit}`
-  ).bind(organizationId).all();
+  ).bind(organizationId,...range.binds).all();
   return rows.results;
 }
 
-export async function listCashMovements(db:D1Database,organizationId:number,limit=300){
+export async function listCashMovements(db:D1Database,organizationId:number,period?:FinancePeriod,limit=300){
   const safeLimit=Math.max(1,Math.min(700,Math.trunc(limit)));
+  const range=dateRange("m.occurred_at",period);
   const rows=await db.prepare(
     `SELECT m.id,m.document_id AS documentId,d.number AS documentNumber,m.booking_id AS bookingId,
             b.code AS bookingCode,b.name AS patientName,m.movement_type AS movementType,
@@ -79,20 +112,21 @@ export async function listCashMovements(db:D1Database,organizationId:number,limi
      FROM cash_movements m
      JOIN business_documents d ON d.id=m.document_id AND d.organization_id=m.organization_id
      JOIN bookings b ON b.id=m.booking_id AND b.organization_id=m.organization_id
-     WHERE m.organization_id=? ORDER BY m.occurred_at DESC,m.id DESC LIMIT ${safeLimit}`
-  ).bind(organizationId).all();
+     WHERE m.organization_id=?${range.clause} ORDER BY m.occurred_at DESC,m.id DESC LIMIT ${safeLimit}`
+  ).bind(organizationId,...range.binds).all();
   return rows.results;
 }
 
-export async function listPatientSettlementBalances(db:D1Database,organizationId:number,limit=300){
+export async function listPatientSettlementBalances(db:D1Database,organizationId:number,period?:FinancePeriod,limit=300){
   const safeLimit=Math.max(1,Math.min(700,Math.trunc(limit)));
+  const range=dateRange("m.occurred_at",period);
   const rows=await db.prepare(
     `SELECT m.booking_id AS bookingId,b.code AS bookingCode,b.name AS patientName,m.patient_id AS patientId,b.service,
             MAX(m.currency) AS currency,SUM(m.amount_delta) AS balance,MAX(m.occurred_at) AS lastMovementAt
      FROM patient_settlement_movements m JOIN bookings b ON b.id=m.booking_id AND b.organization_id=m.organization_id
-     WHERE m.organization_id=? GROUP BY m.booking_id,b.code,b.name,m.patient_id,b.service
+     WHERE m.organization_id=?${range.clause} GROUP BY m.booking_id,b.code,b.name,m.patient_id,b.service
      ORDER BY lastMovementAt DESC,m.booking_id DESC LIMIT ${safeLimit}`
-  ).bind(organizationId).all();
+  ).bind(organizationId,...range.binds).all();
   return rows.results;
 }
 

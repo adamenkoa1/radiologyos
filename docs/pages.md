@@ -106,7 +106,7 @@ RadiologyOS = BAS-подібне ядро + медичні модулі.
 - **Рухи грошей** — read-only `cash_movements` з документом-реєстратором;
 - **Взаєморозрахунки** — агрегація `patient_settlement_movements` по booking/patient.
 
-Підсумки сторінки рахуються з нового cash register. Історичні paid/refunded `payment_transactions` без document links показуються окремим Legacy count і не домішуються в нові регістрові підсумки.
+Підсумки сторінки («Надійшло / Повернено / Чистий рух») рахуються серверно по **всьому** cash register (`summarizeCashRegister`), розбиті за валютами (додаткові валюти — окремим рядком), а не з завантаженого вікна. Фільтр періоду (Від/До на `occurred_at`) скоупить і три вкладки, і підсумки; є клієнтська перевірка `Від ≤ До` й кнопка «Скинути період». Історичні paid/refunded `payment_transactions` без document links показуються окремим Legacy count і не домішуються в нові регістрові підсумки.
 
 ### `/staff/finance/print?id=<documentId>`
 Захищена A4 квитанція `payment_receipt` для `payment` або `refund`.
