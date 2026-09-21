@@ -38,6 +38,7 @@ function nonNegativeNumber(value:unknown) {
 }
 function positiveInt(value:unknown){const n=Number(value);return Number.isInteger(n)&&n>0?n:null;}
 function canManage(role:string) { return MANAGER_ROLES.has(role); }
+function periodDate(value:string|null){const result=String(value??"").trim();return /^\d{4}-\d{2}-\d{2}$/.test(result)?result:"";}
 
 async function itemForOrg(db:D1Database,organizationId:number,itemId:number) {
   return db.prepare("SELECT id, name, unit, active FROM inventory_items WHERE organization_id = ? AND id = ? LIMIT 1")
@@ -61,6 +62,15 @@ export async function GET(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" }, { status:503 });
   const ctx = await requireOrgContext(request,db);
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
+
+  const url = new URL(request.url);
+  const movementsFrom = periodDate(url.searchParams.get("from"));
+  const movementsTo = periodDate(url.searchParams.get("to"));
+  const movementsRange:string[] = [];
+  const movementsBinds:string[] = [];
+  if (movementsFrom) { movementsRange.push("date(m.created_at) >= date(?)"); movementsBinds.push(movementsFrom); }
+  if (movementsTo) { movementsRange.push("date(m.created_at) <= date(?)"); movementsBinds.push(movementsTo); }
+  const movementsClause = movementsRange.length ? ` AND ${movementsRange.join(" AND ")}` : "";
 
   const items = await db.prepare(
     `SELECT i.id, i.sku, i.name, i.category, i.unit, i.min_stock AS minStock, i.active,
@@ -111,9 +121,9 @@ export async function GET(request:Request) {
      FROM inventory_movements m
      JOIN inventory_items i ON i.id = m.item_id AND i.organization_id = m.organization_id
      JOIN inventory_lots l ON l.id = m.lot_id AND l.organization_id = m.organization_id
-     WHERE m.organization_id = ?
+     WHERE m.organization_id = ?${movementsClause}
      ORDER BY m.id DESC LIMIT 150`
-  ).bind(ctx.organizationId).all<MovementRow>();
+  ).bind(ctx.organizationId,...movementsBinds).all<MovementRow>();
 
   const counterparties = await db.prepare(
     `SELECT id,code,name FROM counterparties
@@ -121,7 +131,7 @@ export async function GET(request:Request) {
   ).bind(ctx.organizationId).all<SupplierRow>();
   const warehouses=await listWarehouses(db,ctx.organizationId);
 
-  return Response.json({ items:items.results, lots:lots.results, warehouseBalances:warehouseBalances.results, warehouses, movements:movements.results, counterparties:counterparties.results, staff:ctx.member, canManage:canManage(ctx.role) });
+  return Response.json({ items:items.results, lots:lots.results, warehouseBalances:warehouseBalances.results, warehouses, movements:movements.results, movementsPeriod:{from:movementsFrom,to:movementsTo}, counterparties:counterparties.results, staff:ctx.member, canManage:canManage(ctx.role) });
 }
 
 export async function POST(request:Request) {
