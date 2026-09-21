@@ -71,7 +71,13 @@ export default function RegisterTurnoverPage(){
     }catch{setViewsAvailable(false);setViews([]);}
   }
 
-  useEffect(()=>{const timer=window.setTimeout(()=>{void load();void loadViews();},0);return()=>window.clearTimeout(timer);/* eslint-disable-next-line react-hooks/exhaustive-deps */},[]);
+  useEffect(()=>{
+    // Deep-link із карти регістрів (/staff/registers): ?section=revenue|equipment|staff|…
+    // або кома-список ?sections=revenue,cash — преселектить лише ці розділи.
+    const params=new URLSearchParams(window.location.search);
+    const raw=params.get("section")||params.get("sections")||"";
+    const requested=raw.split(",").map(item=>item.trim()).filter((item):item is RegisterReportSection=>(allSections as string[]).includes(item));
+    const timer=window.setTimeout(()=>{if(requested.length)setSections(requested);void load();void loadViews();},0);return()=>window.clearTimeout(timer);/* eslint-disable-next-line react-hooks/exhaustive-deps */},[]);
 
   function changePreset(next:RegisterReportPeriodPreset){
     setPreset(next);

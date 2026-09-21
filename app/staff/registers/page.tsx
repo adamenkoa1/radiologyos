@@ -4,11 +4,11 @@ import StaffWorkspaceShell from "../workspace-shell";
 const registers=[
   {name:"Гроші",description:"Оплати та повернення. Джерело — проведені фінансові документи й cash movements.",href:"/staff/finance",cta:"Відкрити фінанси"},
   {name:"Взаєморозрахунки",description:"Сальдо пацієнтів і рухи боргу/кредиту без ручного перерахунку.",href:"/staff/finance",cta:"Відкрити сальдо"},
-  {name:"Дохід",description:"Нарахування за наданими послугами та сторно з immutable revenue movements.",href:"/staff/reports/registers",cta:"Обороти доходу"},
+  {name:"Дохід",description:"Нарахування за наданими послугами та сторно з immutable revenue movements.",href:"/staff/reports/registers?section=revenue",cta:"Обороти доходу"},
   {name:"Надані послуги",description:"Факти service delivery і корекції, прив’язані до канонічних документів.",href:"/staff/finance/services",cta:"Журнал послуг"},
   {name:"Склад",description:"Надходження, списання, переміщення й інвентаризаційні коригування по партіях і складах.",href:"/staff/inventory",cta:"Складські рухи"},
-  {name:"Навантаження обладнання",description:"Хвилини фактичного виконання та сторно по обладнанню.",href:"/staff/reports/registers",cta:"Обороти обладнання"},
-  {name:"Виробіток персоналу",description:"Фактичні виконання і сторно по працівниках без ручних KPI.",href:"/staff/reports/registers",cta:"Обороти персоналу"},
+  {name:"Навантаження обладнання",description:"Хвилини фактичного виконання та сторно по обладнанню.",href:"/staff/reports/registers?section=equipment",cta:"Обороти обладнання"},
+  {name:"Виробіток персоналу",description:"Фактичні виконання і сторно по працівниках без ручних KPI.",href:"/staff/reports/registers?section=staff",cta:"Обороти персоналу"},
   {name:"Матеріальні витрати",description:"Фактична собівартість із проведених списань і партійної вартості.",href:"/staff/reports/material-margin",cta:"Маржинальність"},
 ];
 
