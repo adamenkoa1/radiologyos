@@ -111,6 +111,7 @@ export default function PersonnelPage() {
   const [notice, setNotice] = useState("");
   const [query, setQuery] = useState("");
   const [departmentFilter, setDepartmentFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState("all");
   const [assignmentEditor, setAssignmentEditor] = useState<Assignment | null>(null);
   const [showAssignmentForm, setShowAssignmentForm] = useState(false);
   const [scheduleEditor, setScheduleEditor] = useState<WorkSchedule | null>(null);
@@ -156,11 +157,13 @@ export default function PersonnelPage() {
     const needle = query.trim().toLowerCase();
     return (data?.records || []).filter((record) => {
       if (departmentFilter !== "all" && String(record.departmentId || "") !== departmentFilter) return false;
+      if (statusFilter === "active" && !record.active) return false;
+      if (statusFilter === "archived" && record.active) return false;
       if (!needle) return true;
-      return [record.displayName, record.positionTitle, record.departmentName, record.workPhone, record.workEmail, record.militaryRank]
+      return [record.displayName, record.positionTitle, record.departmentName, record.workPhone, record.workEmail, record.militaryRank, record.staffNumber]
         .some((value) => String(value || "").toLowerCase().includes(needle));
     });
-  }, [data, departmentFilter, query]);
+  }, [data, departmentFilter, statusFilter, query]);
 
   function startCreate() {
     setCreating(true); setSelectedId(""); setNotice(""); setError("");
@@ -294,7 +297,7 @@ export default function PersonnelPage() {
       <article><span>Працівники</span><b>{data?.records.filter((record) => record.active).length || 0}</b><small>активні картки</small></article>
       <article><span>Структура</span><b>{data?.departments.length || 0}</b><small>відділення й підрозділи</small></article>
       <article><span>З акаунтом</span><b>{data?.records.filter((record) => record.accountEmail).length || 0}</b><small>мають вхід у RadiologyOS</small></article>
-      <article><span>Графіки</span><b>Calendar6</b><small><Link href="/staff/shifts">графік змін</Link> · <Link href="/staff/work-calendar">норм-календар</Link></small></article>
+      <article><span>Графіки</span><b>{data?.workSchedules.filter((schedule) => schedule.active).length || 0}</b><small><Link href="/staff/shifts">графік змін</Link> · <Link href="/staff/work-calendar">норм-календар</Link></small></article>
     </section>
 
     {notice && <p className="notice success" role="status">{notice}</p>}
@@ -305,6 +308,7 @@ export default function PersonnelPage() {
       <div className="shiftPlannerToolbar">
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук за ПІБ, посадою, телефоном…" aria-label="Пошук персоналу" />
         <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} aria-label="Фільтр підрозділу"><option value="all">Усі підрозділи</option>{(data?.departments || []).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>
+        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)} aria-label="Фільтр статусу"><option value="all">Усі статуси</option><option value="active">Працюють</option><option value="archived">Архів</option></select>
       </div>
       {loading ? <p className="notice">Завантаження персоналу…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Працівник</th><th>Підрозділ / основна посада</th><th>Службові дані</th><th>ВЛК</th><th>Статус</th><th/></tr></thead>
