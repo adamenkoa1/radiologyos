@@ -10,7 +10,7 @@ type Warehouse = { id:number; code:string; name:string; active:number; isDefault
 type Lot = { id:number; itemId:number; itemName:string; lotNumber:string; expiresOn:string; supplier:string; supplierCounterpartyId:number|null; stock:number };
 type WarehouseBalance = { warehouseId:number; warehouseCode:string; warehouseName:string; lotId:number; itemId:number; itemName:string; lotNumber:string; stock:number };
 type Movement = { id:number; itemId:number; itemName:string; lotId:number; lotNumber:string; warehouseId:number|null; warehouseCode:string; warehouseName:string; movementType:string; quantityDelta:number; unit:string; reason:string; bookingId:number|null; actorEmail:string; createdAt:string; documentId:number|null };
-type Payload = { items:Item[]; lots:Lot[]; warehouseBalances:WarehouseBalance[]; warehouses:Warehouse[]; movements:Movement[]; counterparties:Supplier[]; staff:Staff; canManage:boolean; error?:string };
+type Payload = { items:Item[]; lots:Lot[]; warehouseBalances:WarehouseBalance[]; warehouses:Warehouse[]; movements:Movement[]; movementsPeriod:{from:string;to:string}; counterparties:Supplier[]; staff:Staff; canManage:boolean; error?:string };
 type DocumentState = "draft"|"posted"|"reversed"|"cancelled";
 type DocumentType = "inventory_receipt"|"inventory_writeoff";
 type DocumentSummary = { id:number; documentType:DocumentType; number:string; occurredAt:string; state:DocumentState; comment:string; createdBy:string; createdAt:string; postedBy:string; postedAt:string; lineCount:number; totalQuantity:number };
@@ -45,13 +45,21 @@ export default function InventoryPage() {
   const [query,setQuery] = useState("");
   const [category,setCategory] = useState("all");
   const [showOnlyAlert,setShowOnlyAlert] = useState(false);
+  const [movFrom,setMovFrom] = useState("");
+  const [movTo,setMovTo] = useState("");
   const [busy,setBusy] = useState(false);
   const [itemForm,setItemForm] = useState({ name:"", sku:"", category:"contrast", unit:"шт", minStock:"0" });
   const [receive,setReceive] = useState({ warehouseId:"", itemId:"", quantity:"", lotNumber:"", expiresOn:"", supplierCounterpartyId:"", reason:"Надходження" });
   const [writeoff,setWriteoff] = useState({ warehouseId:"", lotId:"", quantity:"", reason:"Використано під час дослідження", bookingId:"" });
 
-  async function loadInventory() {
-    const res = await fetch("/api/staff/inventory", { cache:"no-store" });
+  async function loadInventory(fromArg?:string,toArg?:string) {
+    const f = fromArg===undefined ? movFrom : fromArg;
+    const t = toArg===undefined ? movTo : toArg;
+    const params = new URLSearchParams();
+    if (f) params.set("from",f);
+    if (t) params.set("to",t);
+    const suffix = params.toString();
+    const res = await fetch(`/api/staff/inventory${suffix?`?${suffix}`:""}`, { cache:"no-store" });
     const payload = await res.json().catch(()=>({})) as Payload;
     if (!res.ok || !payload.staff) throw new Error(payload.error || "Не вдалося завантажити склад");
     setData(payload);
@@ -114,6 +122,18 @@ export default function InventoryPage() {
       if(payload.document) setSelected(payload);
       return payload;
     } finally {setBusy(false);}
+  }
+
+  async function applyMovementsPeriod() {
+    if (movFrom && movTo && movFrom > movTo) { setToast("⚠ Дата «Від» не може бути пізнішою за «До»"); return; }
+    setBusy(true); setToast("");
+    try { await loadInventory(); }
+    catch(e) { setToast(`⚠ ${e instanceof Error?e.message:"Не вдалося завантажити рухи"}`); }
+    finally { setBusy(false); }
+  }
+  function resetMovementsPeriod() {
+    setMovFrom(""); setMovTo(""); setBusy(true); setToast("");
+    loadInventory("","").catch(e=>setToast(`⚠ ${e instanceof Error?e.message:"Не вдалося завантажити рухи"}`)).finally(()=>setBusy(false));
   }
 
   async function openDocument(id:number) {
@@ -206,7 +226,9 @@ export default function InventoryPage() {
         </section>}
       </div>}
 
-      {mode === "movements" && <section className="inventoryMainTable movements"><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>останні {data.movements.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Склад</th><th>Матеріал / партія</th><th>Операція</th><th>Кількість</th><th>Документ</th><th>Причина</th><th>Хто</th></tr></thead><tbody>{data.movements.map(m=><tr key={m.id}><td>{m.createdAt}</td><td>{m.warehouseName||"Legacy"}<small>{m.warehouseCode}</small></td><td><b>{m.itemName}</b><small>{m.lotNumber || "без №"}</small></td><td>{MOVEMENT_UK[m.movementType]||m.movementType}</td><td className={`num ${m.quantityDelta<0?"negative":"positive"}`}>{m.quantityDelta>0?"+":""}{fmt(m.quantityDelta)} {m.unit}</td><td>{m.documentId?<button className="inventoryDocLink" onClick={()=>openMovementDocument(m)}>#{m.documentId}</button>:<span className="legacyMovement">Legacy</span>}</td><td>{m.reason}{m.bookingId?<small>дослідження #{m.bookingId}</small>:null}</td><td>{m.actorEmail}</td></tr>)}</tbody></table></div></section>}
+      {mode === "movements" && <section className="inventoryMainTable movements"><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>{data.movementsPeriod.from||data.movementsPeriod.to?"за період":"останні"} {data.movements.length}</span></div>
+        <section className="inventoryToolbar movementsPeriod"><label>Від<input type="date" value={movFrom} max={movTo||undefined} onChange={e=>setMovFrom(e.target.value)} aria-label="Рухи: період від"/></label><label>До<input type="date" value={movTo} min={movFrom||undefined} onChange={e=>setMovTo(e.target.value)} aria-label="Рухи: період до"/></label><button type="button" disabled={busy} onClick={applyMovementsPeriod}>Застосувати</button>{(data.movementsPeriod.from||data.movementsPeriod.to)&&<button type="button" className="inventorySmallBtn" disabled={busy} onClick={resetMovementsPeriod}>Скинути</button>}</section>
+        <div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Склад</th><th>Матеріал / партія</th><th>Операція</th><th>Кількість</th><th>Документ</th><th>Причина</th><th>Хто</th></tr></thead><tbody>{data.movements.map(m=><tr key={m.id}><td>{fmtDate(m.createdAt)}</td><td>{m.warehouseName||"Legacy"}<small>{m.warehouseCode}</small></td><td><b>{m.itemName}</b><small>{m.lotNumber || "без №"}</small></td><td>{MOVEMENT_UK[m.movementType]||m.movementType}</td><td className={`num ${m.quantityDelta<0?"negative":"positive"}`}>{m.quantityDelta>0?"+":""}{fmt(m.quantityDelta)} {m.unit}</td><td>{m.documentId?<button className="inventoryDocLink" onClick={()=>openMovementDocument(m)}>#{m.documentId}</button>:<span className="legacyMovement">Legacy</span>}</td><td>{m.reason}{m.bookingId?<small>дослідження #{m.bookingId}</small>:null}</td><td>{m.actorEmail}</td></tr>)}</tbody></table></div></section>}
     </>}
   </StaffWorkspaceShell>;
 }
