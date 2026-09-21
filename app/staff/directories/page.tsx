@@ -3,6 +3,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 
 const directories=[
   {name:"Персонал",description:"Кадрові картки працівників: підрозділ, посада, контакти, адреса та зв’язок з обліковим записом.",href:"/staff/personnel"},
+  {name:"Посади і звання",description:"Довідники посад та військових звань для кадрових карток. Редагуються без деплою; значення живлять підказки у формі працівника.",href:"/staff/directories/personnel-refs"},
   {name:"ВЛК персоналу",description:"Окрема захищена append-only історія рішень ВЛК, прив’язана до стабільного personnelId.",href:"/staff/personnel/vlk"},
   {name:"Допуск до ДІВ",description:"Append-only історія кадрових рішень щодо робіт з джерелами іонізуючого випромінювання.",href:"/staff/personnel/radiation-clearance"},
   {name:"Радіаційна безпека",description:"Навчання, перевірки знань та інструктажі з окремою історією сертифікатів і строків дії.",href:"/staff/personnel/radiation-training"},

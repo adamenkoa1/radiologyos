@@ -58,12 +58,15 @@ const SCHEDULE_KINDS = [
   ["individual", "Індивідуальний"], ["other", "Інший"],
 ] as const;
 const WEEKDAYS = ["Понеділок", "Вівторок", "Середа", "Четвер", "П’ятниця", "Субота", "Неділя"];
-const POSITIONS = [
+// Резервні (fallback) значення на випадок, якщо довідник ще не завантажився
+// або порожній. Основне джерело — довідники personnel_positions / personnel_ranks
+// через /api/staff/personnel/directories (редагуються без деплою).
+const DEFAULT_POSITIONS = [
   "Начальник відділення променевої діагностики", "Лікар-рентгенолог", "Рентгенолаборант",
   "Молодша медична сестра", "Начальник ПРК", "ТВО начальника ПРК", "Рентгенолаборант ПРК",
   "Водій-електрик ПРК", "Начальник кабінету УЗД", "Лікар ультразвукової діагностики",
 ];
-const RANKS = [
+const DEFAULT_RANKS = [
   "Цивільний персонал", "Солдат", "Старший солдат", "Молодший сержант", "Сержант",
   "Старший сержант", "Головний сержант", "Штаб-сержант", "Молодший лейтенант",
   "Лейтенант", "Старший лейтенант", "Капітан", "Майор", "Підполковник", "Полковник",
@@ -117,6 +120,7 @@ export default function PersonnelPage() {
   const [scheduleEditor, setScheduleEditor] = useState<WorkSchedule | null>(null);
   const [scheduleDays, setScheduleDays] = useState<DayDraft[]>(emptyWeek);
   const [showScheduleForm, setShowScheduleForm] = useState(false);
+  const [directories, setDirectories] = useState<{ positions:string[]; ranks:string[] }>({ positions:[], ranks:[] });
 
   const load = useCallback(async (preferredId?:string) => {
     setLoading(true); setError("");
@@ -140,6 +144,23 @@ export default function PersonnelPage() {
     const timer = window.setTimeout(() => { void load(); }, 0);
     return () => window.clearTimeout(timer);
   }, [load]);
+
+  // Довідники посад і звань (активні значення живлять datalist-підказки).
+  useEffect(() => {
+    let active = true;
+    fetch("/api/staff/personnel/directories", { cache:"no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((body:{ positions?:{name:string;active:number}[]; ranks?:{name:string;active:number}[] } | null) => {
+        if (!active || !body) return;
+        const names = (list?:{name:string;active:number}[]) => (Array.isArray(list) ? list : []).filter((row) => row && row.active).map((row) => String(row.name));
+        setDirectories({ positions:names(body.positions), ranks:names(body.ranks) });
+      })
+      .catch(() => undefined);
+    return () => { active = false; };
+  }, []);
+
+  const positionOptions = directories.positions.length ? directories.positions : DEFAULT_POSITIONS;
+  const rankOptions = directories.ranks.length ? directories.ranks : DEFAULT_RANKS;
 
   const selected = useMemo(() => data?.records.find((record) => record.id === selectedId) || null, [data, selectedId]);
   const selectedAssignments = useMemo(
@@ -304,7 +325,7 @@ export default function PersonnelPage() {
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Зведений реєстр персоналу</b><small>Одна людина має одну кадрову картку та може мати кілька призначень. ВЛК, ДІВ, навчання й дозиметрія вже ведуться за тим самим personnelId.</small></div><div className="shiftPlannerActions"><button className="button primary" type="button" onClick={startCreate}>+ Додати працівника</button></div></header>
+      <header className="financeToolbar"><div><b>Зведений реєстр персоналу</b><small>Одна людина має одну кадрову картку та може мати кілька призначень. ВЛК, ДІВ, навчання й дозиметрія вже ведуться за тим самим personnelId.</small></div><div className="shiftPlannerActions"><Link className="button secondary" href="/staff/directories/personnel-refs">Довідники посад і звань</Link><button className="button primary" type="button" onClick={startCreate}>+ Додати працівника</button></div></header>
       <div className="shiftPlannerToolbar">
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук за ПІБ, посадою, телефоном…" aria-label="Пошук персоналу" />
         <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} aria-label="Фільтр підрозділу"><option value="all">Усі підрозділи</option>{(data?.departments || []).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>
@@ -334,8 +355,8 @@ export default function PersonnelPage() {
           <label>Табельний / службовий №<input name="staffNumber" defaultValue={editorRecord?.staffNumber || ""} /></label>
           <label>Категорія персоналу<select name="employmentKind" defaultValue={editorRecord?.employmentKind || "unspecified"}>{EMPLOYMENT.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
           <label>Основний підрозділ<select name="departmentId" defaultValue={editorRecord?.departmentId || ""}><option value="">Не вказано</option>{(data?.departments || []).map((department) => <option key={department.id} value={department.id}>{hierarchyLabel(department.id, department.name)}</option>)}</select></label>
-          <label>Основна посада<input name="positionTitle" list="personnel-position-options" defaultValue={editorRecord?.positionTitle || ""} required /><datalist id="personnel-position-options">{POSITIONS.map((value) => <option key={value} value={value}/>)}</datalist></label>
-          <label>Військове звання<input name="militaryRank" list="personnel-rank-options" defaultValue={editorRecord?.militaryRank || ""} /><datalist id="personnel-rank-options">{RANKS.map((value) => <option key={value} value={value}/>)}</datalist></label>
+          <label>Основна посада<input name="positionTitle" list="personnel-position-options" defaultValue={editorRecord?.positionTitle || ""} required /><datalist id="personnel-position-options">{positionOptions.map((value) => <option key={value} value={value}/>)}</datalist></label>
+          <label>Військове звання<input name="militaryRank" list="personnel-rank-options" defaultValue={editorRecord?.militaryRank || ""} /><datalist id="personnel-rank-options">{rankOptions.map((value) => <option key={value} value={value}/>)}</datalist></label>
           <label>Обліковий запис RadiologyOS<select name="accountEmail" defaultValue={editorRecord?.accountEmail || ""}><option value="">Без облікового запису</option>{(data?.accounts || []).map((account) => <option key={account.email} value={account.email} disabled={linkedAccounts.has(account.email)}>{account.displayName || account.phone || account.email}{linkedAccounts.has(account.email) ? " · вже пов’язаний" : ""}</option>)}</select></label>
           <label>Робочий телефон<input name="workPhone" inputMode="tel" defaultValue={editorRecord?.workPhone || ""} /></label>
           <label>Особистий телефон<input name="personalPhone" inputMode="tel" defaultValue={editorRecord?.personalPhone || ""} /></label>

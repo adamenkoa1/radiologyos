@@ -132,6 +132,15 @@ Tenant-scoped графік змін персоналу — сучасний ве
 
 Детальна модель і provenance Calendar6: `docs/staff-shift-calendar.md`.
 
+### `/staff/directories/personnel-refs`
+Кадрові довідники посад (`personnel_positions`) і звань (`personnel_ranks`),
+tenant-scoped.
+
+- керування (додати / перейменувати / приховати) — `admin` або `department_head`;
+- значення живлять datalist-підказки у формі працівника (`/staff/personnel`);
+- поля картки лишаються free-text, тож приховання значення не змінює історію;
+- редагується без деплою (раніше списки були захардкоджені в клієнті).
+
 ## 3. Цільова внутрішня маршрутизація
 
 ```text
