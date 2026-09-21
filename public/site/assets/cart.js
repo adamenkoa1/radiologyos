@@ -118,5 +118,17 @@ document.getElementById('cartOverlay')?.addEventListener('click', e => { if (e.t
 
 renderCart();
 
+// Deep-link із лендінгу послуги: /site/price.html?add=<код> — додає саме цю
+// послугу в кошик і відкриває його, щоб пацієнт не шукав її вручну в прайсі.
+(function addServiceFromUrl() {
+  try {
+    const code = new URLSearchParams(location.search).get('add');
+    if (!code) return;
+    const target = Array.from(document.querySelectorAll('button.row-add'))
+      .find(b => (b.getAttribute('onclick') || '').includes("addToCart('" + code + "'"));
+    if (target && !target.disabled) target.click(); // addToCart сам відкриває кошик
+  } catch (e) { /* тихо: без параметра або поза прайсом — нічого не робимо */ }
+})();
+
 // Надсилання заявки в месенджер (Viber/WhatsApp) або дзвінок обробляє
 // d1-bridge.js — валідація ПІБ/дати/часу й кнопки [data-book].
