@@ -106,7 +106,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
               <h3 style={{ fontSize: 20, lineHeight: 1.35 }}>{service.title}</h3>
               <div style={{ fontSize: 26, fontWeight: 800, marginTop: 16 }}>{money(service.price)}</div>
               <div style={{ opacity: 0.7, marginTop: 6 }}>Триває приблизно {service.durationMinutes} хв</div>
-              <Link onClick={() => bookingStarted(service.code)} href="/site/price.html" style={{ display: "inline-block", marginTop: 18, fontWeight: 700 }}>Обрати час →</Link>
+              <Link onClick={() => bookingStarted(service.code)} href={`/site/price.html?add=${service.code}`} style={{ display: "inline-block", marginTop: 18, fontWeight: 700 }}>Обрати час →</Link>
             </article>
           ))}
         </div>
