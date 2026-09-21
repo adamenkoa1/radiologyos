@@ -346,7 +346,7 @@ export default function PersonnelPage() {
 
     {showEditor && <>
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>{editorRecord ? `Картка · ${editorRecord.displayName}` : "Новий працівник"}</b><small>Особистість працівника зберігається окремо від логіна. Посади та графіки нижче мають власну історію.</small></div><button className="button secondary" type="button" onClick={closeEditor}>Закрити</button></header>
+        <header className="financeToolbar"><div><b>{editorRecord ? `Картка · ${editorRecord.displayName}` : "Новий працівник"}</b><small>Особистість працівника зберігається окремо від логіна. Посади та графіки нижче мають власну історію.</small></div><div className="shiftPlannerActions">{editorRecord && <Link className="button secondary" href={`/staff/personnel/print?id=${encodeURIComponent(editorRecord.id)}`} target="_blank" rel="noopener">Друк картки</Link>}<button className="button secondary" type="button" onClick={closeEditor}>Закрити</button></div></header>
         <form key={editorRecord?.id || "new"} className="formGrid" onSubmit={save}>
           <label>Прізвище<input name="lastName" defaultValue={editorRecord?.lastName || ""} required /></label>
           <label>Ім’я<input name="firstName" defaultValue={editorRecord?.firstName || ""} required /></label>
