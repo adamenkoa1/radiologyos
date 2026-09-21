@@ -18,7 +18,7 @@ test("home has the 'what each study shows' block linking our real modalities", a
   assert.match(sec, /Яке дослідження що показує/);
   assert.match(sec, /href="\/fluorography">Флюорографія/);
   assert.match(sec, /href="\/xray">Рентгенографія/);
-  assert.match(sec, /href="\/ct">Комп’ютерна томографія \(КТ\)/);
+  assert.match(sec, /href="\/ct\/contrast">Комп’ютерна томографія \(КТ\)/);
   // Дисклеймер: AI/сайт не дає клінічної рекомендації.
   assert.match(sec, /не медична рекомендація/);
 });
