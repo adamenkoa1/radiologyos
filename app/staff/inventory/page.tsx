@@ -1,5 +1,6 @@
 "use client";
 
+import type { KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
@@ -31,6 +32,8 @@ const MOVEMENT_UK:Record<string,string> = {
   transfer_out:"Переміщення: вибуття",transfer_in:"Переміщення: надходження",
   count_adjustment:"Інвентаризація",
 };
+const TABS:{id:Mode;label:string}[] = [{id:"stock",label:"Залишки"},{id:"documents",label:"Документи"},{id:"movements",label:"Рухи"}];
+const RELATED_LINKS:{href:string;label:string}[] = [{href:"/staff/inventory/counts",label:"Інвентаризація"},{href:"/staff/warehouses",label:"Склади"}];
 function fmt(n:number) { return Number(n || 0).toLocaleString("uk-UA", { maximumFractionDigits:2 }); }
 function fmtDate(value:string) { const d=new Date(value); return Number.isNaN(d.getTime())?value:d.toLocaleString("uk-UA",{dateStyle:"short",timeStyle:"short"}); }
 
@@ -146,13 +149,23 @@ export default function InventoryPage() {
     } finally {setBusy(false);}
   }
 
+  function onTabKeyDown(event:ReactKeyboardEvent<HTMLButtonElement>) {
+    const idx = TABS.findIndex(item=>item.id===mode); let next = idx;
+    if (event.key==="ArrowRight"||event.key==="ArrowDown") next=(idx+1)%TABS.length;
+    else if (event.key==="ArrowLeft"||event.key==="ArrowUp") next=(idx-1+TABS.length)%TABS.length;
+    else if (event.key==="Home") next=0;
+    else if (event.key==="End") next=TABS.length-1;
+    else return;
+    event.preventDefault(); setMode(TABS[next].id);
+    document.getElementById(`inv-tab-${TABS[next].id}`)?.focus();
+  }
   function openMovementDocument(movement:Movement) {
     if(!movement.documentId)return;
     if(movement.movementType==="count_adjustment"){
       window.location.assign(`/staff/inventory/counts?id=${movement.documentId}`);return;
     }
     if(movement.movementType==="transfer_out"||movement.movementType==="transfer_in"){
-      window.location.assign("/staff/inventory/transfers");return;
+      window.location.assign(`/staff/inventory/transfers?id=${movement.documentId}`);return;
     }
     void openDocument(movement.documentId);
   }
@@ -183,15 +196,14 @@ export default function InventoryPage() {
     {!loaded ? <p className="notice">Завантаження складу…</p> : error ? <p className="notice error">{error}</p> : data && <>
       {toast && <p className={`inventoryToast${toast.startsWith("⚠")?" warn":""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
       <section className="inventoryKpi" aria-label="Стан складу"><div><b>{metrics.active}</b><span>позицій активно</span></div><div className={metrics.low?"warn":""}><b>{metrics.low}</b><span>нижче мінімуму</span></div><div className={metrics.expiring?"warn":""}><b>{metrics.expiring}</b><span>термін ≤ 30 днів</span></div><div className={metrics.empty?"danger":""}><b>{metrics.empty}</b><span>немає залишку</span></div></section>
-      <div className="inventoryTabs" role="tablist">
-        <button className={mode==="stock"?"active":""} onClick={()=>setMode("stock")}>Залишки</button>
-        <button className={mode==="documents"?"active":""} onClick={()=>setMode("documents")}>Документи <span className="inventoryTabCount">{documents.length}</span></button>
-        <button className={mode==="movements"?"active":""} onClick={()=>setMode("movements")}>Рухи</button>
-        <button onClick={()=>window.location.assign("/staff/inventory/counts")}>Інвентаризація</button>
-        <button onClick={()=>window.location.assign("/staff/warehouses")}>Склади</button>
+      <div className="inventoryTabsRow">
+        <div className="inventoryTabs" role="tablist" aria-label="Розділи складу">
+          {TABS.map(item=><button key={item.id} type="button" role="tab" id={`inv-tab-${item.id}`} aria-selected={mode===item.id} aria-controls={`inv-panel-${item.id}`} tabIndex={mode===item.id?0:-1} className={mode===item.id?"active":""} onClick={()=>setMode(item.id)} onKeyDown={onTabKeyDown}>{item.label}{item.id==="documents"&&<span className="inventoryTabCount">{documents.length}</span>}</button>)}
+        </div>
+        <nav className="inventoryRelated" aria-label="Пов'язані розділи">{RELATED_LINKS.map(link=><a key={link.href} href={link.href}>{link.label} ↗</a>)}</nav>
       </div>
 
-      {mode === "stock" && <>
+      {mode === "stock" && <div className="inventoryPanel" role="tabpanel" id="inv-panel-stock" aria-labelledby="inv-tab-stock" tabIndex={0}>
         <section className="inventoryToolbar"><input type="search" placeholder="Пошук за назвою або кодом" value={query} onChange={e=>setQuery(e.target.value)} /><select value={category} onChange={e=>setCategory(e.target.value)}><option value="all">Усі категорії</option>{CATEGORY_OPTIONS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><label><input type="checkbox" checked={showOnlyAlert} onChange={e=>setShowOnlyAlert(e.target.checked)} /> Лише потребують уваги</label></section>
         <div className="inventoryGrid">
           <section className="inventoryMainTable"><div className="inventorySectionHead"><h2>Номенклатура</h2><span>{items.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Матеріал</th><th>Категорія</th><th>Залишок</th><th>Мін.</th><th>Найбл. термін</th><th>Стан</th></tr></thead><tbody>
@@ -203,12 +215,12 @@ export default function InventoryPage() {
 
         {data.canManage && <section className="inventoryOperations">
           <form onSubmit={createItem}><h3>Нова номенклатура</h3><p className="inventoryFormHint">Довідник матеріалів</p><input required placeholder="Назва матеріалу" value={itemForm.name} onChange={e=>setItemForm({...itemForm,name:e.target.value})}/><input placeholder="Код / SKU" value={itemForm.sku} onChange={e=>setItemForm({...itemForm,sku:e.target.value})}/><select value={itemForm.category} onChange={e=>setItemForm({...itemForm,category:e.target.value})}>{CATEGORY_OPTIONS.map(([v,l])=><option key={v} value={v}>{l}</option>)}</select><div className="inventoryFormRow"><input required placeholder="Одиниця" value={itemForm.unit} onChange={e=>setItemForm({...itemForm,unit:e.target.value})}/><input required type="number" min="0" step="0.01" placeholder="Мін. запас" value={itemForm.minStock} onChange={e=>setItemForm({...itemForm,minStock:e.target.value})}/></div><button disabled={busy}>Записати</button></form>
-          <form onSubmit={createReceiptDraft}><h3>Надходження матеріалів</h3><p className="inventoryFormHint">Створює документ-чернетку. Залишок зміниться лише після «Провести».</p><select required value={receive.warehouseId} onChange={e=>setReceive({...receive,warehouseId:e.target.value})}><option value="">Оберіть склад</option>{data.warehouses.filter(w=>w.active).map(w=><option key={w.id} value={w.id}>{w.name}{w.code?` · ${w.code}`:""}{w.isDefault?" · основний":""}</option>)}</select><select required value={receive.itemId} onChange={e=>setReceive({...receive,itemId:e.target.value})}><option value="">Оберіть матеріал</option>{data.items.filter(i=>i.active).map(i=><option key={i.id} value={i.id}>{i.name} · {i.unit}</option>)}</select><div className="inventoryFormRow"><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={receive.quantity} onChange={e=>setReceive({...receive,quantity:e.target.value})}/><input placeholder="№ партії" value={receive.lotNumber} onChange={e=>setReceive({...receive,lotNumber:e.target.value})}/></div><input type="date" value={receive.expiresOn} onChange={e=>setReceive({...receive,expiresOn:e.target.value})}/><select value={receive.supplierCounterpartyId} onChange={e=>setReceive({...receive,supplierCounterpartyId:e.target.value})}><option value="">Без постачальника</option>{data.counterparties.map(c=><option key={c.id} value={c.id}>{c.name}{c.code?` · ${c.code}`:""}</option>)}</select><button type="button" className="inventorySmallBtn" onClick={()=>window.location.assign("/staff/counterparties")}>Контрагенти ↗</button><input placeholder="Примітка" value={receive.reason} onChange={e=>setReceive({...receive,reason:e.target.value})}/><button disabled={busy}>Створити чернетку</button></form>
+          <form onSubmit={createReceiptDraft}><h3>Надходження матеріалів</h3><p className="inventoryFormHint">Створює документ-чернетку. Залишок зміниться лише після «Провести».</p><select required value={receive.warehouseId} onChange={e=>setReceive({...receive,warehouseId:e.target.value})}><option value="">Оберіть склад</option>{data.warehouses.filter(w=>w.active).map(w=><option key={w.id} value={w.id}>{w.name}{w.code?` · ${w.code}`:""}{w.isDefault?" · основний":""}</option>)}</select><select required value={receive.itemId} onChange={e=>setReceive({...receive,itemId:e.target.value})}><option value="">Оберіть матеріал</option>{data.items.filter(i=>i.active).map(i=><option key={i.id} value={i.id}>{i.name} · {i.unit}</option>)}</select><div className="inventoryFormRow"><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={receive.quantity} onChange={e=>setReceive({...receive,quantity:e.target.value})}/><input placeholder="№ партії" value={receive.lotNumber} onChange={e=>setReceive({...receive,lotNumber:e.target.value})}/></div><input type="date" value={receive.expiresOn} onChange={e=>setReceive({...receive,expiresOn:e.target.value})}/><select value={receive.supplierCounterpartyId} onChange={e=>setReceive({...receive,supplierCounterpartyId:e.target.value})}><option value="">Без постачальника</option>{data.counterparties.map(c=><option key={c.id} value={c.id}>{c.name}{c.code?` · ${c.code}`:""}</option>)}</select><a className="inventorySmallBtn" href="/staff/counterparties">Контрагенти ↗</a><input placeholder="Примітка" value={receive.reason} onChange={e=>setReceive({...receive,reason:e.target.value})}/><button disabled={busy}>Створити чернетку</button></form>
           <form onSubmit={createWriteoffDraft}><h3>Списання матеріалів</h3><p className="inventoryFormHint">Партії показані лише з залишком на вибраному складі.</p><select required value={writeoff.warehouseId} onChange={e=>setWriteoff({...writeoff,warehouseId:e.target.value,lotId:""})}><option value="">Оберіть склад</option>{data.warehouses.filter(w=>w.active).map(w=><option key={w.id} value={w.id}>{w.name}{w.code?` · ${w.code}`:""}{w.isDefault?" · основний":""}</option>)}</select><select required value={writeoff.lotId} onChange={e=>setWriteoff({...writeoff,lotId:e.target.value})}><option value="">Оберіть партію</option>{writeoffLots.map(l=><option key={`${l.warehouseId}-${l.lotId}`} value={l.lotId}>{l.itemName} · {l.lotNumber || "без №"} · залишок {fmt(l.stock)}</option>)}</select><input required type="number" min="0.01" step="0.01" placeholder="Кількість" value={writeoff.quantity} onChange={e=>setWriteoff({...writeoff,quantity:e.target.value})}/><input required placeholder="Причина списання" value={writeoff.reason} onChange={e=>setWriteoff({...writeoff,reason:e.target.value})}/><input type="number" min="1" placeholder="ID дослідження (необов'язково)" value={writeoff.bookingId} onChange={e=>setWriteoff({...writeoff,bookingId:e.target.value})}/><button className="danger" disabled={busy}>Створити чернетку</button></form>
         </section>}
-      </>}
+      </div>}
 
-      {mode === "documents" && <div className="inventoryDocumentsLayout">
+      {mode === "documents" && <div className="inventoryDocumentsLayout" role="tabpanel" id="inv-panel-documents" aria-labelledby="inv-tab-documents" tabIndex={0}>
         <section className="inventoryMainTable documents"><div className="inventorySectionHead"><h2>Журнал складських документів</h2><span>{documents.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Номер</th><th>Документ</th><th>Стан</th><th>Рядків</th><th>Кількість</th><th>Автор</th><th></th></tr></thead><tbody>
           {documents.map(d=><tr key={d.id} className={selected?.document.id===d.id?"selectedDoc":""}><td>{fmtDate(d.occurredAt)}</td><td><button className="inventoryDocLink" onClick={()=>void openDocument(d.id)}>{d.number}</button></td><td>{TYPE_UK[d.documentType]}</td><td><span className={`inventoryDocState ${d.state}`}>{STATE_UK[d.state]}</span></td><td className="num">{d.lineCount}</td><td className="num">{fmt(d.totalQuantity)}</td><td>{d.createdBy}</td><td><button className="inventorySmallBtn" onClick={()=>void openDocument(d.id)}>Відкрити</button></td></tr>)}
           {documents.length===0&&<tr><td colSpan={8} className="emptyCell">Складських документів ще немає.</td></tr>}
@@ -226,7 +238,7 @@ export default function InventoryPage() {
         </section>}
       </div>}
 
-      {mode === "movements" && <section className="inventoryMainTable movements"><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>{data.movementsPeriod.from||data.movementsPeriod.to?"за період":"останні"} {data.movements.length}</span></div>
+      {mode === "movements" && <section className="inventoryMainTable movements" role="tabpanel" id="inv-panel-movements" aria-labelledby="inv-tab-movements" tabIndex={0}><div className="inventorySectionHead"><h2>Регістр рухів запасів</h2><span>{data.movementsPeriod.from||data.movementsPeriod.to?"за період":"останні"} {data.movements.length}</span></div>
         <section className="inventoryToolbar movementsPeriod"><label>Від<input type="date" value={movFrom} max={movTo||undefined} onChange={e=>setMovFrom(e.target.value)} aria-label="Рухи: період від"/></label><label>До<input type="date" value={movTo} min={movFrom||undefined} onChange={e=>setMovTo(e.target.value)} aria-label="Рухи: період до"/></label><button type="button" disabled={busy} onClick={applyMovementsPeriod}>Застосувати</button>{(data.movementsPeriod.from||data.movementsPeriod.to)&&<button type="button" className="inventorySmallBtn" disabled={busy} onClick={resetMovementsPeriod}>Скинути</button>}</section>
         <div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Склад</th><th>Матеріал / партія</th><th>Операція</th><th>Кількість</th><th>Документ</th><th>Причина</th><th>Хто</th></tr></thead><tbody>{data.movements.map(m=><tr key={m.id}><td>{fmtDate(m.createdAt)}</td><td>{m.warehouseName||"Legacy"}<small>{m.warehouseCode}</small></td><td><b>{m.itemName}</b><small>{m.lotNumber || "без №"}</small></td><td>{MOVEMENT_UK[m.movementType]||m.movementType}</td><td className={`num ${m.quantityDelta<0?"negative":"positive"}`}>{m.quantityDelta>0?"+":""}{fmt(m.quantityDelta)} {m.unit}</td><td>{m.documentId?<button className="inventoryDocLink" onClick={()=>openMovementDocument(m)}>#{m.documentId}</button>:<span className="legacyMovement">Legacy</span>}</td><td>{m.reason}{m.bookingId?<small>дослідження #{m.bookingId}</small>:null}</td><td>{m.actorEmail}</td></tr>)}</tbody></table></div></section>}
     </>}

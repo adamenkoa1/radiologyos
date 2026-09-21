@@ -18,7 +18,8 @@ test("inventory movement history labels registrar movement types and routes docu
 
 test("inventory count is directly reachable from the main inventory workspace",async()=>{
   const source=await readFile(INVENTORY_PAGE,"utf8");
-  assert.match(source,/window\.location\.assign\(\"\/staff\/inventory\/counts\"\)/);
+  // Reachable via the related-sections nav link (was window.location.assign, now a real <a href>).
+  assert.match(source,/href:"\/staff\/inventory\/counts"/);
 });
 
 test("business journal derives inventory-count totals from dedicated immutable count lines",async()=>{
