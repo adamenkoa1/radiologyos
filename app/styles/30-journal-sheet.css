@@ -1,0 +1,63 @@
+/* Журнальний скін у стилі Google Sheets / Excel.
+ *
+ * Розкочується на ВСІ реальні журнали одразу, бо всі вони рендерять спільну
+ * таблицю .financeTable у скролері .financeTableWrap (документи, фінанси, склад,
+ * регістри, персонал, звіти, контрагенти, довідники…). Скін ADDITIVE: додає
+ * лінії комірок, заморожену шапку, зебру й hover, а кольори бере з тем-залежних
+ * --ws-* та локальних --js-*, тож світла й темна теми працюють автоматично.
+ * Прототип-референс: /staff/sheet-preview.
+ *
+ * Імпортується останнім у globals.css, щоб коректно лягати поверх базових
+ * правил .financeTable (20-finance) і density-оверрайдів (23-bas-enterprise).
+ */
+
+.financeTableWrap {
+  --js-zebra: #f7f9fb;
+  --js-hover: #eef6f3;
+  max-height: 70vh;
+}
+.themeDark .financeTableWrap {
+  --js-zebra: #101a28;
+  --js-hover: #132734;
+}
+
+/* Роздільне складання рамок дає чисті вертикальні лінії комірок і зберігає
+ * нижню межу шапки під час прокрутки (на відміну від border-collapse:collapse). */
+.financeTable {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.financeTable th,
+.financeTable td {
+  border-right: 1px solid var(--ws-line);
+}
+.financeTable th:last-child,
+.financeTable td:last-child {
+  border-right: 0;
+}
+
+/* Заморожена шапка — тримається зверху при вертикальній прокрутці скролера. */
+.financeTable thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+/* Зебра рядків і hover-підсвітка. */
+.financeTable tbody tr:nth-child(even) td {
+  background: var(--js-zebra);
+}
+.financeTable tbody tr:hover td {
+  background: var(--js-hover);
+}
+
+/* Друк: без внутрішнього скролу й «плаваючої» шапки. */
+@media print {
+  .financeTableWrap {
+    max-height: none;
+    overflow: visible;
+  }
+  .financeTable thead th {
+    position: static;
+  }
+}
