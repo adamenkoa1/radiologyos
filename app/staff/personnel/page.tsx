@@ -98,6 +98,16 @@ function vlkLabel(value:string | null) {
   return ({ fit:"Придатний", temporarily_unfit:"Тимчасово непридатний", unfit:"Непридатний", other:"Інше рішення" } as Record<string,string>)[value || ""] || "Немає запису";
 }
 
+// Строк дії рішення ВЛК: "expired" — дата в минулому, "soon" — спливає в
+// найближчі 30 днів. ISO-дати порівнюються лексикографічно.
+function vlkExpiry(validUntil:string | null):"expired" | "soon" | null {
+  if (!validUntil || !/^\d{4}-\d{2}-\d{2}$/.test(validUntil)) return null;
+  const today = new Date().toISOString().slice(0, 10);
+  if (validUntil < today) return "expired";
+  const horizon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+  return validUntil <= horizon ? "soon" : null;
+}
+
 function hoursLabel(minutes:number) {
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
@@ -333,14 +343,14 @@ export default function PersonnelPage() {
       </div>
       {loading ? <p className="notice">Завантаження персоналу…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Працівник</th><th>Підрозділ / основна посада</th><th>Службові дані</th><th>ВЛК</th><th>Статус</th><th/></tr></thead>
-        <tbody>{filtered.map((record) => <tr key={record.id}>
+        <tbody>{filtered.map((record) => { const vlk = vlkExpiry(record.vlkValidUntil); return <tr key={record.id}>
           <td><div style={{display:"flex",alignItems:"center",gap:8}}><span className="statusPill">{initials(record)}</span><div><b>{record.displayName}</b><br/><small>{record.staffNumber ? `Таб. № ${record.staffNumber}` : employmentLabel(record.employmentKind)}</small></div></div></td>
           <td><b>{hierarchyLabel(record.departmentId, record.departmentName)}</b><br/><small>{record.positionTitle || "Посаду не вказано"}</small></td>
           <td>{record.militaryRank || "—"}<br/><small>{record.accountEmail ? "Є обліковий запис" : "Без облікового запису"}</small></td>
-          <td><b>{vlkLabel(record.vlkDecisionCode)}</b><br/><small>{record.vlkValidUntil ? `до ${record.vlkValidUntil}` : "—"}</small></td>
-          <td><span className={`statusPill ${record.active ? "ok" : ""}`}>{record.active ? "Працює" : "Архів"}</span></td>
+          <td><b>{vlkLabel(record.vlkDecisionCode)}</b><br/><small>{record.vlkValidUntil ? `до ${record.vlkValidUntil}` : "—"}{vlk === "expired" && <> · <span className="vlkFlag expired">прострочено</span></>}{vlk === "soon" && <> · <span className="vlkFlag soon">спливає</span></>}</small></td>
+          <td><span className={`statusPill ${record.active ? "ok" : "muted"}`}>{record.active ? "Працює" : "Архів"}</span></td>
           <td><button className="button secondary" type="button" onClick={() => startEdit(record.id)}>Картка</button></td>
-        </tr>)}</tbody>
+        </tr>; })}</tbody>
       </table>{!filtered.length && <p className="notice">Працівників за цим фільтром немає.</p>}</div>}
     </section>
 
