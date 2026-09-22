@@ -969,3 +969,10 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
   .kpiCard,.cfItem,.consistencyItem{transition:none}
   .kpiCard:hover,.cfItem:hover,.consistencyItem:hover{transform:none}
 }
+
+/* Кадровий реєстр: нейтральна пілюля архіву та маркери строку ВЛК. */
+.statusPill.muted{background:#eef1f0;color:#6b7672}
+.vlkFlag{display:inline-block;font-weight:800;font-size:10px;text-transform:uppercase;letter-spacing:.04em}
+.vlkFlag.expired{color:#b42318}
+.vlkFlag.soon{color:#8a5a10}
+.themeDark .statusPill.muted{background:#1a2430;color:#93a3ad}
