@@ -36,13 +36,13 @@ const EQUIP: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:
 // Компактний статус запису для агенди «на сьогодні».
 const STATUS_UK: Record<string,string> = {
   new:"нова", rescheduled:"перенесено", confirmed:"підтв.", queued:"у черзі",
-  in_progress:"виконується", images_ready:"є знімки", reporting:"опис",
-  protocol_ready:"протокол", completed:"завершено", performed:"виконано",
+  arrived:"прибув", no_show:"неявка", in_progress:"виконується", images_ready:"є знімки",
+  reporting:"опис", protocol_ready:"протокол", completed:"завершено", performed:"виконано", issued:"видано",
 };
 function statusGroup(s:string) {
   if (s === "new" || s === "rescheduled") return "new";
-  if (s === "confirmed") return "ok";
-  if (s === "cancelled") return "off";
+  if (s === "confirmed" || s === "arrived") return "ok";
+  if (s === "cancelled" || s === "no_show") return "off";
   return "done";
 }
 
@@ -508,7 +508,7 @@ export default function DashboardPage() {
                       </div>
                       {isContrast(b) && <span className="dashAgendaFlag">Контраст</span>}
                       {needsPay(b) && <span className="dashAgendaFlag pay">Оплата</span>}
-                      <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{b.status === "arrived" ? "прибув" : STATUS_UK[b.status] || b.status}</span>
+                      <span className={`dashAgendaStatus st-${statusGroup(b.status)}`}>{STATUS_UK[b.status] || b.status}</span>
                     </button>
                     {canMark
                       ? <span className="dashAgendaActs">
