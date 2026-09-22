@@ -173,6 +173,7 @@ export default function StaffSchedulePage() {
   }
 
   const canEdit = staff?.role === "admin";
+  const readOnly = !canEdit;
   const body = forbidden
     ? <p className="notice error" role="alert">Графік доступний лише персоналу відділення. Увійдіть під робочим обліковим записом.</p>
     : !loaded
@@ -181,6 +182,7 @@ export default function StaffSchedulePage() {
           <section className="settingsBlock scheduleIntro">
             <h3>Графік роботи кабінетів</h3>
             <p className="settingsHint">Оберіть кабінет, задайте години, крок запису, обід і відповідальних працівників. Зміни одразу впливають на доступні слоти після збереження.</p>
+            {readOnly && <p className="notice" role="status">Режим перегляду. Графік редагує лише адміністратор — поля нижче доступні тільки для читання, а зміни на цій сторінці не збережуться. Кабінети й дати можна вільно переглядати.</p>}
             <div className="scheduleRoomTabs" role="tablist" aria-label="Кабінети">
               {EQUIP_KEYS.map(key => <button type="button" role="tab" aria-selected={activeEquipment === key} className={activeEquipment === key ? "active" : ""} key={key} onClick={() => setActiveEquipment(key)}>
                 <span>{EQUIP_ICONS[key]}</span>{EQUIP_LABELS[key]}
@@ -193,23 +195,23 @@ export default function StaffSchedulePage() {
               <div><span className="roomCode">{EQUIP_ICONS[activeEquipment]}</span><div><h3>{EQUIP_LABELS[activeEquipment]}</h3><p>Робочий діапазон і команда кабінету</p></div></div>
             </div>
             <div className="roomFields">
-              <label><span>Початок роботи</span><input type="time" value={cfg.equipment[activeEquipment].start} onChange={e => setHours(activeEquipment, "start", e.target.value)} /></label>
-              <label><span>Завершення</span><input type="time" value={cfg.equipment[activeEquipment].end} onChange={e => setHours(activeEquipment, "end", e.target.value)} /></label>
-              <label><span>Крок запису, хв</span><input type="number" min={5} max={240} step={5} value={cfg.equipment[activeEquipment].slotMinutes} onChange={e => setHours(activeEquipment, "slotMinutes", e.target.value)} /></label>
-              <label><span>Обід з</span><input type="time" value={cfg.equipment[activeEquipment].breakStart ?? ""} onChange={e => setHours(activeEquipment, "breakStart", e.target.value)} /></label>
-              <label><span>Обід до</span><input type="time" value={cfg.equipment[activeEquipment].breakEnd ?? ""} onChange={e => setHours(activeEquipment, "breakEnd", e.target.value)} /></label>
+              <label><span>Початок роботи</span><input type="time" disabled={readOnly} value={cfg.equipment[activeEquipment].start} onChange={e => setHours(activeEquipment, "start", e.target.value)} /></label>
+              <label><span>Завершення</span><input type="time" disabled={readOnly} value={cfg.equipment[activeEquipment].end} onChange={e => setHours(activeEquipment, "end", e.target.value)} /></label>
+              <label><span>Крок запису, хв</span><input type="number" disabled={readOnly} min={5} max={240} step={5} value={cfg.equipment[activeEquipment].slotMinutes} onChange={e => setHours(activeEquipment, "slotMinutes", e.target.value)} /></label>
+              <label><span>Обід з</span><input type="time" disabled={readOnly} value={cfg.equipment[activeEquipment].breakStart ?? ""} onChange={e => setHours(activeEquipment, "breakStart", e.target.value)} /></label>
+              <label><span>Обід до</span><input type="time" disabled={readOnly} value={cfg.equipment[activeEquipment].breakEnd ?? ""} onChange={e => setHours(activeEquipment, "breakEnd", e.target.value)} /></label>
             </div>
-            {(cfg.equipment[activeEquipment].breakStart || cfg.equipment[activeEquipment].breakEnd) && <button type="button" className="breakClear" onClick={() => clearBreak(activeEquipment)}>Прибрати обідню перерву</button>}
+            {!readOnly && (cfg.equipment[activeEquipment].breakStart || cfg.equipment[activeEquipment].breakEnd) && <button type="button" className="breakClear" onClick={() => clearBreak(activeEquipment)}>Прибрати обідню перерву</button>}
             <div className="roomTeamTitle"><b>Відповідальні працівники</b><a href="/staff#staff-admin">Редагувати персонал →</a></div>
             <div className="roomTeamFields">
-              <label><span>Рентгенолаборант у кабінеті</span><select value={cfg.equipment[activeEquipment].radiographerEmail ?? ""} onChange={e => setHours(activeEquipment, "radiographerEmail", e.target.value)}><option value="">Не призначено</option>{people.filter(p => p.role === "radiographer").map(p => <option key={p.email} value={p.email}>{p.displayName || p.email}</option>)}</select></label>
-              <label><span>Лікар-рентгенолог, який описує</span><select value={cfg.equipment[activeEquipment].radiologistEmail ?? ""} onChange={e => setHours(activeEquipment, "radiologistEmail", e.target.value)}><option value="">Не призначено</option>{people.filter(p => p.role === "radiologist").map(p => <option key={p.email} value={p.email}>{p.displayName || p.email}</option>)}</select></label>
+              <label><span>Рентгенолаборант у кабінеті</span><select disabled={readOnly} value={cfg.equipment[activeEquipment].radiographerEmail ?? ""} onChange={e => setHours(activeEquipment, "radiographerEmail", e.target.value)}><option value="">Не призначено</option>{people.filter(p => p.role === "radiographer").map(p => <option key={p.email} value={p.email}>{p.displayName || p.email}</option>)}</select></label>
+              <label><span>Лікар-рентгенолог, який описує</span><select disabled={readOnly} value={cfg.equipment[activeEquipment].radiologistEmail ?? ""} onChange={e => setHours(activeEquipment, "radiologistEmail", e.target.value)}><option value="">Не призначено</option>{people.filter(p => p.role === "radiologist").map(p => <option key={p.email} value={p.email}>{p.displayName || p.email}</option>)}</select></label>
             </div>
             <div className="roomRoster">
               <div><b>Команда кабінету — додатковий персонал</b><span>Чергові, санітарки та інші працівники без повторення відповідальних</span></div>
               <div className="roomRosterGrid">{people.filter(person => person.email !== cfg.equipment[activeEquipment].radiographerEmail && person.email !== cfg.equipment[activeEquipment].radiologistEmail).map(person => {
                 const selected = (cfg.equipment[activeEquipment].teamEmails || []).includes(person.email);
-                return <button type="button" key={person.email} className={selected ? "selected" : ""} aria-pressed={selected} onClick={() => toggleTeamMember(person.email)}>
+                return <button type="button" disabled={readOnly} key={person.email} className={selected ? "selected" : ""} aria-pressed={selected} onClick={() => toggleTeamMember(person.email)}>
                   <i aria-hidden="true">{selected ? "✓" : "+"}</i><span><b>{person.displayName || person.email}</b><small>{[person.militaryRank, person.positionTitle].filter(Boolean).join(" · ") || person.role}</small></span>
                 </button>;
               })}</div>
@@ -243,7 +245,7 @@ export default function StaffSchedulePage() {
               {monthCells(calendarMonth).map((date, index) => date ? <button type="button" key={date} onClick={() => setSelectedDate(date)} className={`${isEquipmentDayOpen(date, cfg, activeEquipment) ? "working" : "closed"}${typeof cfg.dateOverrides?.[activeEquipment]?.[date] === "boolean" ? " changed" : ""}${selectedDate === date ? " selected" : ""}`} aria-label={`${date}: ${isEquipmentDayOpen(date, cfg, activeEquipment) ? "робочий" : "неробочий"} день`}><span>{Number(date.slice(-2))}</span><small>{isEquipmentDayOpen(date, cfg, activeEquipment) ? `${candidateTimesFor(cfg.equipment[activeEquipment], cfg.equipment[activeEquipment].slotMinutes).length} слотів` : "Вихідний"}</small>{isEquipmentDayOpen(date, cfg, activeEquipment) && <i className="slotBars" aria-hidden="true">{candidateTimesFor(cfg.equipment[activeEquipment], cfg.equipment[activeEquipment].slotMinutes).slice(0, 12).map(time => <em key={time} />)}</i>}</button> : <span className="calendarEmpty" key={`empty-${index}`} />)}
             </div>
             <div className="selectedDaySchedule">
-              <div className="selectedDayHead"><div><b>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long" })}</b><span>{EQUIP_LABELS[activeEquipment]} · крок {cfg.equipment[activeEquipment].slotMinutes} хв</span></div><button type="button" className={isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "dayOpen" : "dayClosed"} onClick={() => toggleCalendarDate(selectedDate)}><i />{isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "Робочий день" : "Неробочий день"}</button></div>
+              <div className="selectedDayHead"><div><b>{new Date(`${selectedDate}T12:00:00`).toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long" })}</b><span>{EQUIP_LABELS[activeEquipment]} · крок {cfg.equipment[activeEquipment].slotMinutes} хв</span></div><button type="button" disabled={readOnly} className={isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "dayOpen" : "dayClosed"} onClick={() => toggleCalendarDate(selectedDate)}><i />{isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? "Робочий день" : "Неробочий день"}</button></div>
               {isEquipmentDayOpen(selectedDate, cfg, activeEquipment) ? <div className="daySlotTimeline">{candidateTimesFor(cfg.equipment[activeEquipment], cfg.equipment[activeEquipment].slotMinutes).map(time => {
                 const slotEnd = addMinutes(time, cfg.equipment[activeEquipment].slotMinutes);
                 const isBlocked = blocks.some(b => b.equipmentId === activeEquipment && b.blockedDate === selectedDate && time < b.endTime && slotEnd > b.startTime);
@@ -269,18 +271,18 @@ export default function StaffSchedulePage() {
                 </div>;
               })()}
             </div>
-            <button type="button" className="monthReset" onClick={resetMonthOverrides}>Скинути ручні зміни цього місяця</button>
+            {!readOnly && <button type="button" className="monthReset" onClick={resetMonthOverrides}>Скинути ручні зміни цього місяця</button>}
           </section>
 
           <section className="settingsBlock compactWeekdays">
             <h3>Робочі дні — {EQUIP_LABELS[activeEquipment]}</h3>
             <p className="settingsHint">Власний шаблон цього кабінету. Окрему дату можна змінити у календарі вище.</p>
-            <div className="weekdaySwitches">{WEEKDAYS.map(([d, label]) => <button type="button" key={d} aria-pressed={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d)} className={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d) ? "on" : ""} onClick={() => toggleWeekday(d)}><span>{label}</span><i aria-hidden="true" /></button>)}<button type="button" disabled className="sunday"><span>Нд</span><i aria-hidden="true" /></button></div>
-            <div className="dayOffAdd"><input type="date" value={newDay} onChange={e => setNewDay(e.target.value)} /><button type="button" className="button secondary" onClick={addDayOff}>Закрити дату для цього кабінету</button></div>
-            {(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).length > 0 && <ul className="dayOffList">{(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).map(d => <li key={d}>{d}<button type="button" onClick={() => setCfg(prev => {
+            <div className="weekdaySwitches">{WEEKDAYS.map(([d, label]) => <button type="button" disabled={readOnly} key={d} aria-pressed={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d)} className={(cfg.equipment[activeEquipment].weekdays ?? cfg.weekdays).includes(d) ? "on" : ""} onClick={() => toggleWeekday(d)}><span>{label}</span><i aria-hidden="true" /></button>)}<button type="button" disabled className="sunday"><span>Нд</span><i aria-hidden="true" /></button></div>
+            {!readOnly && <div className="dayOffAdd"><input type="date" value={newDay} onChange={e => setNewDay(e.target.value)} /><button type="button" className="button secondary" onClick={addDayOff}>Закрити дату для цього кабінету</button></div>}
+            {(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).length > 0 && <ul className="dayOffList">{(cfg.equipment[activeEquipment].daysOff ?? cfg.daysOff).map(d => <li key={d}>{d}{!readOnly && <button type="button" onClick={() => setCfg(prev => {
               const room = prev.equipment[activeEquipment];
               return { ...prev, equipment: { ...prev.equipment, [activeEquipment]: { ...room, daysOff: (room.daysOff ?? prev.daysOff).filter(x => x !== d) } } };
-            })}>×</button></li>)}</ul>}
+            })}>×</button>}</li>)}</ul>}
           </section>
 
           {notice && <p className="notice success" role="status">{notice}</p>}
