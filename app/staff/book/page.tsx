@@ -47,6 +47,8 @@ export default function StaffBookPage() {
   const [phone, setPhone] = useState("");
   const [dob, setDob] = useState("");
   const [category, setCategory] = useState("civilian");
+  const [patientFlags, setPatientFlags] = useState<{ contrastAlert: boolean; doNotContact: boolean } | null>(null);
+  const [nearest, setNearest] = useState("");
 
   const availableServices = useMemo(
     () => services.filter((service) => service.active && (category === "military" ? service.military : service.civilian)),
@@ -104,6 +106,45 @@ export default function StaffBookPage() {
     return () => window.clearTimeout(t);
   }, [serviceGroups]);
 
+  // Прапорці CRM-картки (реакція на контраст / «не турбувати») — щоб реєстратор
+  // бачив застереження, записуючи на КТ з контрастуванням.
+  useEffect(() => {
+    let active = true;
+    const t = window.setTimeout(() => {
+      if (!/^[0-9a-f]{32}$/.test(patientId)) { setPatientFlags(null); return; }
+      fetch(`/api/staff/patients?patientId=${encodeURIComponent(patientId)}`, { cache: "no-store" })
+        .then(r => r.ok ? r.json() : null)
+        .then((card: { profile?: { contrastAlert?: number; doNotContact?: number } } | null) => {
+          if (active && card) setPatientFlags({ contrastAlert: !!card.profile?.contrastAlert, doNotContact: !!card.profile?.doNotContact });
+        })
+        .catch(() => { if (active) setPatientFlags(null); });
+    }, 0);
+    return () => { active = false; window.clearTimeout(t); };
+  }, [patientId]);
+
+  // Якщо на обрану дату вільного часу немає — знайти найближчу вільну дату
+  // (сканує до 14 днів наперед), щоб реєстратор не клацав дати наосліп.
+  useEffect(() => {
+    let active = true;
+    const t = window.setTimeout(() => {
+      setNearest("");
+      if (!date || !serviceCode || slotsLoading || times.length > 0) return;
+      (async () => {
+        const start = new Date(`${date}T00:00:00`);
+        for (let i = 1; i <= 14 && active; i++) {
+          const probe = new Date(start); probe.setDate(probe.getDate() + i);
+          const iso = probe.toISOString().slice(0, 10);
+          try {
+            const r = await fetch(`/api/availability?date=${iso}&serviceCode=${encodeURIComponent(serviceCode)}`, { cache: "no-store" });
+            const j = await r.json().catch(() => ({})) as { times?: string[] };
+            if (active && (j.times || []).length) { setNearest(iso); break; }
+          } catch { /* ігноруємо збій окремої дати */ }
+        }
+      })();
+    }, 0);
+    return () => { active = false; window.clearTimeout(t); };
+  }, [date, serviceCode, slotsLoading, times.length]);
+
   useEffect(() => {
     let active = true;
     const t = window.setTimeout(() => {
@@ -146,7 +187,10 @@ export default function StaffBookPage() {
     setPatientId(""); setName(""); setPhone(""); setDob(""); setCategory("civilian");
   }
 
-  const price = availableServices.find((service) => service.code === serviceCode)?.price;
+  const selectedService = availableServices.find((service) => service.code === serviceCode);
+  const price = selectedService?.price;
+  const isContrastService = /контраст|ангіограф/i.test(selectedService?.group || "");
+  const noSlots = Boolean(date && serviceCode && !slotsLoading && times.length === 0);
 
   const body = forbidden
     ? <p className="notice error" role="alert">Створювати записи може реєстратор або адміністратор.</p>
@@ -154,6 +198,8 @@ export default function StaffBookPage() {
         {code && <p className="notice success" role="status">Пацієнта записано, час підтверджено. <a className="textLink" href="/staff/appointments">Переглянути в календарі →</a></p>}
         <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
         {patientId && <p className="settingsHint">Запис буде додано до вибраної CRM-картки пацієнта.</p>}
+        {isContrastService && patientFlags?.contrastAlert && <p className="notice error" role="alert">⚠ У картці пацієнта є позначка про реакцію на контрастну речовину. Контрастне дослідження узгодьте з лікарем.</p>}
+        {patientFlags?.doNotContact && <p className="notice" role="status">ℹ Пацієнт має позначку «Не турбувати».</p>}
         <section className="settingsBlock">
           <h3>Дані пацієнта</h3>
           <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><NameSuggestInput name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" value={name} onChange={setName} /></label>
@@ -187,6 +233,8 @@ export default function StaffBookPage() {
               {times.map(t => <option key={t}>{t}</option>)}
             </select>
           </label>
+          {noSlots && nearest && <p className="settingsHint">Найближча вільна дата: <button type="button" className="textLink" style={{ background: "none", border: 0, padding: 0, cursor: "pointer" }} onClick={() => setDate(nearest)}>{nearest.split("-").reverse().join(".")} — обрати</button></p>}
+          {noSlots && !nearest && <p className="settingsHint">На найближчі 2 тижні вільного часу не знайдено — оберіть іншу дату або зателефонуйте пацієнту пізніше.</p>}
         </section>
 
         <section className="settingsBlock">
