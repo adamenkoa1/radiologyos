@@ -155,6 +155,14 @@ tenant-scoped.
 - A4-друк браузером (Save as PDF), без окремого R2/PDF-контуру;
 - права — `admin` / `department_head`; кнопка «Друк картки» в редакторі працівника.
 
+### `/staff/reports/turnaround`
+Звіт TAT (turnaround time): час від виконання дослідження до готового, підписаного й виданого протоколу.
+
+- рахується з наявних дат (`bookings.performed_at`/`protocol_ready_at`/`protocol_issued_at` + `protocols.signed_at`), не з ручних агрегатів;
+- медіана й середнє «до підпису» та «до видачі», розбивка за модальністю та лікарем;
+- доступ — адміністратор / завідувач (`requireManagementOrgContext`); агрегат без клінічного тексту;
+- логіка — у `lib/turnaround.ts` (чисті функції з юніт-тестом).
+
 ### `/staff/sheet-preview`
 Прототип оформлення внутрішніх журналів у стилі Google Sheets / Excel (макет для узгодження вигляду).
 

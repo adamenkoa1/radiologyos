@@ -46,6 +46,7 @@ const roleLabels:Record<string,string> = {
 // utilization, решта — тільки з бічного меню; тут зведено всі в одному місці.
 const OTHER_REPORTS = [
   { href:"/staff/reports/utilization", label:"Завантаженість обладнання" },
+  { href:"/staff/reports/turnaround", label:"TAT — час до видачі результату" },
   { href:"/staff/reports/receivables", label:"Дебіторська заборгованість" },
   { href:"/staff/reports/registers", label:"Обороти і залишки" },
   { href:"/staff/reports/material-margin", label:"Маржинальність послуг — матеріали" },
