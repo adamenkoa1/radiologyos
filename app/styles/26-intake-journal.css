@@ -39,3 +39,7 @@
   border-left-color:var(--rp-accent);
   background:var(--rp-tint);
 }
+
+/* Маркер простроченої непідтвердженої заявки в черзі прийому. */
+.intakeStale{margin-left:6px;font-style:normal;font-weight:800;font-size:9px;text-transform:uppercase;letter-spacing:.04em;color:#b42318;white-space:nowrap}
+.themeDark .intakeStale{color:#ff8a7a}
