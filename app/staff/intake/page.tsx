@@ -125,6 +125,9 @@ export default function IntakePage() {
   }, [data]);
 
   const selected = data?.bookings.find(b => b.id === selectedId) || null;
+  const todayKyiv = todayInKyiv();
+  // Непідтверджена заявка з датою в минулому — застрягла: позначаємо в черзі.
+  const isStale = (b:Booking) => (b.status === "new" || b.status === "rescheduled") && !!b.desiredDate && b.desiredDate < todayKyiv;
 
   // Не виводимо «попередні дослідження» з телефонного збігу. Телефон є
   // контактним реквізитом і може належати кільком людям. Історію відкриваємо
@@ -235,7 +238,7 @@ export default function IntakePage() {
                     <span className={`intakeSrc ${src||"site"}`} title={src==="staff"?"Внесено вручну":"Через сайт"}>{src==="staff"?"✍️":"🌐"}</span>
                   </span>
                   <span className="intakeCardSvc">{b.service}</span>
-                  <span className="intakeCardMeta">{b.desiredDate} {b.desiredTime} · <i className={`intakeStatus st-${b.status}`}>{STATUS_LABELS[b.status]||b.status}</i></span>
+                  <span className="intakeCardMeta">{b.desiredDate} {b.desiredTime} · <i className={`intakeStatus st-${b.status}`}>{STATUS_LABELS[b.status]||b.status}</i>{isStale(b) && <span className="intakeStale">прострочено</span>}</span>
                 </button>
               </li>;
             })}
@@ -254,7 +257,7 @@ export default function IntakePage() {
             <div className="intakeDetailHead">
               <div>
                 <h2>{selected.name || "—"}</h2>
-                <small><span className="codeTag">{selected.code}</span> · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i>{ageFrom(selected.dateOfBirth)!==null ? ` · ${ageFrom(selected.dateOfBirth)} р.` : ""}</small>
+                <small><span className="codeTag">{selected.code}</span> · <i className={`intakeStatus st-${selected.status}`}>{STATUS_LABELS[selected.status]||selected.status}</i>{isStale(selected) && <span className="intakeStale">прострочено</span>}{ageFrom(selected.dateOfBirth)!==null ? ` · ${ageFrom(selected.dateOfBirth)} р.` : ""}</small>
               </div>
               <div className="intakeHeadActions">
                 <a className="intakeCall" href={`tel:${selected.phone}`}>{selected.phone || "—"}</a>
