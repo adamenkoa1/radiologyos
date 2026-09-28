@@ -60,6 +60,19 @@ function todayKyiv() {
   }).format(new Date());
 }
 
+// Хвилини від опівночі (Київ) для «запізнюється»; від'ємна різниця — слот минув.
+function nowMinutesKyiv() {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone:"Europe/Kyiv", hour:"2-digit", minute:"2-digit", hour12:false }).formatToParts(new Date());
+  const h = Number(parts.find((p)=>p.type==="hour")?.value || 0);
+  const m = Number(parts.find((p)=>p.type==="minute")?.value || 0);
+  return h * 60 + m;
+}
+function minsUntil(time:string, now:number) {
+  const [h,m] = (time || "").split(":").map(Number);
+  if (Number.isNaN(h)) return null;
+  return h * 60 + (m || 0) - now;
+}
+
 function patientRoute(booking:Booking) {
   if (["performed","images_ready","reporting","protocol_ready","issued","completed"].includes(booking.status)) {
     return `/staff/protocols?open=${booking.id}`;
@@ -72,6 +85,7 @@ export default function StudyBoardPage() {
   const [staff,setStaff] = useState<StaffInfo | null>(null);
   const [date,setDate] = useState(todayKyiv());
   const [query,setQuery] = useState("");
+  const [nowMin,setNowMin] = useState(()=>nowMinutesKyiv());
   const [loaded,setLoaded] = useState(false);
   const [error,setError] = useState("");
   // Мережевий збій завантаження — окремо від «немає доступу», щоб показати
@@ -111,6 +125,14 @@ export default function StudyBoardPage() {
     }, 45000);
     return ()=>window.clearInterval(id);
   },[]);
+
+  // «Запізнюється» на дошці має лишатися свіжим — оновлюємо щохвилини.
+  useEffect(()=>{
+    const id = window.setInterval(()=>setNowMin(nowMinutesKyiv()), 60000);
+    return ()=>window.clearInterval(id);
+  },[]);
+
+  const isToday = date === todayKyiv();
 
   const scoped = useMemo(()=>{
     const q = query.trim().toLowerCase();
@@ -160,7 +182,10 @@ export default function StudyBoardPage() {
                   <span>{items.length}</span>
                 </header>
                 <div className="studyKanbanCards">
-                  {items.length === 0 ? <p className="studyKanbanEmpty">Немає записів</p> : items.map((booking)=><a className={`studyKanbanCard mod-${booking.equipmentId || "other"}`} href={patientRoute(booking)} key={booking.id}>
+                  {items.length === 0 ? <p className="studyKanbanEmpty">Немає записів</p> : items.map((booking)=>{
+                    // «Запізнюється»: запланований пацієнт, чий слот на сьогодні вже минув, а він ще не прибув.
+                    const late = isToday && column.key === "planned" && !!booking.desiredTime && (minsUntil(booking.desiredTime, nowMin) ?? 0) < 0;
+                    return <a className={`studyKanbanCard mod-${booking.equipmentId || "other"}${late ? " late" : ""}`} href={patientRoute(booking)} key={booking.id}>
                     <div className="studyKanbanCardTop">
                       <time>{booking.desiredTime || "—"}</time>
                       <span>{EQUIPMENT[booking.equipmentId] || booking.equipmentId || "Дослідження"}</span>
@@ -169,11 +194,13 @@ export default function StudyBoardPage() {
                     <p>{booking.service}</p>
                     <div className="studyKanbanTags">
                       <span className={`studyStateTag st-${booking.status}`}>{stateLabel(booking.status)}</span>
+                      {late && <span className="studyTag late">запізнюється</span>}
                       {isContrast(booking.service) && <span className="studyTag contrast">Контраст</span>}
                       {booking.patientCategory === "civilian" && booking.paymentStatus !== "paid" && <span className="studyTag pay">Оплата</span>}
                     </div>
                     <small>{booking.code}</small>
-                  </a>)}
+                  </a>;
+                  })}
                 </div>
               </section>;
             })}
