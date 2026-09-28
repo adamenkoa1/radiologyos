@@ -49,6 +49,9 @@ export default function StudiesPage() {
   const [data,setData] = useState<Data|null>(null);
   const [staff,setStaff] = useState<StaffInfo|null>(null);
   const [error,setError] = useState("");
+  // Мережевий збій — окремо від «немає доступу»: показуємо «Повторити», а не
+  // помилковий заклик увійти, і не залишаємо вічний спінер.
+  const [netError,setNetError] = useState("");
   const [filter,setFilter] = useState("all");
   const [equipment,setEquipment] = useState("all");
   const [query,setQuery] = useState("");
@@ -63,21 +66,28 @@ export default function StudiesPage() {
   const [deliveryBusy,setDeliveryBusy] = useState("");
 
   async function load() {
-    const [response,deliveryResponse] = await Promise.all([
-      fetch("/api/staff/studies", { cache:"no-store" }),
-      fetch("/api/staff/result-deliveries", { cache:"no-store" }),
-    ]);
-    const payload = await response.json() as Data & { error?:string };
-    if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
-    setData(payload);
-    setStaff({ email:"", displayName:"", role:payload.role });
-    if (deliveryResponse.ok) {
-      const deliveries = await deliveryResponse.json() as { pending?:PendingDelivery[] };
-      setPendingDeliveries(deliveries.pending || []);
-    } else {
-      setPendingDeliveries([]);
+    try {
+      const [response,deliveryResponse] = await Promise.all([
+        fetch("/api/staff/studies", { cache:"no-store" }),
+        fetch("/api/staff/result-deliveries", { cache:"no-store" }),
+      ]);
+      const payload = await response.json() as Data & { error?:string };
+      if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
+      setData(payload);
+      setStaff({ email:"", displayName:"", role:payload.role });
+      if (deliveryResponse.ok) {
+        const deliveries = await deliveryResponse.json() as { pending?:PendingDelivery[] };
+        setPendingDeliveries(deliveries.pending || []);
+      } else {
+        setPendingDeliveries([]);
+      }
+      setError("");
+      setNetError("");
+    } catch {
+      // Збій мережі/парсингу: на першому завантаженні (data ще немає) покажемо
+      // екран «Повторити»; якщо дані вже є — рядок-попередження (стан не свіжий).
+      setNetError("Не вдалося завантажити реєстр. Перевірте зʼєднання та спробуйте ще раз.");
     }
-    setError("");
   }
 
   async function loadSavedViews() {
@@ -232,6 +242,11 @@ export default function StudiesPage() {
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
       <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fstudies">Увійти для роботи</a>
     </section> :
+    netError && !data ? <section className="accessDenied">
+      <b>Не вдалося завантажити</b>
+      <p>{netError}</p>
+      <button type="button" className="button compact" onClick={()=>{ setNetError(""); void load(); }}>Повторити</button>
+    </section> :
     !data ? <p className="dashLoading">Завантаження реєстру…</p> :
     <>
       <div className="studiesOrgBar">
@@ -239,6 +254,7 @@ export default function StudiesPage() {
         <small>{data.profile?.label ? `${data.profile.label} · ` : ""}{data.studies.length} досліджень · роль: {roleLabels[data.role]}{data.canManage ? "" : " · лише перегляд"}</small>
       </div>
 
+      {netError && <p className="staffError" role="alert" onClick={()=>setNetError("")}>{netError}</p>}
       {notice && <p className="staffError" role="status" onClick={()=>setNotice("")}>{notice}</p>}
 
       {pendingDeliveries.length > 0 ? <section aria-labelledby="pending-deliveries-title">
