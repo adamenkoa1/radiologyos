@@ -64,14 +64,18 @@ export default function BusinessDocumentsPage(){
   const [typeFilter,setTypeFilter]=useState("");
   const [stateFilter,setStateFilter]=useState("");
   const [error,setError]=useState("");
+  // 401/403 — окремо від інших помилок, щоб дати екран «Увійти», а не глухий
+  // інлайн-рядок (як на решті staff-сторінок).
+  const [forbidden,setForbidden]=useState(false);
   const [loadingDetail,setLoadingDetail]=useState(false);
 
   const load=useCallback(async()=>{
     try{
       const response=await fetch("/api/staff/business-documents",{cache:"no-store"});
+      if(response.status===401||response.status===403){setForbidden(true);return;}
       const payload=await response.json().catch(()=>({})) as ListPayload;
       if(!response.ok)throw new Error(payload.error||"Не вдалося завантажити журнал документів");
-      setData(payload);setError("");
+      setData(payload);setError("");setForbidden(false);
     }catch(e){setError(e instanceof Error?e.message:"Не вдалося завантажити журнал документів");}
   },[]);
 
@@ -121,6 +125,7 @@ export default function BusinessDocumentsPage(){
     title="Журнал документів"
     description="Єдиний BAS-журнал: реєстратор, підстава, похідні документи, рухи по регістрах і незмінні друковані форми."
   >
+    {forbidden ? <section className="accessDenied"><b>Захищений розділ</b><p>Журнал документів доступний персоналу відділення. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdocuments">Увійти для роботи</a></section> : <>
     <section className="financeSummary" aria-label="Підсумок журналу документів">
       <article><span>Відібрано</span><b>{totals.all}</b><small>документів за поточним відбором</small></article>
       <article><span>Проведено</span><b>{totals.posted}</b><small>активних registrar-фактів</small></article>
@@ -189,5 +194,6 @@ export default function BusinessDocumentsPage(){
         </table></div>}
       </>}
     </section>}
+    </>}
   </StaffWorkspaceShell>;
 }
