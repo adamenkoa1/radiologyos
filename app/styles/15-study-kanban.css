@@ -314,6 +314,15 @@
   color: #b91c1c;
 }
 
+.workspaceShell .studyTag.late {
+  background: rgba(217,119,6,.14);
+  color: #b45309;
+}
+
+.workspaceShell .studyKanbanCard.late {
+  background: rgba(217,119,6,.05);
+}
+
 .workspaceShell .studyKanbanEmpty {
   margin: 14px 6px;
   color: var(--ws-muted);
@@ -390,6 +399,8 @@
 .workspaceShell.themeDark .studyStateTag.st-completed { color: #86efac; }
 .workspaceShell.themeDark .studyTag.contrast { color: #c4b5fd; }
 .workspaceShell.themeDark .studyTag.pay { color: #fca5a5; }
+.workspaceShell.themeDark .studyTag.late { color: #fbbf7a; }
+.workspaceShell.themeDark .studyKanbanCard.late { background: rgba(217,119,6,.1); }
 
 @media (max-width: 1120px) {
   .workspaceShell .studyBoardSummary {
