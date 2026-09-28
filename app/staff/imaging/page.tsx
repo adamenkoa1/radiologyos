@@ -50,6 +50,9 @@ export default function ImagingPage() {
   const [selectedId,setSelectedId] = useState<number | null>(null);
   const [card,setCard] = useState<Card | null>(null);
   const [error,setError] = useState("");
+  // Мережевий збій — окремо від «немає доступу», щоб показати «Повторити», а не
+  // помилковий заклик увійти (403 і 500 лишаються в error → екран доступу).
+  const [loadError,setLoadError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [saving,setSaving] = useState(false);
@@ -71,10 +74,11 @@ export default function ImagingPage() {
       setWorklist(data.worklist || []);
       setStaff(data.staff || null);
       if (data.settings) setSettings(data.settings);
-      setError("");
+      setError(""); setLoadError(false);
       if (data.staff?.role === "admin") void loadSettings();
     } catch {
-      setError("Не вдалося завантажити список — перевірте зʼєднання");
+      // Мережевий збій: показуємо «Повторити», а не екран «Захищений розділ».
+      setLoadError(true);
     } finally {
       setLoaded(true);
     }
@@ -201,6 +205,7 @@ export default function ImagingPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fimaging">Увійти для роботи</a></section> :
+    loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити робочий список. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); void loadWorklist(); }}>Повторити</button></section> :
     <>
       <div className={`pacsBanner${settings.enabled ? " on":""}`}>
         <span className="pacsDot" aria-hidden="true"/>
