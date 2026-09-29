@@ -19,6 +19,10 @@ export default function CriticalFindingsPage() {
   const [via, setVia] = useState<Record<number, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Мережевий збій — окремо від access-denied: показати «Повторити», а не
+  // помилково пропонувати вхід. Помилки дій — інлайн, щоб не зривати список.
+  const [netError, setNetError] = useState(false);
+  const [actionError, setActionError] = useState("");
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(async () => {
@@ -26,9 +30,9 @@ export default function CriticalFindingsPage() {
       const res = await fetch("/api/staff/critical-findings", { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || "Не вдалося завантажити"); return; }
-      setError(""); setFindings(data.findings || []); setStaff(data.staff || null);
+      setError(""); setNetError(false); setFindings(data.findings || []); setStaff(data.staff || null);
     } catch {
-      setError("Мережа недоступна");
+      setNetError(true);
     } finally {
       setLoading(false);
     }
@@ -37,16 +41,16 @@ export default function CriticalFindingsPage() {
   useEffect(() => { (async () => { await load(); })(); }, [load]);
 
   async function act(payload: Record<string, unknown>) {
-    setBusy(true); setError("");
+    setBusy(true); setActionError("");
     try {
       const res = await fetch("/api/staff/critical-findings", {
         method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload),
       });
       const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) { setError(data.error || "Не вдалося виконати дію"); return; }
+      if (!res.ok || !data.ok) { setActionError(data.error || "Не вдалося виконати дію"); return; }
       await load();
     } catch {
-      setError("Мережа недоступна");
+      setActionError("Мережа недоступна — спробуйте ще раз");
     } finally {
       setBusy(false);
     }
@@ -60,7 +64,9 @@ export default function CriticalFindingsPage() {
     staffRole={roleLabelUk(staff?.role)}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fcritical-findings">Увійти для роботи</a></section> :
+    netError && !findings.length ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити список критичних знахідок. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); void load(); }}>Повторити</button></section> :
     <section className="reportPanel">
+      {actionError && <p className="staffError" role="alert">{actionError}</p>}
       {loading ? <p className="empty">Завантаження…</p> :
         findings.length === 0 ? <p className="empty">Відкритих критичних знахідок немає.</p> :
         <ul className="cfList">
