@@ -89,6 +89,8 @@ export default function PatientIssuesPage() {
   const [findings, setFindings] = useState<Finding[]>([]);
   const [counts, setCounts] = useState<Counts>({ high:0, medium:0, low:0, total:0 });
   const [error, setError] = useState("");
+  // Мережевий збій — окремо від access-denied: «Повторити», а не екран входу.
+  const [netError, setNetError] = useState(false);
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -96,12 +98,12 @@ export default function PatientIssuesPage() {
       const res = await fetch("/api/staff/patients/issues", { headers: { "cache-control": "no-store" } });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || "Не вдалося завантажити аудит"); return; }
-      setError("");
+      setError(""); setNetError(false);
       setStaff(data.staff || null);
       setFindings(data.findings || []);
       setCounts(data.counts || { high:0, medium:0, low:0, total:0 });
     } catch {
-      setError("Мережа недоступна");
+      setNetError(true);
     } finally {
       setLoading(false);
     }
@@ -119,6 +121,7 @@ export default function PatientIssuesPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fpatients%2Fissues">Увійти для роботи</a></section> :
+    netError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити аудит. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); void load(); }}>Повторити</button></section> :
     <section className="reportPanel">
       <div className="consistencySummary">
         <span className="consistencyBadge sev-high">Високий: <b>{counts.high}</b></span>

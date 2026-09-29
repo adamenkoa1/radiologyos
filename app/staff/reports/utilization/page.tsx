@@ -38,15 +38,17 @@ export default function UtilizationReportPage() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Мережевий збій — окремо від access-denied: «Повторити», а не екран входу.
+  const [netError, setNetError] = useState(false);
 
   const load = useCallback(async (f: string, t: string) => {
     try {
       const res = await fetch(`/api/staff/reports/utilization?from=${f}&to=${t}`, { cache: "no-store" });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setError(data.error || "Не вдалося завантажити звіт"); return; }
-      setError(""); setRows(data.rows || []); setTotals(data.totals || null); setStaff(data.staff || null);
+      setError(""); setNetError(false); setRows(data.rows || []); setTotals(data.totals || null); setStaff(data.staff || null);
     } catch {
-      setError("Мережа недоступна");
+      setNetError(true);
     } finally {
       setLoading(false);
     }
@@ -64,6 +66,7 @@ export default function UtilizationReportPage() {
     staffRole={roleLabelUk(staff?.role)}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Freports%2Futilization">Увійти для роботи</a></section> :
+    netError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити звіт. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); void load(from, to); }}>Повторити</button></section> :
     <section className="reportPanel">
       <div className="utilFilters">
         <label>Від <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} /></label>

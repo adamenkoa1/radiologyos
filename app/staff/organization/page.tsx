@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { roleLabelUk } from "../../../lib/labels";
 
@@ -16,22 +16,21 @@ type Data = {
 export default function OrganizationPage() {
   const [data,setData] = useState<Data|null>(null);
   const [error,setError] = useState("");
+  // Мережевий збій — окремо від access-denied: «Повторити», а не екран входу.
+  const [netError,setNetError] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const response = await fetch("/api/staff/org", { cache:"no-store" });
-        const payload = await response.json().catch(()=>({})) as Data & { error?:string };
-        if (!active) return;
-        if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
-        setData(payload); setError("");
-      } catch {
-        if (active) setError("Не вдалося завантажити дані — перевірте зʼєднання");
-      }
-    })();
-    return () => { active = false; };
+  const load = useCallback(async () => {
+    try {
+      const response = await fetch("/api/staff/org", { cache:"no-store" });
+      const payload = await response.json().catch(()=>({})) as Data & { error?:string };
+      if (!response.ok) { setError(payload.error || "Немає доступу"); return; }
+      setData(payload); setError(""); setNetError(false);
+    } catch {
+      setNetError(true);
+    }
   }, []);
+
+  useEffect(() => { (async () => { await load(); })(); }, [load]);
 
   return <StaffWorkspaceShell
     active="organization"
@@ -45,6 +44,7 @@ export default function OrganizationPage() {
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
       <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Forganization">Увійти для роботи</a>
     </section> :
+    netError && !data ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити дані закладу. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); void load(); }}>Повторити</button></section> :
     !data ? <p className="dashLoading">Завантаження…</p> :
     <div className="orgProfile">
       <div className="orgProfileHead">
