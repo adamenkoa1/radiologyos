@@ -9,7 +9,7 @@ a{text-decoration:none;color:inherit}
 .cart-head{display:flex;justify-content:space-between;align-items:center;gap:15px}
 .floating-cart .cart-count{display:inline-grid;margin-left:6px}
 .req{color:#c0392b}
-.opt{font-weight:500;color:#7c8a94}
+.opt{font-weight:500;color:#5c6c78}
 .field input,.field select,.field textarea{width:100%;padding:12px;border:1px solid #dbe3e8;border-radius:var(--r-md);font:inherit;background:#fff}
 .phone-wrap{display:flex;align-items:stretch}
 .phone-prefix{display:grid;place-items:center;padding:0 12px;border:1px solid #dbe3e8;border-right:0;border-radius:var(--r-md) 0 0 11px;background:#f2f6f8;font-weight:700;color:var(--brand)}
@@ -23,8 +23,8 @@ a{text-decoration:none;color:inherit}
 /* Вибір вільного часу */
 .slot-picker{border:1px solid #dbe3e8;border-radius:var(--r-lg);padding:12px;background:#fbfdfe;margin:10px 0}
 .sp-head{font-weight:700;font-size:13.5px;margin-bottom:9px}
-.sp-note{font-weight:500;color:#8a98a2;font-size:12px}
-.sp-loading,.sp-empty{color:#8a98a2;font-size:13px;padding:8px 2px}
+.sp-note{font-weight:500;color:#5c6c78;font-size:12px}
+.sp-loading,.sp-empty{color:#5c6c78;font-size:13px;padding:8px 2px}
 .sp-days{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px}
 .sp-day{flex-shrink:0;padding:8px 11px;border-radius:var(--r-sm);border:1.5px solid #dbe3e8;background:#fff;font:inherit;font-size:12.5px;font-weight:700;cursor:pointer}
 .sp-day.on{border-color:var(--brand);background:#eef2f5;color:#0e454c}
