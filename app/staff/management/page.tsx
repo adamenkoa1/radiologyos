@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { roleLabelUk } from "../../../lib/labels";
 
@@ -19,24 +19,23 @@ export default function ManagementDashboardPage() {
   const [staff, setStaff] = useState<Staff | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  // Мережевий збій — окремо від access-denied: «Повторити», а не екран входу.
+  const [netError, setNetError] = useState(false);
 
-  useEffect(() => {
-    let alive = true;
-    void (async () => {
-      try {
-        const res = await fetch("/api/staff/management/red-zones", { cache: "no-store" });
-        const data = await res.json().catch(() => ({}));
-        if (!alive) return;
-        if (!res.ok) { setError(data.error || "Не вдалося завантажити пульт"); return; }
-        setCards(data.cards || []); setAttention(data.attention || 0); setStaff(data.staff || null);
-      } catch {
-        if (alive) setError("Мережа недоступна");
-      } finally {
-        if (alive) setLoading(false);
-      }
-    })();
-    return () => { alive = false; };
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/staff/management/red-zones", { cache: "no-store" });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) { setError(data.error || "Не вдалося завантажити пульт"); return; }
+      setError(""); setNetError(false); setCards(data.cards || []); setAttention(data.attention || 0); setStaff(data.staff || null);
+    } catch {
+      setNetError(true);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { (async () => { await load(); })(); }, [load]);
 
   return <StaffWorkspaceShell
     active="overview"
@@ -46,6 +45,7 @@ export default function ManagementDashboardPage() {
     staffRole={roleLabelUk(staff?.role)}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fmanagement">Увійти для роботи</a></section> :
+    netError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити пульт. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); void load(); }}>Повторити</button></section> :
     <section className="reportPanel">
       <div className="kpiHeader">
         <span className={`kpiAttention ${attention ? "has" : "clear"}`}>

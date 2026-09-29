@@ -42,6 +42,9 @@ export default function ProtocolCorrectionsPage() {
   const [query,setQuery] = useState("");
   const [error,setError] = useState("");
   const [loading,setLoading] = useState(true);
+  // Мережевий збій — окремо від access-denied: «Повторити», а не глухий екран.
+  const [netError,setNetError] = useState(false);
+  const [reloadKey,setReloadKey] = useState(0);
 
   useEffect(()=>{
     const controller = new AbortController();
@@ -55,15 +58,16 @@ export default function ProtocolCorrectionsPage() {
         }
         setQueue(data.queue || []);
         setStaff(data.staff || null);
+        setNetError(false);
       } catch (cause) {
-        if (!(cause instanceof DOMException && cause.name === "AbortError")) setError("Не вдалося завантажити видані протоколи");
+        if (!(cause instanceof DOMException && cause.name === "AbortError")) setNetError(true);
       } finally {
         setLoading(false);
       }
     }
     void load();
     return ()=>controller.abort();
-  },[]);
+  },[reloadKey]);
 
   const issued = useMemo(()=>queue
     .filter((item)=>item.documentStatus === "issued" || item.protocolStatus === "issued")
@@ -82,6 +86,7 @@ export default function ProtocolCorrectionsPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}</p></section>
+      : netError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити видані протоколи. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); setReloadKey((k)=>k+1); }}>Повторити</button></section>
       : !loading && staff && !canManage ? <section className="accessDenied">
         <b>Недостатньо прав</b>
         <p>Створювати та редагувати виправлення можуть лише лікар-рентгенолог або адміністратор. Підписувати — лише лікар-рентгенолог.</p>
