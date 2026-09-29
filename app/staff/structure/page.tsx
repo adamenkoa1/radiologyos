@@ -8,6 +8,7 @@ import {
   totalStudies2025,
 } from "../../../lib/department-structure";
 import { SITE_CONTENT_DEFAULTS, type SiteContent } from "../../../lib/site-content";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 
@@ -386,6 +387,6 @@ export default function StructurePage() {
     title="Публічна вітрина"
     description="Редагуйте головну сторінку так, як її бачить пацієнт. Тарифи та інші окремі довідники відкриваються у своїх редакторах."
     staffName={staff?.displayName}
-    staffRole={staff?.role}
+    staffRole={roleLabelUk(staff?.role)}
   >{body}</StaffWorkspaceShell>;
 }

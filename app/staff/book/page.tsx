@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import NameSuggestInput from "../NameSuggestInput";
 import { todayInKyiv } from "../../../lib/booking-rules";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type StaffOption = { email: string; displayName: string; role: string };
@@ -268,7 +269,7 @@ export default function StaffBookPage() {
       </form>;
 
   return (
-    <StaffWorkspaceShell active="appointments" title="Записати пацієнта" description="Оформлення запису працівником від імені пацієнта." staffName={staff?.displayName} staffRole={staff?.role}>
+    <StaffWorkspaceShell active="appointments" title="Записати пацієнта" description="Оформлення запису працівником від імені пацієнта." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
       {body}
     </StaffWorkspaceShell>
   );
