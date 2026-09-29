@@ -125,7 +125,12 @@ async function toggleProtocol(code,btn){const box=document.getElementById('prot-
 async function connectTelegram(){const btn=document.getElementById('tgConnectBtn'),msg=document.getElementById('tgConnectMsg');btn.disabled=true;try{const res=await fetch('/api/my-telegram-link',{method:'POST'});const data=await res.json().catch(()=>({}));if(!res.ok||!data.url){msg.textContent=data.error||'Не вдалося створити посилання';return}window.open(data.url,'_blank','noopener');msg.textContent='Відкрили Telegram — натисніть «Старт» у боті.'}finally{btn.disabled=false}}
 
 document.getElementById('requestOtpBtn').addEventListener('click',requestOtp);document.getElementById('emailOtpBtn').addEventListener('click',requestEmailOtp);document.getElementById('verifyOtpBtn').addEventListener('click',verifyOtp);document.getElementById('backOtpBtn').addEventListener('click',()=>{clearError();challengeId='';document.getElementById('otpCode').value='';otpStep.hidden=true;identityStep.hidden=false});document.getElementById('otpCode').addEventListener('keydown',(e)=>{if(e.key==='Enter')verifyOtp()});document.getElementById('tgConnectBtn').addEventListener('click',connectTelegram);
-document.getElementById('logoutBtn').addEventListener('click',async()=>{await fetch(MY_BOOKINGS,{method:'DELETE'}).catch(()=>null);phoneDigits='';dobValue='';challengeId='';cabinet.hidden=true;gate.hidden=false;otpStep.hidden=true;identityStep.hidden=false;document.getElementById('tgConnect').hidden=true;document.getElementById('otpCode').value='';clearError()});
+document.getElementById('logoutBtn').addEventListener('click',async()=>{await fetch(MY_BOOKINGS,{method:'DELETE'}).catch(()=>null);phoneDigits='';dobValue='';challengeId='';cabinet.hidden=true;gate.hidden=false;otpStep.hidden=true;identityStep.hidden=false;document.getElementById('tgConnect').hidden=true;document.getElementById('otpCode').value='';
+  // Чистимо збережену ідентичність і поля вводу, щоб на спільному пристрої
+  // (реєстратура/планшет) наступний відвідувач не бачив префіл телефону/ДН.
+  try{sessionStorage.removeItem(PATIENT_PREFILL_KEY);sessionStorage.removeItem('radiologyos_last_booking_v1');localStorage.removeItem('radiologyos_patient_v1')}catch(e){}
+  document.getElementById('gatePhone').value='';document.getElementById('gateDob').value='';document.getElementById('gateCode').value='';document.getElementById('codeField').hidden=true;
+  clearError()});
 </script>
 </body>
 </html>
