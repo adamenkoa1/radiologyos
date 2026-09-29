@@ -42,14 +42,14 @@ export default function StaffSettingsPage() {
   const [calCopied, setCalCopied] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  // Мережевий збій завантаження — «Повторити» замість порожньої форми без сигналу.
+  const [loadErr, setLoadErr] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
+  async function load() {
+    try {
       const res = await fetch("/api/staff/settings", { cache: "no-store" });
-      if (res.status === 403) { if (active) setForbidden(true); return; }
+      if (res.status === 403) { setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
-      if (!active) return;
       if (data.settings) {
         setSettings(data.settings); setChatId(data.settings.telegramChatId); setPayLink(data.settings.payLink); setLiqpayPublicKey(data.settings.liqpayPublicKey || ""); setExternalIcsUrl(data.settings.externalIcsUrl || "");
         setRemindersEnabled(Boolean(data.settings.remindersEnabled));
@@ -60,8 +60,13 @@ export default function StaffSettingsPage() {
         setBookingNotifyEmail(data.settings.bookingNotifyEmail || "");
       }
       if (data.staff) setStaff(data.staff);
-    })();
-    return () => { active = false; };
+      setLoadErr(false);
+    } catch { setLoadErr(true); }
+  }
+
+  useEffect(() => {
+    const t = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -146,6 +151,8 @@ export default function StaffSettingsPage() {
 
   const body = forbidden ? (
     <div className="accessDenied"><b>Доступ обмежено</b><p>Налаштування відділення доступні лише адміністратору.</p></div>
+  ) : loadErr && !settings ? (
+    <p className="notice error" role="alert">Не вдалося завантажити налаштування. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => void load()}>Повторити</button></p>
   ) : (
     <form className="settingsCard" onSubmit={save}>
       <section className="settingsBlock">

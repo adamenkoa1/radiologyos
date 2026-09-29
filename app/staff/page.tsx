@@ -200,6 +200,8 @@ export default function StaffPage() {
   const [members,setMembers] = useState<StaffMember[]>([]);
   const [staffOptions,setStaffOptions] = useState<StaffOption[]>([]);
   const [error,setError] = useState("");
+  // Мережевий збій завантаження — «Повторити» замість тихого порожнього екрана.
+  const [netErr,setNetErr] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [filter,setFilter] = useState("all");
@@ -213,38 +215,40 @@ export default function StaffPage() {
   const [openId,setOpenId] = useState<number | null>(null);
 
   async function load() {
-    const [bookingsResponse,equipmentResponse] = await Promise.all([
-      fetch("/api/staff/bookings", { cache:"no-store" }),
-      fetch("/api/staff/equipment", { cache:"no-store" }),
-    ]);
-    const data = await bookingsResponse.json() as {
-      bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo;
-      staffOptions?:StaffOption[]; notifications?:PatientNotification[];
-      capabilities?:BookingCapabilities; error?:string;
-    };
-    if (!bookingsResponse.ok) { setError(data.error || "Немає доступу"); return; }
-    const equipmentData = await equipmentResponse.json() as {
-      equipment?:Equipment[]; blocks?:EquipmentBlock[]; error?:string;
-    };
-    if (!equipmentResponse.ok) { setError(equipmentData.error || "Не вдалося завантажити обладнання"); return; }
-    setItems(data.bookings || []);
-    setEvents(data.events || []);
-    setNotes(data.notes || []);
-    setNotifications(data.notifications || []);
-    setStaff(data.staff || null);
-    setCapabilities(data.capabilities || NO_BOOKING_CAPABILITIES);
-    setStaffOptions(data.staffOptions || []);
-    setEquipment(equipmentData.equipment || []);
-    setBlocks(equipmentData.blocks || []);
-    if (data.staff?.role === "admin") {
-      const membersResponse = await fetch("/api/staff/members", { cache:"no-store" });
-      const membersData = await membersResponse.json() as { members?:StaffMember[]; error?:string };
-      if (!membersResponse.ok) { setError(membersData.error || "Не вдалося завантажити персонал"); return; }
-      setMembers(membersData.members || []);
-    } else {
-      setMembers([]);
-    }
-    setError("");
+    try {
+      const [bookingsResponse,equipmentResponse] = await Promise.all([
+        fetch("/api/staff/bookings", { cache:"no-store" }),
+        fetch("/api/staff/equipment", { cache:"no-store" }),
+      ]);
+      const data = await bookingsResponse.json() as {
+        bookings?:Booking[]; events?:BookingEvent[]; notes?:StaffNote[]; staff?:StaffInfo;
+        staffOptions?:StaffOption[]; notifications?:PatientNotification[];
+        capabilities?:BookingCapabilities; error?:string;
+      };
+      if (!bookingsResponse.ok) { setError(data.error || "Немає доступу"); return; }
+      const equipmentData = await equipmentResponse.json() as {
+        equipment?:Equipment[]; blocks?:EquipmentBlock[]; error?:string;
+      };
+      if (!equipmentResponse.ok) { setError(equipmentData.error || "Не вдалося завантажити обладнання"); return; }
+      setItems(data.bookings || []);
+      setEvents(data.events || []);
+      setNotes(data.notes || []);
+      setNotifications(data.notifications || []);
+      setStaff(data.staff || null);
+      setCapabilities(data.capabilities || NO_BOOKING_CAPABILITIES);
+      setStaffOptions(data.staffOptions || []);
+      setEquipment(equipmentData.equipment || []);
+      setBlocks(equipmentData.blocks || []);
+      if (data.staff?.role === "admin") {
+        const membersResponse = await fetch("/api/staff/members", { cache:"no-store" });
+        const membersData = await membersResponse.json() as { members?:StaffMember[]; error?:string };
+        if (!membersResponse.ok) { setError(membersData.error || "Не вдалося завантажити персонал"); return; }
+        setMembers(membersData.members || []);
+      } else {
+        setMembers([]);
+      }
+      setError(""); setNetErr(false);
+    } catch { setNetErr(true); }
   }
 
   useEffect(() => {
@@ -442,6 +446,7 @@ export default function StaffPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff">Увійти для роботи</a></section> :
+    netErr && !staff ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити робочий стіл. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetErr(false); void load(); }}>Повторити</button></section> :
     <>
       <section className="workspaceQuickGrid" aria-label="Швидкі дії">
         <a className="workspaceTodayCard" href="#schedule">

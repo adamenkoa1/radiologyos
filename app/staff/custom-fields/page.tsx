@@ -15,6 +15,7 @@ export default function CustomFieldsPage(){
   const [drafts,setDrafts]=useState<Record<number,Draft>>({});
   const [forbidden,setForbidden]=useState(false);
   const [loading,setLoading]=useState(true);
+  const [loadErr,setLoadErr]=useState(false);
   const [busy,setBusy]=useState<number|"new"|null>(null);
   const [notice,setNotice]=useState("");
   const [error,setError]=useState("");
@@ -25,15 +26,17 @@ export default function CustomFieldsPage(){
   const [sortOrder,setSortOrder]=useState(0);
 
   const load=useCallback(async()=>{
-    setLoading(true);
-    const response=await fetch("/api/staff/custom-fields",{cache:"no-store"});
-    if(response.status===403){setForbidden(true);setLoading(false);return;}
-    const payload=await response.json().catch(()=>({})) as {definitions?:Definition[];error?:string};
-    if(!response.ok){setError(payload.error||"Не вдалося завантажити поля");setLoading(false);return;}
-    const rows=payload.definitions||[];
-    setDefinitions(rows);
-    setDrafts(Object.fromEntries(rows.map(row=>[row.id,{label:row.label,optionsText:row.options.join("\n"),required:Boolean(row.required),active:Boolean(row.active),sortOrder:row.sortOrder}])));
-    setError("");setLoading(false);
+    setLoading(true);setLoadErr(false);
+    try{
+      const response=await fetch("/api/staff/custom-fields",{cache:"no-store"});
+      if(response.status===403){setForbidden(true);setLoading(false);return;}
+      const payload=await response.json().catch(()=>({})) as {definitions?:Definition[];error?:string};
+      if(!response.ok){setError(payload.error||"Не вдалося завантажити поля");setLoading(false);return;}
+      const rows=payload.definitions||[];
+      setDefinitions(rows);
+      setDrafts(Object.fromEntries(rows.map(row=>[row.id,{label:row.label,optionsText:row.options.join("\n"),required:Boolean(row.required),active:Boolean(row.active),sortOrder:row.sortOrder}])));
+      setError("");setLoading(false);
+    }catch{setLoadErr(true);setLoading(false);}
   },[]);
 
   useEffect(()=>{const timer=window.setTimeout(()=>void load(),0);return()=>window.clearTimeout(timer);},[load]);
@@ -73,7 +76,7 @@ export default function CustomFieldsPage(){
       <section className={styles.list}>
         <div className={styles.listHead}><div><h2>Поля дослідження</h2><p>Тип поля після створення не змінюється — це захищає вже внесені значення.</p></div><a href="/staff/studies">До досліджень</a></div>
         {error?<p className={styles.error}>{error}</p>:null}{notice?<p className={styles.notice}>{notice}</p>:null}
-        {loading?<p className={styles.empty}>Завантаження…</p>:definitions.length===0?<p className={styles.empty}>Поля ще не створені.</p>:definitions.map(definition=>{
+        {loading?<p className={styles.empty}>Завантаження…</p>:loadErr?<p className={styles.empty}>Не вдалося завантажити поля. Перевірте зʼєднання. <button type="button" onClick={()=>void load()}>Повторити</button></p>:definitions.length===0?<p className={styles.empty}>Поля ще не створені.</p>:definitions.map(definition=>{
           const draft=drafts[definition.id];if(!draft)return null;
           return <article className={styles.card} key={definition.id}>
             <div className={styles.cardHead}><span className={styles.type}>{TYPE_LABELS[definition.fieldType]||definition.fieldType}</span><span className={draft.active?styles.on:styles.off}>{draft.active?"Активне":"Вимкнене"}</span></div>

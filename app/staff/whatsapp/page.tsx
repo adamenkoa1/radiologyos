@@ -19,18 +19,23 @@ export default function StaffWhatsAppPage() {
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  // Мережевий збій завантаження — «Повторити» замість вічного спінера.
+  const [loadErr, setLoadErr] = useState(false);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
+  async function load() {
+    try {
       const res = await fetch("/api/staff/whatsapp", { cache: "no-store" });
-      if (res.status === 403) { if (active) setForbidden(true); return; }
+      if (res.status === 403) { setForbidden(true); return; }
       const data = await res.json().catch(() => ({})) as { settings?: Settings; staff?: StaffInfo };
-      if (!active) return;
       if (data.settings) { setSettings(data.settings); setIdInstance(data.settings.idInstance); setEnabled(data.settings.enabled); }
       if (data.staff) setStaff(data.staff);
-    })();
-    return () => { active = false; };
+      setLoadErr(false);
+    } catch { setLoadErr(true); }
+  }
+
+  useEffect(() => {
+    const t = window.setTimeout(() => { void load(); }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -66,7 +71,9 @@ export default function StaffWhatsAppPage() {
   const body = forbidden
     ? <p className="notice error" role="alert">WhatsApp налаштовує лише адміністратор.</p>
     : !settings
-      ? <p className="notice">Завантаження…</p>
+      ? (loadErr
+        ? <p className="notice error" role="alert">Не вдалося завантажити налаштування. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => void load()}>Повторити</button></p>
+        : <p className="notice">Завантаження…</p>)
       : <div className="settingsCard">
           <section className="settingsBlock">
             <span className={`settingsState ${settings.connected ? "on" : "off"}`}>{settings.connected ? "Підключено" : "Не підключено"}</span>
