@@ -174,6 +174,17 @@ export default function ProtocolsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
+  // Захист незбережених змін при виході зі сторінки (закриття вкладки, «назад»,
+  // перехід за лінком навігації). Перемикання між записами вже прикрите
+  // window.confirm у selectBooking; тут покриваємо саме залишення сторінки, щоб
+  // напівнаписаний протокол не губився тихо.
+  useEffect(() => {
+    if (!dirty) return;
+    const handler = (event:BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [dirty]);
+
   function setSectionField(sectionKey:string,fieldKey:string,value:string) {
     setDoc((current) => current && ({
       ...current,
