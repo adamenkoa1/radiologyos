@@ -22,6 +22,9 @@ const RELATED_LINKS:{href:string;label:string}[]=[{href:"/staff/cash-accounts",l
 
 export default function FinancePage(){
   const [data,setData]=useState<FinancePayload|null>(null);const [error,setError]=useState("");const [tab,setTab]=useState<Tab>("documents");const [query,setQuery]=useState("");
+  // 401/403 (не персонал або немає фінансових прав) — окремий екран доступу з
+  // входом, а не глухий інлайн-рядок; мережеві/503 лишаються financeError.
+  const [forbidden,setForbidden]=useState("");
   const [from,setFrom]=useState("");const [to,setTo]=useState("");
   const load=useCallback(async()=>{
     if(from&&to&&from>to){setError("Дата «Від» не може бути пізнішою за «До»");return;}
@@ -30,8 +33,9 @@ export default function FinancePage(){
       const suffix=params.toString();
       const response=await fetch(`/api/staff/finance${suffix?`?${suffix}`:""}`,{cache:"no-store"});
       const payload=await response.json().catch(()=>({})) as FinancePayload;
+      if(response.status===401||response.status===403){setForbidden(payload.error||"Немає доступу");return;}
       if(!response.ok)throw new Error(payload.error||"Не вдалося завантажити фінансовий журнал");
-      setData(payload);setError("");
+      setData(payload);setError("");setForbidden("");
     }catch(e){setError(e instanceof Error?e.message:"Не вдалося завантажити фінансовий журнал");}
   },[from,to]);
   useEffect(()=>{const timer=window.setTimeout(()=>{void load();},0);return()=>window.clearTimeout(timer);},[load]);
@@ -56,6 +60,7 @@ export default function FinancePage(){
     document.getElementById(`fin-tab-${TABS[next].id}`)?.focus();
   }
   return <StaffWorkspaceShell active="finance" title="Фінанси" description="BAS-подібний журнал оплат, повернень, кас/рахунків, рухів грошей і взаєморозрахунків.">
+    {forbidden?<section className="accessDenied"><b>Захищений розділ</b><p>{forbidden}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Ffinance">Увійти для роботи</a></section>:<>
     <section className="financeSummary" aria-label="Підсумок фінансового регістру"><article><span>Надійшло</span><b>{money(primary.incoming,primary.currency)}</b><small>{scopeLabel}</small></article><article><span>Повернено</span><b>{money(primary.outgoing,primary.currency)}</b><small>{scopeLabel}</small></article><article><span>Чистий рух</span><b>{money(primary.net,primary.currency)}</b><small>{scopeLabel} · {primary.currency}</small></article><article><span>Кас / рахунків</span><b>{data?.cashAccounts.filter(a=>a.active).length||0}</b><small>активні довідники</small></article></section>
     {otherCurrencies.length>0&&<p className="financeSummaryExtra">Інші валюти ({scopeLabel}): {otherCurrencies.map(row=>`${row.currency}: ${money(row.net,row.currency)}`).join(" · ")}</p>}
     {!!data?.legacyTransactionCount&&<aside className="financeLegacyNotice"><b>Legacy: {data.legacyTransactionCount}</b><span>Історичні підтверджені транзакції до BAS-реєстратора не перетворюються на документи або рахунки заднім числом.</span></aside>}
@@ -64,6 +69,6 @@ export default function FinancePage(){
       {data&&tab==="documents"&&<div className="financeTableWrap" role="tabpanel" id="fin-panel-documents" aria-labelledby="fin-tab-documents" tabIndex={0}><table className="financeTable"><thead><tr><th>Документ</th><th>Дата</th><th>Заявка / пацієнт</th><th>Послуга</th><th>Каса / рахунок</th><th>Спосіб</th><th className="num">Сума</th><th>Стан</th><th/></tr></thead><tbody>{documents.map(row=><tr key={row.id}><td><b>{TYPE_UK[row.documentType]}</b><small>{row.number}</small></td><td>{dateTime(row.occurredAt)}</td><td><b>{row.bookingCode}</b><small>{row.patientName}</small></td><td>{row.service}</td><td>{accountLabel(row.cashAccountName,row.cashAccountCode)}</td><td>{methodLabel(row.method)}{row.providerReference&&<small>{row.providerReference}</small>}</td><td className={`num ${row.documentType==="refund"?"negative":"positive"}`}>{row.documentType==="refund"?"−":"+"}{money(row.amount,row.currency)}</td><td><span className={`financeState state-${row.state}`}>{STATE_UK[row.state]||row.state}</span></td><td><button type="button" onClick={()=>printDocument(row.id)}>Друк</button></td></tr>)}</tbody></table>{documents.length===0&&<p className="financeEmpty">Документів за цим відбором немає.</p>}</div>}
       {data&&tab==="cash"&&<div className="financeTableWrap" role="tabpanel" id="fin-panel-cash" aria-labelledby="fin-tab-cash" tabIndex={0}><table className="financeTable"><thead><tr><th>Документ</th><th>Дата</th><th>Заявка / пацієнт</th><th>Каса / рахунок</th><th>Метод</th><th>Референс</th><th className="num">Рух</th></tr></thead><tbody>{cash.map(row=><tr key={row.id}><td><b>{row.documentNumber}</b><small>{row.movementType==="payment"?"Оплата":"Повернення"}</small></td><td>{dateTime(row.occurredAt)}</td><td><b>{row.bookingCode}</b><small>{row.patientName}</small></td><td>{accountLabel(row.cashAccountName,row.cashAccountCode)}</td><td>{methodLabel(row.method)}</td><td>{row.providerReference||"—"}</td><td className={`num ${row.amountDelta<0?"negative":"positive"}`}>{row.amountDelta<0?"−":"+"}{money(Math.abs(row.amountDelta),row.currency)}</td></tr>)}</tbody></table>{cash.length===0&&<p className="financeEmpty">Рухів за цим відбором немає.</p>}</div>}
       {data&&tab==="settlements"&&<div className="financeTableWrap" role="tabpanel" id="fin-panel-settlements" aria-labelledby="fin-tab-settlements" tabIndex={0}><table className="financeTable"><thead><tr><th>Заявка</th><th>Пацієнт</th><th>Послуга</th><th>Останній рух</th><th className="num">Сальдо</th></tr></thead><tbody>{settlements.map(row=><tr key={row.bookingId}><td><b>{row.bookingCode}</b></td><td>{row.patientName}</td><td>{row.service}</td><td>{dateTime(row.lastMovementAt)}</td><td className={`num ${row.balance>0?"negative":row.balance<0?"positive":""}`}>{money(row.balance,row.currency)}</td></tr>)}</tbody></table>{settlements.length===0&&<p className="financeEmpty">Взаєморозрахунків за цим відбором немає.</p>}</div>}
-    </section>
+    </section></>}
   </StaffWorkspaceShell>;
 }
