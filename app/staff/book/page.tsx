@@ -32,6 +32,7 @@ const REFERRALS: [string, string][] = [
 export default function StaffBookPage() {
   const [staff, setStaff] = useState<StaffInfo | null>(null);
   const [forbidden, setForbidden] = useState(false);
+  const [loadErr, setLoadErr] = useState(false);
   const [options, setOptions] = useState<StaffOption[]>([]);
   const [services, setServices] = useState<EffectiveService[]>([]);
   const [serviceCode, setServiceCode] = useState("");
@@ -65,26 +66,26 @@ export default function StaffBookPage() {
   const radiologists = useMemo(() => options.filter(o => o.role === "radiologist"), [options]);
   const radiographers = useMemo(() => options.filter(o => o.role === "radiographer"), [options]);
 
-  useEffect(() => {
-    let active = true;
-    const t = window.setTimeout(async () => {
+  async function loadRefs() {
+    try {
       const [bookingRes, serviceRes] = await Promise.all([
         fetch("/api/staff/bookings", { cache: "no-store" }),
         fetch("/api/staff/services", { cache: "no-store" }),
       ]);
-      if (bookingRes.status === 403 || serviceRes.status === 403) {
-        if (active) setForbidden(true);
-        return;
-      }
+      if (bookingRes.status === 403 || serviceRes.status === 403) { setForbidden(true); return; }
       const bookingData = await bookingRes.json().catch(() => ({})) as { staffOptions?: StaffOption[]; staff?: StaffInfo };
       const serviceData = await serviceRes.json().catch(() => ({})) as { effectiveServices?: EffectiveService[]; staff?: StaffInfo };
-      if (!active) return;
       setOptions(bookingData.staffOptions || []);
       setServices(Array.isArray(serviceData.effectiveServices) ? serviceData.effectiveServices : []);
       if (bookingData.staff) setStaff(bookingData.staff);
       else if (serviceData.staff) setStaff(serviceData.staff);
-    }, 0);
-    return () => { active = false; window.clearTimeout(t); };
+      setLoadErr(false);
+    } catch { setLoadErr(true); }
+  }
+
+  useEffect(() => {
+    const t = window.setTimeout(() => { void loadRefs(); }, 0);
+    return () => window.clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -163,29 +164,32 @@ export default function StaffBookPage() {
     event.preventDefault();
     setStatus("saving"); setError(""); setCode("");
     const data = new FormData(event.currentTarget);
-    const res = await fetch(patientId ? "/api/staff/bookings/exact" : "/api/staff/bookings", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        ...(patientId ? { patientId } : {}),
-        name: String(data.get("name") || ""),
-        phone: String(data.get("phone") || ""),
-        dob: String(data.get("dob") || ""),
-        patientCategory: String(data.get("patientCategory") || "civilian"),
-        serviceCode, date, time,
-        referralType: String(data.get("referralType") || "none"),
-        clinicalIndication: String(data.get("clinicalIndication") || ""),
-        comment: String(data.get("comment") || ""),
-        assignedRadiologistEmail: String(data.get("radiologist") || ""),
-        assignedRadiographerEmail: String(data.get("radiographer") || ""),
-      }),
-    });
-    const result = await res.json().catch(() => ({})) as { ok?: boolean; code?: string; error?: string };
-    setStatus("idle");
-    if (!res.ok || !result.ok) { setError(result.error || "Не вдалося створити запис"); return; }
-    setCode(result.code || "");
-    (event.target as HTMLFormElement).reset();
-    setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
-    setPatientId(""); setName(""); setPhone(""); setDob(""); setCategory("civilian");
+    const form = event.currentTarget;
+    try {
+      const res = await fetch(patientId ? "/api/staff/bookings/exact" : "/api/staff/bookings", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          ...(patientId ? { patientId } : {}),
+          name: String(data.get("name") || ""),
+          phone: String(data.get("phone") || ""),
+          dob: String(data.get("dob") || ""),
+          patientCategory: String(data.get("patientCategory") || "civilian"),
+          serviceCode, date, time,
+          referralType: String(data.get("referralType") || "none"),
+          clinicalIndication: String(data.get("clinicalIndication") || ""),
+          comment: String(data.get("comment") || ""),
+          assignedRadiologistEmail: String(data.get("radiologist") || ""),
+          assignedRadiographerEmail: String(data.get("radiographer") || ""),
+        }),
+      });
+      const result = await res.json().catch(() => ({})) as { ok?: boolean; code?: string; error?: string };
+      if (!res.ok || !result.ok) { setError(result.error || "Не вдалося створити запис"); return; }
+      setCode(result.code || "");
+      form.reset();
+      setServiceCode(""); setDate(""); setTime(""); setRequestedTime(""); setTimes([]);
+      setPatientId(""); setName(""); setPhone(""); setDob(""); setCategory("civilian");
+    } catch { setError("Не вдалося створити запис — перевірте зʼєднання"); }
+    finally { setStatus("idle"); }
   }
 
   const selectedService = availableServices.find((service) => service.code === serviceCode);
@@ -196,6 +200,7 @@ export default function StaffBookPage() {
   const body = forbidden
     ? <p className="notice error" role="alert">Створювати записи може реєстратор або адміністратор.</p>
     : <form className="settingsCard" onSubmit={submit}>
+        {loadErr && services.length === 0 && <p className="notice error" role="alert">Не вдалося завантажити перелік послуг і персоналу. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => void loadRefs()}>Повторити</button></p>}
         {code && <p className="notice success" role="status">Пацієнта записано, час підтверджено. <a className="textLink" href="/staff/appointments">Переглянути в календарі →</a></p>}
         <p className="settingsHint">Ця форма призначена для запису від імені пацієнта, який звернувся телефоном або не може самостійно скористатися сайтом.</p>
         {patientId && <p className="settingsHint">Запис буде додано до вибраної CRM-картки пацієнта.</p>}

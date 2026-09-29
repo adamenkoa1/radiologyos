@@ -43,6 +43,8 @@ export default function StaffAuditPage() {
   const [actor, setActor] = useState("");
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
+  // Мережевий збій завантаження — «Повторити» замість оманливого «Подій не знайдено».
+  const [netErr, setNetErr] = useState(false);
 
   const PAGE = 50;
   const load = useCallback(async (beforeId?: number) => {
@@ -66,8 +68,9 @@ export default function StaffAuditPage() {
       const batch = data.events ?? [];
       setEvents(prev => beforeId ? [...prev, ...batch] : batch);
       setMore(batch.length >= PAGE);
+      setNetErr(false);
     } catch {
-      if (!beforeId) setForbidden(false);
+      if (!beforeId) setNetErr(true);
     } finally {
       setLoaded(true); setBusy(false);
     }
@@ -100,7 +103,9 @@ export default function StaffAuditPage() {
             >Експорт CSV</a>
           </div>
 
-          {events.length === 0
+          {netErr && events.length === 0
+            ? <p className="auditEmpty">Не вдалося завантажити журнал. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => void load()}>Повторити</button></p>
+            : events.length === 0
             ? <p className="auditEmpty">Подій не знайдено. Журнал наповнюється, коли співробітники входять у систему, змінюють налаштування чи керують персоналом.</p>
             : <div className="auditTableWrap">
                 <table className="auditTable">

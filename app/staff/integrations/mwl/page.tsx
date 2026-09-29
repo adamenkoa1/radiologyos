@@ -19,10 +19,12 @@ export default function MwlBridgeAdminPage() {
   const [busy,setBusy] = useState(false);
 
   async function load() {
-    const response = await fetch("/api/staff/integrations/mwl-token", { cache:"no-store" });
-    const data = await response.json() as Status & { error?:string };
-    if (!response.ok) { setError(data.error || "Немає доступу"); return; }
-    setStatus(data); setError("");
+    try {
+      const response = await fetch("/api/staff/integrations/mwl-token", { cache:"no-store" });
+      const data = await response.json() as Status & { error?:string };
+      if (!response.ok) { setError(data.error || "Немає доступу"); return; }
+      setStatus(data); setError("");
+    } catch { setError("Мережа недоступна — спробуйте ще раз"); }
   }
 
   useEffect(() => {
@@ -32,23 +34,27 @@ export default function MwlBridgeAdminPage() {
 
   async function rotate() {
     setBusy(true); setError(""); setToken("");
-    const response = await fetch("/api/staff/integrations/mwl-token", {
-      method:"POST", headers:{ "content-type":"application/json" }, body:"{}",
-    });
-    const data = await response.json() as { token?:string; error?:string };
-    setBusy(false);
-    if (!response.ok || !data.token) { setError(data.error || "Не вдалося створити токен"); return; }
-    setToken(data.token);
-    await load();
+    try {
+      const response = await fetch("/api/staff/integrations/mwl-token", {
+        method:"POST", headers:{ "content-type":"application/json" }, body:"{}",
+      });
+      const data = await response.json() as { token?:string; error?:string };
+      if (!response.ok || !data.token) { setError(data.error || "Не вдалося створити токен"); return; }
+      setToken(data.token);
+      await load();
+    } catch { setError("Мережа недоступна — спробуйте ще раз"); }
+    finally { setBusy(false); }
   }
 
   async function disable() {
     setBusy(true); setError(""); setToken("");
-    const response = await fetch("/api/staff/integrations/mwl-token", { method:"DELETE" });
-    const data = await response.json() as { ok?:boolean; error?:string };
-    setBusy(false);
-    if (!response.ok || !data.ok) { setError(data.error || "Не вдалося вимкнути bridge"); return; }
-    await load();
+    try {
+      const response = await fetch("/api/staff/integrations/mwl-token", { method:"DELETE" });
+      const data = await response.json() as { ok?:boolean; error?:string };
+      if (!response.ok || !data.ok) { setError(data.error || "Не вдалося вимкнути bridge"); return; }
+      await load();
+    } catch { setError("Мережа недоступна — спробуйте ще раз"); }
+    finally { setBusy(false); }
   }
 
   return <StaffWorkspaceShell

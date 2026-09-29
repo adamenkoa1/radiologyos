@@ -48,19 +48,23 @@ export default function StaffChatPage() {
   const [sending, setSending] = useState(false);
   const [threadLoading, setThreadLoading] = useState(false);
   const [error, setError] = useState("");
+  // Мережевий збій завантаження списку — «Повторити» замість вічного спінера.
+  const [loadErr, setLoadErr] = useState(false);
 
   const loadConversations = useCallback(async (nextChannel: string) => {
     const suffix = nextChannel === "all" ? "" : `?channel=${encodeURIComponent(nextChannel)}`;
-    const res = await fetch(`/api/staff/chat${suffix}`, { cache: "no-store" });
-    if (res.status === 403) { setForbidden(true); return; }
-    const data = await res.json().catch(() => ({})) as {
-      conversations?: Conversation[]; staff?: StaffInfo; channelStats?: ChannelStat[]; failedDeliveries?: number;
-    };
-    setConversations(data.conversations || []);
-    setChannelStats(data.channelStats || []);
-    setFailedDeliveries(Number(data.failedDeliveries || 0));
-    if (data.staff) setStaff(data.staff);
-    setLoaded(true);
+    try {
+      const res = await fetch(`/api/staff/chat${suffix}`, { cache: "no-store" });
+      if (res.status === 403) { setForbidden(true); setLoaded(true); return; }
+      const data = await res.json().catch(() => ({})) as {
+        conversations?: Conversation[]; staff?: StaffInfo; channelStats?: ChannelStat[]; failedDeliveries?: number;
+      };
+      setConversations(data.conversations || []);
+      setChannelStats(data.channelStats || []);
+      setFailedDeliveries(Number(data.failedDeliveries || 0));
+      if (data.staff) setStaff(data.staff);
+      setLoadErr(false); setLoaded(true);
+    } catch { setLoadErr(true); setLoaded(true); }
   }, []);
 
   useEffect(() => {
@@ -112,22 +116,24 @@ export default function StaffChatPage() {
     if (!active || !draft.trim() || !replyChannels.includes("whatsapp")) return;
     setSending(true); setError("");
     const text = draft.trim();
-    const res = await fetch("/api/staff/chat", {
-      method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        patientId:active.identityKind === "patient" ? active.patientId : "",
-        identityKind:active.identityKind,
-        phone:active.phone,
-        text,
-        channel:"whatsapp",
-      }),
-    });
-    const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: Message; error?: string };
-    setSending(false);
-    if (!res.ok || !data.ok) { setError(data.error || "Не вдалося надіслати"); return; }
-    setDraft("");
-    if (data.message) setMessages(m => [...m, data.message as Message]);
-    void loadConversations(channel);
+    try {
+      const res = await fetch("/api/staff/chat", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          patientId:active.identityKind === "patient" ? active.patientId : "",
+          identityKind:active.identityKind,
+          phone:active.phone,
+          text,
+          channel:"whatsapp",
+        }),
+      });
+      const data = await res.json().catch(() => ({})) as { ok?: boolean; message?: Message; error?: string };
+      if (!res.ok || !data.ok) { setError(data.error || "Не вдалося надіслати"); return; }
+      setDraft("");
+      if (data.message) setMessages(m => [...m, data.message as Message]);
+      void loadConversations(channel);
+    } catch { setError("Не вдалося надіслати — перевірте зʼєднання"); }
+    finally { setSending(false); }
   }
 
   const filtered = useMemo(() => {
@@ -163,6 +169,7 @@ export default function StaffChatPage() {
         <div className="chatShell contactShell">
           <aside className="chatList">
             {!loaded ? <p className="empty">Завантаження…</p>
+              : loadErr ? <p className="empty">Не вдалося завантажити діалоги. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => { setLoaded(false); void loadConversations(channel); }}>Повторити</button></p>
               : filtered.length === 0 ? <p className="empty">Немає комунікацій у цьому фільтрі.</p>
                 : filtered.map(c => (
                   <button key={c.conversationKey} className={`chatListItem${active?.conversationKey === c.conversationKey ? " active" : ""}`} onClick={() => void openConversation(c)}>
