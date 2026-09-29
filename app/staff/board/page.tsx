@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { stateLabel } from "../../../lib/study-state";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email:string; displayName:string; role:string };
 type Booking = {
@@ -153,7 +154,7 @@ export default function StudyBoardPage() {
     title="Дошка досліджень"
     description="Операційний потік дня: від запису пацієнта до готового та виданого результату."
     staffName={staff?.displayName || staff?.email}
-    staffRole={staff?.role}
+    staffRole={roleLabelUk(staff?.role)}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fboard">Увійти</a></section>
       : loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити дошку. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>

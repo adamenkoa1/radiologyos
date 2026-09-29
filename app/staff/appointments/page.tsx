@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import WeekCalendar, { type CalBooking, type CalEquipmentBlock, type CalStaffOption, type CalView } from "../week-calendar";
 import { SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../../lib/schedule";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffOption = { email: string; displayName: string; role: string };
 
@@ -115,7 +116,7 @@ export default function StaffAppointmentsPage() {
       title="Записи і слоти"
       description="Один робочий екран: вільні слоти кабінетів, заявки, запис пацієнта, прибуття та оплата."
       staffName={staff?.displayName}
-      staffRole={staff?.role}
+      staffRole={roleLabelUk(staff?.role)}
     >
       {body}
     </StaffWorkspaceShell>

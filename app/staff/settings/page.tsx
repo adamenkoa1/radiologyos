@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type Settings = {
@@ -307,7 +308,7 @@ export default function StaffSettingsPage() {
       title="Налаштування відділення"
       description="Сповіщення реєстратурі та оплата — керує адміністратор."
       staffName={staff?.displayName}
-      staffRole={staff?.role}
+      staffRole={roleLabelUk(staff?.role)}
     >
       {body}
     </StaffWorkspaceShell>
