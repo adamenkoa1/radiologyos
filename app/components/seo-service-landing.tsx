@@ -99,7 +99,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         <h2 style={{ fontSize: 30 }}>Дослідження та актуальні ціни</h2>
         {loadError ? <p>Актуальні ціни тимчасово не вдалося завантажити. Перейдіть до запису, щоб побачити доступні послуги.</p> : null}
         {!loadError && services.length === 0 ? <p>Завантажуємо актуальний перелік послуг…</p> : null}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
           {visible.map((service) => (
             <article key={service.code} style={{ background: "white", border: "1px solid #d7e8e6", borderRadius: 16, padding: 20 }}>
               <div style={{ fontSize: 13, opacity: 0.65 }}>Код {service.code}</div>
@@ -112,7 +112,7 @@ export function SeoServiceLanding({ page }: { page: SeoServicePage }) {
         </div>
       </section>
 
-      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20 }}>
+      <section style={{ maxWidth: 1080, margin: "0 auto", padding: "28px 24px", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 20 }}>
         <div style={{ background: "white", borderRadius: 16, padding: 24 }}>
           <h2>Як підготуватися</h2>
           <ul>{page.preparation.map((item) => <li key={item} style={{ marginBottom: 10, lineHeight: 1.5 }}>{item}</li>)}</ul>
