@@ -81,17 +81,26 @@ export default function PatientsPage() {
   const [cardLoading,setCardLoading] = useState(false);
   const [creating,setCreating] = useState(false);
   const [error,setError] = useState("");
+  // Мережевий збій завантаження списку — щоб показати «Повторити», а не тихий
+  // порожній список (який виглядає як «пацієнтів немає»).
+  const [netError,setNetError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
   const [saving,setSaving] = useState(false);
 
   async function loadList() {
-    const response = await fetch("/api/staff/patients", { cache:"no-store" });
-    const data = await response.json() as { patients?:PatientSummary[]; staff?:StaffInfo; error?:string };
-    if (!response.ok) { setError(data.error || "Немає доступу"); return; }
-    setPatients(data.patients || []);
-    setStaff(data.staff || null);
-    setError("");
+    try {
+      const response = await fetch("/api/staff/patients", { cache:"no-store" });
+      const data = await response.json() as { patients?:PatientSummary[]; staff?:StaffInfo; error?:string };
+      if (!response.ok) { setError(data.error || "Немає доступу"); return; }
+      setPatients(data.patients || []);
+      setStaff(data.staff || null);
+      setError(""); setNetError(false);
+    } catch {
+      // Мережевий збій: на першому завантаженні (список ще порожній) показуємо
+      // екран «Повторити»; фонове оновлення після мутації списку не чіпає.
+      setNetError(true);
+    }
   }
 
   useEffect(() => {
@@ -260,6 +269,7 @@ export default function PatientsPage() {
     staffRole={staff ? roleLabels[staff.role] : undefined}
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fpatients">Увійти для роботи</a></section> :
+    netError && !patients.length ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити список пацієнтів. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); void loadList(); }}>Повторити</button></section> :
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Список пацієнтів">
         <div className="protocolQueueTools">
