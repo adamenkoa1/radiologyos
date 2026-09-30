@@ -47,7 +47,10 @@
 .themeDark .dashEquip>div{background:#0e151a}.themeDark .dashEquip small{color:#8b98a1}
 /* Поля вводу */
 .themeDark input,.themeDark select,.themeDark textarea{background:#0e151a!important;border-color:#26333d!important;color:#e6edf1!important}
-.themeDark ::placeholder{color:#6b7a84}
+/* Світліший плейсхолдер + opacity:1 знімає типову напівпрозорість браузера,
+   через яку підказка полів («Код, ПІБ, дослідження» тощо) майже зникала на
+   темному тлі поля (#0e151a). */
+.themeDark ::placeholder{color:#94a3ad;opacity:1}
 .themeDark .settingsCard input[readonly]{color:#9fb0bb}
 /* Панелі-фільтри й шапки таблиць (були світлі) → темні */
 .themeDark .staffTools,.themeDark .reportFilterGrid{background:#0e151a!important;border-color:#22303a!important;color:#cdd8de!important}
