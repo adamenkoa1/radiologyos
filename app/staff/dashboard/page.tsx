@@ -478,10 +478,10 @@ export default function DashboardPage() {
             <a href="/staff/book" className="dashCalNew">+ Записати пацієнта</a>
           </div>
         </div>
-        <div className="dashChips" role="tablist" aria-label="Фільтр розкладу">
+        <div className="dashChips" role="group" aria-label="Фільтр розкладу">
           {AGENDA_FILTERS.map(f => {
             const n = f.id === "all" ? todayAgenda.length : todayAgenda.filter(b => matchFilter(b, f.id)).length;
-            return <button key={f.id} type="button" role="tab" aria-selected={agendaFilter===f.id}
+            return <button key={f.id} type="button" aria-pressed={agendaFilter===f.id}
               className={`dashChip${agendaFilter===f.id?" on":""}`} onClick={()=>setAgendaFilter(f.id)}>
               {f.label}{n ? <i>{n}</i> : null}
             </button>;

@@ -397,12 +397,12 @@ export default function ProtocolsPage() {
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Черга протоколів">
         <div className="protocolQueueTools">
-          <div className="protocolFilterTabs" role="tablist">
-            <button role="tab" aria-selected={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>setFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
-            <button role="tab" aria-selected={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>До підпису <b>{counts.ready}</b></button>
-            <button role="tab" aria-selected={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>setFilter("signed")}>Підписані <b>{counts.signed}</b></button>
-            <button role="tab" aria-selected={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
-            <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
+          <div className="protocolFilterTabs" role="group" aria-label="Фільтр черги протоколів">
+            <button aria-pressed={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>setFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
+            <button aria-pressed={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>До підпису <b>{counts.ready}</b></button>
+            <button aria-pressed={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>setFilter("signed")}>Підписані <b>{counts.signed}</b></button>
+            <button aria-pressed={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
+            <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Код, ПІБ, дослідження"/>
         </div>

@@ -273,9 +273,9 @@ export default function PatientsPage() {
     <div className="protocolWorkspace">
       <aside className="protocolQueue" aria-label="Список пацієнтів">
         <div className="protocolQueueTools">
-          <div className="crmSegmentTabs" role="tablist">
+          <div className="crmSegmentTabs" role="group" aria-label="Сегменти пацієнтів">
             {(Object.keys(SEGMENT_LABELS) as PatientSegment[]).map((key)=><button
-              key={key} role="tab" aria-selected={segment===key}
+              key={key} aria-pressed={segment===key}
               className={segment===key?"active":""} onClick={()=>setSegment(key)}
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
