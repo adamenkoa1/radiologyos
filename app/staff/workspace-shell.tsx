@@ -282,12 +282,12 @@ export default function StaffWorkspaceShell({
       </header>
 
       <nav className="workspaceBusinessBar" aria-label="Бізнес-модулі RadiologyOS">
-        <div className="workspaceBusinessModules" role="tablist" aria-label="Модулі">
+        <div className="workspaceBusinessModules" role="group" aria-label="Модулі">
           {businessModules.map(module=>{
             const currentModule=module.key===activeModuleKey;
             const selected=module.key===browsed.key;
             return <button
-              key={module.key} type="button" role="tab" aria-selected={selected}
+              key={module.key} type="button" aria-pressed={selected}
               className={`${currentModule?"current ":""}${selected?"selected":""}`.trim()}
               onClick={()=>setBrowsedModule(module.key)}
             ><span>{module.shortLabel||module.label}</span>{currentModule&&<i aria-label="Поточний модуль"/>}</button>;

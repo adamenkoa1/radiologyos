@@ -312,12 +312,12 @@ export default function StudiesPage() {
         <span className="studiesResultCount">Показано: {visible.length}</span>
       </div>
 
-      <div className="studiesTabs" role="tablist" aria-label="Фільтр за станом">
-        <button type="button" role="tab" aria-selected={filter==="all"}
+      <div className="studiesTabs" role="group" aria-label="Фільтр за станом">
+        <button type="button" aria-pressed={filter==="all"}
           className={filter==="all"?"active":""} onClick={()=>{setFilter("all");setSelectedViewId(0);}}>
           Усі <b>{data.studies.length}</b>
         </button>
-        {activeStates.map((s)=><button key={s.v} type="button" role="tab" aria-selected={filter===s.v}
+        {activeStates.map((s)=><button key={s.v} type="button" aria-pressed={filter===s.v}
           className={filter===s.v?"active":""} onClick={()=>{setFilter(s.v);setSelectedViewId(0);}}>
           {s.l} <b>{s.count}</b>
         </button>)}
