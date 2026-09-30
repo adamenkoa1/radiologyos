@@ -416,6 +416,7 @@ export default function ProtocolsPage() {
             <b>{item.serviceTitle}</b>
             <small>{item.code} · {item.name}</small>
             <small>{item.performedAt ? `Виконано ${formatDateTime(item.performedAt)}` : `Заплановано ${item.desiredDate} ${item.desiredTime}`}</small>
+            {(item.signedBy || item.assignedRadiologistEmail) && <small>Лікар: {item.signedBy || item.assignedRadiologistEmail}</small>}
           </button>)}
         </div>
       </aside>
