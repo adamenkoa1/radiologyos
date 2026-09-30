@@ -257,7 +257,11 @@ export default function StudiesPage() {
       </div>
 
       {netError && <p className="staffError" role="alert" onClick={()=>setNetError("")}>{netError}</p>}
-      {notice && <p className="staffError" role="status" onClick={()=>setNotice("")}>{notice}</p>}
+      {/* notice несе і успіх, і невдачу: помилки послідовно починаються з
+          «Не вдалося»/«Помилка»/«Вкажіть» — успіх показуємо як staffSuccess. */}
+      {notice && (/^(Не вдалося|Помилка|Вкажіть)/.test(notice)
+        ? <p className="staffError" role="alert" onClick={()=>setNotice("")}>{notice}</p>
+        : <p className="staffSuccess" role="status" onClick={()=>setNotice("")}>{notice}</p>)}
 
       {pendingDeliveries.length > 0 ? <section aria-labelledby="pending-deliveries-title">
         <div className="studiesOrgBar">

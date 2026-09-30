@@ -198,7 +198,7 @@ export default function InventoryPage() {
 
   return <StaffWorkspaceShell active="inventory" title="Склад" description="BAS-подібний облік матеріалів: номенклатура, склади, документи, проведення, регістр рухів і друковані форми." staffName={data?.staff.displayName || data?.staff.email} staffRole={data?.staff.role}>
     {!loaded ? <p className="notice">Завантаження складу…</p> : error ? <p className="notice error">{error}</p> : data && <>
-      {toast && <p className={`inventoryToast${toast.startsWith("⚠")?" warn":""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
+      {toast && <p className={`inventoryToast${toast.startsWith("⚠")?" warn":""}`} role={toast.startsWith("⚠")?"alert":"status"} aria-live={toast.startsWith("⚠")?"assertive":"polite"} onClick={()=>setToast("")}>{toast}</p>}
       <section className="inventoryKpi" aria-label="Стан складу"><div><b>{metrics.active}</b><span>позицій активно</span></div><div className={metrics.low?"warn":""}><b>{metrics.low}</b><span>нижче мінімуму</span></div><div className={metrics.expiring?"warn":""}><b>{metrics.expiring}</b><span>термін ≤ 30 днів</span></div><div className={metrics.empty?"danger":""}><b>{metrics.empty}</b><span>немає залишку</span></div></section>
       <div className="inventoryTabsRow">
         <div className="inventoryTabs" role="tablist" aria-label="Розділи складу">

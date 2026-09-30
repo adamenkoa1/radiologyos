@@ -456,7 +456,7 @@ export default function DashboardPage() {
                   <span className="dashCardSvc">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}</span>
                   <span className="dashCardWhen">{b.desiredDate} · {b.desiredTime || "—"}{doctorShort(b.assignedRadiologistEmail) ? ` · 👨‍⚕️ ${doctorShort(b.assignedRadiologistEmail)}` : ""}</span>
                   <div className="dashCardActions">
-                    <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone}>📞</a>
+                    <a className="dashCardBtn" href={`tel:${b.phone}`} title={b.phone} aria-label={`Подзвонити ${b.phone}`}><span aria-hidden="true">📞</span></a>
                     <button type="button" className="dashCardBtn wa" onClick={()=>setOpenId(b.id)}>Повідомити</button>
                     {canManage
                       ? <button type="button" className="dashCardBtn ok" disabled={busyId===b.id} onClick={()=>void confirmBooking(b.id)}>
