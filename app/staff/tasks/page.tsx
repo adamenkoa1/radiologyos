@@ -38,6 +38,7 @@ export default function TasksPage() {
   const [mine,setMine] = useState(false);
   const [busy,setBusy] = useState<number|null>(null);
   const [creating,setCreating] = useState(false);
+  const [submitting,setSubmitting] = useState(false);
   const [form,setForm] = useState({ title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"" });
 
   // background:true — тихе автооновлення: не блимає спінером і не глушить список
@@ -57,7 +58,7 @@ export default function TasksPage() {
 
   // Не оновлюємо у фоні під час мутації чи створення завдання.
   const pauseRef = useRef(false);
-  useEffect(()=>{ pauseRef.current = busy!==null || creating; });
+  useEffect(()=>{ pauseRef.current = busy!==null || creating || submitting; });
 
   // Живий список: тихо оновлюємо завдання кожні 45 с, тож нові автоматичні й
   // командні задачі зʼявляються без ручного перезавантаження.
@@ -76,11 +77,17 @@ export default function TasksPage() {
   const overdue=(t:Task)=>t.status==="open" && !!t.dueDate && t.dueDate<today;
 
   async function createTask() {
-    if(!form.title.trim()) return;
-    const res=await fetch("/api/staff/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});
-    const payload=await res.json().catch(()=>({})) as {error?:string};
-    if(!res.ok){setError(payload.error||"Не вдалося створити завдання");return;}
-    setCreating(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:""});await load();
+    if(!form.title.trim()||submitting) return;
+    setSubmitting(true);
+    try {
+      const res=await fetch("/api/staff/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});
+      const payload=await res.json().catch(()=>({})) as {error?:string};
+      if(!res.ok){setError(payload.error||"Не вдалося створити завдання");return;}
+      setCreating(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:""});await load();
+    } catch {
+      // Мережевий збій створення — показуємо помилку, а не мовчазний no-op.
+      setError("Не вдалося створити завдання. Перевірте зʼєднання та спробуйте ще раз.");
+    } finally {setSubmitting(false);}
   }
 
   async function patchTask(id:number,body:Record<string,unknown>) {
@@ -114,7 +121,7 @@ export default function TasksPage() {
           <label><span>До дати</span><input type="date" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></label>
           <label><span>Виконавець</span><select value={form.assignedEmail} onChange={e=>setForm(f=>({...f,assignedEmail:e.target.value}))}><option value="">Без виконавця</option>{data.members.map(m=><option key={m.email} value={m.email}>{m.displayName||m.email}</option>)}</select></label>
         </div>
-        <button className="taskSave" disabled={!form.title.trim()} onClick={()=>void createTask()}>Створити завдання</button>
+        <button className="taskSave" disabled={!form.title.trim()||submitting} onClick={()=>void createTask()}>{submitting?"Створення…":"Створити завдання"}</button>
       </div>}
 
       <div className="taskSummary">
