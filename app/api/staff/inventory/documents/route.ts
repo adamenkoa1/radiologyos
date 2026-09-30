@@ -58,7 +58,7 @@ export async function POST(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{status:503});
   const ctx = await requireOrgContext(request,db);
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" },{status:403});
-  if (!canManage(ctx.role)) return Response.json({ error:"Складські документи можуть змінювати адміністратор або рентгенолаборант" },{status:403});
+  if (!canManage(ctx.role)) return Response.json({ error:"Складські документи можуть змінювати адміністратор або рентгенлаборант" },{status:403});
   const body = await request.json().catch(()=>({})) as Record<string,unknown>;
   const action = clean(body.action,30);
 
@@ -125,7 +125,7 @@ export async function PATCH(request:Request) {
   if (!db) return Response.json({ error:"База тимчасово недоступна" },{status:503});
   const ctx = await requireOrgContext(request,db);
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" },{status:403});
-  if (!canManage(ctx.role)) return Response.json({ error:"Складські документи можуть змінювати адміністратор або рентгенолаборант" },{status:403});
+  if (!canManage(ctx.role)) return Response.json({ error:"Складські документи можуть змінювати адміністратор або рентгенлаборант" },{status:403});
   const body = await request.json().catch(()=>({})) as Record<string,unknown>;
   const documentId = int(body.documentId);
   if (!documentId) return Response.json({ error:"Некоректний документ" },{status:400});

@@ -50,11 +50,11 @@ const labels: Record<string,string> = {
 };
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 const FIRST_NAMES = ["Іван","Олександр","Андрій","Дмитро","Микола","Сергій","Володимир","Олена","Наталія","Тетяна","Ірина","Марина"];
 const PATRONYMICS = ["Іванович","Олександрович","Андрійович","Дмитрович","Миколайович","Сергійович","Володимирович","Іванівна","Олександрівна","Андріївна","Миколаївна","Сергіївна"];
-const POSITION_OPTIONS = ["Начальник відділення","Лікар-рентгенолог","Рентгенолаборант","Черговий рентгенолаборант","Медична сестра","Санітарка","Реєстратор","Адміністратор"];
+const POSITION_OPTIONS = ["Начальник відділення","Лікар-рентгенолог","Рентгенлаборант","Черговий рентгенлаборант","Медична сестра","Санітарка","Реєстратор","Адміністратор"];
 const RANK_OPTIONS = ["Цивільний персонал","Солдат","Старший солдат","Молодший сержант","Сержант","Старший сержант","Головний сержант","Штаб-сержант","Молодший лейтенант","Лейтенант","Старший лейтенант","Капітан","Майор","Підполковник","Полковник"];
 const categoryLabels: Record<string,string> = { civilian:"Цивільний маршрут", military:"Військовий маршрут" };
 const referralLabels: Record<string,string> = {
@@ -504,7 +504,7 @@ export default function StaffPage() {
             <label className="nameField"><span>Ім’я</span><input name="firstName" required maxLength={60} list="first-name-options" placeholder="Почніть вводити: Іва…"/></label>
             <label className="nameField"><span>По батькові</span><input name="patronymic" maxLength={60} list="patronymic-options" placeholder="Іванович"/></label>
             <p className="staffFormGroup">Посада</p>
-            <label className="halfField"><span>Посада</span><select name="positionTitle" required defaultValue="Рентгенолаборант">{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
+            <label className="halfField"><span>Посада</span><select name="positionTitle" required defaultValue="Рентгенлаборант">{POSITION_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
             <label className="halfField"><span>Військове звання</span><select name="militaryRank" defaultValue="Цивільний персонал">{RANK_OPTIONS.map(value=><option key={value}>{value}</option>)}</select></label>
             <p className="staffFormGroup">Контакти та доступ</p>
             <label className="halfField"><span>Мобільний телефон</span><input name="phone" type="tel" inputMode="tel" required placeholder="0XX XXX XX XX"/></label>
@@ -607,13 +607,13 @@ export default function StaffPage() {
                   void saveOperations(item.id,{
                     assignedRadiologistEmail:String(data.get("assignedRadiologistEmail")),
                     assignedRadiographerEmail:String(data.get("assignedRadiographerEmail")),
-                  },"Лікаря та рентгенолаборанта призначено.");
+                  },"Лікаря та рентгенлаборанта призначено.");
                 }}>
                   <label><span>Лікар-рентгенолог</span><select name="assignedRadiologistEmail" defaultValue={item.assignedRadiologistEmail}>
                     <option value="">Не призначено</option>
                     {staffOptions.filter(member=>member.role==="radiologist").map(member=><option value={member.email} key={member.email}>{member.displayName || member.email}</option>)}
                   </select></label>
-                  <label><span>Рентгенолаборант</span><select name="assignedRadiographerEmail" defaultValue={item.assignedRadiographerEmail}>
+                  <label><span>Рентгенлаборант</span><select name="assignedRadiographerEmail" defaultValue={item.assignedRadiographerEmail}>
                     <option value="">Не призначено</option>
                     {staffOptions.filter(member=>member.role==="radiographer").map(member=><option value={member.email} key={member.email}>{member.displayName || member.email}</option>)}
                   </select></label>

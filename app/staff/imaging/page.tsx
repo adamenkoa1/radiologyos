@@ -33,7 +33,7 @@ type Card = { booking:BookingRef; study:StudyRecord | null; series:DicomSeries[]
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 
 function formatDateTime(value:string) {

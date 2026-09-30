@@ -180,7 +180,7 @@ export function buildTemplateRows(template:ReportTemplateKey,source:ReportSource
     for (const row of source.filter((item)=>!!item.performedAt && item.status !== "cancelled")) {
       const workers = [
         { email:row.assignedRadiologistEmail, name:staffName(row,"radiologist"), role:"Лікар-рентгенолог" },
-        { email:row.assignedRadiographerEmail, name:staffName(row,"radiographer"), role:"Рентгенолаборант" },
+        { email:row.assignedRadiographerEmail, name:staffName(row,"radiographer"), role:"Рентгенлаборант" },
       ];
       for (const worker of workers) {
         if (!worker.email) continue;

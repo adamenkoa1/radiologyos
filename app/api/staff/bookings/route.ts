@@ -85,7 +85,7 @@ export async function POST(request: Request) {
     return Response.json({ error: "Оберіть активного лікаря-рентгенолога цієї організації" }, { status: 400 });
   }
   if (!(await hasActiveTenantRole(db, ctx.organizationId, radiographer, "radiographer"))) {
-    return Response.json({ error: "Оберіть активного рентгенолаборанта цієї організації" }, { status: 400 });
+    return Response.json({ error: "Оберіть активного рентгенлаборанта цієї організації" }, { status: 400 });
   }
   const validTimes = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes);
   if (!isBookableDate(desiredDate) || !validTimes.includes(desiredTime) || !isEquipmentDayOpen(desiredDate, schedule, service.equipmentId)) {
@@ -360,7 +360,7 @@ export async function PATCH(request: Request) {
       return Response.json({ error: "Оберіть активного лікаря-рентгенолога цієї організації" }, { status: 400 });
     }
     if (!(await hasActiveTenantRole(db, ctx.organizationId, radiographerEmail, "radiographer"))) {
-      return Response.json({ error: "Оберіть активного рентгенолаборанта цієї організації" }, { status: 400 });
+      return Response.json({ error: "Оберіть активного рентгенлаборанта цієї організації" }, { status: 400 });
     }
     const updated = await db.prepare(
       `UPDATE bookings SET assigned_radiologist_email = ?, assigned_radiographer_email = ?

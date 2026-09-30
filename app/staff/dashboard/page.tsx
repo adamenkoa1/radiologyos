@@ -28,7 +28,7 @@ type Data = {
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 const equipmentNames: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 const EQUIP: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };

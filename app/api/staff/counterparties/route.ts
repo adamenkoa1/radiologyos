@@ -36,7 +36,7 @@ export async function POST(request:Request){
   const db=dbBinding();
   if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
   const ctx=await requireOrgContext(request,db);
-  if(!ctx||!canManage(ctx.role))return Response.json({error:"Контрагентів можуть змінювати адміністратор або рентгенолаборант"},{status:403});
+  if(!ctx||!canManage(ctx.role))return Response.json({error:"Контрагентів можуть змінювати адміністратор або рентгенлаборант"},{status:403});
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;
   try{
     const row=await createCounterparty(db,{organizationId:ctx.organizationId,values:body});
@@ -50,7 +50,7 @@ export async function PATCH(request:Request){
   const db=dbBinding();
   if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
   const ctx=await requireOrgContext(request,db);
-  if(!ctx||!canManage(ctx.role))return Response.json({error:"Контрагентів можуть змінювати адміністратор або рентгенолаборант"},{status:403});
+  if(!ctx||!canManage(ctx.role))return Response.json({error:"Контрагентів можуть змінювати адміністратор або рентгенлаборант"},{status:403});
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;
   const id=int(body.id);
   if(!id)return Response.json({error:"Некоректний контрагент"},{status:400});

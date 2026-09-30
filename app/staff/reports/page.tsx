@@ -39,7 +39,7 @@ type ReportData = {
 
 const roleLabels:Record<string,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 
 // Окремі підзвіти (мають власні сторінки). Раніше з хаба лінкувався лише

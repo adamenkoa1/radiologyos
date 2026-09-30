@@ -40,7 +40,7 @@ type EditorDoc = Omit<ProtocolDocument,"status"> & {
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 const bookingProtocolLabels: Record<string,string> = {
   not_started:"Не розпочато", in_progress:"В роботі", ready:"Готовий", issued:"Видано",

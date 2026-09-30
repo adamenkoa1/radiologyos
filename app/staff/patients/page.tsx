@@ -38,7 +38,7 @@ type PatientCard = {
 
 const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 const statusLabels: Record<string,string> = {
   new:"Нова", confirmed:"Підтверджена", rescheduled:"Перенесена", completed:"Завершена", cancelled:"Скасована",

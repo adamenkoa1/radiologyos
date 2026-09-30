@@ -10,7 +10,7 @@ export const STAFF_ROLE_LABELS: Record<string, string> = {
   department_head: "Завідувач відділення",
   registrar: "Реєстратор",
   radiologist: "Лікар-рентгенолог",
-  radiographer: "Рентгенолаборант",
+  radiographer: "Рентгенлаборант",
 };
 
 // Український підпис ролі; для невідомого коду повертає сам код.
