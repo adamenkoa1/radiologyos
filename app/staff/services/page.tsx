@@ -31,6 +31,7 @@ export default function ServiceAssignmentsPage() {
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
   const [requirements,setRequirements]=useState<MaterialRequirement[]>([]);
   const [inventoryItems,setInventoryItems]=useState<InventoryItem[]>([]);
   const [warehouses,setWarehouses]=useState<Warehouse[]>([]);
@@ -96,16 +97,25 @@ export default function ServiceAssignmentsPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
+    if (saving) return;
     setNotice(""); setError("");
-    const response = await fetch("/api/staff/services", {
-      method: "PUT",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ services }),
-    });
-    const data = await response.json().catch(() => ({}));
-    if (!response.ok) { setError(data.error || "Не вдалося зберегти"); return; }
-    if (Array.isArray(data.services)) setServices(data.services);
-    setNotice("Прив’язки послуг збережено.");
+    setSaving(true);
+    try {
+      const response = await fetch("/api/staff/services", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ services }),
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { setError(data.error || "Не вдалося зберегти"); return; }
+      if (Array.isArray(data.services)) setServices(data.services);
+      setNotice("Прив’язки послуг збережено.");
+    } catch {
+      // Мережевий збій збереження — показуємо помилку, а не мовчазний no-op.
+      setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   async function createRequirement(event:FormEvent){
@@ -174,9 +184,9 @@ export default function ServiceAssignmentsPage() {
             </div>
           </details>)}
         </fieldset>
-        {error && <p className="notice error">{error}</p>}
-        {notice && <p className="notice success">{notice}</p>}
-        {canEdit ? <button className="equipmentSave" type="submit">Зберегти послуги</button> : <p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
+        {error && <p className="notice error" role="alert">{error}</p>}
+        {notice && <p className="notice success" role="status" aria-live="polite">{notice}</p>}
+        {canEdit ? <button className="equipmentSave" type="submit" disabled={saving}>{saving ? "Збереження…" : "Зберегти послуги"}</button> : <p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
       </form>
 
       <section className="equipmentRegistry" aria-label="Норми матеріалів за послугами">
@@ -185,8 +195,8 @@ export default function ServiceAssignmentsPage() {
           <a href="/staff/inventory/material-consumption">Фактичне списання →</a>
         </div>
         {!materialsLoaded?<p className="notice">Завантаження норм матеріалів…</p>:<>
-          {materialError&&<p className="notice error">{materialError}</p>}
-          {materialNotice&&<p className="notice success">{materialNotice}</p>}
+          {materialError&&<p className="notice error" role="alert">{materialError}</p>}
+          {materialNotice&&<p className="notice success" role="status" aria-live="polite">{materialNotice}</p>}
           {materialCanEdit&&<form className="inventoryOperations" onSubmit={createRequirement}><div>
             <label>Послуга<select required value={materialForm.serviceCode} onChange={event=>setMaterialForm(current=>({...current,serviceCode:event.target.value}))}><option value="">Оберіть послугу…</option>{activeServices.map(row=><option key={row.code} value={row.code}>{row.code} · {row.title}</option>)}</select></label>
             <label>Матеріал<select required value={materialForm.itemId} onChange={event=>setMaterialForm(current=>({...current,itemId:event.target.value}))}><option value="">Оберіть матеріал…</option>{activeItems.map(row=><option key={row.id} value={row.id}>{row.name} · {row.unit}</option>)}</select></label>
