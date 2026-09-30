@@ -23,3 +23,18 @@ test("tasks page auto-refreshes without disrupting active work", async () => {
   assert.match(page, /document\.hidden\|\|pauseRef\.current/);
   assert.match(page, /pauseRef\.current = busy!==null \|\| creating/);
 });
+
+test("creating a task guards against double-submit and a network throw", async () => {
+  const page = await read("app/staff/tasks/page.tsx");
+  // guard: no re-entry while a create request is in flight
+  assert.match(page, /if\(!form\.title\.trim\(\)\|\|submitting\) return;/);
+  assert.match(page, /setSubmitting\(true\);/);
+  // the POST is wrapped so a network throw surfaces an error instead of a silent no-op
+  assert.match(page, /createTask[\s\S]*?catch \{[\s\S]*?setError\([^)]*Не вдалося створити завдання/);
+  assert.match(page, /finally \{setSubmitting\(false\);\}/);
+  // the submit button reflects the in-flight state and cannot be re-clicked
+  assert.match(page, /disabled=\{!form\.title\.trim\(\)\|\|submitting\}/);
+  assert.match(page, /submitting\?"Створення…"/);
+  // background refresh is paused during submit too
+  assert.match(page, /pauseRef\.current = busy!==null \|\| creating \|\| submitting;/);
+});
