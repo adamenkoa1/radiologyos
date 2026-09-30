@@ -37,7 +37,7 @@ export const REPORT_TEMPLATES: Record<ReportTemplateKey, ReportTemplate> = {
       column("status","Статус"),
       column("patientCategory","Маршрут"),
       column("radiologist","Лікар-рентгенолог"),
-      column("radiographer","Рентгенолаборант"),
+      column("radiographer","Рентгенлаборант"),
       column("performedAt","Фактично виконано"),
       column("regions","Анатомічні ділянки","number"),
       column("duration","Тривалість, хв","number"),

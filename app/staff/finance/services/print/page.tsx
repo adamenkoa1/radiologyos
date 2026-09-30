@@ -67,7 +67,7 @@ export default function ServiceActPrintPage(){
         <p><span>Тривалість</span><b>{payload.service.durationMinutes} хв</b></p>
         <p><span>Анатомічних ділянок</span><b>{payload.service.anatomicalRegionsCount}</b></p>
         <p><span>Лікар</span><b>{payload.service.radiologistEmail||"—"}</b></p>
-        <p><span>Рентгенолаборант</span><b>{payload.service.radiographerEmail||"—"}</b></p>
+        <p><span>Рентгенлаборант</span><b>{payload.service.radiographerEmail||"—"}</b></p>
       </section>
 
       <section className="financePrintAmount">

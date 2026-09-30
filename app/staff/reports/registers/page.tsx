@@ -32,7 +32,7 @@ const allSections=REGISTER_REPORT_UI_SECTIONS.map(item=>item.key);
 function money(value:number){return new Intl.NumberFormat("uk-UA",{style:"currency",currency:"UAH",maximumFractionDigits:0}).format(Number(value||0));}
 function number(value:number){return new Intl.NumberFormat("uk-UA",{maximumFractionDigits:2}).format(Number(value||0));}
 const METHOD_UK:Record<string,string>={cash:"Готівка",card:"Картка",bank_transfer:"Банківський переказ",privat_link:"Privat24",other:"Інше"};
-const ROLE_UK:Record<string,string>={radiologist:"Лікар-рентгенолог",radiographer:"Рентгенолаборант"};
+const ROLE_UK:Record<string,string>={radiologist:"Лікар-рентгенолог",radiographer:"Рентгенлаборант"};
 
 export default function RegisterTurnoverPage(){
   const [preset,setPreset]=useState<RegisterReportPeriodPreset>("current_month");

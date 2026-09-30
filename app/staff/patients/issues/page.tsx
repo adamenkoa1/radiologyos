@@ -18,7 +18,7 @@ type Counts = { high:number; medium:number; low:number; total:number };
 const roleLabels: Record<string,string> = {
   admin:"Адміністратор", organization_admin:"Адміністратор організації",
   department_head:"Завідувач відділення", registrar:"Реєстратор",
-  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенолаборант",
+  radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
 const severityLabels: Record<Severity,string> = { high:"Високий", medium:"Середній", low:"Низький" };
 const kindLabels: Record<string,string> = {

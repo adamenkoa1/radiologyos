@@ -45,7 +45,7 @@ export async function GET(request:Request){
 export async function POST(request:Request){
   const db=dbBinding();if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
   const ctx=await requireOrgContext(request,db);if(!ctx)return Response.json({error:"Доступ лише для персоналу"},{status:403});
-  if(!canManage(ctx.role))return Response.json({error:"Інвентаризацію можуть змінювати адміністратор або рентгенолаборант"},{status:403});
+  if(!canManage(ctx.role))return Response.json({error:"Інвентаризацію можуть змінювати адміністратор або рентгенлаборант"},{status:403});
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;const action=clean(body.action,30);
 
   if(action==="create"){

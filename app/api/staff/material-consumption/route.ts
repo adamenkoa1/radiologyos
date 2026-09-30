@@ -19,7 +19,7 @@ function mapError(error:unknown){
 async function context(request:Request){
   const db=dbBinding();if(!db)return {response:Response.json({error:"База тимчасово недоступна"},{status:503})} as const;
   const ctx=await requireOrgContext(request,db);if(!ctx)return {response:Response.json({error:"Доступ лише для персоналу"},{status:403})} as const;
-  if(!MANAGER_ROLES.has(ctx.role))return {response:Response.json({error:"Фактичне списання матеріалів доступне адміністратору або рентгенолаборанту"},{status:403})} as const;
+  if(!MANAGER_ROLES.has(ctx.role))return {response:Response.json({error:"Фактичне списання матеріалів доступне адміністратору або рентгенлаборанту"},{status:403})} as const;
   return {db,ctx} as const;
 }
 

@@ -34,7 +34,7 @@ export async function GET(request:Request){
 
 export async function POST(request:Request){
   const db=dbBinding(); if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
-  const ctx=await requireOrgContext(request,db); if(!ctx||!canManage(ctx.role))return Response.json({error:"Журнал ТО можуть змінювати адміністратор або рентгенолаборант"},{status:403});
+  const ctx=await requireOrgContext(request,db); if(!ctx||!canManage(ctx.role))return Response.json({error:"Журнал ТО можуть змінювати адміністратор або рентгенлаборант"},{status:403});
   const body=await request.json().catch(()=>({})) as Record<string,unknown>;
   const equipmentId=clean(body.equipmentId,80), eventType=TYPES.has(String(body.eventType))?String(body.eventType):"fault", title=clean(body.title,180), details=clean(body.details,4000), vendor=clean(body.vendor,180), assignedEmail=clean(body.assignedEmail,254).toLowerCase(), dueDate=clean(body.dueDate,10), downtimeStart=clean(body.downtimeStart,10);
   if(!equipmentId||!title)return Response.json({error:"Вкажіть обладнання і короткий опис"},{status:400});
@@ -50,7 +50,7 @@ export async function POST(request:Request){
 
 export async function PATCH(request:Request){
   const db=dbBinding(); if(!db)return Response.json({error:"База тимчасово недоступна"},{status:503});
-  const ctx=await requireOrgContext(request,db); if(!ctx||!canManage(ctx.role))return Response.json({error:"Журнал ТО можуть змінювати адміністратор або рентгенолаборант"},{status:403});
+  const ctx=await requireOrgContext(request,db); if(!ctx||!canManage(ctx.role))return Response.json({error:"Журнал ТО можуть змінювати адміністратор або рентгенлаборант"},{status:403});
   const body=await request.json().catch(()=>({})) as Record<string,unknown>; const id=Number(body.id);
   if(!Number.isInteger(id)||id<1)return Response.json({error:"Некоректний запис"},{status:400});
   const existing=await db.prepare(`SELECT id,status,assigned_email AS assignedEmail,due_date AS dueDate,downtime_start AS downtimeStart,downtime_end AS downtimeEnd FROM equipment_maintenance WHERE organization_id=? AND id=? LIMIT 1`).bind(ctx.organizationId,id).first<{id:number;status:string;assignedEmail:string;dueDate:string;downtimeStart:string;downtimeEnd:string}>();

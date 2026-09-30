@@ -26,7 +26,7 @@ const roleLabels:Record<StaffRole,string> = {
   admin:"Адміністратор",
   registrar:"Реєстратор",
   radiologist:"Лікар-рентгенолог",
-  radiographer:"Рентгенолаборант",
+  radiographer:"Рентгенлаборант",
 };
 
 function formatDateTime(value:string) {
