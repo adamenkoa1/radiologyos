@@ -216,6 +216,7 @@ export default function StaffWorkspaceShell({
 
   const wide = active === "dashboard" || active === "appointments" || active === "intake" || active === "board" || active === "tasks" || active === "inventory" || active === "finance" || active === "counterparties" || active === "purchases" || active === "documents" || active === "registers" || active === "directories";
   return <div className={`workspaceShell basWorkspaceShell${collapsed ? " workspaceCollapsed":""}${dark ? " themeDark":""}${wide ? " workspaceWide":""}`}>
+    <a className="skipToContent" href="#workspaceMainContent">Перейти до вмісту</a>
     <CommandPalette />
     <aside className="workspaceSidebar">
       <Link className="workspaceBrand" href="/staff/dashboard" aria-label="RadiologyOS — головний пульт">
@@ -301,7 +302,7 @@ export default function StaffWorkspaceShell({
         </div>
       </nav>
 
-      <main className="workspacePage">
+      <main className="workspacePage" id="workspaceMainContent" tabIndex={-1}>
         <header className="workspacePageHead">
           <div>
             <p className="workspaceBreadcrumb">RadiologyOS <span>/</span> {activeModule.label} <span>/</span> {sectionLabels[active]}</p>

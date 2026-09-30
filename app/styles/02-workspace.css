@@ -3,6 +3,11 @@
    Типографіка · Простір (8pt) · Радіуси · Тіні · Рух · Модальності.
    Скоуп: .workspaceShell — робочий кабінет. Публічний сайт має свою айдентику.
    ============================================================ */
+/* Skip-to-content: перший фокусований елемент, прихований до фокуса з клавіатури.
+   Дозволяє обійти брендинг + процес/BAS-рейки й одразу перейти до вмісту. */
+.skipToContent{position:fixed;top:8px;left:8px;z-index:400;padding:10px 16px;border-radius:8px;background:var(--brand,#123d3a);color:#fff;font-weight:700;text-decoration:none;transform:translateY(-150%);transition:transform .15s ease}
+.skipToContent:focus{transform:translateY(0);outline:3px solid var(--gold,#d8b55e);outline-offset:2px}
+.workspacePage:focus{outline:none}
 .workspaceShell{
   /* Типографіка */
   --fs-display:48px; --fs-h1:36px; --fs-h2:28px; --fs-h3:22px;
