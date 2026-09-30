@@ -237,6 +237,10 @@ export default function ProtocolsPage() {
     if ((status === "ready" || status === "signed" || status === "issued") && !doc.conclusion.trim()) {
       setActionError("Готовий протокол повинен містити висновок."); return;
     }
+    // Підтвердження незворотних дій: підпис фіксує клінічний зміст назавжди,
+    // видача передає результат пацієнту.
+    if (status === "signed" && !window.confirm("Підписати протокол? Після підпису клінічний зміст стане незмінним.")) return;
+    if (status === "issued" && !window.confirm("Видати протокол пацієнту? Дію не можна скасувати.")) return;
     setSaving(true);
     const response = await fetch("/api/staff/protocols", {
       method:"PUT", headers:{"content-type":"application/json"},

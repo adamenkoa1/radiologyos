@@ -103,6 +103,8 @@ export default function StudiesPage() {
   }, []);
 
   async function deliverResult(item:PendingDelivery) {
+    // Підтвердження незворотної дії: результат передається пацієнту.
+    if (!window.confirm("Видати результат пацієнту? Дію не можна скасувати.")) return;
     const key=item.kind === "protocol" ? `protocol:${item.bookingId}` : `addendum:${item.addendumId}`;
     setDeliveryBusy(key); setNotice("");
     try {
