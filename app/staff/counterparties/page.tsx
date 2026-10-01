@@ -45,13 +45,19 @@ export default function CounterpartiesPage(){
       const response=await fetch("/api/staff/counterparties",{method,headers:{"content-type":"application/json"},body:JSON.stringify(form)});
       const payload=await response.json().catch(()=>({})) as {error?:string;counterparty?:Counterparty};
       if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося зберегти"}`);return;}
-      setNotice(`✓ ${form.id?"Контрагента оновлено":"Контрагента створено"}`);await load();
+      setNotice(`✓ ${form.id?"Контрагента оновлено":"Контрагента створено"}`);
+      // Перезавантаження списку — best-effort: збереження вже пройшло на сервері,
+      // тож збій оновлення не має видаватися за збій збереження (ризик дубля).
+      await load().catch(()=>{});
       if(payload.counterparty)edit(payload.counterparty);
+    }catch{
+      // Мережевий збій самого збереження — показуємо помилку, а не мовчазний no-op.
+      setNotice("⚠ Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");
     }finally{setBusy(false);}
   }
 
   return <StaffWorkspaceShell active="counterparties" title="Контрагенти" description="BAS-довідник постачальників і платників. Документи посилаються на ID контрагента, а історичну назву зберігають snapshot-ом." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
-    {error&&<p className="financeError">{error}</p>}
+    {error&&<p className="financeError" role="alert">{error}</p>}
     {!data&&!error&&<p className="financeLoading">Завантаження довідника…</p>}
     {data&&<div className="inventoryDocumentsLayout">
       <section className="financeJournal">
@@ -64,7 +70,7 @@ export default function CounterpartiesPage(){
 
       <section className="inventoryDocumentCard">
         <header><div><small>Довідник</small><h2>{form.id?`Контрагент #${form.id}`:"Новий контрагент"}</h2><p>{data.canManage?"Реквізити можна змінювати; проведені документи зберігають власний snapshot.":"Режим перегляду"}</p></div></header>
-        {notice&&<p className={notice.startsWith("⚠")?"financeError":"notice"}>{notice}</p>}
+        {notice&&<p className={notice.startsWith("⚠")?"financeError":"notice"} role={notice.startsWith("⚠")?"alert":"status"} aria-live={notice.startsWith("⚠")?"assertive":"polite"}>{notice}</p>}
         <form className="inventoryOperations" onSubmit={save}><div><label>Назва<input required disabled={!data.canManage} value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/></label><label>Код<input disabled={!data.canManage} value={form.code} onChange={e=>setForm({...form,code:e.target.value})}/></label><label>Тип<select disabled={!data.canManage} value={form.kind} onChange={e=>setForm({...form,kind:e.target.value as Kind})}>{Object.entries(KIND_UK).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label><label>ЄДРПОУ / ІПН<input disabled={!data.canManage} value={form.taxId} onChange={e=>setForm({...form,taxId:e.target.value})}/></label><label>Телефон<input disabled={!data.canManage} value={form.phone} onChange={e=>setForm({...form,phone:e.target.value})}/></label><label>E-mail<input type="email" disabled={!data.canManage} value={form.email} onChange={e=>setForm({...form,email:e.target.value})}/></label><label>Адреса<input disabled={!data.canManage} value={form.address} onChange={e=>setForm({...form,address:e.target.value})}/></label><label><input type="checkbox" disabled={!data.canManage} checked={form.active} onChange={e=>setForm({...form,active:e.target.checked})}/> Активний</label>{data.canManage&&<div><button className="primary" disabled={busy}>{form.id?"Записати":"Створити"}</button><button type="button" disabled={busy} onClick={reset}>Новий</button></div>}</div></form>
       </section>
     </div>}
