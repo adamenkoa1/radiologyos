@@ -11,7 +11,7 @@ const STATUS_LABELS={active:"Працює",maintenance:"На обслугову�
 export default function EquipmentRegistryPage(){
   const [equipment,setEquipment]=useState<EquipmentRecord[]>(EQUIPMENT_REGISTRY_DEFAULTS.map(row=>({...row})));
   const [staff,setStaff]=useState<StaffInfo|null>(null);
-  const [loaded,setLoaded]=useState(false); const [notice,setNotice]=useState(""); const [error,setError]=useState("");
+  const [loaded,setLoaded]=useState(false); const [notice,setNotice]=useState(""); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
   useEffect(()=>{
     let active=true;
     const t=window.setTimeout(async()=>{
@@ -32,9 +32,9 @@ export default function EquipmentRegistryPage(){
   },[]);
   const canEdit=staff?.role==="admin";
   function change(id:EquipmentRecord["id"],field:keyof EquipmentRecord,value:string){setEquipment(rows=>rows.map(row=>row.id===id?{...row,[field]:value}:row));}
-  async function save(event:FormEvent){event.preventDefault();setNotice("");setError("");const res=await fetch("/api/staff/equipment-registry",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({equipment})});const data=await res.json().catch(()=>({})) as {ok?:boolean;equipment?:EquipmentRecord[];error?:string};if(!res.ok){setError(data.error||"Не вдалося зберегти");return;}if(data.equipment)setEquipment(data.equipment);setNotice("Реєстр обладнання збережено.");}
+  async function save(event:FormEvent){event.preventDefault();if(saving)return;setNotice("");setError("");setSaving(true);try{const res=await fetch("/api/staff/equipment-registry",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({equipment})});const data=await res.json().catch(()=>({})) as {ok?:boolean;equipment?:EquipmentRecord[];error?:string};if(!res.ok){setError(data.error||"Не вдалося зберегти");return;}if(data.equipment)setEquipment(data.equipment);setNotice("Реєстр обладнання збережено.");}catch{/* Мережевий збій збереження — показуємо помилку, а не мовчазний no-op. */setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");}finally{setSaving(false);}}
   return <StaffWorkspaceShell active="equipment" title="Обладнання" description="Окремий реєстр апаратів, які зараз використовує відділення." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
-    {!loaded?<p className="notice">Завантаження…</p>:error&&!staff?<p className="notice error">{error}</p>:<form className="equipmentRegistry" onSubmit={save}>
+    {!loaded?<p className="notice">Завантаження…</p>:error&&!staff?<p className="notice error" role="alert">{error}</p>:<form className="equipmentRegistry" onSubmit={save}>
       <div className="equipmentRegistryHead"><div><b>Реєстр обладнання</b><span>{countUk(equipment.filter(row=>row.status==="active").length,"апарат","апарати","апаратів")} у роботі · характеристики можна доповнювати</span></div><div><a href="/staff/maintenance">ТО та несправності →</a><a href="/staff/schedule">Графік кабінетів →</a></div></div>
       <fieldset className="equipmentRegistryGrid" disabled={!canEdit}>{equipment.map((row,index)=><details className="equipmentCard" key={row.id} open={index===0}>
         <summary><i>{String(index+1).padStart(2,"0")}</i><span><b>{[row.manufacturer,row.model].filter(Boolean).join(" ")||row.type}</b><small>{row.type} · {row.room}</small></span><em className={row.status}>{STATUS_LABELS[row.status]}</em></summary>
@@ -50,8 +50,8 @@ export default function EquipmentRegistryPage(){
           <label className="wide"><span>Примітка</span><textarea value={row.notes} placeholder="Особливості роботи, комплектація…" onChange={e=>change(row.id,"notes",e.target.value)}/></label>
         </div>
       </details>)}</fieldset>
-      {notice&&<p className="notice success">{notice}</p>}{error&&<p className="notice error">{error}</p>}
-      {canEdit?<button className="equipmentSave" type="submit">Зберегти обладнання</button>:<p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
+      {notice&&<p className="notice success" role="status" aria-live="polite">{notice}</p>}{error&&<p className="notice error" role="alert">{error}</p>}
+      {canEdit?<button className="equipmentSave" type="submit" disabled={saving}>{saving?"Збереження…":"Зберегти обладнання"}</button>:<p className="settingsHint">Перегляд доступний персоналу; редагування — адміністратору.</p>}
     </form>}
   </StaffWorkspaceShell>;
 }
