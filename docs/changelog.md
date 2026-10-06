@@ -6,6 +6,7 @@
 
 ### Security
 
+- **`source-map-js` закріплено на `1.2.2`** (через `overrides`) — закрито HIGH-вразливість event-loop DoS через індексовані offset-и секцій source-map (GHSA-68fv-2mgg-jv7q, зачеплені 1.0.0–1.2.1). Пакет приходить транзитивно (`next` → `postcss@8.5.25` → `source-map-js`); CI-гейт `npm audit --omit=dev --audit-level=high` почав падати на цій новорозкритій advisory, знову блокуючи всі PR. `1.2.2` задовольняє `postcss ^1.0.0`, тож бамп безпечний; після нього `audit --audit-level=high` — чистий (лишилась одна moderate `baseline-browser-mapping`, нижче гейту). Лише lock-файл + `overrides`; код не змінено.
 - **Next.js `16.3.5` → `16.3.8`** — закрито критичну вразливість RCE у `next/og` `ImageResponse` (GHSA-vcvr-r3jv-pc5j, зачеплені 16.2.0–16.3.5). CI-гейт `npm audit --omit=dev --audit-level=high` (у `ci.yml` і `deploy.yml`) почав падати на цій новорозкритій advisory, блокуючи всі PR. Проєкт не використовує `next/og`/`ImageResponse`, тож RCE недосяжний, але прод-залежність усе одно оновлено до пропатченої версії в межах того ж мінора. `vinext` (Vite-фреймворк) не залежить від `next`, тож бамп безпечний; оновлено лише `next` у lock-файлі, збірка/тести без змін.
 
 ### Added
