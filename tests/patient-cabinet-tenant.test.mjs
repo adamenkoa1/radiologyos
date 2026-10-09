@@ -32,3 +32,16 @@ test("cabinet renders new study states, prefers server label and shows the organ
   assert.match(cabinet, /b\.statusLabel \|\| meta\.label/);
   assert.match(cabinet, /b\.organization/);
 });
+
+// Кнопки «Копіювати» суми/призначення для переказу дають явний зворотний
+// звʼязок і fallback — у webview, де clipboard API заблоковано, не мовчать.
+test("cabinet copy buttons give feedback and fall back when the clipboard is blocked", async () => {
+  const cabinet = await read("public/site/cabinet.html");
+  assert.match(cabinet, /copyWithFeedback\(b,b\.dataset\.copyValue\|\|''\)/);
+  assert.match(cabinet, /function copyWithFeedback\(btn,text\)/);
+  assert.match(cabinet, /function fallbackCopy\(value,flash\)/);
+  assert.match(cabinet, /document\.execCommand\('copy'\)/);
+  assert.match(cabinet, /Скопійовано ✓/);
+  // старий «мовчазний» виклик прибрано
+  assert.doesNotMatch(cabinet, /navigator\.clipboard\?\.writeText\(b\.dataset\.copyValue/);
+});
