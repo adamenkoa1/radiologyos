@@ -72,7 +72,7 @@
     _toastTimer = setTimeout(() => { el.style.opacity = '0'; }, 5000);
   }
 
-  function markInvalid(input) {
+  function markInvalid(input, message) {
     if (!input) return;
     // Розгорнути згорнутий fallback (ручні дата/час), щоб помилку було видно.
     const det = input.closest('details');
@@ -80,7 +80,12 @@
     input.style.borderColor = '#d9705f';
     const wrap = input.closest('.field');
     const err = wrap ? wrap.querySelector('.field-error') : null;
-    if (err) err.style.display = 'block';
+    if (err) {
+      // Опційне специфічне повідомлення (напр. «час уже минув»), зі збереженням
+      // базового тексту, щоб потім відновити його.
+      if (message != null) { if (err.dataset.base == null) err.dataset.base = err.textContent; err.textContent = message; }
+      err.style.display = 'block';
+    }
     try { input.focus(); } catch (e) {}
   }
   function clearInvalid(input) {
@@ -88,7 +93,16 @@
     input.style.borderColor = '';
     const wrap = input.closest('.field');
     const err = wrap ? wrap.querySelector('.field-error') : null;
-    if (err) err.style.display = '';
+    if (err) { if (err.dataset.base != null) err.textContent = err.dataset.base; err.style.display = ''; }
+  }
+
+  // Дата й час у поясі клініки — щоб не дати вручну обрати момент, що вже минув
+  // (слот-пікер це вже відсікає серверно; це guard для ручного fallback).
+  function kyivToday() {
+    return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Kyiv', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+  }
+  function kyivNowTime() {
+    return new Intl.DateTimeFormat('uk-UA', { timeZone: 'Europe/Kyiv', hour: '2-digit', minute: '2-digit', hour12: false }).format(new Date()).replace('.', ':');
   }
 
   // Прив'язує кнопки Viber/WhatsApp форми до месенджер-хендофу.
@@ -98,6 +112,9 @@
     const nameEl = document.getElementById(ids.name);
     const dateEl = document.getElementById(ids.date);
     const timeEl = document.getElementById(ids.time);
+    // Нативний пікер дати не пропонує минулі дні (користувач усе ще може ввести
+    // вручну — це перевіряє collect()).
+    if (dateEl && dateEl.type === 'date' && !dateEl.min) dateEl.min = kyivToday();
     [nameEl, dateEl, timeEl].forEach((el) => {
       if (el) el.addEventListener('input', () => clearInvalid(el));
     });
@@ -111,6 +128,11 @@
       if (!name) { markInvalid(nameEl); return null; }
       if (!date) { markInvalid(dateEl); return null; }
       if (!time) { markInvalid(timeEl); return null; }
+      // Ручний fallback не має приймати момент, що вже минув (слот-пікер це вже
+      // відсікає). Межа — поточні дата/час у поясі клініки.
+      const today = kyivToday();
+      if (date < today) { markInvalid(dateEl, 'Ця дата вже минула — оберіть сьогоднішню або пізнішу.'); return null; }
+      if (date === today && time <= kyivNowTime()) { markInvalid(timeEl, 'Цей час сьогодні вже минув — оберіть пізніший час.'); return null; }
       return { items, name, date, time };
     }
 
