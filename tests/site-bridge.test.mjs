@@ -202,6 +202,27 @@ test("ПІБ field suggests Ukrainian given names + patronymics by token", async
   }
 });
 
+test("cart offers optional online payment without becoming a господарський факт", async () => {
+  const js = await read("public/site/assets/cart.js");
+  // shown only for paid (civilian) services, i.e. total > 0
+  assert.match(js, /function renderPayOptional\(total\)/);
+  assert.match(js, /if \(!\(total > 0\)\) \{ box\.hidden = true/);
+  // uses the existing configured pay link (no booking/business document created)
+  assert.match(js, /fetch\('\/api\/pay-link'/);
+  assert.match(js, /window\.open\(link/);
+  // messaging stays "pay after", payment is explicitly optional
+  assert.match(js, /необов[’']язкова/);
+  // the sum/purpose go through textContent, never interpolated into innerHTML
+  assert.match(js, /#cartPaySum'\)\.textContent = money\(total\)/);
+  assert.match(js, /#cartPayPurpose'\)\.textContent = payPurpose\(\)/);
+  for (const p of ["index", "price"]) {
+    const html = await read(`public/site/${p}.html`);
+    assert.match(html, /<div class="cart-pay" id="cartPay" hidden><\/div>/, `${p} має точку монтування оплати`);
+  }
+  const css = await read("public/site/assets/site.css");
+  assert.match(css, /\.cart-pay\{/);
+});
+
 test("messenger handoff copies honestly and always exposes the заявка text to copy manually", async () => {
   const js = await read("public/site/assets/d1-bridge.js");
   // copyText reports success/failure and the toast branches on it — no false "скопійовано"

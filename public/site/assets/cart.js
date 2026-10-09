@@ -45,8 +45,61 @@ function renderCart() {
   box.innerHTML = cart.length
     ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small>Код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
     : '<div class="cart-empty">Ви ще не додали жодної послуги.</div>';
-  document.getElementById('cartTotal').textContent = money(cart.reduce((s, x) => s + x.price, 0));
+  const total = cart.reduce((s, x) => s + x.price, 0);
+  document.getElementById('cartTotal').textContent = money(total);
+  renderPayOptional(total);
   refreshSlotPicker();
+}
+
+// Необов'язкова онлайн-оплата з кошика. Модель лишається «оплата після
+// дослідження» — це зручність для тих, хто хоче сплатити наперед. Відкриває
+// налаштоване посилання оплати (GET /api/pay-link) і НЕ створює господарський
+// факт; остаточну суму підтверджує реєстратура. Показується лише для платних
+// (цивільних) послуг, тобто коли сума > 0.
+function payPurpose() {
+  return 'Передоплата за дослідження: ' + cart.map(x => x.code + ' ' + x.name).join('; ');
+}
+
+function flashCopy(btn, text) {
+  const value = String(text == null ? '' : text);
+  if (!btn.dataset.label) btn.dataset.label = btn.textContent;
+  const done = ok => { btn.textContent = ok ? 'Скопійовано ✓' : 'Скопіюйте вручну'; setTimeout(() => { btn.textContent = btn.dataset.label; }, 1800); };
+  try {
+    if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(value).then(() => done(true), () => done(false)); return; }
+  } catch (e) { /* fallback нижче */ }
+  done(false);
+}
+
+async function openOnlinePayment() {
+  try {
+    const res = await fetch('/api/pay-link', { cache: 'no-store' });
+    const data = await res.json().catch(() => ({}));
+    const link = data && data.payLink;
+    if (!res.ok || !link) { alert('Онлайн-оплата зараз недоступна. Зателефонуйте в реєстратуру: +380 97 280 88 99'); return; }
+    window.open(link, '_blank', 'noopener');
+  } catch (e) {
+    alert('Не вдалося відкрити оплату. Перевірте зʼєднання або зателефонуйте: +380 97 280 88 99');
+  }
+}
+
+function renderPayOptional(total) {
+  const box = document.getElementById('cartPay');
+  if (!box) return;
+  if (!(total > 0)) { box.hidden = true; box.innerHTML = ''; return; }
+  box.hidden = false;
+  box.innerHTML =
+    '<p class="cart-pay-note">Оплата <strong>необов’язкова</strong> — зазвичай після дослідження. За бажанням можна сплатити онлайн зараз; остаточну суму підтвердить реєстратура.</p>' +
+    '<button type="button" class="cart-pay-btn" id="cartPayBtn">💳 Оплатити онлайн</button>' +
+    '<div class="cart-pay-detail"><span>Сума</span><b id="cartPaySum"></b><button type="button" class="cart-pay-copy" data-copy-from="cartPaySum">Копіювати</button></div>' +
+    '<div class="cart-pay-detail"><span>Призначення</span><b id="cartPayPurpose"></b><button type="button" class="cart-pay-copy" data-copy-from="cartPayPurpose">Копіювати</button></div>';
+  // Значення — через textContent, не innerHTML (у призначенні назви послуг).
+  box.querySelector('#cartPaySum').textContent = money(total);
+  box.querySelector('#cartPayPurpose').textContent = payPurpose();
+  box.querySelector('#cartPayBtn').addEventListener('click', openOnlinePayment);
+  box.querySelectorAll('.cart-pay-copy').forEach(btn => btn.addEventListener('click', () => {
+    const src = box.querySelector('#' + btn.dataset.copyFrom);
+    flashCopy(btn, src ? src.textContent : '');
+  }));
 }
 
 // «Оберіть зручний час»: реальні вільні слоти з розкладу відділення для першої

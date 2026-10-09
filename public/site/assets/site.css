@@ -81,6 +81,14 @@ a{text-decoration:none;color:inherit}
 .book-confirm-copy{border:1.5px solid var(--brand,#123d3a);background:#fff;color:var(--brand,#123d3a)}
 .book-confirm-call{border:0;background:var(--brand,#123d3a);color:#fff}
 .cart-total-note{margin:6px 0 0;font-size:12px;color:#5c6c78;line-height:1.4}
+.cart-pay{margin:12px 0 0;padding:12px 14px;border:1px solid #d9eef0;border-radius:var(--r-md,12px);background:#f7fbfc}
+.cart-pay[hidden]{display:none}
+.cart-pay-note{margin:0 0 10px;font-size:12px;color:#5c6c78;line-height:1.45}
+.cart-pay-btn{width:100%;min-height:44px;border:0;border-radius:var(--r-sm,8px);background:var(--brand,#123d3a);color:#fff;font:inherit;font-size:14px;font-weight:800;cursor:pointer}
+.cart-pay-detail{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:8px;align-items:center;margin-top:10px;font-size:12px}
+.cart-pay-detail span{color:#5c6c78}
+.cart-pay-detail b{min-width:0;word-break:break-word}
+.cart-pay-copy{border:0;border-radius:var(--r-sm,8px);padding:7px 10px;min-height:36px;background:#e6f4f6;color:#0e5f67;font:inherit;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap}
 .cabinet-note{margin:6px 0 0;text-align:center;font-size:12px;color:#5c6c78;line-height:1.4}
 
 /* Посилання на інформаційні сторінки послуг — внутрішня перелінковка/SEO
