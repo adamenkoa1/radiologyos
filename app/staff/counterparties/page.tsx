@@ -2,6 +2,7 @@
 
 import { useCallback,useEffect,useMemo,useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { useSubmit } from "../../hooks/use-submit";
 
 type Kind="supplier"|"payer"|"both"|"other";
 type Counterparty={id:number;code:string;name:string;kind:Kind;taxId:string;phone:string;email:string;address:string;active:number;createdAt:string;updatedAt:string};
@@ -19,7 +20,7 @@ export default function CounterpartiesPage(){
   const [kind,setKind]=useState<"all"|Kind>("all");
   const [error,setError]=useState("");
   const [notice,setNotice]=useState("");
-  const [busy,setBusy]=useState(false);
+  const {busy,run}=useSubmit(()=>setNotice("⚠ Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз."));
 
   const load=useCallback(async()=>{
     const response=await fetch("/api/staff/counterparties",{cache:"no-store"});
@@ -39,8 +40,8 @@ export default function CounterpartiesPage(){
 
   async function save(event:React.FormEvent){
     event.preventDefault();if(!data?.canManage)return;
-    setBusy(true);setNotice("");
-    try{
+    setNotice("");
+    await run(async()=>{
       const method=form.id?"PATCH":"POST";
       const response=await fetch("/api/staff/counterparties",{method,headers:{"content-type":"application/json"},body:JSON.stringify(form)});
       const payload=await response.json().catch(()=>({})) as {error?:string;counterparty?:Counterparty};
@@ -50,10 +51,7 @@ export default function CounterpartiesPage(){
       // тож збій оновлення не має видаватися за збій збереження (ризик дубля).
       await load().catch(()=>{});
       if(payload.counterparty)edit(payload.counterparty);
-    }catch{
-      // Мережевий збій самого збереження — показуємо помилку, а не мовчазний no-op.
-      setNotice("⚠ Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");
-    }finally{setBusy(false);}
+    });
   }
 
   return <StaffWorkspaceShell active="counterparties" title="Контрагенти" description="BAS-довідник постачальників і платників. Документи посилаються на ID контрагента, а історичну назву зберігають snapshot-ом." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
