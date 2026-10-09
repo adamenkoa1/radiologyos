@@ -21,17 +21,19 @@ test("saving a warehouse is guarded by the shared useSubmit hook", async () => {
   assert.match(page, /role=\{notice\.startsWith\("⚠"\)\?"alert":"status"\}/);
 });
 
-test("saving the equipment registry guards against double-submit and a network throw", async () => {
+test("saving the equipment registry is guarded by the shared useSubmit hook", async () => {
   const page = await read("app/staff/equipment/page.tsx");
-  // re-entry guard + saving state around the PUT
-  assert.match(page, /if\(saving\)return;/);
-  assert.match(page, /setSaving\(true\);/);
-  assert.match(page, /async function save[\s\S]*?catch\{[\s\S]*?setError\("Не вдалося зберегти/);
-  assert.match(page, /finally\{setSaving\(false\);\}/);
-  // the submit button reflects the in-flight state
+  // resilience (double-submit guard + catch + reset) comes from the shared hook
+  assert.match(page, /import \{ useSubmit \} from "\.\.\/\.\.\/hooks\/use-submit"/);
+  assert.match(page, /const \{busy:saving,run\}=useSubmit\(\(\)=>setError\([^)]*Не вдалося зберегти/);
+  // the PUT runs inside run(), which guards re-entry and resets busy
+  assert.match(page, /async function save[\s\S]*?await run\(async\(\)=>\{/);
+  // the submit button still reflects the in-flight state (busy aliased as saving)
   assert.match(page, /type="submit" disabled=\{saving\}/);
   assert.match(page, /saving\?"Збереження…"/);
-  // status/error carry screen-reader roles
+  // the hand-rolled saving state is gone
+  assert.doesNotMatch(page, /setSaving\(/);
+  // status/error still carry screen-reader roles
   assert.match(page, /className="notice success" role="status" aria-live="polite">\{notice\}/);
   assert.match(page, /className="notice error" role="alert">\{error\}/);
 });

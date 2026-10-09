@@ -36,17 +36,18 @@ test("material requirement editing is gated by server canEdit and stays separate
   assert.doesNotMatch(source,/fetch\("\/api\/staff\/material-consumption",\{method:/);
 });
 
-test("saving service assignments guards against double-submit and a network throw",async()=>{
+test("saving service assignments is guarded by the shared useSubmit hook",async()=>{
   const source=await readFile(pageUrl,"utf8");
-  // re-entry guard while a PUT is in flight
-  assert.match(source,/if \(saving\) return;/);
-  assert.match(source,/setSaving\(true\);/);
-  // the PUT is wrapped so a network throw surfaces an error instead of a silent no-op
-  assert.match(source,/async function save[\s\S]*?catch \{[\s\S]*?setError\([^)]*Не вдалося зберегти/);
-  assert.match(source,/finally \{\s*setSaving\(false\);/);
-  // the submit button reflects the in-flight state and cannot be re-clicked
+  // resilience (double-submit guard + catch + reset) comes from the shared hook
+  assert.match(source,/import \{ useSubmit \} from "\.\.\/\.\.\/hooks\/use-submit"/);
+  assert.match(source,/const \{ busy: saving, run \} = useSubmit\(\(\) => setError\([^)]*Не вдалося зберегти/);
+  // the PUT runs inside run(), which guards re-entry and resets busy
+  assert.match(source,/async function save[\s\S]*?await run\(async \(\) => \{/);
+  // the submit button still reflects the in-flight state (busy aliased as saving)
   assert.match(source,/type="submit" disabled=\{saving\}/);
   assert.match(source,/saving \? "Збереження…"/);
+  // the hand-rolled saving state is gone
+  assert.doesNotMatch(source,/setSaving\(/);
 });
 
 test("service page status and error messages carry screen-reader roles",async()=>{

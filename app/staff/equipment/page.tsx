@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { EQUIPMENT_REGISTRY_DEFAULTS, type EquipmentRecord } from "../../../lib/equipment-registry";
 import { countUk, roleLabelUk } from "../../../lib/labels";
+import { useSubmit } from "../../hooks/use-submit";
 
 type StaffInfo={email:string;displayName:string;role:string};
 const STATUS_LABELS={active:"Працює",maintenance:"На обслуговуванні",inactive:"Не використовується"};
@@ -11,7 +12,7 @@ const STATUS_LABELS={active:"Працює",maintenance:"На обслугову�
 export default function EquipmentRegistryPage(){
   const [equipment,setEquipment]=useState<EquipmentRecord[]>(EQUIPMENT_REGISTRY_DEFAULTS.map(row=>({...row})));
   const [staff,setStaff]=useState<StaffInfo|null>(null);
-  const [loaded,setLoaded]=useState(false); const [notice,setNotice]=useState(""); const [error,setError]=useState(""); const [saving,setSaving]=useState(false);
+  const [loaded,setLoaded]=useState(false); const [notice,setNotice]=useState(""); const [error,setError]=useState(""); const {busy:saving,run}=useSubmit(()=>setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз."));
   useEffect(()=>{
     let active=true;
     const t=window.setTimeout(async()=>{
@@ -32,7 +33,7 @@ export default function EquipmentRegistryPage(){
   },[]);
   const canEdit=staff?.role==="admin";
   function change(id:EquipmentRecord["id"],field:keyof EquipmentRecord,value:string){setEquipment(rows=>rows.map(row=>row.id===id?{...row,[field]:value}:row));}
-  async function save(event:FormEvent){event.preventDefault();if(saving)return;setNotice("");setError("");setSaving(true);try{const res=await fetch("/api/staff/equipment-registry",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({equipment})});const data=await res.json().catch(()=>({})) as {ok?:boolean;equipment?:EquipmentRecord[];error?:string};if(!res.ok){setError(data.error||"Не вдалося зберегти");return;}if(data.equipment)setEquipment(data.equipment);setNotice("Реєстр обладнання збережено.");}catch{/* Мережевий збій збереження — показуємо помилку, а не мовчазний no-op. */setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");}finally{setSaving(false);}}
+  async function save(event:FormEvent){event.preventDefault();setNotice("");setError("");await run(async()=>{const res=await fetch("/api/staff/equipment-registry",{method:"PUT",headers:{"content-type":"application/json"},body:JSON.stringify({equipment})});const data=await res.json().catch(()=>({})) as {ok?:boolean;equipment?:EquipmentRecord[];error?:string};if(!res.ok){setError(data.error||"Не вдалося зберегти");return;}if(data.equipment)setEquipment(data.equipment);setNotice("Реєстр обладнання збережено.");});}
   return <StaffWorkspaceShell active="equipment" title="Обладнання" description="Окремий реєстр апаратів, які зараз використовує відділення." staffName={staff?.displayName} staffRole={roleLabelUk(staff?.role)}>
     {!loaded?<p className="notice">Завантаження…</p>:error&&!staff?<p className="notice error" role="alert">{error}</p>:<form className="equipmentRegistry" onSubmit={save}>
       <div className="equipmentRegistryHead"><div><b>Реєстр обладнання</b><span>{countUk(equipment.filter(row=>row.status==="active").length,"апарат","апарати","апаратів")} у роботі · характеристики можна доповнювати</span></div><div><a href="/staff/maintenance">ТО та несправності →</a><a href="/staff/schedule">Графік кабінетів →</a></div></div>
