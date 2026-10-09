@@ -202,6 +202,20 @@ test("ПІБ field suggests Ukrainian given names + patronymics by token", async
   }
 });
 
+test("manual date/time fallback cannot book a moment that already passed", async () => {
+  const js = await read("public/site/assets/d1-bridge.js");
+  // native date picker is bounded to today in the clinic timezone
+  assert.match(js, /dateEl\.min = kyivToday\(\)/);
+  assert.match(js, /function kyivToday\(\)/);
+  assert.match(js, /function kyivNowTime\(\)/);
+  // collect() rejects a past date and a past time-for-today with a specific message
+  assert.match(js, /if \(date < today\) \{ markInvalid\(dateEl, 'Ця дата вже минула/);
+  assert.match(js, /if \(date === today && time <= kyivNowTime\(\)\) \{ markInvalid\(timeEl, 'Цей час сьогодні вже минув/);
+  // markInvalid supports a specific message and clearInvalid restores the base text
+  assert.match(js, /function markInvalid\(input, message\)/);
+  assert.match(js, /err\.dataset\.base != null\) err\.textContent = err\.dataset\.base/);
+});
+
 test("cart offers optional online payment without becoming a господарський факт", async () => {
   const js = await read("public/site/assets/cart.js");
   // shown only for paid (civilian) services, i.e. total > 0
