@@ -67,6 +67,10 @@ const humanDate=(iso)=>(iso?String(iso).split('-').reverse().join('.'):'');
 const money=(n)=>new Intl.NumberFormat('uk-UA').format(Number(n)||0);
 const isPayUrl=(s)=>/^https?:\/\//i.test(String(s||''));
 function payQrImg(payload){if(!payload||typeof qrcode!=='function')return '';try{const qr=qrcode(0,'M');qr.addData(payload);qr.make();return qr.createImgTag(4,6)}catch(e){return ''}}
+// Копіювання суми/призначення для переказу — з явним зворотним звʼязком і
+// fallback, щоб у webview (де clipboard API заблоковано) кнопка не мовчала.
+function fallbackCopy(value,flash){try{const ta=document.createElement('textarea');ta.value=value;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:0;left:0;opacity:0';document.body.appendChild(ta);ta.select();const ok=document.execCommand('copy');document.body.removeChild(ta);flash(!!ok)}catch(e){flash(false)}}
+function copyWithFeedback(btn,text){const value=String(text==null?'':text);if(!btn.dataset.label)btn.dataset.label=btn.textContent;const flash=(ok)=>{btn.textContent=ok?'Скопійовано ✓':'Скопіюйте вручну';setTimeout(()=>{btn.textContent=btn.dataset.label},1800)};try{if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(value).then(()=>flash(true),()=>fallbackCopy(value,flash));return}}catch(e){/* нижче */}fallbackCopy(value,flash)}
 
 const gate=document.getElementById('gate');const cabinet=document.getElementById('cabinet');const errorBox=document.getElementById('gateError');const identityStep=document.getElementById('identityStep');const otpStep=document.getElementById('otpStep');
 let phoneDigits='';let dobValue='';let challengeId='';
@@ -104,7 +108,7 @@ async function loadBookings(){
   try{res=await fetch(MY_BOOKINGS,{method:'POST',headers:{'content-type':'application/json'}});data=await res.json().catch(()=>({}))}catch(e){showError('Помилка мережі — перевірте зʼєднання та спробуйте ще раз.');return false}
   if(!res.ok){showError(data.error||'Не вдалося завантажити заявки');return false}
   const list=document.getElementById('appList');const bookings=data.bookings||[];document.getElementById('emptyState').hidden=bookings.length>0;list.innerHTML = renderBookings(bookings);
-  list.querySelectorAll('[data-cancel]').forEach((b)=>b.addEventListener('click',()=>cancelBooking(b.dataset.cancel)));list.querySelectorAll('[data-protocol]').forEach((b)=>b.addEventListener('click',()=>toggleProtocol(b.dataset.protocol,b)));list.querySelectorAll('[data-pay-toggle]').forEach((b)=>b.addEventListener('click',()=>{const p=document.getElementById('payment-'+b.dataset.payToggle);p.hidden=!p.hidden}));list.querySelectorAll('[data-copy-value]').forEach((b)=>b.addEventListener('click',()=>navigator.clipboard?.writeText(b.dataset.copyValue||'')));list.querySelectorAll('[data-open-payment]').forEach((b)=>b.addEventListener('click',()=>window.open(b.dataset.url,'_blank','noopener')));return true
+  list.querySelectorAll('[data-cancel]').forEach((b)=>b.addEventListener('click',()=>cancelBooking(b.dataset.cancel)));list.querySelectorAll('[data-protocol]').forEach((b)=>b.addEventListener('click',()=>toggleProtocol(b.dataset.protocol,b)));list.querySelectorAll('[data-pay-toggle]').forEach((b)=>b.addEventListener('click',()=>{const p=document.getElementById('payment-'+b.dataset.payToggle);p.hidden=!p.hidden}));list.querySelectorAll('[data-copy-value]').forEach((b)=>b.addEventListener('click',()=>copyWithFeedback(b,b.dataset.copyValue||'')));list.querySelectorAll('[data-open-payment]').forEach((b)=>b.addEventListener('click',()=>window.open(b.dataset.url,'_blank','noopener')));return true
 }
 
 async function requestOtp(){
