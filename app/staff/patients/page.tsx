@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { useSubmit } from "../../hooks/use-submit";
 import BookingDrawer from "../booking-drawer";
 import { type CalBooking } from "../week-calendar";
 import {
@@ -86,12 +87,17 @@ export default function PatientsPage() {
   const [netError,setNetError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
-  const [saving,setSaving] = useState(false);
+  // Один re-entry-guard і busy-прапор на всі мутації картки/комунікацій:
+  // мережевий кидок routes у actionError, а не лишає кнопку «Зберегти» навічно
+  // заблокованою (попередній код скидав busy без try/catch/finally).
+  const onActionError = useCallback(() => setActionError("Не вдалося виконати дію. Перевірте зʼєднання та спробуйте ще раз."), []);
+  const { busy:saving, run } = useSubmit(onActionError);
 
   async function loadList() {
     try {
       const response = await fetch("/api/staff/patients", { cache:"no-store" });
-      const data = await response.json() as { patients?:PatientSummary[]; staff?:StaffInfo; error?:string };
+      const data = await response.json().catch(() => null) as { patients?:PatientSummary[]; staff?:StaffInfo; error?:string } | null;
+      if (!data) { setNetError(true); return; }
       if (!response.ok) { setError(data.error || "Немає доступу"); return; }
       setPatients(data.patients || []);
       setStaff(data.staff || null);
@@ -139,7 +145,8 @@ export default function PatientsPage() {
         ? `patientId=${encodeURIComponent(item.patientId)}`
         : `phone=${encodeURIComponent(item.phoneNormalized)}`;
       const response = await fetch(`/api/staff/patients?${query}`, { cache:"no-store" });
-      const data = await response.json() as PatientCard & { error?:string };
+      const data = await response.json().catch(() => null) as (PatientCard & { error?:string }) | null;
+      if (!data) { setActionError("Помилка мережі — спробуйте ще раз"); return; }
       if (!response.ok) { setActionError(data.error || "Не вдалося відкрити картку"); return; }
       setCard(data);
     } catch {
@@ -156,80 +163,84 @@ export default function PatientsPage() {
 
   async function saveProfile(form:HTMLFormElement) {
     if (!card) return;
-    setActionError(""); setActionSuccess(""); setSaving(true);
+    // FormData читаємо синхронно до await, поки форму не перемалювало.
     const data = new FormData(form);
-    const response = await fetch("/api/staff/patients", {
-      method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        patientId:card.patientId || undefined,
-        phone:card.phone,
-        displayName:String(data.get("displayName") || ""),
-        birthDate:String(data.get("birthDate") || ""),
-        email:String(data.get("email") || ""),
-        address:String(data.get("address") || ""),
-        tags:String(data.get("tags") || ""),
-        notes:String(data.get("notes") || ""),
-        doNotContact:data.get("doNotContact") === "on",
-        contrastAlert:data.get("contrastAlert") === "on",
-        allergyNote:String(data.get("allergyNote") || ""),
-      }),
+    const payload = {
+      patientId:card.patientId || undefined,
+      phone:card.phone,
+      displayName:String(data.get("displayName") || ""),
+      birthDate:String(data.get("birthDate") || ""),
+      email:String(data.get("email") || ""),
+      address:String(data.get("address") || ""),
+      tags:String(data.get("tags") || ""),
+      notes:String(data.get("notes") || ""),
+      doNotContact:data.get("doNotContact") === "on",
+      contrastAlert:data.get("contrastAlert") === "on",
+      allergyNote:String(data.get("allergyNote") || ""),
+    };
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/patients", {
+        method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({})) as { ok?:boolean; profile?:PatientProfile; error?:string };
+      if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося зберегти картку"); return; }
+      await loadList();
+      await openPatient({ patientId:result.profile.patientId, phoneNormalized:result.profile.phoneNormalized });
+      setActionSuccess("Картку пацієнта збережено.");
     });
-    const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося зберегти картку"); return; }
-    await loadList();
-    await openPatient({ patientId:result.profile.patientId, phoneNormalized:result.profile.phoneNormalized });
-    setActionSuccess("Картку пацієнта збережено.");
   }
 
   async function createPatient(form:HTMLFormElement) {
-    setActionError(""); setActionSuccess(""); setSaving(true);
     const data = new FormData(form);
-    const response = await fetch("/api/staff/patients", {
-      method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        phone:String(data.get("phone") || ""),
-        displayName:String(data.get("displayName") || ""),
-        birthDate:String(data.get("birthDate") || ""),
-        email:String(data.get("email") || ""),
-        address:String(data.get("address") || ""),
-        tags:String(data.get("tags") || ""),
-        notes:String(data.get("notes") || ""),
-        doNotContact:data.get("doNotContact") === "on",
-        contrastAlert:data.get("contrastAlert") === "on",
-        allergyNote:String(data.get("allergyNote") || ""),
-      }),
+    const payload = {
+      phone:String(data.get("phone") || ""),
+      displayName:String(data.get("displayName") || ""),
+      birthDate:String(data.get("birthDate") || ""),
+      email:String(data.get("email") || ""),
+      address:String(data.get("address") || ""),
+      tags:String(data.get("tags") || ""),
+      notes:String(data.get("notes") || ""),
+      doNotContact:data.get("doNotContact") === "on",
+      contrastAlert:data.get("contrastAlert") === "on",
+      allergyNote:String(data.get("allergyNote") || ""),
+    };
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/patients", {
+        method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({})) as { ok?:boolean; profile?:PatientProfile; error?:string };
+      if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося додати пацієнта"); return; }
+      setCreating(false);
+      await loadList();
+      setActionSuccess("Пацієнта додано.");
+      void openPatient({ patientId:result.profile.patientId, phoneNormalized:result.profile.phoneNormalized });
     });
-    const result = await response.json() as { ok?:boolean; profile?:PatientProfile; error?:string };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.profile) { setActionError(result.error || "Не вдалося додати пацієнта"); return; }
-    setCreating(false);
-    await loadList();
-    setActionSuccess("Пацієнта додано.");
-    void openPatient({ patientId:result.profile.patientId, phoneNormalized:result.profile.phoneNormalized });
   }
 
   async function logCommunication(form:HTMLFormElement) {
     if (!card) return;
-    setActionError(""); setActionSuccess(""); setSaving(true);
     const data = new FormData(form);
-    const response = await fetch("/api/staff/patients", {
-      method:"POST", headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        patientId:card.patientId || undefined,
-        phone:card.phone,
-        channel:String(data.get("channel")),
-        direction:String(data.get("direction")),
-        summary:String(data.get("summary")),
-      }),
+    const payload = {
+      patientId:card.patientId || undefined,
+      phone:card.phone,
+      channel:String(data.get("channel")),
+      direction:String(data.get("direction")),
+      summary:String(data.get("summary")),
+    };
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/patients", {
+        method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({})) as { ok?:boolean; communication?:Communication; error?:string };
+      if (!response.ok || !result.ok || !result.communication) { setActionError(result.error || "Не вдалося зберегти звернення"); return; }
+      const entry = { ...result.communication, createdAt:new Date().toISOString() };
+      form.reset();
+      setCard((current) => current && ({ ...current, communications:[entry, ...current.communications] }));
+      setActionSuccess("Звернення додано до історії комунікацій.");
     });
-    const result = await response.json() as { ok?:boolean; communication?:Communication; error?:string };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.communication) { setActionError(result.error || "Не вдалося зберегти звернення"); return; }
-    const entry = { ...result.communication, createdAt:new Date().toISOString() };
-    form.reset();
-    setCard((current) => current && ({ ...current, communications:[entry, ...current.communications] }));
-    setActionSuccess("Звернення додано до історії комунікацій.");
   }
 
   const canManage = staff?.role === "admin" || staff?.role === "registrar";
