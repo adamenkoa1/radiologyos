@@ -45,3 +45,13 @@ test("cabinet copy buttons give feedback and fall back when the clipboard is blo
   // старий «мовчазний» виклик прибрано
   assert.doesNotMatch(cabinet, /navigator\.clipboard\?\.writeText\(b\.dataset\.copyValue/);
 });
+
+// Кнопки, що відкривають зовнішнє (оплата, Telegram), мають fallback, якщо
+// window.open заблоковано (webview) — не мовчазний no-op і не фальшивий статус.
+test("cabinet external-open buttons fall back to same-tab navigation when a popup is blocked", async () => {
+  const cabinet = await read("public/site/cabinet.html");
+  // оплата
+  assert.match(cabinet, /const w=window\.open\(b\.dataset\.url,'_blank','noopener'\);if\(!w\)location\.href=b\.dataset\.url/);
+  // Telegram — статус «Відкрили» лише коли реально відкрили, інакше навігація
+  assert.match(cabinet, /const w=window\.open\(data\.url,'_blank','noopener'\);if\(w\)\{[^}]*Відкрили Telegram[^}]*\}else\{location\.href=data\.url\}/);
+});

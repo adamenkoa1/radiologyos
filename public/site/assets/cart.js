@@ -76,7 +76,10 @@ async function openOnlinePayment() {
     const data = await res.json().catch(() => ({}));
     const link = data && data.payLink;
     if (!res.ok || !link) { alert('Онлайн-оплата зараз недоступна. Зателефонуйте в реєстратуру: +380 97 280 88 99'); return; }
-    window.open(link, '_blank', 'noopener');
+    // Якщо попап заблоковано (напр. in-app webview) — відкриваємо у цій вкладці,
+    // щоб кнопка оплати не була мовчазним no-op.
+    const opened = window.open(link, '_blank', 'noopener');
+    if (!opened) location.href = link;
   } catch (e) {
     alert('Не вдалося відкрити оплату. Перевірте зʼєднання або зателефонуйте: +380 97 280 88 99');
   }
