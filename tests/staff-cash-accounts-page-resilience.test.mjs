@@ -1,5 +1,6 @@
 // Довідник кас і рахунків має переживати мережевий збій збереження (показати
-// помилку, а не мовчазний no-op) і озвучувати статуси скрінрідером.
+// помилку, а не мовчазний no-op) і озвучувати статуси скрінрідером. Стійкість
+// забезпечує спільний хук useSubmit (а не рукописний try/catch на сторінці).
 
 import assert from "node:assert/strict";
 import test from "node:test";
@@ -7,14 +8,18 @@ import { readFile } from "node:fs/promises";
 
 const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 
-test("saving a cash account surfaces a network throw instead of failing silently", async () => {
+test("saving a cash account is guarded by the shared useSubmit hook", async () => {
   const page = await read("app/staff/cash-accounts/page.tsx");
-  // the save handler wraps its fetch so a thrown network error reaches the user
-  assert.match(page, /async function save[\s\S]*?catch\{[\s\S]*?setNotice\("⚠ Не вдалося зберегти/);
-  // busy is always reset
-  assert.match(page, /\}finally\{setBusy\(false\);\}\}/);
+  // resilience comes from the shared hook, not a hand-written try/catch per page
+  assert.match(page, /import \{ useSubmit \} from "\.\.\/\.\.\/hooks\/use-submit"/);
+  // the hook's onError surfaces a network throw instead of a silent no-op
+  assert.match(page, /useSubmit\(\(\)=>setNotice\("⚠ Не вдалося зберегти/);
+  // the save handler runs its fetch inside run(), which guards re-entry and resets busy
+  assert.match(page, /async function save[\s\S]*?await run\(async\(\)=>\{/);
   // reload after a successful save is best-effort, so it cannot masquerade as a save failure
   assert.match(page, /await load\(\)\.catch\(\(\)=>\{\}\);/);
+  // the hand-rolled busy state is gone — busy now comes from the hook
+  assert.doesNotMatch(page, /setBusy\(/);
 });
 
 test("cash account status and error messages carry screen-reader roles", async () => {

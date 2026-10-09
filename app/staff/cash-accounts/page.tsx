@@ -2,6 +2,7 @@
 
 import { useCallback,useEffect,useMemo,useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { useSubmit } from "../../hooks/use-submit";
 
 type AccountType="cash"|"bank"|"provider"|"other";
 type Account={id:number;code:string;name:string;accountType:AccountType;currency:string;active:number;isDefault:number;createdAt:string;updatedAt:string};
@@ -12,13 +13,13 @@ const EMPTY:Form={id:null,code:"",name:"",accountType:"cash",currency:"UAH",acti
 const TYPE_UK:Record<AccountType,string>={cash:"Каса",bank:"Банківський рахунок",provider:"Платіжний провайдер",other:"Інший"};
 
 export default function CashAccountsPage(){
-  const [data,setData]=useState<Payload|null>(null);const [form,setForm]=useState<Form>(EMPTY);const [query,setQuery]=useState("");const [type,setType]=useState<"all"|AccountType>("all");const [error,setError]=useState("");const [notice,setNotice]=useState("");const [busy,setBusy]=useState(false);
+  const [data,setData]=useState<Payload|null>(null);const [form,setForm]=useState<Form>(EMPTY);const [query,setQuery]=useState("");const [type,setType]=useState<"all"|AccountType>("all");const [error,setError]=useState("");const [notice,setNotice]=useState("");const {busy,run}=useSubmit(()=>setNotice("⚠ Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз."));
   const load=useCallback(async()=>{const response=await fetch("/api/staff/cash-accounts",{cache:"no-store"});const payload=await response.json().catch(()=>({})) as Payload;if(!response.ok)throw new Error(payload.error||"Не вдалося завантажити каси і рахунки");setData(payload);setError("");},[]);
   useEffect(()=>{const timer=window.setTimeout(()=>void load().catch(e=>setError(e instanceof Error?e.message:"Помилка")),0);return()=>window.clearTimeout(timer);},[load]);
   const rows=useMemo(()=>{const q=query.trim().toLowerCase();return(data?.accounts||[]).filter(row=>(type==="all"||row.accountType===type)&&(!q||`${row.name} ${row.code} ${row.currency}`.toLowerCase().includes(q)));},[data,query,type]);
   function edit(row:Account){setForm({id:row.id,code:row.code,name:row.name,accountType:row.accountType,currency:row.currency,active:!!row.active,isDefault:!!row.isDefault});setNotice("");}
   function reset(){setForm(EMPTY);setNotice("");}
-  async function save(event:React.FormEvent){event.preventDefault();if(!data?.canEdit)return;setBusy(true);setNotice("");try{const response=await fetch("/api/staff/cash-accounts",{method:form.id?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});const payload=await response.json().catch(()=>({})) as {error?:string;account?:Account};if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося зберегти"}`);return;}setNotice(`✓ ${form.id?"Рахунок оновлено":"Рахунок створено"}`);await load().catch(()=>{});if(payload.account)edit(payload.account);}catch{/* Мережевий збій збереження — показуємо помилку, а не мовчазний no-op. */setNotice("⚠ Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");}finally{setBusy(false);}}
+  async function save(event:React.FormEvent){event.preventDefault();if(!data?.canEdit)return;setNotice("");await run(async()=>{const response=await fetch("/api/staff/cash-accounts",{method:form.id?"PATCH":"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});const payload=await response.json().catch(()=>({})) as {error?:string;account?:Account};if(!response.ok){setNotice(`⚠ ${payload.error||"Не вдалося зберегти"}`);return;}setNotice(`✓ ${form.id?"Рахунок оновлено":"Рахунок створено"}`);await load().catch(()=>{});if(payload.account)edit(payload.account);});}
   const classificationLocked=!!form.id;
   return <StaffWorkspaceShell active="finance" title="Каси і рахунки" description="BAS-довідник місць зберігання грошей. Оплата і повернення проводяться по конкретній касі або банківському рахунку." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
     {error&&<p className="financeError" role="alert">{error}</p>}{!data&&!error&&<p className="financeLoading">Завантаження…</p>}
