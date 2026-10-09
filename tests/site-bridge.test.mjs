@@ -201,3 +201,15 @@ test("ПІБ field suggests Ukrainian given names + patronymics by token", async
     assert.match(html, /assets\/name-suggest\.js/, `${p} лінкує name-suggest.js`);
   }
 });
+
+test("ПІБ field keeps a semantic name autocomplete so the browser never offers a bank card", async () => {
+  const js = await read("public/site/assets/name-suggest.js");
+  // Chrome/iOS ignores autocomplete="off" and heuristically offers saved cards
+  // on a payment-worded page; the attach() must set the explicit "name" hint.
+  assert.match(js, /setAttribute\('autocomplete', 'name'\)/);
+  assert.doesNotMatch(js, /setAttribute\('autocomplete', 'off'\)/);
+  for (const p of ["index", "price", "military"]) {
+    const html = await read(`public/site/${p}.html`);
+    assert.match(html, /autocomplete="name" id="(patientName|militaryPatientName)"/, `${p} ПІБ має autocomplete="name"`);
+  }
+});

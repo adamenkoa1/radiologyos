@@ -40,7 +40,12 @@
   function attach(input) {
     if (!input || input.dataset.nameSuggest === '1') return;
     input.dataset.nameSuggest = '1';
-    input.setAttribute('autocomplete', 'off');
+    // Семантичне "name", а не "off": Chrome (зокрема на iOS) ігнорує "off" і
+    // переходить на евристику, яка на сторінці зі словами «сума/оплата/грн»
+    // хибно пропонує збережену банківську картку поверх форми запису. Явне
+    // "name" каже браузеру, що це поле ПІБ, тож картка/адреса не пропонуються;
+    // власний список підказок нижче працює через input-події незалежно.
+    input.setAttribute('autocomplete', 'name');
 
     var list = document.createElement('ul');
     list.className = 'nameSuggest';
