@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { useSubmit } from "../../hooks/use-submit";
 import { countUk } from "../../../lib/labels";
 import {
   STUDY_STATUS_LABELS,
@@ -55,21 +56,33 @@ export default function ImagingPage() {
   const [loadError,setLoadError] = useState(false);
   const [actionError,setActionError] = useState("");
   const [actionSuccess,setActionSuccess] = useState("");
-  const [saving,setSaving] = useState(false);
+  // Один re-entry-захист і один busy-прапор на всі мутації картки/налаштувань:
+  // мережевий збій routes у actionError, а не лишає кнопку «Зберегти» навічно
+  // заблокованою (попередній код скидав busy без try/catch/finally).
+  const onActionError = useCallback(() => setActionError("Не вдалося виконати дію. Перевірте зʼєднання та спробуйте ще раз."), []);
+  const { busy:saving, run } = useSubmit(onActionError);
   const [filter,setFilter] = useState<"all"|"not_linked"|"available">("all");
   const [query,setQuery] = useState("");
   const [loaded,setLoaded] = useState(false);
 
   const loadSettings = useCallback(async () => {
-    const response = await fetch("/api/staff/imaging/settings", { cache:"no-store" });
-    const data = await response.json() as { settings?:FullSettings; error?:string };
-    if (response.ok && data.settings) setFullSettings(data.settings);
+    try {
+      const response = await fetch("/api/staff/imaging/settings", { cache:"no-store" });
+      const data = await response.json().catch(() => ({})) as { settings?:FullSettings; error?:string };
+      if (response.ok && data.settings) setFullSettings(data.settings);
+    } catch {
+      // Налаштування — другорядні до робочого списку: тихо пропускаємо, щоб
+      // не валити весь екран через unhandled rejection у void-виклику.
+    }
   }, []);
 
   const loadWorklist = useCallback(async () => {
     try {
       const response = await fetch("/api/staff/imaging", { cache:"no-store" });
-      const data = await response.json() as { worklist?:WorklistItem[]; settings?:Settings; staff?:StaffInfo; error?:string };
+      const data = await response.json().catch(() => null) as { worklist?:WorklistItem[]; settings?:Settings; staff?:StaffInfo; error?:string } | null;
+      // Відповідь без валідного JSON — трактуємо як мережевий збій (кнопка
+      // «Повторити»), а не як відмову доступу.
+      if (!data) { setLoadError(true); return; }
       if (!response.ok) { setError(data.error || "Немає доступу"); return; }
       setWorklist(data.worklist || []);
       setStaff(data.staff || null);
@@ -98,88 +111,97 @@ export default function ImagingPage() {
 
   async function openBooking(id:number) {
     setActionError(""); setActionSuccess(""); setSelectedId(id); setCard(null);
-    const response = await fetch(`/api/staff/imaging?bookingId=${id}`, { cache:"no-store" });
-    const data = await response.json() as Card & { error?:string };
-    if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити дослідження"); return; }
-    setCard(data);
-    if (data.settings) setSettings(data.settings);
+    try {
+      const response = await fetch(`/api/staff/imaging?bookingId=${id}`, { cache:"no-store" });
+      const data = await response.json().catch(() => ({})) as Card & { error?:string };
+      if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити дослідження"); return; }
+      setCard(data);
+      if (data.settings) setSettings(data.settings);
+    } catch {
+      setActionError("Не вдалося відкрити дослідження. Перевірте зʼєднання та спробуйте ще раз.");
+    }
   }
 
   async function saveStudy(form:HTMLFormElement) {
     if (!card) return;
-    setActionError(""); setActionSuccess(""); setSaving(true);
+    const bookingId = card.booking.id;
+    // FormData читаємо синхронно до будь-якого await, поки форму не перемалювало.
     const data = new FormData(form);
     const payload = {
-      bookingId:card.booking.id,
+      bookingId,
       accessionNumber:String(data.get("accessionNumber") || ""),
       studyInstanceUid:String(data.get("studyInstanceUid") || ""),
       modality:String(data.get("modality") || ""),
       studyStatus:String(data.get("studyStatus") || "not_linked"),
     };
-    const response = await fetch("/api/staff/imaging", {
-      method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/imaging", {
+        method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({})) as { ok?:boolean; study?:StudyRecord; error?:string };
+      if (!response.ok || !result.ok || !result.study) { setActionError(result.error || "Не вдалося зберегти дослідження"); return; }
+      setCard((current) => current && ({ ...current, study:{ ...(current.study || {} as StudyRecord), ...result.study! } }));
+      setWorklist((current) => current.map((item) => item.id === bookingId ? {
+        ...item, studyStatus:payload.studyStatus as StudyStatus,
+        accessionNumber:payload.accessionNumber, studyInstanceUid:payload.studyInstanceUid, seriesCount:0,
+      } : item));
+      setActionSuccess("Ручну прив’язку збережено. Оновіть картку, щоб підтягнути серії з PACS.");
     });
-    const result = await response.json() as { ok?:boolean; study?:StudyRecord; error?:string };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.study) { setActionError(result.error || "Не вдалося зберегти дослідження"); return; }
-    setCard((current) => current && ({ ...current, study:{ ...(current.study || {} as StudyRecord), ...result.study! } }));
-    setWorklist((current) => current.map((item) => item.id === card.booking.id ? {
-      ...item, studyStatus:payload.studyStatus as StudyStatus,
-      accessionNumber:payload.accessionNumber, studyInstanceUid:payload.studyInstanceUid, seriesCount:0,
-    } : item));
-    setActionSuccess("Ручну прив’язку збережено. Оновіть картку, щоб підтягнути серії з PACS.");
   }
 
   async function resolveByAccession() {
     if (!card) return;
     const bookingId = card.booking.id;
-    setActionError(""); setActionSuccess(""); setSaving(true);
-    const response = await fetch("/api/staff/imaging", {
-      method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ bookingId }),
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/imaging", {
+        method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({ bookingId }),
+      });
+      const result = await response.json().catch(() => ({})) as {
+        ok?:boolean; status?:string; study?:StudyRecord; viewerUrl?:string; error?:string; matches?:number;
+      };
+      if (!response.ok || !result.ok || !result.study) {
+        if (result.status === "not_found") setActionError("У PACS ще немає дослідження з цим Accession Number.");
+        else if (result.status === "ambiguous") setActionError(`У PACS знайдено кілька досліджень з цим Accession (${result.matches || 2}). Потрібна ручна перевірка.`);
+        else setActionError(result.error || "Не вдалося знайти дослідження в PACS");
+        return;
+      }
+      setWorklist((current) => current.map((item) => item.id === bookingId ? {
+        ...item,
+        studyStatus:"available",
+        accessionNumber:result.study!.accessionNumber,
+        studyInstanceUid:result.study!.studyInstanceUid,
+        seriesCount:result.study!.seriesCount,
+      } : item));
+      await openBooking(bookingId);
+      setActionSuccess("Дослідження знайдено в PACS та прив’язано автоматично за Accession Number.");
     });
-    const result = await response.json() as {
-      ok?:boolean; status?:string; study?:StudyRecord; viewerUrl?:string; error?:string; matches?:number;
-    };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.study) {
-      if (result.status === "not_found") setActionError("У PACS ще немає дослідження з цим Accession Number.");
-      else if (result.status === "ambiguous") setActionError(`У PACS знайдено кілька досліджень з цим Accession (${result.matches || 2}). Потрібна ручна перевірка.`);
-      else setActionError(result.error || "Не вдалося знайти дослідження в PACS");
-      return;
-    }
-    setWorklist((current) => current.map((item) => item.id === bookingId ? {
-      ...item,
-      studyStatus:"available",
-      accessionNumber:result.study!.accessionNumber,
-      studyInstanceUid:result.study!.studyInstanceUid,
-      seriesCount:result.study!.seriesCount,
-    } : item));
-    await openBooking(bookingId);
-    setActionSuccess("Дослідження знайдено в PACS та прив’язано автоматично за Accession Number.");
   }
 
   async function saveSettings(form:HTMLFormElement) {
-    setActionError(""); setActionSuccess(""); setSaving(true);
     const data = new FormData(form);
-    const response = await fetch("/api/staff/imaging/settings", {
-      method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({
-        dicomwebBaseUrl:String(data.get("dicomwebBaseUrl") || ""),
-        viewerBaseUrl:String(data.get("viewerBaseUrl") || ""),
-        aeTitle:String(data.get("aeTitle") || ""),
-        notes:String(data.get("notes") || ""),
-        enabled:data.get("enabled") === "on",
-      }),
+    const payload = {
+      dicomwebBaseUrl:String(data.get("dicomwebBaseUrl") || ""),
+      viewerBaseUrl:String(data.get("viewerBaseUrl") || ""),
+      aeTitle:String(data.get("aeTitle") || ""),
+      notes:String(data.get("notes") || ""),
+      enabled:data.get("enabled") === "on",
+    };
+    setActionError(""); setActionSuccess("");
+    await run(async () => {
+      const response = await fetch("/api/staff/imaging/settings", {
+        method:"PUT", headers:{"content-type":"application/json"}, body:JSON.stringify(payload),
+      });
+      const result = await response.json().catch(() => ({})) as { ok?:boolean; settings?:FullSettings; error?:string };
+      if (!response.ok || !result.ok || !result.settings) { setActionError(result.error || "Не вдалося зберегти налаштування"); return; }
+      setFullSettings(result.settings);
+      setSettings({
+        enabled:!!result.settings.enabled, viewerBaseUrl:result.settings.viewerBaseUrl,
+        aeTitle:result.settings.aeTitle, dicomwebConfigured:!!result.settings.dicomwebBaseUrl,
+      });
+      setActionSuccess("Налаштування PACS збережено.");
     });
-    const result = await response.json() as { ok?:boolean; settings?:FullSettings; error?:string };
-    setSaving(false);
-    if (!response.ok || !result.ok || !result.settings) { setActionError(result.error || "Не вдалося зберегти налаштування"); return; }
-    setFullSettings(result.settings);
-    setSettings({
-      enabled:!!result.settings.enabled, viewerBaseUrl:result.settings.viewerBaseUrl,
-      aeTitle:result.settings.aeTitle, dicomwebConfigured:!!result.settings.dicomwebBaseUrl,
-    });
-    setActionSuccess("Налаштування PACS збережено.");
   }
 
   const canEdit = staff?.role === "admin" || staff?.role === "radiographer" || staff?.role === "radiologist";
