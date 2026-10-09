@@ -42,6 +42,7 @@
 
 ### Changed
 
+- Форми-реєстри `/staff/services` і `/staff/equipment` переведено на спільний хук `useSubmit` (завершення адопції submit-guard форм): рукописний `saving` + `if(saving)return` + `try/catch/finally` замінено на `const {busy:saving,run}=useSubmit(onError)` та `await run(async()=>{…})`. `busy` аліасовано як `saving`, тож кнопка («Збереження…», `disabled`) без змін; re-entry guard проти подвійного PUT тепер гарантує хук. Поведінка ідентична; тести оновлено під хук.
 - Довідники `/staff/counterparties` і `/staff/warehouses` переведено на спільний хук `useSubmit` (продовження адопції після `cash-accounts`): рукописний `busy` + `try/catch/finally` у `save` замінено на `const {busy,run}=useSubmit(onError)` та `await run(async()=>{…})`. Поведінка ідентична (кнопки `disabled={busy}`, той самий `⚠`-notice на збій, best-effort reload, ARIA-ролі), менше дубльованого boilerplate; стійкість гарантує хук за побудовою. Тести оновлено під хук.
 
 ### Fixed

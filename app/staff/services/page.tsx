@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES } from "../../../lib/catalog";
 import { SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
 import { countUk, roleLabelUk } from "../../../lib/labels";
+import { useSubmit } from "../../hooks/use-submit";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type MaterialRequirement = {
@@ -31,7 +32,7 @@ export default function ServiceAssignmentsPage() {
   const [loaded, setLoaded] = useState(false);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
-  const [saving, setSaving] = useState(false);
+  const { busy: saving, run } = useSubmit(() => setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз."));
   const [requirements,setRequirements]=useState<MaterialRequirement[]>([]);
   const [inventoryItems,setInventoryItems]=useState<InventoryItem[]>([]);
   const [warehouses,setWarehouses]=useState<Warehouse[]>([]);
@@ -97,10 +98,8 @@ export default function ServiceAssignmentsPage() {
 
   async function save(event: FormEvent) {
     event.preventDefault();
-    if (saving) return;
     setNotice(""); setError("");
-    setSaving(true);
-    try {
+    await run(async () => {
       const response = await fetch("/api/staff/services", {
         method: "PUT",
         headers: { "content-type": "application/json" },
@@ -110,12 +109,7 @@ export default function ServiceAssignmentsPage() {
       if (!response.ok) { setError(data.error || "Не вдалося зберегти"); return; }
       if (Array.isArray(data.services)) setServices(data.services);
       setNotice("Прив’язки послуг збережено.");
-    } catch {
-      // Мережевий збій збереження — показуємо помилку, а не мовчазний no-op.
-      setError("Не вдалося зберегти — перевірте зʼєднання та спробуйте ще раз.");
-    } finally {
-      setSaving(false);
-    }
+    });
   }
 
   async function createRequirement(event:FormEvent){
