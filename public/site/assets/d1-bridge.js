@@ -131,8 +131,10 @@
         } else if (btn.dataset.book === 'viber') {
           // Viber не дає підставити текст у чат конкретного контакту, тож
           // копіюємо заявку в буфер і відкриваємо чат адміністратора.
-          await copyText(text);
-          toast('Текст заявки скопійовано. Вставте його у повідомлення Viber');
+          const copied = await copyText(text);
+          toast(copied
+            ? 'Текст заявки скопійовано. Вставте його у повідомлення Viber'
+            : 'Не вдалося скопіювати автоматично — текст заявки нижче, скопіюйте вручну або зателефонуйте');
           window.location.href = `viber://chat?number=%2B${ADMIN_PHONE_INTL}`;
           showBookConfirm(form, 'Viber', text);
         }
@@ -154,15 +156,22 @@
     }
     box.innerHTML =
       '<p class="book-confirm-title">Майже готово</p>' +
-      '<p class="book-confirm-text">Ми відкрили ' + channel + '. Щоб завершити запис, <strong>надішліть підготовлене повідомлення</strong> адміністратору. Якщо ' + channel + ' не відкрився — скопіюйте текст заявки або зателефонуйте.</p>' +
+      '<p class="book-confirm-text">Ми відкрили ' + channel + '. Щоб завершити запис, <strong>надішліть підготовлене повідомлення</strong> адміністратору. Якщо ' + channel + ' не відкрився — скопіюйте текст заявки нижче або зателефонуйте.</p>' +
+      '<textarea class="book-confirm-field" rows="6" readonly aria-label="Текст заявки"></textarea>' +
       '<div class="book-confirm-actions">' +
         '<button type="button" class="book-confirm-copy">Скопіювати текст заявки</button>' +
         '<a class="book-confirm-call" href="tel:' + ADMIN_TEL + '">Зателефонувати</a>' +
       '</div>';
+    // Текст заявки завжди доступний для ручного копіювання — через value, не
+    // innerHTML (містить введене пацієнтом ПІБ), і щоб буфер не був єдиною
+    // точкою відмови, коли браузер блокує clipboard (напр. in-app webview).
+    const field = box.querySelector('.book-confirm-field');
+    if (field) field.value = text;
     const copyBtn = box.querySelector('.book-confirm-copy');
     if (copyBtn) copyBtn.addEventListener('click', async () => {
-      await copyText(text);
-      toast('Текст заявки скопійовано');
+      const copied = await copyText(text);
+      if (copied) { toast('Текст заявки скопійовано'); }
+      else { toast('Не вдалося скопіювати — виділіть текст вище і скопіюйте вручну'); if (field) { try { field.focus(); field.select(); } catch (e) {} } }
     });
     try { box.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e) {}
   }

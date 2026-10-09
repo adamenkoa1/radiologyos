@@ -202,6 +202,20 @@ test("ПІБ field suggests Ukrainian given names + patronymics by token", async
   }
 });
 
+test("messenger handoff copies honestly and always exposes the заявка text to copy manually", async () => {
+  const js = await read("public/site/assets/d1-bridge.js");
+  // copyText reports success/failure and the toast branches on it — no false "скопійовано"
+  assert.match(js, /const copied = await copyText\(text\)/);
+  assert.match(js, /copied\s*\?/);
+  // the confirm box always holds the заявка text in a selectable field so a blocked
+  // clipboard is not a dead end; value is set via .value, never interpolated into HTML
+  assert.match(js, /class="book-confirm-field"/);
+  assert.match(js, /field\.value = text/);
+  assert.doesNotMatch(js, /innerHTML\s*=[^;]*\+\s*text/);
+  const css = await read("public/site/assets/site.css");
+  assert.match(css, /\.book-confirm-field\{/);
+});
+
 test("ПІБ field keeps a semantic name autocomplete so the browser never offers a bank card", async () => {
   const js = await read("public/site/assets/name-suggest.js");
   // Chrome/iOS ignores autocomplete="off" and heuristically offers saved cards
