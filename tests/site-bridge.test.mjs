@@ -216,6 +216,11 @@ test("manual date/time fallback cannot book a moment that already passed", async
   assert.match(js, /err\.dataset\.base != null\) err\.textContent = err\.dataset\.base/);
 });
 
+test("cart online payment falls back to same-tab navigation when a popup is blocked", async () => {
+  const js = await read("public/site/assets/cart.js");
+  assert.match(js, /const opened = window\.open\(link, '_blank', 'noopener'\);\s*\n\s*if \(!opened\) location\.href = link;/);
+});
+
 test("cart offers optional online payment without becoming a господарський факт", async () => {
   const js = await read("public/site/assets/cart.js");
   // shown only for paid (civilian) services, i.e. total > 0
