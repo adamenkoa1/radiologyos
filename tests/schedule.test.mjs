@@ -83,6 +83,18 @@ test("availability and staff booking read the tenant schedule", async () => {
   assert.match(book, /isEquipmentDayOpen\(desiredDate, schedule, service\.equipmentId\)/);
 });
 
+test("availability never offers a time that already passed today", async () => {
+  const avail = await read("app/api/availability/route.ts");
+  // cutoff is the clinic-timezone current time, applied only when the chosen date is today
+  assert.match(avail, /const cutoff = date === todayInKyiv\(\) \? currentTimeInKyiv\(\) : null/);
+  assert.match(avail, /if \(cutoff && start <= cutoff\) return false/);
+  // the Kyiv "now" helper is shared from booking-rules, not duplicated per route
+  assert.match(avail, /currentTimeInKyiv.*from "\.\.\/\.\.\/\.\.\/lib\/booking-rules"/);
+  const booking = await read("app/api/site-booking/route.ts");
+  assert.match(booking, /currentTimeInKyiv.*from "\.\.\/\.\.\/\.\.\/lib\/booking-rules"/);
+  assert.doesNotMatch(booking, /function currentTimeInKyiv/);
+});
+
 test("schedule editor and admin API are tenant-scoped and guarded", async () => {
   const route = await read("app/api/staff/schedule/route.ts");
   assert.match(route, /requireOrgContext\(request, db\)/);

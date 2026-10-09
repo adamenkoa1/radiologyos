@@ -1,5 +1,5 @@
 import { recordAnalyticsEvent } from "../../../lib/analytics";
-import { todayInKyiv } from "../../../lib/booking-rules";
+import { todayInKyiv, currentTimeInKyiv } from "../../../lib/booking-rules";
 import { effectiveServices, serviceAvailableTo } from "../../../lib/effective-services";
 import { normalizeUkrainianPhone } from "../../../lib/phone";
 import { isAdultDob, normalizeDob } from "../../../lib/dob";
@@ -33,15 +33,6 @@ function idempotencyKey(request: Request): string {
 function analyticsJourney(request: Request): string {
   const value = (request.headers.get("x-analytics-journey-id") || "").trim();
   return /^[A-Za-z0-9_-]{8,64}$/.test(value) ? value : "";
-}
-
-function currentTimeInKyiv(): string {
-  return new Intl.DateTimeFormat("uk-UA", {
-    timeZone: "Europe/Kyiv",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  }).format(new Date()).replace(".", ":");
 }
 
 function addDays(date: string, days: number): string {

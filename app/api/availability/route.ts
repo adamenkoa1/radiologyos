@@ -1,5 +1,5 @@
 import { addMinutes, EQUIPMENT } from "../../../lib/catalog";
-import { isBookableDate } from "../../../lib/booking-rules";
+import { isBookableDate, todayInKyiv, currentTimeInKyiv } from "../../../lib/booking-rules";
 import { effectiveServiceByCode } from "../../../lib/effective-services";
 import { candidateTimesFor, hoursFor, isEquipmentDayOpen } from "../../../lib/schedule";
 import { getOrganizationSchedule } from "../../../lib/tenant-schedule";
@@ -52,7 +52,12 @@ export async function GET(request: Request) {
 
   const overlaps = (start:string, end:string, otherStart:string, otherEnd:string) =>
     start < otherEnd && end > otherStart;
+  // Не пропонувати час, що вже минув сьогодні (пацієнт бачив на проді вибір
+  // слота на 08:00 о 10:01). Поріг — поточний час у поясі клініки; майбутні
+  // дати не фільтруються.
+  const cutoff = date === todayInKyiv() ? currentTimeInKyiv() : null;
   const times = candidateTimesFor(hoursFor(schedule, service.equipmentId), service.durationMinutes).filter(start => {
+    if (cutoff && start <= cutoff) return false;
     const end = addMinutes(start, service.durationMinutes);
     const bookingConflict = bookings.results.some((row:{startTime:string;durationMinutes:number}) =>
       overlaps(start, end, row.startTime, addMinutes(row.startTime, row.durationMinutes)));
