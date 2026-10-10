@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
+import { todayInKyiv } from "../../../lib/booking-rules";
 
 type PersonnelRecord = {
   id:string; accountEmail:string | null; staffNumber:string; employmentKind:string;
@@ -406,7 +407,7 @@ export default function PersonnelPage() {
             <div className="formGrid">
               <label>Назва<input name="scheduleName" defaultValue={scheduleEditor?.name || ""} placeholder="Напр. Основний робочий графік" required /></label>
               <label>Тип<select name="scheduleKind" defaultValue={scheduleEditor?.scheduleKind || "individual"}>{SCHEDULE_KINDS.map(([value,label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-              <label>Діє з<input name="validFrom" type="date" defaultValue={scheduleEditor?.validFrom || new Date().toISOString().slice(0,10)} required /></label>
+              <label>Діє з<input name="validFrom" type="date" defaultValue={scheduleEditor?.validFrom || todayInKyiv()} required /></label>
               <label>Діє до<input name="validTo" type="date" defaultValue={scheduleEditor?.validTo || ""} /></label>
               <label style={{gridColumn:"1 / -1"}}>Примітка<input name="scheduleNote" defaultValue={scheduleEditor?.note || ""} placeholder="Необов’язково" /></label>
               <label><span>Стан</span><span><input name="scheduleActive" type="checkbox" defaultChecked={scheduleEditor ? Boolean(scheduleEditor.active) : true} /> Активний графік</span></label>
