@@ -48,10 +48,20 @@ export default function StaffTariffsPage() {
 
   async function save() {
     setStatus("saving"); setNotice(""); setError("");
+    // Сервер зберігає ПОВНИЙ набір перевизначень (повна заміна blob-а), тож
+    // надсилаємо ефективну ціну КОЖНОГО тарифу, а не лише відредаговані цієї
+    // сесії. Інакше збереження однієї позиції стирало б раніше збережені
+    // перевизначення всіх інших (вони поверталися б до типової ціни).
+    //  - незаймане поле → поточна ціна `t.price` (зберігає наявне перевизначення);
+    //  - порожнє поле → типова ціна (сервер відкидає рівні типовій → скидання);
+    //  - некоректне значення → поточна ціна (не стираємо наявне через помилку вводу).
     const prices: Record<string, number> = {};
-    for (const [code, raw] of Object.entries(edits)) {
+    for (const t of tariffs) {
+      const raw = edits[t.code];
+      if (raw === undefined) { prices[t.code] = t.price; continue; }
+      if (raw.trim() === "") { prices[t.code] = t.defaultPrice; continue; }
       const n = Number(raw);
-      if (raw.trim() !== "" && Number.isFinite(n)) prices[code] = Math.round(n);
+      prices[t.code] = Number.isFinite(n) ? Math.round(n) : t.price;
     }
     try {
       const res = await fetch("/api/staff/tariffs", {
