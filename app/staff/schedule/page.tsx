@@ -6,6 +6,7 @@ import { EQUIP_KEYS, EQUIP_LABELS, SCHEDULE_DEFAULTS, candidateTimesFor, isEquip
 import { SERVICES, addMinutes } from "../../../lib/catalog";
 import { configuredService, SERVICE_CONFIG_DEFAULTS, type ServiceConfigRecord } from "../../../lib/service-config";
 import { roleLabelUk } from "../../../lib/labels";
+import { todayInKyiv } from "../../../lib/booking-rules";
 
 type StaffInfo = { email: string; displayName: string; role: string };
 type PersonOption = { email: string; displayName: string; role: string; positionTitle?: string; militaryRank?: string };
@@ -32,7 +33,9 @@ export default function StaffSchedulePage() {
   const [serviceConfig, setServiceConfig] = useState<ServiceConfigRecord[]>(SERVICE_CONFIG_DEFAULTS.map((row) => ({ ...row })));
   const [activeEquipment, setActiveEquipment] = useState<string>("xray");
   const [calendarMonth, setCalendarMonth] = useState(() => monthKey(new Date()));
-  const [selectedDate, setSelectedDate] = useState(() => new Date().toISOString().slice(0, 10));
+  // Дефолт — клінічний день (Europe/Kyiv), а не UTC: інакше вночі
+  // (00:00–03:00 Kyiv) розклад відкривався б на вчорашній даті.
+  const [selectedDate, setSelectedDate] = useState(() => todayInKyiv());
   const [newDay, setNewDay] = useState("");
   const [status, setStatus] = useState<"idle" | "saving">("idle");
   const [notice, setNotice] = useState("");

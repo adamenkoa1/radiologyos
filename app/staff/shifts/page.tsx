@@ -3,6 +3,7 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { roleLabelUk } from "../../../lib/labels";
+import { todayInKyiv } from "../../../lib/booking-rules";
 import {
   CALENDAR6_PRESETS,
   SHIFT_OVERRIDE_KINDS,
@@ -149,7 +150,9 @@ export default function StaffShiftsPage() {
   }
 
   const configuredCount = data?.assignments.length || 0;
-  const today = new Date().toISOString().slice(0, 10);
+  // Клінічний день (Europe/Kyiv), а не UTC: інакше вночі (00:00–03:00 Kyiv)
+  // підсвічувався б як «сьогодні» попередній стовпець табеля.
+  const today = todayInKyiv();
 
   const content = forbidden
     ? <p className="notice error" role="alert">Графік змін доступний лише персоналу цієї організації.</p>
