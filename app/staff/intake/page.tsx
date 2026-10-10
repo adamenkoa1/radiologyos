@@ -185,6 +185,11 @@ export default function IntakePage() {
       const d = await res.json().catch(()=>({})) as { error?:string };
       if (!res.ok) { flash(d.error || "Помилка"); return; }
       flash(okMsg); await load();
+    } catch {
+      // Мережевий збій: без цього throw ковтався `void patch(...)` і дія була
+      // мовчазним no-op — реєстратор не знав, що підтвердження/скасування/
+      // перенесення не пройшло.
+      flash("Немає зв’язку — дію не виконано. Спробуйте ще раз.");
     } finally { setBusy(false); }
   }
 
@@ -205,6 +210,10 @@ export default function IntakePage() {
       const d = await res.json().catch(()=>({})) as { error?:string; code?:string };
       if (!res.ok) { flash(d.error || "Не вдалося створити"); return; }
       flash(`Заявку створено · ${d.code || ""}`); setCreating(false); setForm(emptyForm); await load();
+    } catch {
+      // Мережевий збій: без catch throw ковтався й створення було мовчазним
+      // no-op. Ідемпотентний ключ на сервері захищає від дубля при повторі.
+      flash("Немає зв’язку — заявку не створено. Спробуйте ще раз.");
     } finally { setBusy(false); }
   }
 
