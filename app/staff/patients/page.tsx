@@ -263,6 +263,10 @@ export default function PatientsPage() {
       const res = await fetch("/api/staff/bookings", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
       if (res.ok && card) await refreshCard();
       else { const d = await res.json().catch(()=>({})) as { error?:string }; setActionError(d.error || "Не вдалося виконати дію"); }
+    } catch {
+      // Без catch мережевий throw ковтався `void drawerPatch(...)` — дія з
+      // картки пацієнта (підтвердити/перенести) ставала мовчазним no-op.
+      setActionError("Немає зв’язку — дію не виконано. Спробуйте ще раз.");
     } finally { setDrawerBusy(null); }
   }
 
