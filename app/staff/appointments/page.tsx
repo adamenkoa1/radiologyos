@@ -21,6 +21,9 @@ export default function StaffAppointmentsPage() {
   const [initialView, setInitialView] = useState<CalView>("day");
   const [initialDate, setInitialDate] = useState<string | undefined>(undefined);
   const [busyId, setBusyId] = useState<number | null>(null);
+  // Помилка дії (підтвердження/перенесення) з календаря — окремо від помилки
+  // завантаження, щоб мережевий збій дії не був мовчазним no-op.
+  const [actionError, setActionError] = useState("");
 
   // Повне завантаження екрана. background:true — тихе (без спінера й без екрана
   // помилки), щоб тимчасовий збій не глушив уже показаний календар.
@@ -78,10 +81,17 @@ export default function StaffAppointmentsPage() {
   }, []);
   async function patchBooking(body: Record<string, unknown>) {
     const id = body.id as number;
-    setBusyId(id);
+    setBusyId(id); setActionError("");
     try {
       const res = await fetch("/api/staff/bookings", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
-      if (res.ok) await refetchBookings();
+      if (res.ok) { await refetchBookings(); return; }
+      // Раніше невдала відповідь (конфлікт слота, 403 тощо) мовчки ігнорувалася,
+      // а мережевий throw ковтався `void patchBooking(...)` — підтвердження/
+      // перенесення з календаря виглядало як no-op без причини.
+      const d = await res.json().catch(() => ({})) as { error?: string };
+      setActionError(d.error || "Не вдалося виконати дію");
+    } catch {
+      setActionError("Немає зв’язку — дію не виконано. Спробуйте ще раз.");
     } finally { setBusyId(null); }
   }
 
@@ -103,12 +113,15 @@ export default function StaffAppointmentsPage() {
       ? <p className="notice error" role="alert">Не вдалося завантажити календар. Перевірте зʼєднання. <button type="button" className="button compact" onClick={()=>{ setLoadError(false); void load(); }}>Повторити</button></p>
       : !loaded
       ? <p className="notice">Завантаження…</p>
-      : <WeekCalendar
-          bookings={items} options={options} schedule={schedule} blocks={blocks}
-          initialView={initialView} initialDate={initialDate} busyId={busyId}
-          onConfirm={canManage ? (id) => void patchBooking({ id, confirm: true }) : undefined}
-          onReschedule={canManage ? (id, date, time) => void patchBooking({ id, desiredDate: date, desiredTime: time }) : undefined}
-        />;
+      : <>
+          {actionError && <p className="notice error" role="alert">{actionError}</p>}
+          <WeekCalendar
+            bookings={items} options={options} schedule={schedule} blocks={blocks}
+            initialView={initialView} initialDate={initialDate} busyId={busyId}
+            onConfirm={canManage ? (id) => void patchBooking({ id, confirm: true }) : undefined}
+            onReschedule={canManage ? (id, date, time) => void patchBooking({ id, desiredDate: date, desiredTime: time }) : undefined}
+          />
+        </>;
 
   return (
     <StaffWorkspaceShell
