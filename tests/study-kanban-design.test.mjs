@@ -37,6 +37,20 @@ test("study Kanban is integrated into the staff workspace and visual cascade", a
   assert.match(css, /prefers-reduced-motion/);
 });
 
+test("study board interactive elements have a visible keyboard focus ring", async () => {
+  const css = await read("app/styles/15-study-kanban.css");
+  // Дошка — довга Tab-послідовність лінків-карток + контролів тулбара; усі
+  // мають видимий focus-ring (WCAG 2.4.7), раніше жоден не мав.
+  assert.match(css, /\.studyKanbanCard:focus-visible\s*\{\s*outline: 2px solid var\(--ws-accent\)/);
+  assert.match(css, /\.studyBoardToolbar a:focus-visible\s*\{\s*outline: 2px solid var\(--ws-accent\)/);
+  assert.match(css, /\.studyBoardExceptions > div a:focus-visible\s*\{\s*outline: 2px solid var\(--ws-accent\)/);
+});
+
+test("study board loading placeholder is announced as a status", async () => {
+  const page = await read("app/staff/board/page.tsx");
+  assert.match(page, /<p className="dashLoading" role="status" aria-live="polite">Завантаження дошки…<\/p>/);
+});
+
 test("study board survives a failed load and auto-refreshes", async () => {
   const page = await read("app/staff/board/page.tsx");
   // load() загорнуто в try/catch із фоновим режимом.

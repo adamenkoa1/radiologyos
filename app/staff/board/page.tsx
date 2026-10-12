@@ -158,7 +158,7 @@ export default function StudyBoardPage() {
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fboard">Увійти</a></section>
       : loadError ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити дошку. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
-      : !loaded ? <p className="dashLoading">Завантаження дошки…</p>
+      : !loaded ? <p className="dashLoading" role="status" aria-live="polite">Завантаження дошки…</p>
       : <section className="studyBoardShell">
           <div className="studyBoardToolbar">
             <label><span>Дата</span><input type="date" value={date} onChange={(e)=>setDate(e.target.value)} /></label>
