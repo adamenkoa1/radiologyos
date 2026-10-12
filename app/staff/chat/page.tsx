@@ -158,7 +158,7 @@ export default function StaffChatPage() {
         <div className="contactToolbar">
           <div className="contactFilters" role="group" aria-label="Канал">
             {["all", "whatsapp", "telegram", "sms", "email"].map(value => (
-              <button key={value} className={channel === value ? "active" : ""} onClick={() => void changeChannel(value)}>
+              <button key={value} type="button" aria-pressed={channel === value} className={channel === value ? "active" : ""} onClick={() => void changeChannel(value)}>
                 {value === "all" ? "Усі" : CHANNEL_LABEL[value]}
               </button>
             ))}
@@ -168,11 +168,11 @@ export default function StaffChatPage() {
 
         <div className="chatShell contactShell">
           <aside className="chatList">
-            {!loaded ? <p className="empty">Завантаження…</p>
+            {!loaded ? <p className="empty" role="status" aria-live="polite">Завантаження…</p>
               : loadErr ? <p className="empty">Не вдалося завантажити діалоги. Перевірте зʼєднання. <button type="button" className="button compact" onClick={() => { setLoaded(false); void loadConversations(channel); }}>Повторити</button></p>
               : filtered.length === 0 ? <p className="empty">Немає комунікацій у цьому фільтрі.</p>
                 : filtered.map(c => (
-                  <button key={c.conversationKey} className={`chatListItem${active?.conversationKey === c.conversationKey ? " active" : ""}`} onClick={() => void openConversation(c)}>
+                  <button key={c.conversationKey} type="button" aria-current={active?.conversationKey === c.conversationKey ? "true" : undefined} className={`chatListItem${active?.conversationKey === c.conversationKey ? " active" : ""}`} onClick={() => void openConversation(c)}>
                     <span className={`channelDot ${c.lastChannel}`} aria-hidden="true" />
                     <b>{c.name || displayPhone(c.phone)}</b>
                     {c.identityKind === "legacy"
@@ -218,7 +218,7 @@ export default function StaffChatPage() {
                   </div>
                   {error && <p className="notice error" role="alert">{error}</p>}
                   <form className="chatReply" onSubmit={reply}>
-                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} placeholder={activeLegacyAmbiguous ? "Спочатку ідентифікуйте пацієнта" : activeSharedPhone ? "Спільний контакт: ручна відповідь заблокована" : "Відповідь пацієнту у WhatsApp…"} />
+                    <input value={draft} onChange={e => setDraft(e.target.value)} disabled={!canReplyWhatsApp} aria-label="Відповідь пацієнту у WhatsApp" placeholder={activeLegacyAmbiguous ? "Спочатку ідентифікуйте пацієнта" : activeSharedPhone ? "Спільний контакт: ручна відповідь заблокована" : "Відповідь пацієнту у WhatsApp…"} />
                     <button type="submit" disabled={sending || !draft.trim() || !canReplyWhatsApp}>{sending ? "…" : "Надіслати"}</button>
                   </form>
                 </>}
