@@ -4,6 +4,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- Прибрано сторінку-прототип `/staff/sheet-preview` (аудит MASTER PROMPT 2, radical simplification). Це був ізольований макет для узгодження журнального скіну з **умовними** даними, без API, без лінків у навігації й без тестів; його мету виконано — скін давно розкочено на всі реальні журнали через `app/styles/30-journal-sheet.css`. Перед видаленням перевірено: нуль посилань у коді/навігації/тестах, немає власного API-маршруту чи виділеного CSS. Оновлено згадки у `docs/pages.md`, `docs/components.md` і коментарі `30-journal-sheet.css`. `/staff/reports/seo` — навпаки, залишено: це робочий інструмент (лінк у меню + `app/api/staff/reports/seo/route.ts`).
+
 ### Security
 
 - **`sharp` (під `next`) закріплено на `0.35.5`** — закрито HIGH-вразливість у залежності `librsvg` (CVE-2026-96889, GHSA-wq5f-xc86-pv6w, зачеплені `sharp < 0.35.5`). Прод-шлях — `next → sharp`; CI-гейт `npm audit --omit=dev --audit-level=high` почав падати на цій новорозкритій advisory, знову блокуючи всі PR. Оновлено наявний nested-override `next.sharp` `0.35.4 → 0.35.5`; після бампу `audit --audit-level=high` — чистий. Верхньорівневий `sharp` лишається dev-залежністю (поза `--omit=dev`). Лише lock + `overrides`; код не змінено.
