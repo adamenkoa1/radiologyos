@@ -39,3 +39,19 @@ test("patient status and error messages carry screen-reader roles", async () => 
   assert.match(page, /className="staffError" role="alert">\{actionError\}/);
   assert.match(page, /className="staffSuccess" role="status">\{actionSuccess\}/);
 });
+
+test("patient search input has an accessible name (placeholder is not a label)", async () => {
+  const page = await read("app/staff/patients/page.tsx");
+  // Єдиний голий input (решта обгорнуті в <label>) — пошук у списку.
+  assert.match(page, /<input type="search".*aria-label="Пошук пацієнтів за ПІБ, телефоном або тегом"/);
+});
+
+test("selected patient in the list is exposed via aria-current", async () => {
+  const page = await read("app/staff/patients/page.tsx");
+  assert.match(page, /aria-current=\{selectedPatientKey===key \? "true" : undefined\}/);
+});
+
+test("card loading placeholder is announced as a status", async () => {
+  const page = await read("app/staff/patients/page.tsx");
+  assert.match(page, /<div className="protocolPlaceholder" role="status" aria-live="polite">/);
+});
