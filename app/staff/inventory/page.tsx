@@ -114,7 +114,13 @@ export default function InventoryPage() {
       const res=await fetch("/api/staff/inventory", { method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify(body) });
       const p=await res.json().catch(()=>({})) as {error?:string};
       if(!res.ok){ setToast(`⚠ ${p.error || "Помилка операції"}`); return false; }
-      setToast(`✓ ${ok}`); await loadInventory(); return true;
+      setToast(`✓ ${ok}`); await loadInventory().catch(()=>{}); return true;
+    } catch {
+      // Без catch мережевий кидок ковтався, і операція (додати матеріал тощо)
+      // ставала мовчазним no-op. Перезавантаження — best-effort, щоб його збій
+      // не видавався за збій самої операції.
+      setToast("⚠ Немає зв'язку — операцію не виконано. Спробуйте ще раз.");
+      return false;
     } finally { setBusy(false); }
   }
 
@@ -125,9 +131,12 @@ export default function InventoryPage() {
       const payload=await res.json().catch(()=>({})) as DocumentDetail&{error?:string};
       if(!res.ok){setToast(`⚠ ${payload.error || "Помилка документа"}`);return null;}
       setToast(`✓ ${ok}`);
-      await Promise.all([loadInventory(),loadDocuments()]);
+      await Promise.all([loadInventory(),loadDocuments()]).catch(()=>{});
       if(payload.document) setSelected(payload);
       return payload;
+    } catch {
+      setToast("⚠ Немає зв'язку — дію не виконано. Спробуйте ще раз.");
+      return null;
     } finally {setBusy(false);}
   }
 
@@ -150,6 +159,8 @@ export default function InventoryPage() {
       const p=await res.json().catch(()=>({})) as DocumentDetail&{error?:string};
       if(!res.ok){setToast(`⚠ ${p.error||"Документ не знайдено"}`);return;}
       setSelected(p);setMode("documents");
+    } catch {
+      setToast("⚠ Немає зв'язку — не вдалося відкрити документ.");
     } finally {setBusy(false);}
   }
 
@@ -225,7 +236,7 @@ export default function InventoryPage() {
       </div>}
 
       {mode === "documents" && <div className="inventoryDocumentsLayout" role="tabpanel" id="inv-panel-documents" aria-labelledby="inv-tab-documents" tabIndex={0}>
-        <section className="inventoryMainTable documents"><div className="inventorySectionHead"><h2>Журнал складських документів</h2><span>{documents.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Номер</th><th>Документ</th><th>Стан</th><th>Рядків</th><th>Кількість</th><th>Автор</th><th></th></tr></thead><tbody>
+        <section className="inventoryMainTable documents"><div className="inventorySectionHead"><h2>Журнал складських документів</h2><span>{documents.length}</span></div><div className="inventoryTableWrap"><table><thead><tr><th>Дата</th><th>Номер</th><th>Документ</th><th>Стан</th><th>Рядків</th><th>Кількість</th><th>Автор</th><th aria-label="Дії"></th></tr></thead><tbody>
           {documents.map(d=><tr key={d.id} className={selected?.document.id===d.id?"selectedDoc":""}><td>{fmtDate(d.occurredAt)}</td><td><button className="inventoryDocLink" onClick={()=>void openDocument(d.id)}>{d.number}</button></td><td>{TYPE_UK[d.documentType]}</td><td><span className={`inventoryDocState ${d.state}`}>{STATE_UK[d.state]}</span></td><td className="num">{d.lineCount}</td><td className="num">{fmt(d.totalQuantity)}</td><td>{d.createdBy}</td><td><button className="inventorySmallBtn" onClick={()=>void openDocument(d.id)}>Відкрити</button></td></tr>)}
           {documents.length===0&&<tr><td colSpan={8} className="emptyCell">Складських документів ще немає.</td></tr>}
         </tbody></table></div></section>
