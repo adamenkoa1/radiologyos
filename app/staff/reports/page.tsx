@@ -165,7 +165,7 @@ export default function ReportsPage() {
     staffRole={data?.staff ? roleLabels[data.staff.role] || data.staff.role : undefined}
   >
 
-    {loading && !data ? <p className="dashLoading">Завантаження звіту…</p> :
+    {loading && !data ? <p className="dashLoading" role="status" aria-live="polite">Завантаження звіту…</p> :
     error && !data ? (authErr ? <section className="accessDenied">
       <b>Захищений розділ</b>
       <p>{error}. Увійдіть через дозволений робочий обліковий запис.</p>
