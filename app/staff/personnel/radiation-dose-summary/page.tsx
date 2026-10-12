@@ -171,7 +171,7 @@ export default function RadiationDoseSummaryPage() {
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Активний персонал</b><small>Тільки unsuperseded append-only записи дозиметрії; scope не фільтрує історичні дози.</small></div></header>
+      <header className="financeToolbar"><div><h2>Активний персонал</h2><small>Тільки unsuperseded append-only записи дозиметрії; scope не фільтрує історичні дози.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Працівник</th><th>Контингент</th><th>Покритий записами період</th><th>Статуси записів</th><th>Hp(10) subtotal</th><th>Hp(0.07) subtotal</th><th>Hp(3) subtotal</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.personnelId}>

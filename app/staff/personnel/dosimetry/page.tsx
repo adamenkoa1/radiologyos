@@ -142,7 +142,7 @@ export default function PersonnelDosimetryPage(){
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Працівник</b><small>Оберіть кадрову картку для історії індивідуальної дозиметрії.</small></div></header>
+      <header className="financeToolbar"><div><h2>Працівник</h2><small>Оберіть кадрову картку для історії індивідуальної дозиметрії.</small></div></header>
       <div className="shiftPlannerToolbar">
         <select value={personnelId} onChange={(event)=>{setPersonnelId(event.target.value);setSupersedesId(null);}} aria-label="Працівник">
           {!personnel.length && <option value="">Немає активних працівників</option>}
@@ -152,7 +152,7 @@ export default function PersonnelDosimetryPage(){
     </section>
 
     {selected && <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{supersedesId ? "Виправлення дозиметричного запису" : "Новий результат дозиметрії"}</b><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
+      <header className="financeToolbar"><div><h2>{supersedesId ? "Виправлення дозиметричного запису" : "Новий результат дозиметрії"}</h2><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
       <form className="formGrid" onSubmit={save}>
         <label>Початок періоду<input name="periodStart" type="date" required /></label>
         <label>Кінець періоду<input name="periodEnd" type="date" required /></label>
@@ -171,7 +171,7 @@ export default function PersonnelDosimetryPage(){
     </section>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія дозиметрії</b><small>Попередні результати незмінні; виправлення створює новий запис.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія дозиметрії</h2><small>Попередні результати незмінні; виправлення створює новий запис.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Період</th><th>Статус / дозиметр</th><th>Hp(10)</th><th>Hp(0.07)</th><th>Hp(3)</th><th>Звіт</th><th>Версія</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.id}>

@@ -143,7 +143,7 @@ export default function PersonnelRadiationTrainingPage(){
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Працівник</b><small>Оберіть кадрову картку для історії навчання.</small></div></header>
+      <header className="financeToolbar"><div><h2>Працівник</h2><small>Оберіть кадрову картку для історії навчання.</small></div></header>
       <div className="shiftPlannerToolbar">
         <select value={personnelId} onChange={(event)=>{setPersonnelId(event.target.value);setSupersedesId(null);}} aria-label="Працівник">
           {!personnel.length && <option value="">Немає активних працівників</option>}
@@ -153,7 +153,7 @@ export default function PersonnelRadiationTrainingPage(){
     </section>
 
     {selected && <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{supersedesId ? "Виправлення запису навчання" : "Нове навчання / перевірка знань"}</b><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
+      <header className="financeToolbar"><div><h2>{supersedesId ? "Виправлення запису навчання" : "Нове навчання / перевірка знань"}</h2><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
       <form className="formGrid" onSubmit={save}>
         <label>Дата<input name="trainingDate" type="date" required /></label>
         <label>Вид<select name="trainingKind" defaultValue="radiation_safety">{KINDS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -171,7 +171,7 @@ export default function PersonnelRadiationTrainingPage(){
     </section>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія навчання</b><small>Попередні записи незмінні; виправлення створює нову версію.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія навчання</h2><small>Попередні записи незмінні; виправлення створює нову версію.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Дата</th><th>Навчання</th><th>Результат</th><th>Сертифікат</th><th>Строк</th><th>Версія</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.id}>

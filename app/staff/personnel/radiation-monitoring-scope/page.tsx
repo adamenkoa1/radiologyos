@@ -150,14 +150,14 @@ export default function PersonnelRadiationMonitoringScopePage() {
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Важлива межа</b><small>Цей реєстр лише задає організаційний scope для майбутніх read-only review/alerts.</small></div></header>
+      <header className="financeToolbar"><div><h2>Важлива межа</h2><small>Цей реєстр лише задає організаційний scope для майбутніх read-only review/alerts.</small></div></header>
       <p className="notice">
         `in_scope` не є автоматичним дозволом на роботу з ДІВ, а `out_of_scope` не є юридичним або медичним звільненням від вимог. RadiologyOS не визначає цей статус за посадою, ВЛК, дозиметрією або фактом роботи — його вносить уповноважений менеджер як окремий організаційний факт.
       </p>
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Працівник</b><small>Оберіть активну кадрову картку.</small></div></header>
+      <header className="financeToolbar"><div><h2>Працівник</h2><small>Оберіть активну кадрову картку.</small></div></header>
       <div className="shiftPlannerToolbar">
         <select value={personnelId} onChange={(event)=>{setPersonnelId(event.target.value);setSupersedesId(null);}} aria-label="Працівник">
           {!personnel.length && <option value="">Немає активних працівників</option>}
@@ -168,7 +168,7 @@ export default function PersonnelRadiationMonitoringScopePage() {
 
     {selected && <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>{supersedesId ? "Виправлення класифікації" : "Нова класифікація"}</b><small>{selected.displayName} · {selected.positionTitle}</small></div>
+        <div><h2>{supersedesId ? "Виправлення класифікації" : "Нова класифікація"}</h2><small>{selected.displayName} · {selected.positionTitle}</small></div>
         {supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}
       </header>
       <form className="formGrid" onSubmit={save}>
@@ -183,7 +183,7 @@ export default function PersonnelRadiationMonitoringScopePage() {
     </section>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія організаційного scope</b><small>Найновіші записи зверху; виправлені версії залишаються в історії.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія організаційного scope</h2><small>Найновіші записи зверху; виправлені версії залишаються в історії.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Дата</th><th>Статус</th><th>Scope</th><th>Підстава</th><th>Версія</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.id}>

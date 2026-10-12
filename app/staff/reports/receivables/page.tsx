@@ -44,7 +44,7 @@ export default function ReceivablesPage(){
   >
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Станом на дату</b><small>Борг не визначається зі статусу заявки — тільки із проведених charge/payment/refund/storno рухів.</small></div>
+        <div><h2>Станом на дату</h2><small>Борг не визначається зі статусу заявки — тільки із проведених charge/payment/refund/storno рухів.</small></div>
         <label><span>Дата</span><input type="date" value={asOf} onChange={e=>setAsOf(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
         <a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a>
@@ -65,7 +65,7 @@ export default function ReceivablesPage(){
       </section>
 
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>Заборгованість по заявках</b><small>Позитивне сальдо показується окремо по кожній заявці; борги різних заявок не взаємозаліковуються.</small></div></header>
+        <header className="financeToolbar"><div><h2>Заборгованість по заявках</h2><small>Позитивне сальдо показується окремо по кожній заявці; борги різних заявок не взаємозаліковуються.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Пацієнт / заявка</th><th>Послуга</th><th>Борг від</th><th>Вік</th><th className="num">Сума</th></tr></thead><tbody>
           {data.debtors.map(row=><tr key={`${row.bookingId}-${row.currency}`}><td><b>{row.patientName||"—"}</b><small>{row.bookingCode}{row.patientId?` · ${row.patientId}`:""}</small></td><td>{row.serviceTitle||"—"}</td><td>{row.outstandingSince||"—"}</td><td>{BUCKET_UK[row.bucket]}<small>{row.ageDays} дн.</small></td><td className="num"><b>{money(row.balance)}</b></td></tr>)}
           {data.debtors.length===0&&<tr><td colSpan={5}>Непогашеної дебіторської заборгованості немає.</td></tr>}
@@ -73,7 +73,7 @@ export default function ReceivablesPage(){
       </section>
 
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>Кредит / переплата пацієнтів</b><small>Від’ємне сальдо не віднімається від чужої або іншої заявкової дебіторки.</small></div></header>
+        <header className="financeToolbar"><div><h2>Кредит / переплата пацієнтів</h2><small>Від’ємне сальдо не віднімається від чужої або іншої заявкової дебіторки.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Пацієнт / заявка</th><th>Послуга</th><th className="num">Кредит</th></tr></thead><tbody>
           {data.credits.map(row=><tr key={`${row.bookingId}-${row.currency}`}><td><b>{row.patientName||"—"}</b><small>{row.bookingCode}{row.patientId?` · ${row.patientId}`:""}</small></td><td>{row.serviceTitle||"—"}</td><td className="num"><b>{money(Math.abs(row.balance))}</b></td></tr>)}
           {data.credits.length===0&&<tr><td colSpan={3}>Переплат / кредитів пацієнтів немає.</td></tr>}

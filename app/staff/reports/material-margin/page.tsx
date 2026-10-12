@@ -49,7 +49,7 @@ export default function ServiceMaterialMarginPage(){
   >
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Період оборотів</b><small>Суми беруться тільки з immutable revenue та expense movements за датою проведення.</small></div>
+        <div><h2>Період оборотів</h2><small>Суми беруться тільки з immutable revenue та expense movements за датою проведення.</small></div>
         <label><span>Від</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
         <label><span>До</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
@@ -73,7 +73,7 @@ export default function ServiceMaterialMarginPage(){
       </section>
 
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>По послугах</b><small>{data.summary.serviceCount} кодів із проведеними виконаннями, доходом або матеріальною собівартістю за період.</small></div></header>
+        <header className="financeToolbar"><div><h2>По послугах</h2><small>{data.summary.serviceCount} кодів із проведеними виконаннями, доходом або матеріальною собівартістю за період.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr>
           <th>Послуга</th><th className="num">Виконано, нетто</th><th className="num">Дохід</th><th className="num">Матеріали</th><th className="num">Внесок</th><th className="num">Маржа</th>
         </tr></thead><tbody>

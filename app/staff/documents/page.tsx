@@ -135,7 +135,7 @@ export default function BusinessDocumentsPage(){
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Єдиний журнал реєстраторів</b><small>Документи не дублюються в журналі: він читає канонічні business_documents і пов’язані registrar-факти.</small></div>
+        <div><h2>Єдиний журнал реєстраторів</h2><small>Документи не дублюються в журналі: він читає канонічні business_documents і пов’язані registrar-факти.</small></div>
         <label><span>Тип документа</span><select value={typeFilter} onChange={e=>setTypeFilter(e.target.value)}><option value="">Усі типи</option>{Object.entries(TYPE_UK).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
         <label><span>Стан</span><select value={stateFilter} onChange={e=>setStateFilter(e.target.value)}><option value="">Усі стани</option>{Object.entries(STATE_UK).map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
         <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Пошук: номер, пацієнт, послуга…" aria-label="Пошук у журналі документів"/>
@@ -161,7 +161,7 @@ export default function BusinessDocumentsPage(){
     </section>
 
     {(loadingDetail||detail)&&<section className="financeJournal">
-      <header className="financeToolbar"><div><b>Ланцюжок документа</b><small>{loadingDetail?"Завантаження…":detail?`${TYPE_UK[detail.document.journalType]||detail.document.journalType} ${detail.document.number}`:""}</small></div><a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a></header>
+      <header className="financeToolbar"><div><h2>Ланцюжок документа</h2><small>{loadingDetail?"Завантаження…":detail?`${TYPE_UK[detail.document.journalType]||detail.document.journalType} ${detail.document.number}`:""}</small></div><a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a></header>
       {detail&&!loadingDetail&&<>
         <div className="financePrintDetails">
           <p><span>Документ</span><b>{detail.document.number}</b></p>

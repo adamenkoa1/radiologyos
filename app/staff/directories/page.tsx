@@ -37,7 +37,7 @@ export default function DirectoriesPage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Карта довідників</b><small>Змінюйте нормативно-довідкові дані тут, а не всередині кожного документа.</small></div></header>
+      <header className="financeToolbar"><div><h2>Карта довідників</h2><small>Змінюйте нормативно-довідкові дані тут, а не всередині кожного документа.</small></div></header>
       <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Довідник</th><th>Призначення</th><th/></tr></thead>
         <tbody>{directories.map(item=><tr key={item.name}>

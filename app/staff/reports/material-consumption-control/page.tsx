@@ -54,7 +54,7 @@ export default function MaterialConsumptionControlPage(){
   >
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Період виконання послуг</b><small>Відбір — за performed_at. План береться з immutable reserve поточної Appointment-версії.</small></div>
+        <div><h2>Період виконання послуг</h2><small>Відбір — за performed_at. План береться з immutable reserve поточної Appointment-версії.</small></div>
         <label><span>Від</span><input type="date" value={from} onChange={e=>setFrom(e.target.value)}/></label>
         <label><span>До</span><input type="date" value={to} onChange={e=>setTo(e.target.value)}/></label>
         <button type="button" disabled={loading} onClick={()=>void load()}>{loading?"Формування…":"Сформувати"}</button>
@@ -79,7 +79,7 @@ export default function MaterialConsumptionControlPage(){
       </section>
 
       <section className="financeJournal">
-        <header className="financeToolbar"><div><b>По послугах і матеріалах</b><small>{data.summary.rowCount} однорідних груп; кількості не сумуються між різними одиницями виміру.</small></div></header>
+        <header className="financeToolbar"><div><h2>По послугах і матеріалах</h2><small>{data.summary.rowCount} однорідних груп; кількості не сумуються між різними одиницями виміру.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr>
           <th>Послуга / матеріал</th><th>Склад</th><th className="num">План</th><th className="num">Факт</th><th className="num">Draft</th><th className="num">Не проведено</th><th className="num">Не розподілено</th><th className="num">Покриття</th>
         </tr></thead><tbody>

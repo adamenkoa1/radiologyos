@@ -142,7 +142,7 @@ export default function PersonnelVlkPage(){
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Працівник</b><small>Оберіть кадрову картку, для якої ведеться історія ВЛК.</small></div></header>
+      <header className="financeToolbar"><div><h2>Працівник</h2><small>Оберіть кадрову картку, для якої ведеться історія ВЛК.</small></div></header>
       <div className="shiftPlannerToolbar">
         <select value={personnelId} onChange={(event)=>{setPersonnelId(event.target.value);setSupersedesId(null);}} aria-label="Працівник">
           {!personnel.length && <option value="">Немає активних працівників</option>}
@@ -152,7 +152,7 @@ export default function PersonnelVlkPage(){
     </section>
 
     {selected && <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{supersedesId ? "Виправлення рішення ВЛК" : "Нове рішення ВЛК"}</b><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
+      <header className="financeToolbar"><div><h2>{supersedesId ? "Виправлення рішення ВЛК" : "Нове рішення ВЛК"}</h2><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
       <form className="formGrid" onSubmit={save}>
         <label>Дата ВЛК<input name="examinationDate" type="date" required /></label>
         <label>Рішення<select name="decisionCode" defaultValue="fit">{DECISIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -166,7 +166,7 @@ export default function PersonnelVlkPage(){
     </section>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія ВЛК</b><small>Усі рішення зберігаються як окремі незмінні записи.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія ВЛК</h2><small>Усі рішення зберігаються як окремі незмінні записи.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Дата</th><th>Рішення</th><th>Документ</th><th>Строк</th><th>Стан</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.id}>

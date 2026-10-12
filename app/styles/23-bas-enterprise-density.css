@@ -334,7 +334,10 @@
   border-bottom:1px solid var(--bas-line);
 }
 .basWorkspaceShell .financeToolbar>div{min-width:180px;flex:1}
-.basWorkspaceShell .financeToolbar b{font-size:10.5px}
+.basWorkspaceShell .financeToolbar :is(b,h2){font-size:10.5px}
+/* Section titles use semantic <h2>; neutralise block/heading defaults so the
+   dense toolbar keeps its original inline <b> rhythm (одна лінія: заголовок+small). */
+.basWorkspaceShell .financeToolbar h2{display:inline;margin:0;font-weight:700;line-height:inherit}
 .basWorkspaceShell .financeToolbar small{margin-top:1px;font-size:8.5px;line-height:1.2;color:var(--bas-muted)}
 .basWorkspaceShell .financeToolbar label span{margin-bottom:2px;font-size:8px}
 .basWorkspaceShell .financeTableWrap{border-radius:0;box-shadow:none}
@@ -457,7 +460,7 @@
   .basWorkspaceShell .financeSummary article b,
   .basWorkspaceShell .reportStats article b,
   .basWorkspaceShell .staffStats article b{font-size:18px}
-  .basWorkspaceShell .financeToolbar b,.basWorkspaceShell .staffTools b{font-size:13px}
+  .basWorkspaceShell .financeToolbar :is(b,h2),.basWorkspaceShell .staffTools b{font-size:13px}
   .basWorkspaceShell .financeToolbar small,.basWorkspaceShell .staffTools small{font-size:11.5px}
   .basWorkspaceShell .financeToolbar label span{font-size:11px}
   .basWorkspaceShell .financeState{font-size:11px;padding:3px 7px}

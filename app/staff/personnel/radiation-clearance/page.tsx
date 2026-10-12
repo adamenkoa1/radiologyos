@@ -147,7 +147,7 @@ export default function PersonnelRadiationClearancePage(){
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Працівник</b><small>Оберіть кадрову картку, для якої ведеться історія допусків до ДІВ.</small></div></header>
+      <header className="financeToolbar"><div><h2>Працівник</h2><small>Оберіть кадрову картку, для якої ведеться історія допусків до ДІВ.</small></div></header>
       <div className="shiftPlannerToolbar">
         <select value={personnelId} onChange={(event)=>{setPersonnelId(event.target.value);setSupersedesId(null);}} aria-label="Працівник">
           {!personnel.length && <option value="">Немає активних працівників</option>}
@@ -157,7 +157,7 @@ export default function PersonnelRadiationClearancePage(){
     </section>
 
     {selected && <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{supersedesId ? "Виправлення запису допуску" : "Нове рішення щодо допуску"}</b><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
+      <header className="financeToolbar"><div><h2>{supersedesId ? "Виправлення запису допуску" : "Нове рішення щодо допуску"}</h2><small>{selected.displayName} · {selected.positionTitle}</small></div>{supersedesId && <button className="button secondary" type="button" onClick={()=>setSupersedesId(null)}>Скасувати виправлення</button>}</header>
       <form className="formGrid" onSubmit={save}>
         <label>Дата набрання чинності<input name="effectiveDate" type="date" required /></label>
         <label>Рішення<select name="decisionCode" defaultValue="authorized">{DECISIONS.map(([value,label])=><option key={value} value={value}>{label}</option>)}</select></label>
@@ -174,7 +174,7 @@ export default function PersonnelRadiationClearancePage(){
     </section>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія допусків до ДІВ</b><small>Усі рішення зберігаються як окремі незмінні записи.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія допусків до ДІВ</h2><small>Усі рішення зберігаються як окремі незмінні записи.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Дата</th><th>Рішення / scope</th><th>Документ</th><th>Строк</th><th>Версія</th><th/></tr></thead>
         <tbody>{records.map((record)=><tr key={record.id}>
