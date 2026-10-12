@@ -226,22 +226,22 @@ export default function IntakePage() {
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Дошка прийому доступна персоналу реєстратури.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fintake">Увійти</a></section>
     : loadError && !data
     ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити заявки. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
-    : !loaded ? <p className="dashLoading">Завантаження…</p>
+    : !loaded ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p>
     : <div className="intakeBoard">
         <aside className="intakeQueue">
           <div className="intakeQueueTop">
-            <div className="intakeSeg">
-              <button className={filter==="attention"?"on":""} onClick={()=>setFilter("attention")}>Потребують уваги</button>
-              <button className={filter==="all"?"on":""} onClick={()=>setFilter("all")}>Усі</button>
+            <div className="intakeSeg" role="group" aria-label="Фільтр заявок">
+              <button type="button" aria-pressed={filter==="attention"} className={filter==="attention"?"on":""} onClick={()=>setFilter("attention")}>Потребують уваги</button>
+              <button type="button" aria-pressed={filter==="all"} className={filter==="all"?"on":""} onClick={()=>setFilter("all")}>Усі</button>
             </div>
-            <input type="search" placeholder="Пошук: ім'я, телефон, код" value={query} onChange={e=>setQuery(e.target.value)} />
+            <input type="search" aria-label="Пошук заявок за ім'ям, телефоном або кодом" placeholder="Пошук: ім'я, телефон, код" value={query} onChange={e=>setQuery(e.target.value)} />
             {!readOnly && <button className="intakeNew" onClick={startCreate}>＋ Нова заявка</button>}
           </div>
           <ul className="intakeList">
             {list.length === 0 ? <li className="intakeEmpty">Немає заявок за фільтром.</li> : list.map(b => {
               const src = sourceOf.get(b.id);
               return <li key={b.id}>
-                <button className={`intakeCard st-${b.status}${b.id===selectedId&&!creating?" active":""}`} onClick={()=>selectBooking(b)}>
+                <button type="button" aria-current={b.id===selectedId&&!creating ? "true" : undefined} className={`intakeCard st-${b.status}${b.id===selectedId&&!creating?" active":""}`} onClick={()=>selectBooking(b)}>
                   <span className="intakeCardTop">
                     <b>{b.name || "—"}</b>
                     <span className={`intakeSrc ${src||"site"}`} title={src==="staff"?"Внесено вручну":"Через сайт"}>{src==="staff"?"✍️":"🌐"}</span>

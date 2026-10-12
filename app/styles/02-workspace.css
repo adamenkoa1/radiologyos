@@ -373,6 +373,9 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .intakeCard:hover{background:#f4f8f7}
 .intakeCard.active{border-color:#0c7a85;border-left-color:#0c7a85;background:#eef7f6}
 .intakeCard.st-new{border-left-color:#c9a227}.intakeCard.st-rescheduled{border-left-color:#2f5c9a}
+/* Клавіатурний фокус: дошка прийому — черга лінків-карток + перемикач фільтра +
+   дії картки; лише пошук мав focus-ring (WCAG 2.4.7). */
+.intakeSeg button:focus-visible,.intakeCard:focus-visible,.intakeNew:focus-visible,.intakeConfirm:focus-visible,.intakeActions button:focus-visible,.intakeClose:focus-visible,.intakePatientLink:focus-visible,.intakeCall:focus-visible{outline:2px solid #0c7a85;outline-offset:2px}
 .intakeCardTop{display:flex;justify-content:space-between;align-items:center}
 .intakeCardTop b{font-size:13px;font-weight:700;color:#25332f}
 .intakeSrc{font-size:12px}

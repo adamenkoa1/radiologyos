@@ -21,3 +21,22 @@ test("intake createBooking() surfaces a network failure instead of a silent no-o
   const page = await read("app/staff/intake/page.tsx");
   assert.match(page, /async function createBooking\([\s\S]*?\} catch \{[\s\S]*?flash\("Немає зв’язку — заявку не створено[\s\S]*?\} finally \{ setBusy\(false\); \}/);
 });
+
+test("intake a11y: filter toggle, search, selected card and loading are exposed to AT", async () => {
+  const page = await read("app/staff/intake/page.tsx");
+  // Перемикач фільтра — група з aria-pressed
+  assert.match(page, /className="intakeSeg" role="group" aria-label="Фільтр заявок"/);
+  assert.match(page, /<button type="button" aria-pressed=\{filter==="attention"\}/);
+  assert.match(page, /<button type="button" aria-pressed=\{filter==="all"\}/);
+  // Пошук має доступну назву (placeholder не рахується)
+  assert.match(page, /<input type="search" aria-label="Пошук заявок за ім'ям, телефоном або кодом"/);
+  // Вибрана картка — aria-current
+  assert.match(page, /aria-current=\{b\.id===selectedId&&!creating \? "true" : undefined\}/);
+  // Завантаження оголошується
+  assert.match(page, /<p className="dashLoading" role="status" aria-live="polite">Завантаження…<\/p>/);
+});
+
+test("intake interactive controls have a visible keyboard focus ring", async () => {
+  const css = await read("app/styles/02-workspace.css");
+  assert.match(css, /\.intakeSeg button:focus-visible,\.intakeCard:focus-visible[\s\S]*?outline:2px solid #0c7a85;outline-offset:2px\}/);
+});
