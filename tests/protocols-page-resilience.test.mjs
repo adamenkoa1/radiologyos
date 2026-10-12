@@ -24,3 +24,24 @@ test("protocol queue auto-refreshes without disrupting active editing", async ()
   assert.match(page, /document\.hidden \|\| busyRef\.current/);
   assert.match(page, /busyRef\.current = saving \|\| bookingLoading \|\| aiLoading/);
 });
+
+test("protocol queue search has an accessible name (placeholder is not a label)", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
+  assert.match(page, /<input type="search".*aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням"/);
+});
+
+test("selected protocol in the queue is exposed via aria-current", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
+  assert.match(page, /aria-current=\{selectedId === item\.id \? "true" : undefined\}/);
+});
+
+test("protocol loading placeholder is announced as a status", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
+  assert.match(page, /<div className="protocolPlaceholder" role="status" aria-live="polite">/);
+});
+
+test("queue filter tabs and list items have a visible keyboard focus ring", async () => {
+  const css = await read("app/styles/02-workspace.css");
+  assert.match(css, /\.protocolFilterTabs button:focus-visible\{outline:2px solid #0d5b50;outline-offset:2px\}/);
+  assert.match(css, /\.protocolQueueItem:focus-visible\{outline:2px solid #0d5b50;outline-offset:2px\}/);
+});
