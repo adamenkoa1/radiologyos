@@ -34,6 +34,7 @@
 .basWorkspaceShell .reportTemplateTabs button.active{background:transparent;border-color:transparent;border-bottom-color:var(--rp-accent);color:var(--rp-accent)}
 .basWorkspaceShell .reportTemplateTabs button b{font-family:var(--font-sans);font-size:13px;font-weight:600}
 .basWorkspaceShell .reportTemplateTabs button.active b{font-weight:700}
+.basWorkspaceShell .reportTemplateTabs button:focus-visible{outline:2px solid var(--rp-accent);outline-offset:2px;border-radius:4px}
 .basWorkspaceShell .reportTemplateTabs button span{display:none}
 .basWorkspaceShell .reportActiveDesc{margin:14px 0 0;color:var(--rp-muted);font-size:12px}
 .basWorkspaceShell .reportActiveDesc b{color:var(--rp-ink);font-weight:600}
@@ -57,6 +58,7 @@
 .basWorkspaceShell .reportFormActions button:hover:not(:disabled){background:var(--rp-accent-deep)}
 .basWorkspaceShell .excelButton{background:transparent;border:1px solid var(--rp-line);color:var(--rp-accent);border-radius:7px;height:36px;padding:0 16px;font-weight:700}
 .basWorkspaceShell .excelButton:hover{border-color:var(--rp-accent);background:var(--rp-tint)}
+.basWorkspaceShell .reportFormActions button:focus-visible,.basWorkspaceShell .excelButton:focus-visible{outline:2px solid var(--rp-accent);outline-offset:2px}
 
 /* колонки — легкі чіпи-перемикачі */
 .basWorkspaceShell .reportColumns{background:transparent;border:0;padding:20px 0 0;margin-top:24px;border-top:1px solid var(--rp-line-soft)}
@@ -64,6 +66,7 @@
 .basWorkspaceShell .reportColumns>div:first-child span{color:var(--rp-faint)}
 .basWorkspaceShell .columnActions button{border:0;background:transparent;color:var(--rp-muted);font-size:11px;font-weight:700;padding:0}
 .basWorkspaceShell .columnActions button:hover{color:var(--rp-accent)}
+.basWorkspaceShell .columnActions button:focus-visible{outline:2px solid var(--rp-accent);outline-offset:2px;border-radius:4px}
 .basWorkspaceShell .columnChecks{gap:7px}
 .basWorkspaceShell .columnChecks label{
   background:var(--rp-panel);border:1px solid var(--rp-line);border-radius:999px;

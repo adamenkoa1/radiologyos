@@ -183,9 +183,11 @@ export default function ReportsPage() {
           <span>Інші звіти:</span>
           {OTHER_REPORTS.map((item)=><a key={item.href} href={item.href}>{item.label}</a>)}
         </nav>
-        <div className="reportTemplateTabs">
+        <div className="reportTemplateTabs" role="tablist" aria-label="Шаблон звіту">
           {(Object.values(REPORT_TEMPLATES)).map((item)=><button
             type="button"
+            role="tab"
+            aria-selected={template === item.key}
             className={template === item.key ? "active":""}
             key={item.key}
             onClick={()=>chooseTemplate(item.key)}
@@ -232,7 +234,7 @@ export default function ReportsPage() {
         {error && <p className="staffError" role="alert">{error}</p>}
         {data && <div className="reportPreview">
           <div className="reportPreviewHead"><b>Попередній перегляд</b><span>{data.previewTotal} рядків · показано до 100</span></div>
-          <div className="financeTableWrap"><table className="financeTable"><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
+          <div className="financeTableWrap"><table className="financeTable" aria-label="Попередній перегляд звіту"><thead><tr>{data.columns.map((item)=><th key={item.key}>{item.label}</th>)}</tr></thead>
             <tbody>{data.preview.length === 0 ? <tr><td colSpan={Math.max(1,data.columns.length)}>Даних за обраними фільтрами немає.</td></tr> :
               data.preview.map((row,index)=><tr key={index}>{data.columns.map((item)=><td key={item.key}>{formatCell(row[item.key],item)}</td>)}</tr>)}
             </tbody></table></div>
