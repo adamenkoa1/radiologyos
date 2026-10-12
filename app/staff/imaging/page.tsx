@@ -240,16 +240,18 @@ export default function ImagingPage() {
       <div className="protocolWorkspace">
         <aside className="protocolQueue" aria-label="Робочий список досліджень">
           <div className="protocolQueueTools">
-            <div className="protocolFilterTabs" role="tablist">
-              <button role="tab" aria-selected={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі <b>{counts.all}</b></button>
-              <button role="tab" aria-selected={filter==="not_linked"} className={filter==="not_linked"?"active":""} onClick={()=>setFilter("not_linked")}>Без студії <b>{counts.not_linked}</b></button>
-              <button role="tab" aria-selected={filter==="available"} className={filter==="available"?"active":""} onClick={()=>setFilter("available")}>У PACS <b>{counts.available}</b></button>
+            <div className="protocolFilterTabs" role="group" aria-label="Фільтр робочого списку">
+              <button type="button" aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі <b>{counts.all}</b></button>
+              <button type="button" aria-pressed={filter==="not_linked"} className={filter==="not_linked"?"active":""} onClick={()=>setFilter("not_linked")}>Без студії <b>{counts.not_linked}</b></button>
+              <button type="button" aria-pressed={filter==="available"} className={filter==="available"?"active":""} onClick={()=>setFilter("available")}>У PACS <b>{counts.available}</b></button>
             </div>
-            <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Код, ПІБ, Accession"/>
+            <input type="search" aria-label="Пошук у робочому списку за кодом, ПІБ або Accession" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Код, ПІБ, Accession"/>
           </div>
           <div className="protocolQueueList">
-            {visible.length === 0 ? <p className="empty">{!loaded ? "Завантаження…" : "Досліджень у цій категорії немає."}</p> : visible.map((item)=><button
+            {visible.length === 0 ? <p className="empty" role="status" aria-live="polite">{!loaded ? "Завантаження…" : "Досліджень у цій категорії немає."}</p> : visible.map((item)=><button
               key={item.id}
+              type="button"
+              aria-current={selectedId===item.id ? "true" : undefined}
               className={`protocolQueueItem${selectedId===item.id?" active":""}`}
               onClick={()=>void openBooking(item.id)}
             >

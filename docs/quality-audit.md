@@ -77,7 +77,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/tasks` | повторно перевірено | #620,#621,#633 | Resilience + повний WAI-ARIA таб-патерн |
 | `/staff/patients` | повторно перевірено | #630,#642 | Повний чек-лист: a11y (#630/#638), resilience (useSubmit), без мертвого коду й lint-warnings; `type="button"` на 2 поза-формних кнопках (#642). Нових дефектів не виявлено |
 | `/staff/appointments` | потребує виправлення→виправлено | #643 | Тех ✅ + Функц ✅ (resilience, catch, екрани доступу/мережі; week-calendar day/week/list). Візуал ⛔ незавершено (authed browser недоступний). Виправлено: view-toggle/status-tabs `aria-pressed`+`role=group`, aria-label дати/пошуку, loading `role=status` |
-| `/staff/imaging` | не перевірено | — | DICOM-привʼязка |
+| `/staff/imaging` | виправлено | #644 | Тех ✅ + Функц ✅ (useSubmit-резилієнс, catch, екрани доступу/мережі, PACS-банер, readonly fieldset). Візуал ⛔ незавершено. Виправлено неузгодженість: `protocolFilterTabs` приведено до `role=group`+`aria-pressed` (був неповний tablist) як на protocols; `aria-label` пошуку; `aria-current` вибраного; `role=status` на empty/loading |
 | `/staff/chat` | не перевірено | — | |
 | `/staff/critical-findings` | не перевірено | — | Клінічно важливий |
 | `/staff/book` | не перевірено | — | Реєстратор: створення запису |
