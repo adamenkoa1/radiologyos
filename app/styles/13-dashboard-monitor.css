@@ -332,3 +332,21 @@
   .workspaceShell .dashList li a { transition: none; }
   .workspaceShell .dashCard:hover { transform: none; }
 }
+
+/* Клавіатурний фокус: Пульт — найщільніший інтерактивом екран (KPI-лінки,
+   чипи-фільтри, дії карток, рядки агенди, кнопки прибуття/неявки, лінки
+   аналітики), але жоден контрол не мав видимого focus-ring (WCAG 2.4.7). */
+.workspaceShell .dashMcItem:focus-visible,
+.workspaceShell .dashChip:focus-visible,
+.workspaceShell .dashSelAll:focus-visible,
+.workspaceShell .dashBatchBtn:focus-visible,
+.workspaceShell .dashCardBtn:focus-visible,
+.workspaceShell .dashAgendaMain:focus-visible,
+.workspaceShell .dashMark:focus-visible,
+.workspaceShell .dashStat:focus-visible,
+.workspaceShell .dashQueue:focus-visible,
+.workspaceShell .patLink:focus-visible,
+.workspaceShell .dashList li a:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+}
