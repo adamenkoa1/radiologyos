@@ -290,7 +290,7 @@ export default function PatientsPage() {
         <div className="protocolQueueTools">
           <div className="crmSegmentTabs" role="group" aria-label="Сегменти пацієнтів">
             {(Object.keys(SEGMENT_LABELS) as PatientSegment[]).map((key)=><button
-              key={key} aria-pressed={segment===key}
+              key={key} type="button" aria-pressed={segment===key}
               className={segment===key?"active":""} onClick={()=>setSegment(key)}
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
@@ -305,6 +305,7 @@ export default function PatientsPage() {
             const key = patientKey(item.patientId, item.phoneNormalized);
             return <button
               key={key}
+              type="button"
               aria-current={selectedPatientKey===key ? "true" : undefined}
               className={`protocolQueueItem${selectedPatientKey===key?" active":""}`}
               onClick={()=>void openPatient(item)}
