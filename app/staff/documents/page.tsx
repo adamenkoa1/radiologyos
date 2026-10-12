@@ -143,10 +143,10 @@ export default function BusinessDocumentsPage(){
         <button type="button" onClick={()=>void load()}>Оновити</button>
         <a className="excelButton" href="/staff/registers">Регістри</a>
       </header>
-      {error&&<p className="financeError">{error}</p>}
-      {!data&&!error&&<p className="financeLoading">Завантаження журналу…</p>}
+      {error&&<p className="financeError" role="alert">{error}</p>}
+      {!data&&!error&&<p className="financeLoading" role="status" aria-live="polite">Завантаження журналу…</p>}
       {data&&<div className="financeTableWrap"><table className="financeTable">
-        <thead><tr><th>Документ</th><th>Дата</th><th>Заявка / пацієнт</th><th>Зміст</th><th className="num">Сума / кількість</th><th>Стан</th><th>Підстава</th><th/></tr></thead>
+        <thead><tr><th>Документ</th><th>Дата</th><th>Заявка / пацієнт</th><th>Зміст</th><th className="num">Сума / кількість</th><th>Стан</th><th>Підстава</th><th aria-label="Дії"/></tr></thead>
         <tbody>{rows.map(row=><tr key={row.id}>
           <td><b>{row.number||`#${row.id}`}</b><small>{TYPE_UK[row.journalType]||row.journalType}</small></td>
           <td>{dateTime(row.occurredAt)}</td>
@@ -155,12 +155,12 @@ export default function BusinessDocumentsPage(){
           <td className="num">{row.amount>0?money(row.amount,row.currency):row.lineCount>0?`${row.totalQuantity} од.`:"—"}</td>
           <td><span className={`financeState state-${row.state}`}>{STATE_UK[row.state]||row.state}</span></td>
           <td>{row.sourceDocumentId?<><b>#{row.sourceDocumentId}</b><small>{REL_UK[row.relationType]||row.relationType}</small></>:"—"}</td>
-          <td><button type="button" className={selectedId===row.id?"active":""} onClick={()=>void openDocument(row.id)}>Структура</button></td>
+          <td><button type="button" aria-pressed={selectedId===row.id} className={selectedId===row.id?"active":""} onClick={()=>void openDocument(row.id)}>Структура</button></td>
         </tr>)}</tbody>
       </table>{rows.length===0&&<p className="financeEmpty">Документів за цим відбором немає.</p>}</div>}
     </section>
 
-    {(loadingDetail||detail)&&<section className="financeJournal">
+    {(loadingDetail||detail)&&<section className="financeJournal" aria-busy={loadingDetail}>
       <header className="financeToolbar"><div><h2>Ланцюжок документа</h2><small>{loadingDetail?"Завантаження…":detail?`${TYPE_UK[detail.document.journalType]||detail.document.journalType} ${detail.document.number}`:""}</small></div><a className="excelButton" href="/staff/reports/registers">Обороти регістрів</a></header>
       {detail&&!loadingDetail&&<>
         <div className="financePrintDetails">
@@ -172,7 +172,7 @@ export default function BusinessDocumentsPage(){
         </div>
 
         <div className="financeTableWrap"><table className="financeTable">
-          <thead><tr><th>Напрям</th><th>Зв’язок</th><th>Документ</th><th>Тип</th><th>Стан</th><th/></tr></thead>
+          <thead><tr><th>Напрям</th><th>Зв’язок</th><th>Документ</th><th>Тип</th><th>Стан</th><th aria-label="Дії"/></tr></thead>
           <tbody>
             {detail.relations.parent.map(row=><tr key={`p-${row.id}`}><td>← Підстава</td><td>{REL_UK[row.relationType]||row.relationType}</td><td><b>{row.number}</b></td><td>{TYPE_UK[row.journalType]||row.journalType}</td><td>{STATE_UK[row.state]||row.state}</td><td><button onClick={()=>void openDocument(row.id)}>Відкрити</button></td></tr>)}
             {detail.relations.children.map(row=><tr key={`c-${row.id}`}><td>→ Похідний</td><td>{REL_UK[row.relationType]||row.relationType}</td><td><b>{row.number}</b></td><td>{TYPE_UK[row.journalType]||row.journalType}</td><td>{STATE_UK[row.state]||row.state}</td><td><button onClick={()=>void openDocument(row.id)}>Відкрити</button></td></tr>)}
