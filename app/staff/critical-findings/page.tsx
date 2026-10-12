@@ -67,7 +67,7 @@ export default function CriticalFindingsPage() {
     netError && !findings.length ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити список критичних знахідок. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); setLoading(true); void load(); }}>Повторити</button></section> :
     <section className="reportPanel">
       {actionError && <p className="staffError" role="alert">{actionError}</p>}
-      {loading ? <p className="empty">Завантаження…</p> :
+      {loading ? <p className="empty" role="status" aria-live="polite">Завантаження…</p> :
         findings.length === 0 ? <p className="empty">Відкритих критичних знахідок немає.</p> :
         <ul className="cfList">
           {findings.map((f) => <li key={f.id} className={`cfItem st-${f.status}`}>
@@ -81,7 +81,7 @@ export default function CriticalFindingsPage() {
               {f.status === "communicated" && ` → доведено: ${f.communicatedBy} (${f.communicatedVia}) · ${fmt(f.communicatedAt)}`}</p>
             <div className="cfActions">
               {f.status === "open" && <>
-                <input placeholder="Як доведено (телефон, особисто…)" value={via[f.id] || ""}
+                <input aria-label="Як доведено критичну знахідку (канал зв'язку)" placeholder="Як доведено (телефон, особисто…)" value={via[f.id] || ""}
                   onChange={(e) => setVia((s) => ({ ...s, [f.id]: e.target.value }))} />
                 <button type="button" className="button compact" disabled={busy || !(via[f.id] || "").trim()}
                   onClick={() => void act({ action: "communicate", id: f.id, via: via[f.id] })}>Позначити доведеним</button>

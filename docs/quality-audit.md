@@ -79,7 +79,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/appointments` | потребує виправлення→виправлено | #643 | Тех ✅ + Функц ✅ (resilience, catch, екрани доступу/мережі; week-calendar day/week/list). Візуал ⛔ незавершено (authed browser недоступний). Виправлено: view-toggle/status-tabs `aria-pressed`+`role=group`, aria-label дати/пошуку, loading `role=status` |
 | `/staff/imaging` | виправлено | #644 | Тех ✅ + Функц ✅ (useSubmit-резилієнс, catch, екрани доступу/мережі, PACS-банер, readonly fieldset). Візуал ⛔ незавершено. Виправлено неузгодженість: `protocolFilterTabs` приведено до `role=group`+`aria-pressed` (був неповний tablist) як на protocols; `aria-label` пошуку; `aria-current` вибраного; `role=status` на empty/loading |
 | `/staff/chat` | не перевірено | — | |
-| `/staff/critical-findings` | не перевірено | — | Клінічно важливий |
+| `/staff/critical-findings` | виправлено | #645 | Тех ✅ + Функц ✅ (act/load try/catch/finally, екран доступу + net-retry, actionError role=alert; потік flag→communicate→resolve із фіксацією ким/коли). Візуал ⛔ незавершено. Виправлено: loading `role=status`, `aria-label` на інпуті «як доведено» |
 | `/staff/book` | не перевірено | — | Реєстратор: створення запису |
 | `/staff/patients/import` | не перевірено | — | CSV-імпорт |
 | `/staff/patients/issues` | не перевірено | — | Аудит неузгодженостей |
