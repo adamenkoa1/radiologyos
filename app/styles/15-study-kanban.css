@@ -76,6 +76,14 @@
   color: var(--ws-accent);
 }
 
+/* Клавіатурний фокус: дошка — довга Tab-послідовність лінків-карток і контролів
+   тулбара, але жоден не мав видимого focus-ring (WCAG 2.4.7). */
+.workspaceShell .studyBoardToolbar button:focus-visible,
+.workspaceShell .studyBoardToolbar a:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+}
+
 .workspaceShell .studyBoardSummary {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -209,6 +217,11 @@
   border-color: rgba(13,91,80,.35);
   box-shadow: 0 5px 16px rgba(16,24,40,.09);
   transform: translateY(-1px);
+}
+
+.workspaceShell .studyKanbanCard:focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
 }
 
 .workspaceShell .studyKanbanCardTop {
@@ -376,6 +389,7 @@
   text-decoration: none;
 }
 
+.workspaceShell .studyBoardExceptions > div a:focus-visible { outline: 2px solid var(--ws-accent); outline-offset: -2px; }
 .workspaceShell .studyBoardExceptions > div a:last-child { border-bottom: 0; }
 .workspaceShell .studyBoardExceptions time { font-variant-numeric: tabular-nums; }
 .workspaceShell .studyBoardExceptions > div a span { color: var(--ws-muted); }
