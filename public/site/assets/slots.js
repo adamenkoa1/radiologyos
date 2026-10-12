@@ -50,7 +50,10 @@ async function initSlotPicker({ container, serviceCode, onPick }) {
     const d = new Date();
     d.setDate(d.getDate() + i);
     if (d.getDay() === 0 || d.getDay() === 6) continue; // субота й неділя — вихідні
-    const iso = d.toISOString().slice(0, 10);
+    // Дату беремо з ЛОКАЛЬНИХ компонентів (як і підпис дня), а не з toISOString()
+    // (UTC): інакше вночі 00:00–03:00 за Києвом підпис показував «сьогодні», а iso
+    // був учорашнім — пацієнт обирав слот, а в заявку йшла вчорашня дата.
+    const iso = d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate());
     days.push({ iso, label: dayNames[d.getDay()] + ' ' + pad(d.getDate()) + '.' + pad(d.getMonth() + 1) });
   }
   if (!days.length) {
