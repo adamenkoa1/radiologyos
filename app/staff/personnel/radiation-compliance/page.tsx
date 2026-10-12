@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
+import { todayInKyiv } from "../../../../lib/booking-rules";
 
 type AppliedPolicy = {
   id:string;
@@ -76,12 +77,6 @@ const EMPTY_SUMMARY:ComplianceSummary = {
   recordedCount:0,
   policyReviewCount:0,
 };
-
-function localIsoDate(){
-  const now=new Date();
-  const local=new Date(now.getTime()-now.getTimezoneOffset()*60_000);
-  return local.toISOString().slice(0,10);
-}
 
 function policyCriterion(value:number | null,label:string){
   return value==null ? `${label}: не налаштовано` : `${label}: ${value} дн.`;
@@ -168,7 +163,7 @@ export default function RadiationCompliancePage(){
 
   useEffect(()=>{
     const timer=window.setTimeout(()=>{
-      const date=localIsoDate();
+      const date=todayInKyiv();
       setAsOf(date);
       void load(date);
     },0);

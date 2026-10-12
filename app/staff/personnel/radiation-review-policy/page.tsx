@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
+import { todayInKyiv } from "../../../../lib/booking-rules";
 
 type PolicyRevision = {
   id:string;
@@ -26,12 +27,6 @@ type PolicyResponse = {
   canManage?:boolean;
   error?:string;
 };
-
-function localIsoDate(){
-  const now=new Date();
-  const local=new Date(now.getTime()-now.getTimezoneOffset()*60_000);
-  return local.toISOString().slice(0,10);
-}
 
 function criterion(value:number | null,label:string){
   return value==null ? `${label}: не налаштовано` : `${label}: ${value} дн.`;
@@ -64,7 +59,7 @@ export default function RadiationReviewPolicyPage(){
     return ()=>window.clearTimeout(timer);
   },[load]);
 
-  const nextEffectiveFrom=useMemo(()=>currentLeaf?.effectiveFrom || localIsoDate(),[currentLeaf]);
+  const nextEffectiveFrom=useMemo(()=>currentLeaf?.effectiveFrom || todayInKyiv(),[currentLeaf]);
 
   async function save(event:React.FormEvent<HTMLFormElement>){
     event.preventDefault();
