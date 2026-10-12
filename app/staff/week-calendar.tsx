@@ -224,7 +224,7 @@ export default function WeekCalendar({
           <button type="button" onClick={() => setDate(addDays(date, view === "week" ? 7 : 1))} aria-label="Вперед">›</button>
           <span className="apptRange">{rangeLabel}</span>
         </div>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)} />
+        <input type="date" aria-label="Дата" value={date} onChange={e => setDate(e.target.value)} />
         {filtersApply && <>
           <select aria-label="Категорія пацієнта" value={category} onChange={e=>setCategory(e.target.value)}>
             <option value="all">Усі пацієнти</option><option value="military">Військові</option><option value="civilian">Цивільні</option>
@@ -232,18 +232,18 @@ export default function WeekCalendar({
           <select aria-label="Оплата" value={payment} onChange={e=>setPayment(e.target.value)}>
             <option value="all">Будь-яка оплата</option><option value="pending">Перевірити оплату</option><option value="paid">Оплату перевірено</option>
           </select>
-          <input type="search" placeholder="Пошук за пацієнтом…" value={search} onChange={e => setSearch(e.target.value)} />
+          <input type="search" aria-label="Пошук за пацієнтом" placeholder="Пошук за пацієнтом…" value={search} onChange={e => setSearch(e.target.value)} />
         </>}
-        <div className="apptViewToggle">
-          <button type="button" className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Тиждень</button>
-          <button type="button" className={view === "day" ? "active" : ""} onClick={() => setView("day")}>День</button>
-          <button type="button" className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Список</button>
+        <div className="apptViewToggle" role="group" aria-label="Вигляд календаря">
+          <button type="button" aria-pressed={view === "week"} className={view === "week" ? "active" : ""} onClick={() => setView("week")}>Тиждень</button>
+          <button type="button" aria-pressed={view === "day"} className={view === "day" ? "active" : ""} onClick={() => setView("day")}>День</button>
+          <button type="button" aria-pressed={view === "list"} className={view === "list" ? "active" : ""} onClick={() => setView("list")}>Список</button>
         </div>
         <a className="apptNewBtn" href="/staff/book">+ Записати пацієнта</a>
       </div>
-      {filtersApply && <div className="apptStatusRow">
+      {filtersApply && <div className="apptStatusRow" role="group" aria-label="Фільтр за станом запису">
         {TABS.map(t => (
-          <button type="button" key={t.key} className={`apptStatusTab${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
+          <button type="button" key={t.key} aria-pressed={tab === t.key} className={`apptStatusTab${tab === t.key ? " active" : ""}`} onClick={() => setTab(t.key)}>
             {t.label}<span className="apptStatusCount">{counts[t.key] ?? 0}</span>
           </button>
         ))}
