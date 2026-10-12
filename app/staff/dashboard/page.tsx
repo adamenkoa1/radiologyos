@@ -370,7 +370,7 @@ export default function DashboardPage() {
   >
     {error ? <section className="accessDenied"><b>Захищений розділ</b><p>{error}. Увійдіть через дозволений робочий обліковий запис.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fdashboard">Увійти для роботи</a></section> :
     netError && !staff ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>{netError}</p><button type="button" className="button compact" onClick={()=>{ setNetError(""); void load(); }}>Повторити</button></section> :
-    !staff ? <p className="dashLoading">Завантаження зведення…</p> :
+    !staff ? <p className="dashLoading" role="status" aria-live="polite">Завантаження зведення…</p> :
     <>
       {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
 
