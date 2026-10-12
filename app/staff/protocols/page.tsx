@@ -404,11 +404,12 @@ export default function ProtocolsPage() {
             <button aria-pressed={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
             <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
-          <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="Код, ПІБ, дослідження"/>
+          <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням" placeholder="Код, ПІБ, дослідження"/>
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
             key={item.id}
+            aria-current={selectedId === item.id ? "true" : undefined}
             className={`protocolQueueItem${selectedId === item.id ? " active":""}`}
             onClick={()=>selectBooking(item.id)}
           >
@@ -425,7 +426,7 @@ export default function ProtocolsPage() {
         {actionError && <p className="staffError" role="alert">{actionError}</p>}
         {actionSuccess && <p className="staffSuccess" role="status">{actionSuccess}</p>}
 
-        {bookingLoading && !booking ? <div className="protocolPlaceholder">
+        {bookingLoading && !booking ? <div className="protocolPlaceholder" role="status" aria-live="polite">
           <span aria-hidden="true">⏳</span>
           <b>Завантаження протоколу…</b>
           <p>Відкриваємо структурований протокол дослідження та його чернетку.</p>
