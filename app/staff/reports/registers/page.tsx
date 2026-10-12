@@ -128,7 +128,7 @@ export default function RegisterTurnoverPage(){
   >
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Період звіту</b><small>До 366 днів. Сторно та повернення потрапляють у період за датою власного руху.</small></div>
+        <div><h2>Період звіту</h2><small>До 366 днів. Сторно та повернення потрапляють у період за датою власного руху.</small></div>
         <label><span>Період</span><select value={preset} onChange={e=>changePreset(e.target.value as RegisterReportPeriodPreset)}><option value="current_month">Поточний місяць</option><option value="last_30_days">Останні 30 днів</option><option value="custom">Власний період</option></select></label>
         <label><span>Від</span><input type="date" value={from} disabled={preset!=="custom"} onChange={e=>setFrom(e.target.value)}/></label>
         <label><span>До</span><input type="date" value={to} disabled={preset!=="custom"} onChange={e=>setTo(e.target.value)}/></label>
@@ -141,14 +141,14 @@ export default function RegisterTurnoverPage(){
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Розділи звіту</b><small>Вибір змінює лише представлення та CSV; суми завжди обчислює сервер із регістрів.</small></div>
+        <div><h2>Розділи звіту</h2><small>Вибір змінює лише представлення та CSV; суми завжди обчислює сервер із регістрів.</small></div>
         {REGISTER_REPORT_UI_SECTIONS.map(item=><label key={item.key}><input type="checkbox" checked={sectionEnabled(item.key)} disabled={sectionEnabled(item.key)&&sections.length===1} onChange={()=>toggleSection(item.key)}/><span>{item.label}</span></label>)}
       </header>
     </section>
 
     {viewsAvailable===true&&<section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Збережені варіанти</b><small>Зберігаються лише назва, preset періоду та перелік розділів — без сум і медичних даних.</small></div>
+        <div><h2>Збережені варіанти</h2><small>Зберігаються лише назва, preset періоду та перелік розділів — без сум і медичних даних.</small></div>
         <label><span>Новий варіант</span><input value={viewName} maxLength={80} placeholder="Напр. Місячний склад" onChange={e=>setViewName(e.target.value)}/></label>
         <button type="button" disabled={viewBusy} onClick={()=>void saveView()}>Зберегти</button>
         <label><span>Збережено</span><select value={selectedViewId} onChange={e=>setSelectedViewId(e.target.value)}><option value="">Оберіть варіант</option>{views.map(view=><option key={view.id} value={view.id}>{view.name}</option>)}</select></label>
@@ -170,7 +170,7 @@ export default function RegisterTurnoverPage(){
           <article><span>Витрати матеріалів</span><b>{money(data.registers.expenses.net)}</b><small>lot-cost із проведених списань</small></article>
         </section>
         <section className="financeJournal">
-          <header className="financeToolbar"><div><b>Взаєморозрахунки з пацієнтами</b><small>Додатне сальдо — пацієнти винні організації; від’ємне — кредит пацієнтів.</small></div></header>
+          <header className="financeToolbar"><div><h2>Взаєморозрахунки з пацієнтами</h2><small>Додатне сальдо — пацієнти винні організації; від’ємне — кредит пацієнтів.</small></div></header>
           <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Початкове сальдо</th><th className="num">Збільшення боргу</th><th className="num">Зменшення / оплати</th><th className="num">Оборот нетто</th><th className="num">Кінцеве сальдо</th></tr></thead><tbody><tr>
             <td className="num">{money(data.registers.settlements.opening)}</td><td className="num positive">+{money(data.registers.settlements.increase)}</td><td className="num negative">−{money(data.registers.settlements.decrease)}</td><td className="num">{money(data.registers.settlements.net)}</td><td className="num"><b>{money(data.registers.settlements.closing)}</b></td>
           </tr></tbody></table></div>
@@ -178,7 +178,7 @@ export default function RegisterTurnoverPage(){
       </>}
 
       {sectionEnabled("revenue")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Дохід за послугами</b><small>Нарахування і сторно з `revenue_movements`.</small></div></header>
+        <header className="financeToolbar"><div><h2>Дохід за послугами</h2><small>Нарахування і сторно з `revenue_movements`.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Код послуги</th><th className="num">Нараховано</th><th className="num">Сторновано</th><th className="num">Нетто</th></tr></thead><tbody>
           {data.breakdowns.revenueByService.map(row=><tr key={row.serviceCode}><td><b>{row.serviceCode}</b></td><td className="num positive">{money(row.accrued)}</td><td className="num negative">{money(row.reversed)}</td><td className="num"><b>{money(row.net)}</b></td></tr>)}
           {data.breakdowns.revenueByService.length===0&&<tr><td colSpan={4}>Рухів доходу за період немає.</td></tr>}
@@ -186,7 +186,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("cash")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Гроші за способом оплати</b><small>Cash — окремий регістр; сторно послуги тут нічого не змінює.</small></div></header>
+        <header className="financeToolbar"><div><h2>Гроші за способом оплати</h2><small>Cash — окремий регістр; сторно послуги тут нічого не змінює.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Спосіб</th><th className="num">Надійшло</th><th className="num">Повернено</th><th className="num">Нетто</th></tr></thead><tbody>
           {data.breakdowns.cashByMethod.map(row=><tr key={row.method}><td>{METHOD_UK[row.method]||row.method||"—"}</td><td className="num positive">{money(row.incoming)}</td><td className="num negative">{money(row.outgoing)}</td><td className="num"><b>{money(row.net)}</b></td></tr>)}
           {data.breakdowns.cashByMethod.length===0&&<tr><td colSpan={4}>Рухів грошей за період немає.</td></tr>}
@@ -194,7 +194,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("expenses")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Витрати матеріалів за собівартістю</b><small>Immutable `expense_movements`: вартість списання береться з receipt-line партії, а не вводиться вручну.</small></div></header>
+        <header className="financeToolbar"><div><h2>Витрати матеріалів за собівартістю</h2><small>Immutable `expense_movements`: вартість списання береться з receipt-line партії, а не вводиться вручну.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал</th><th>Од.</th><th className="num">Рухів</th><th className="num">Витрати</th></tr></thead><tbody>
           {data.breakdowns.expensesByItem.map(row=><tr key={row.itemId}><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.movementCount)}</td><td className="num"><b>{money(row.amount)}</b></td></tr>)}
           {data.breakdowns.expensesByItem.length===0&&<tr><td colSpan={4}>Оцінених списань за період немає.</td></tr>}
@@ -202,7 +202,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("equipment")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Навантаження обладнання</b><small>Фактичні хвилини виконання мінус сторно.</small></div></header>
+        <header className="financeToolbar"><div><h2>Навантаження обладнання</h2><small>Фактичні хвилини виконання мінус сторно.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Апарат</th><th className="num">Нараховано хв</th><th className="num">Сторно хв</th><th className="num">Нетто хв</th></tr></thead><tbody>
           {data.breakdowns.equipment.map(row=><tr key={row.equipmentId}><td><b>{row.equipmentId}</b></td><td className="num">{number(row.loadedMinutes)}</td><td className="num">{number(row.reversedMinutes)}</td><td className="num"><b>{number(row.netMinutes)}</b></td></tr>)}
           {data.breakdowns.equipment.length===0&&<tr><td colSpan={4}>Рухів обладнання за період немає.</td></tr>}
@@ -210,7 +210,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("staff")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Виробіток персоналу</b><small>Проведені одиниці мінус сторно.</small></div></header>
+        <header className="financeToolbar"><div><h2>Виробіток персоналу</h2><small>Проведені одиниці мінус сторно.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Працівник</th><th>Роль</th><th className="num">Виконано</th><th className="num">Сторно</th><th className="num">Нетто</th></tr></thead><tbody>
           {data.breakdowns.staff.map(row=><tr key={`${row.memberEmail}-${row.staffRole}`}><td><b>{row.memberEmail}</b></td><td>{ROLE_UK[row.staffRole]||row.staffRole}</td><td className="num">{number(row.performed)}</td><td className="num">{number(row.reversed)}</td><td className="num"><b>{number(row.net)}</b></td></tr>)}
           {data.breakdowns.staff.length===0&&<tr><td colSpan={5}>Рухів персоналу за період немає.</td></tr>}
@@ -218,7 +218,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("inventory")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Склад: обороти і залишки</b><small>Загальний баланс організації з `inventory_movements`, незалежно від місця зберігання.</small></div></header>
+        <header className="financeToolbar"><div><h2>Склад: обороти і залишки</h2><small>Загальний баланс організації з `inventory_movements`, незалежно від місця зберігання.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Матеріал</th><th>Од.</th><th className="num">На початок</th><th className="num">Надійшло</th><th className="num">Вибуло</th><th className="num">На кінець</th></tr></thead><tbody>
           {data.breakdowns.inventory.map(row=><tr key={row.itemId}><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.opening)}</td><td className="num positive">{number(row.incoming)}</td><td className="num negative">{number(row.outgoing)}</td><td className="num"><b>{number(row.closing)}</b></td></tr>)}
           {data.breakdowns.inventory.length===0&&<tr><td colSpan={6}>Складських рухів і залишків немає.</td></tr>}
@@ -226,7 +226,7 @@ export default function RegisterTurnoverPage(){
       </section>}
 
       {sectionEnabled("inventory_by_warehouse")&&<section className="financeJournal">
-        <header className="financeToolbar"><div><b>Склад: по місцях зберігання</b><small>Історичний розріз використовує snapshot складу з кожного immutable руху.</small></div></header>
+        <header className="financeToolbar"><div><h2>Склад: по місцях зберігання</h2><small>Історичний розріз використовує snapshot складу з кожного immutable руху.</small></div></header>
         <div className="financeTableWrap"><table className="financeTable"><thead><tr><th>Склад</th><th>Матеріал</th><th>Од.</th><th className="num">На початок</th><th className="num">Надійшло</th><th className="num">Вибуло</th><th className="num">На кінець</th></tr></thead><tbody>
           {data.breakdowns.inventoryByWarehouse.map(row=><tr key={`${row.warehouseId}-${row.warehouseCode}-${row.itemId}`}><td><b>{row.warehouseName}</b><small>{row.warehouseCode||`#${row.warehouseId}`}</small></td><td><b>{row.name}</b><small>{row.sku||`#${row.itemId}`}</small></td><td>{row.unit}</td><td className="num">{number(row.opening)}</td><td className="num positive">{number(row.incoming)}</td><td className="num negative">{number(row.outgoing)}</td><td className="num"><b>{number(row.closing)}</b></td></tr>)}
           {data.breakdowns.inventoryByWarehouse.length===0&&<tr><td colSpan={7}>Складських рухів із прив’язкою до місця зберігання немає.</td></tr>}

@@ -348,7 +348,7 @@ export default function PersonnelPage() {
     {error && <p className="notice error" role="alert">{error}</p>}
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Зведений реєстр персоналу</b><small>Одна людина має одну кадрову картку та може мати кілька призначень. ВЛК, ДІВ, навчання й дозиметрія вже ведуться за тим самим personnelId.</small></div><div className="shiftPlannerActions"><Link className="button secondary" href="/staff/directories/personnel-refs">Довідники посад і звань</Link><button className="button primary" type="button" onClick={startCreate}>+ Додати працівника</button></div></header>
+      <header className="financeToolbar"><div><h2>Зведений реєстр персоналу</h2><small>Одна людина має одну кадрову картку та може мати кілька призначень. ВЛК, ДІВ, навчання й дозиметрія вже ведуться за тим самим personnelId.</small></div><div className="shiftPlannerActions"><Link className="button secondary" href="/staff/directories/personnel-refs">Довідники посад і звань</Link><button className="button primary" type="button" onClick={startCreate}>+ Додати працівника</button></div></header>
       <div className="shiftPlannerToolbar">
         <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Пошук за ПІБ, посадою, телефоном…" aria-label="Пошук персоналу" />
         <select value={departmentFilter} onChange={(event) => setDepartmentFilter(event.target.value)} aria-label="Фільтр підрозділу"><option value="all">Усі підрозділи</option>{(data?.departments || []).map((department) => <option key={department.id} value={department.id}>{department.name}</option>)}</select>
@@ -369,7 +369,7 @@ export default function PersonnelPage() {
 
     {showEditor && <>
       <section className="financeJournal" id="personnel-editor">
-        <header className="financeToolbar"><div><b>{editorRecord ? `Картка · ${editorRecord.displayName}` : "Новий працівник"}</b><small>Особистість працівника зберігається окремо від логіна. Посади та графіки нижче мають власну історію.</small></div><div className="shiftPlannerActions">{editorRecord && <Link className="button secondary" href={`/staff/personnel/print?id=${encodeURIComponent(editorRecord.id)}`} target="_blank" rel="noopener">Друк картки</Link>}<button className="button secondary" type="button" onClick={closeEditor}>Закрити</button></div></header>
+        <header className="financeToolbar"><div><h2>{editorRecord ? `Картка · ${editorRecord.displayName}` : "Новий працівник"}</h2><small>Особистість працівника зберігається окремо від логіна. Посади та графіки нижче мають власну історію.</small></div><div className="shiftPlannerActions">{editorRecord && <Link className="button secondary" href={`/staff/personnel/print?id=${encodeURIComponent(editorRecord.id)}`} target="_blank" rel="noopener">Друк картки</Link>}<button className="button secondary" type="button" onClick={closeEditor}>Закрити</button></div></header>
         <form key={editorRecord?.id || "new"} className="formGrid" onSubmit={save}>
           <label>Прізвище<input name="lastName" defaultValue={editorRecord?.lastName || ""} required /></label>
           <label>Ім’я<input name="firstName" defaultValue={editorRecord?.firstName || ""} required /></label>
@@ -396,7 +396,7 @@ export default function PersonnelPage() {
 
       {editorRecord && <>
         <section className="financeJournal">
-          <header className="financeToolbar"><div><b>Призначення і посадові обов’язки</b><small>Основна, додаткова або тимчасово виконувана посада з датами та підставою. Працівник не дублюється.</small></div><button className="button primary" type="button" onClick={newAssignment}>+ Призначення</button></header>
+          <header className="financeToolbar"><div><h2>Призначення і посадові обов’язки</h2><small>Основна, додаткова або тимчасово виконувана посада з датами та підставою. Працівник не дублюється.</small></div><button className="button primary" type="button" onClick={newAssignment}>+ Призначення</button></header>
           <div className="financeTableWrap"><table className="financeTable" aria-label="Призначення працівника"><thead><tr><th>Посада</th><th>Структура</th><th>Період</th><th>Обов’язки / підстава</th><th aria-label="Дії"/></tr></thead><tbody>
             {selectedAssignments.map((row) => <tr key={row.id}><td><b>{row.positionTitle}</b><br/><small>{assignmentKindLabel(row.assignmentKind)}</small></td><td>{row.parentDepartmentName ? `${row.parentDepartmentName} → ` : ""}{row.departmentName || "Без підрозділу"}</td><td>{row.startsOn || "—"} → {row.endsOn || "дотепер"}</td><td><small>{row.duties || "Обов’язки не внесено"}{row.orderReference ? ` · ${row.orderReference}` : ""}</small></td><td><button className="button secondary" type="button" aria-label={`Змінити призначення: ${row.positionTitle}`} onClick={() => editAssignment(row)}>Змінити</button></td></tr>)}
           </tbody></table>{!selectedAssignments.length && <p className="notice">Призначень ще немає.</p>}</div>
@@ -413,7 +413,7 @@ export default function PersonnelPage() {
         </section>
 
         <section className="financeJournal">
-          <header className="financeToolbar"><div><b>Графік роботи</b><small>Нормативний тижневий режим працівника. Чергування, нічні та добові зміни ведуться окремо в «Графіку змін».</small></div><button className="button primary" type="button" onClick={newSchedule}>+ Графік роботи</button></header>
+          <header className="financeToolbar"><div><h2>Графік роботи</h2><small>Нормативний тижневий режим працівника. Чергування, нічні та добові зміни ведуться окремо в «Графіку змін».</small></div><button className="button primary" type="button" onClick={newSchedule}>+ Графік роботи</button></header>
           {currentSchedule ? <div className="financeTableWrap"><table className="financeTable" aria-label="Графік роботи працівника"><thead><tr><th>Назва</th><th>Тип</th><th>Період</th><th>Норма</th><th aria-label="Дії"/></tr></thead><tbody>{selectedSchedules.map((row) => <tr key={row.id}><td><b>{row.name}</b>{row.note && <><br/><small>{row.note}</small></>}</td><td>{scheduleKindLabel(row.scheduleKind)}</td><td>{row.validFrom} → {row.validTo || "дотепер"}</td><td>{hoursLabel(row.weeklyMinutes)} / тиждень</td><td><button className="button secondary" type="button" aria-label={`Змінити графік: ${row.name}`} onClick={() => editSchedule(row)}>Змінити</button></td></tr>)}</tbody></table></div> : <p className="notice">Базовий графік роботи ще не задано. Це не заважає вести окремий графік чергувань.</p>}
           {showScheduleForm && <form key={scheduleEditor?.id || "new-schedule"} onSubmit={saveSchedule}>
             <div className="formGrid">
@@ -430,7 +430,7 @@ export default function PersonnelPage() {
         </section>
 
         <section className="financeJournal">
-          <header className="financeToolbar"><div><b>ВЛК, ДІВ та кадрові допуски</b><small>Окремі захищені реєстри використовують той самий personnelId.</small></div></header>
+          <header className="financeToolbar"><div><h2>ВЛК, ДІВ та кадрові допуски</h2><small>Окремі захищені реєстри використовують той самий personnelId.</small></div></header>
           <div className="shiftPlannerActions">
             <Link className="button secondary" href={`/staff/personnel/vlk?personnelId=${encodeURIComponent(editorRecord.id)}`}>ВЛК · {vlkLabel(editorRecord.vlkDecisionCode)}</Link>
             <Link className="button secondary" href={`/staff/personnel/radiation-clearance?personnelId=${encodeURIComponent(editorRecord.id)}`}>Допуск до ДІВ</Link>

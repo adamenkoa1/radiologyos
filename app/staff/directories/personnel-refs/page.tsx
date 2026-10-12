@@ -81,7 +81,7 @@ export default function PersonnelDirectoriesPage() {
     {KINDS.map(({ kind, title, hint }) => {
       const rows = kind === "position" ? data.positions : data.ranks;
       return <section className="financeJournal" key={kind}>
-        <header className="financeToolbar"><div><b>{title}</b><small>{hint}</small></div></header>
+        <header className="financeToolbar"><div><h2>{title}</h2><small>{hint}</small></div></header>
         <form className="shiftPlannerToolbar" onSubmit={addValue(kind)}>
           <input name="name" placeholder={kind === "position" ? "Нова посада…" : "Нове звання…"} aria-label={`Додати: ${title}`} maxLength={160} required />
           <button className="button primary" type="submit" disabled={busy}>Додати</button>

@@ -27,7 +27,7 @@ export default function RegistersPage(){
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Карта регістрів RadiologyOS</b><small>Це навігація до канонічних read-model. Вона не створює паралельних таблиць і не рахує показники в браузері.</small></div>
+        <div><h2>Карта регістрів RadiologyOS</h2><small>Це навігація до канонічних read-model. Вона не створює паралельних таблиць і не рахує показники в браузері.</small></div>
         <Link className="excelButton" href="/staff/documents">Журнал документів</Link>
         <Link className="excelButton" href="/staff/reports/registers">Обороти і залишки</Link>
       </header>
@@ -42,7 +42,7 @@ export default function RegistersPage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Ключова перевага BAS-підходу</b><small>Суми, залишки та статуси не є окремими «цифрами на дашборді». Вони відтворюються з проведених документів і рухів, а сторно зберігає повну історію.</small></div></header>
+      <header className="financeToolbar"><div><h2>Ключова перевага BAS-підходу</h2><small>Суми, залишки та статуси не є окремими «цифрами на дашборді». Вони відтворюються з проведених документів і рухів, а сторно зберігає повну історію.</small></div></header>
       <div className="financePrintDetails">
         <p><span>Ланцюжок</span><b>Підстава → Документ → Проведення → Регістр → Звіт</b></p>
         <p><span>Виправлення</span><b>Сторно / корекція замість видалення історії</b></p>

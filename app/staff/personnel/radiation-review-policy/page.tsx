@@ -118,12 +118,12 @@ export default function RadiationReviewPolicyPage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Важлива межа</b><small>У цьому модулі немає вбудованих законодавчих чисел або дозових порогів.</small></div></header>
+      <header className="financeToolbar"><div><h2>Важлива межа</h2><small>У цьому модулі немає вбудованих законодавчих чисел або дозових порогів.</small></div></header>
       <p className="notice">Строки нижче — конфігуровані критерії для позначки «потребує перевірки». Вони не є автоматично нормативними лімітами, не визначають придатність працівника і не блокують PACS, КТ, рентген чи booking. Дозові Hp(10)/Hp(0.07)/Hp(3) thresholds тут навмисно не задаються до появи окремої моделі періоду агрегації та перевіреного нормативного джерела.</p>
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>{currentLeaf?"Нова ревізія політики":"Перша ревізія політики"}</b><small>{canManage?"Форма успадковує поточні значення; змініть лише потрібне. Старі записи не переписуються.":"Перегляд доступний; змінювати організаційну політику може лише адміністратор."}</small></div></header>
+      <header className="financeToolbar"><div><h2>{currentLeaf?"Нова ревізія політики":"Перша ревізія політики"}</h2><small>{canManage?"Форма успадковує поточні значення; змініть лише потрібне. Старі записи не переписуються.":"Перегляд доступний; змінювати організаційну політику може лише адміністратор."}</small></div></header>
       {canManage ? <form className="formGrid" onSubmit={save} key={currentLeaf?.id || "root"}>
         <label>Дата набрання чинності<input name="effectiveFrom" type="date" required defaultValue={nextEffectiveFrom} min={currentLeaf?.effectiveFrom || undefined}/></label>
         <label><input name="enabled" type="checkbox" defaultChecked={Boolean(currentLeaf?.enabled)}/> Увімкнути критерії review</label>
@@ -139,7 +139,7 @@ export default function RadiationReviewPolicyPage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Історія політики</b><small>Найновіші ревізії зверху. Future-effective revision не переписує попередню історію.</small></div></header>
+      <header className="financeToolbar"><div><h2>Історія політики</h2><small>Найновіші ревізії зверху. Future-effective revision не переписує попередню історію.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Чинність</th><th>Стан</th><th>Критерії</th><th>Джерело</th><th>Версія</th></tr></thead>
         <tbody>{revisions.map((revision)=><tr key={revision.id}>

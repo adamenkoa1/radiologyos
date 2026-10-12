@@ -191,7 +191,7 @@ export default function RadiationCompliancePage(){
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Дата зрізу</b><small>Майбутні scope-записи, кадрові записи й policy revisions не включаються.</small></div>
+        <div><h2>Дата зрізу</h2><small>Майбутні scope-записи, кадрові записи й policy revisions не включаються.</small></div>
         <div className="shiftPlannerToolbar">
           <input aria-label="Дата зрізу" type="date" value={asOf} onChange={(event)=>setAsOf(event.target.value)} />
           <button className="button secondary" type="button" disabled={!asOf || loading} onClick={()=>void load(asOf)}>{loading?"Оновлення…":"Оновити"}</button>
@@ -208,7 +208,7 @@ export default function RadiationCompliancePage(){
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Активний персонал</b><small>Показані всі активні картки для безпечного backfill організаційного scope.</small></div></header>
+      <header className="financeToolbar"><div><h2>Активний персонал</h2><small>Показані всі активні картки для безпечного backfill організаційного scope.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Працівник</th><th>Контур</th><th>Допуск до ДІВ</th><th>Навчання</th><th>Перевірка знань</th><th>Дозиметрія</th><th>Зведення</th></tr></thead>
         <tbody>{records.map((record)=>{

@@ -111,7 +111,7 @@ export default function RadiationReviewQueuePage() {
 
     <section className="financeJournal">
       <header className="financeToolbar">
-        <div><b>Дата зрізу</b><small>Черга будується з того самого read-only «Зведення ДІВ».</small></div>
+        <div><h2>Дата зрізу</h2><small>Черга будується з того самого read-only «Зведення ДІВ».</small></div>
         <div className="shiftPlannerToolbar">
           <input aria-label="Дата зрізу" type="date" value={asOf} onChange={(event)=>setAsOf(event.target.value)} />
           <button className="button secondary" type="button" disabled={!asOf || loading} onClick={()=>void load(asOf)}>{loading?"Оновлення…":"Оновити"}</button>
@@ -133,7 +133,7 @@ export default function RadiationReviewQueuePage() {
     </section>
 
     <section className="financeJournal">
-      <header className="financeToolbar"><div><b>Потребує ручної перевірки</b><small>{queue.length} запис(ів) у поточному фільтрі.</small></div></header>
+      <header className="financeToolbar"><div><h2>Потребує ручної перевірки</h2><small>{queue.length} запис(ів) у поточному фільтрі.</small></div></header>
       {loading ? <p className="notice">Завантаження…</p> : <div className="financeTableWrap"><table className="financeTable">
         <thead><tr><th>Працівник</th><th>Контингент</th><th>Причини review</th><th>Джерело причини</th><th/></tr></thead>
         <tbody>{queue.map((record)=>{
