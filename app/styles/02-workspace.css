@@ -984,3 +984,15 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .vlkFlag.expired{color:#b42318}
 .vlkFlag.soon{color:#8a5a10}
 .themeDark .statusPill.muted{background:#1a2430;color:#93a3ad}
+
+/* Наскрізний baseline клавіатурного фокусу для всього staff-контуру (WCAG 2.4.7).
+   Кастомні кнопки/лінки/summary на багатьох staff-сторінках не мали видимого
+   focus-ring — глобальне правило дає консистентний accent-outline лише при
+   клавіатурній навігації (:focus-visible), не чіпаючи вигляд при наведенні/кліку.
+   Інпути/селекти/textarea вже мають власний box-shadow-фокус (01-base.css), тож
+   тут не дублюються; компонентні :focus-visible правила з тим самим outline
+   лишаються чинними (ідентичне оформлення). */
+.workspaceShell :is(button, a[href], summary):focus-visible {
+  outline: 2px solid var(--ws-accent);
+  outline-offset: 2px;
+}
