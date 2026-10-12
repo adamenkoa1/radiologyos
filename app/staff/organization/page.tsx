@@ -45,7 +45,7 @@ export default function OrganizationPage() {
       <a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Forganization">Увійти для роботи</a>
     </section> :
     netError && !data ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити дані закладу. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setNetError(false); void load(); }}>Повторити</button></section> :
-    !data ? <p className="dashLoading">Завантаження…</p> :
+    !data ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p> :
     <div className="orgProfile">
       <div className="orgProfileHead">
         <span className="studiesOrgBadge">{data.organization.name}</span>

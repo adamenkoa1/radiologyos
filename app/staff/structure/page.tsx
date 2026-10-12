@@ -362,7 +362,7 @@ export default function StructurePage() {
   const body = forbidden
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Редактор публічної вітрини доступний лише персоналу.</p><a className="button compact" href="/staff/login?returnTo=%2Fstaff%2Fstructure">Увійти для роботи</a></section>
     : !loaded
-      ? <p className="dashLoading">Завантаження…</p>
+      ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p>
       : error && !staff
         ? <p className="notice error" role="alert">{error}</p>
         : <>

@@ -85,7 +85,7 @@ export default function StaffAuditPage() {
   const body = forbidden
     ? <section className="accessDenied"><b>Захищений розділ</b><p>Журнал дій доступний лише адміністратору.</p></section>
     : !loaded
-      ? <p className="dashLoading">Завантаження…</p>
+      ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p>
       : <div className="auditWrap">
           <div className="auditFilters">
             <label><span>Подія</span>

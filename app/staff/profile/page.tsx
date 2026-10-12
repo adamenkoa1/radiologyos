@@ -83,7 +83,7 @@ function TwoFactorSection() {
     </p>
     {err && <p className="notice bad" role="alert">{err}</p>}
     {msg && <p className="notice good" role="status">{msg}</p>}
-    {enabled === null ? <p className="dashLoading">Завантаження…</p>
+    {enabled === null ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p>
       : enabled ? <div className="formGrid">
         <p className="notice good">2FA увімкнено для вашого акаунта.</p>
         <label>Код із застосунку, щоб вимкнути
@@ -207,7 +207,7 @@ export default function StaffProfilePage() {
   >
     {error && <p className="notice bad" role="alert">{error}</p>}
     {success && <p className="notice good" role="status">{success}</p>}
-    {!profile ? <p className="dashLoading">Завантаження…</p> : <div className="orgProfile">
+    {!profile ? <p className="dashLoading" role="status" aria-live="polite">Завантаження…</p> : <div className="orgProfile">
       <section className="orgProfileCard">
         <h3>Особисті дані</h3>
         <p className="orgProfileHint">Ці дані належать тільки вашому профілю. Посада, роль і підрозділ змінюються керівництвом.</p>
