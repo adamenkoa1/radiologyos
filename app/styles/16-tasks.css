@@ -15,11 +15,20 @@
 }
 .workspaceShell .taskSegments button { border:0; background:transparent; color:var(--ws-muted); padding:0 11px; }
 .workspaceShell .taskSegments button.on { background:var(--ws-accent-soft); color:var(--ws-accent); }
+/* Keyboard focus visibility (WCAG 2.2 2.4.7): the custom buttons here are not
+   covered by the global input focus styles, so give them an explicit ring. */
+.workspaceShell .taskSegments button:focus-visible,
+.workspaceShell .taskNew:focus-visible,
+.workspaceShell .taskSave:focus-visible,
+.workspaceShell .taskMine input:focus-visible,
+.workspaceShell .taskActions button:focus-visible {
+  outline:2px solid var(--ws-accent); outline-offset:2px;
+}
 .workspaceShell .taskMine { display:inline-flex; align-items:center; gap:6px; color:var(--ws-muted); font-size:12px; font-weight:700; }
 .workspaceShell .taskNew { margin-left:auto; }
 
 .workspaceShell .taskCreate {
-  display:grid; gap:10px; padding:14px; border:1px solid rgba(37,99,235,.22); border-radius:var(--ws-radius-md);
+  display:grid; gap:10px; padding:14px; border:1px solid color-mix(in srgb,var(--ws-accent) 30%,var(--ws-line)); border-radius:var(--ws-radius-md);
   background:color-mix(in srgb,var(--ws-accent-soft) 45%,var(--ws-surface));
 }
 .workspaceShell .taskCreate label { display:grid; gap:4px; }
@@ -44,7 +53,7 @@
 .workspaceShell .taskCard.priority-low::before { background:#64748b; }
 .workspaceShell .taskCard.overdue { border-color:rgba(217,119,6,.34); }
 .workspaceShell .taskCardTop { display:flex; align-items:center; gap:5px; flex-wrap:wrap; }
-.workspaceShell .taskPriority,.workspaceShell .taskOverdue,.workspaceShell .taskAuto { display:inline-flex; align-items:center; min-height:20px; padding:0 7px; border-radius:999px; font-size:9px; font-weight:800; }
+.workspaceShell .taskPriority,.workspaceShell .taskOverdue,.workspaceShell .taskAuto { display:inline-flex; align-items:center; min-height:20px; padding:0 8px; border-radius:999px; font-size:10px; font-weight:800; letter-spacing:.02em; }
 .workspaceShell .taskPriority { background:rgba(148,163,184,.12); color:var(--ws-muted); }
 .workspaceShell .taskPriority.high { background:rgba(220,38,38,.1); color:#b91c1c; }
 .workspaceShell .taskPriority.normal { background:rgba(37,99,235,.1); color:#2563eb; }

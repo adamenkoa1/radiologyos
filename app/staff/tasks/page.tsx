@@ -109,9 +109,9 @@ export default function TasksPage() {
     {loadError && !data ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити завдання. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
       : !loaded ? <p className="dashLoading">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
       <div className="taskToolbar">
-        <div className="taskSegments">
-          <button className={mode==="open"?"on":""} onClick={()=>setMode("open")}>В роботі</button>
-          <button className={mode==="done"?"on":""} onClick={()=>setMode("done")}>Виконані</button>
+        <div className="taskSegments" role="tablist" aria-label="Фільтр завдань за станом">
+          <button type="button" role="tab" aria-selected={mode==="open"} className={mode==="open"?"on":""} onClick={()=>setMode("open")}>В роботі</button>
+          <button type="button" role="tab" aria-selected={mode==="done"} className={mode==="done"?"on":""} onClick={()=>setMode("done")}>Виконані</button>
         </div>
         <label className="taskMine"><input type="checkbox" checked={mine} onChange={e=>setMine(e.target.checked)}/> Тільки мої</label>
         <button className="taskNew" onClick={()=>setCreating(v=>!v)}>{creating?"Закрити":"+ Нове завдання"}</button>
