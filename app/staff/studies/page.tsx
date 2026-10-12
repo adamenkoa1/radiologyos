@@ -249,7 +249,7 @@ export default function StudiesPage() {
       <p>{netError}</p>
       <button type="button" className="button compact" onClick={()=>{ setNetError(""); void load(); }}>Повторити</button>
     </section> :
-    !data ? <p className="dashLoading">Завантаження реєстру…</p> :
+    !data ? <p className="dashLoading" role="status" aria-live="polite">Завантаження реєстру…</p> :
     <>
       <div className="studiesOrgBar">
         <span className="studiesOrgBadge">{data.organization.name}</span>
