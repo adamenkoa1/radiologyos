@@ -7,8 +7,8 @@
 import { useEffect, useState } from "react";
 import { type CalBooking } from "./week-calendar";
 import { stateLabel } from "../../lib/study-state";
+import { EQUIPMENT_LABELS as EQUIP } from "../../lib/labels";
 
-const EQUIP: Record<string, string> = { ct: "КТ", xray: "Рентген", fluoro: "Флюорограф" };
 const GROUPS: Record<string, string[]> = {
   planned: ["new", "requested", "needs_verification", "scheduled", "rescheduled"],
   confirmed: ["confirmed"], arrived: ["arrived"], inroom: ["queued", "in_progress"],

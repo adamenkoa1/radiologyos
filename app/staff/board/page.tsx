@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { stateLabel } from "../../../lib/study-state";
-import { roleLabelUk } from "../../../lib/labels";
+import { EQUIPMENT_LABELS as EQUIPMENT, roleLabelUk } from "../../../lib/labels";
 
 type StaffInfo = { email:string; displayName:string; role:string };
 type Booking = {
@@ -52,7 +52,6 @@ const COLUMNS:Column[] = [
   },
 ];
 
-const EQUIPMENT:Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 const isContrast = (service:string) => /контраст|ангіограф/i.test(service || "");
 
 function todayKyiv() {
