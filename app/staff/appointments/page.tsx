@@ -112,7 +112,7 @@ export default function StaffAppointmentsPage() {
     : loadError && !loaded
       ? <p className="notice error" role="alert">Не вдалося завантажити календар. Перевірте зʼєднання. <button type="button" className="button compact" onClick={()=>{ setLoadError(false); void load(); }}>Повторити</button></p>
       : !loaded
-      ? <p className="notice">Завантаження…</p>
+      ? <p className="notice" role="status" aria-live="polite">Завантаження…</p>
       : <>
           {actionError && <p className="notice error" role="alert">{actionError}</p>}
           <WeekCalendar
