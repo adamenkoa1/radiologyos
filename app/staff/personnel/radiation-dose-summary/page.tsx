@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
+import { todayInKyiv } from "../../../../lib/booking-rules";
 
 type DoseSummaryRecord = {
   personnelId:string;
@@ -45,12 +46,6 @@ type DoseSummaryResponse = {
   };
   error?:string;
 };
-
-function localIsoDate() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
-}
 
 function yearStart(date:string) {
   return `${date.slice(0, 4)}-01-01`;
@@ -122,7 +117,7 @@ export default function RadiationDoseSummaryPage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const today = localIsoDate();
+      const today = todayInKyiv();
       const start = yearStart(today);
       setFrom(start);
       setTo(today);

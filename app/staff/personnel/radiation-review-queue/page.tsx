@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../../workspace-shell";
+import { todayInKyiv } from "../../../../lib/booking-rules";
 
 type ReviewRecord = {
   personnelId:string;
@@ -31,12 +32,6 @@ type ComplianceResponse = {
 };
 
 type QueueFilter = "all" | "scope" | "base" | "policy";
-
-function localIsoDate() {
-  const now = new Date();
-  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000);
-  return local.toISOString().slice(0, 10);
-}
 
 function reasonCount(record:ReviewRecord, filter:QueueFilter) {
   if (filter === "scope") return record.scopeReviewReasons.length;
@@ -80,7 +75,7 @@ export default function RadiationReviewQueuePage() {
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
-      const today = localIsoDate();
+      const today = todayInKyiv();
       setAsOf(today);
       void load(today);
     }, 0);
