@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import StudyContextDrawer from "./study-context-drawer";
+import { EQUIPMENT_LABELS as equipmentNames } from "../../../lib/labels";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -34,7 +35,6 @@ const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
-const equipmentNames: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 
 const STATE_GROUP: Record<string,"intake"|"active"|"reporting"|"done"|"stopped"> = {
   new:"intake", requested:"intake", needs_verification:"intake", scheduled:"intake",

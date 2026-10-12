@@ -9,6 +9,7 @@ import { useCallback, useMemo, useState } from "react";
 import BookingDrawer from "./booking-drawer";
 import { stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
+import { EQUIPMENT_LABELS as EQUIP } from "../../lib/labels";
 
 export type CalBooking = {
   id: number; code: string; name: string; phone: string; service: string; serviceCode?: string;
@@ -49,7 +50,6 @@ const STATUS_LEGEND: { key: string; label: string }[] = [
   { key: "done", label: "Виконано" },
   { key: "cancelled", label: "Скасовано" },
 ];
-const EQUIP: Record<string, string> = { ct: "КТ", xray: "Рентген", fluoro: "Флюорограф" };
 const WEEKDAY = ["Нд", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
 const DAY_START = 8, DAY_END = 19, HOUR_PX = 76;
 

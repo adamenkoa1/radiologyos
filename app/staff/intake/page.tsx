@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
+import { EQUIPMENT_LABELS as EQUIP_UK } from "../../../lib/labels";
 
 // Дошка прийому заявок: ліворуч — черга вхідних (сайт + вручну), праворуч —
 // картка заявки з повним редагуванням (корекція) і діями в одному місці.
@@ -30,7 +31,6 @@ const REFERRAL_UK:Record<string,string> = {
   military_referral:"Військове направлення", eh_referral:"Електронне направлення (ЕЗ)",
   paper_referral:"Паперове направлення", other:"Інше направлення", none:"Без направлення",
 };
-const EQUIP_UK:Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 // Ознаки без окремих полів у БД.
 const isContrast = (svc:string) => /контраст|ангіограф/i.test(svc || "");
 const digits = (s:string) => (s || "").replace(/[^\d]/g, "");

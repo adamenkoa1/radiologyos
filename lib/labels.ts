@@ -13,6 +13,15 @@ export const STAFF_ROLE_LABELS: Record<string, string> = {
   radiographer: "Рентгенлаборант",
 };
 
+// Українські підписи модальностей (апаратів). Ідентична мапа раніше дублювалася
+// на ~7 staff-сторінках/компонентах (board, week-calendar, studies, booking-drawer,
+// dashboard, intake) під різними іменами (EQUIP/EQUIPMENT/equipmentNames/EQUIP_UK).
+export const EQUIPMENT_LABELS: Record<string, string> = {
+  ct: "КТ",
+  xray: "Рентген",
+  fluoro: "Флюорограф",
+};
+
 // Український підпис ролі; для невідомого коду повертає сам код.
 export function roleLabelUk(role: string | undefined | null): string | undefined {
   if (!role) return undefined;

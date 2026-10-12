@@ -4,6 +4,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 import BookingDrawer from "../booking-drawer";
 import { type CalBooking } from "../week-calendar";
+import { EQUIPMENT_LABELS as EQUIP } from "../../../lib/labels";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
@@ -30,8 +31,6 @@ const roleLabels: Record<StaffRole,string> = {
   admin:"Адміністратор", registrar:"Реєстратор",
   radiologist:"Лікар-рентгенолог", radiographer:"Рентгенлаборант",
 };
-const equipmentNames: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
-const EQUIP: Record<string,string> = { ct:"КТ", xray:"Рентген", fluoro:"Флюорограф" };
 
 // Компактний статус запису для агенди «на сьогодні».
 const STATUS_UK: Record<string,string> = {
@@ -586,8 +585,8 @@ export default function DashboardPage() {
               <span className="dashLoadCorner" />
               {days.map((d)=><span key={d} className={`dashLoadDay${d===data.today?" today":""}`}>{dow(d)}<small>{d.slice(8,10)}.{d.slice(5,7)}</small></span>)}
               {["ct","xray","fluoro"].map((id)=><Fragment key={id}>
-                <span className="dashLoadRow">{equipmentNames[id]}</span>
-                {days.map((d)=>{ const v = at(id,d); return <span key={d} className="dashLoadCell" title={`${equipmentNames[id]} · ${d}: ${v}`}>
+                <span className="dashLoadRow">{EQUIP[id]}</span>
+                {days.map((d)=>{ const v = at(id,d); return <span key={d} className="dashLoadCell" title={`${EQUIP[id]} · ${d}: ${v}`}>
                   <i style={{ height:`${Math.round((v/peak)*100)}%` }} className={v?"":"empty"} /><b>{v||""}</b>
                 </span>; })}
               </Fragment>)}
