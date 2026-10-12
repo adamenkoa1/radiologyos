@@ -294,7 +294,7 @@ export default function PatientsPage() {
               className={segment===key?"active":""} onClick={()=>setSegment(key)}
             >{SEGMENT_LABELS[key]} <b>{counts[key]}</b></button>)}
           </div>
-          <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} placeholder="ПІБ, телефон, тег"/>
+          <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук пацієнтів за ПІБ, телефоном або тегом" placeholder="ПІБ, телефон, тег"/>
           {canManage && <button type="button" className="crmAddBtn" onClick={()=>{setCreating(true);setSelectedPatientKey(null);setCard(null);setActionError("");setActionSuccess("");}}>+ Додати пацієнта</button>}
           <a className="crmExport" href="/api/staff/patients/export" download title="Завантажити CSV для імпорту в Google Контакти">↧ Експорт у Google Контакти</a>
           {canManage && <a className="crmExport" href="/staff/patients/import" title="Імпорт пацієнтів із CSV">↥ Імпорт із CSV</a>}
@@ -305,6 +305,7 @@ export default function PatientsPage() {
             const key = patientKey(item.patientId, item.phoneNormalized);
             return <button
               key={key}
+              aria-current={selectedPatientKey===key ? "true" : undefined}
               className={`protocolQueueItem${selectedPatientKey===key?" active":""}`}
               onClick={()=>void openPatient(item)}
             >
@@ -342,7 +343,7 @@ export default function PatientsPage() {
               <button type="button" className="crmCancel" onClick={()=>setCreating(false)}>Скасувати</button>
             </div>
           </form>
-        </div> : cardLoading && !card ? <div className="protocolPlaceholder">
+        </div> : cardLoading && !card ? <div className="protocolPlaceholder" role="status" aria-live="polite">
           <span aria-hidden="true">⏳</span>
           <b>Завантаження картки…</b>
           <p>Збираємо історію візитів, протоколів, оплат і комунікацій пацієнта.</p>
