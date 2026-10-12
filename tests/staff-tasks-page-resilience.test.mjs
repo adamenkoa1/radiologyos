@@ -38,3 +38,10 @@ test("creating a task guards against double-submit and a network throw", async (
   // background refresh is paused during submit too
   assert.match(page, /pauseRef\.current = busy!==null \|\| creating \|\| submitting;/);
 });
+
+test("completing/reopening a task surfaces a network throw instead of a silent no-op", async () => {
+  const page = await read("app/staff/tasks/page.tsx");
+  // patchTask (✓ Виконано / Повернути в роботу) must catch, not let the throw
+  // escape `void patchTask(...)` with no feedback
+  assert.match(page, /async function patchTask[\s\S]*?\} catch \{[\s\S]*?setError\([^)]*Не вдалося змінити завдання[\s\S]*?\} finally \{setBusy\(null\);\}/);
+});

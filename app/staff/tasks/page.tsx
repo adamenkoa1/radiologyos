@@ -97,6 +97,10 @@ export default function TasksPage() {
       const payload=await res.json().catch(()=>({})) as {error?:string};
       if(!res.ok){setError(payload.error||"Не вдалося змінити завдання");return;}
       await load();
+    } catch {
+      // Мережевий збій: без catch throw ковтався `void patchTask(...)` і дія
+      // («Виконано»/«Повернути в роботу») була мовчазним no-op без помилки.
+      setError("Не вдалося змінити завдання. Перевірте зʼєднання та спробуйте ще раз.");
     } finally {setBusy(null);}
   }
 
