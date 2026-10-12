@@ -28,3 +28,11 @@ test("personnel schedule 'valid from' defaults to the clinic (Kyiv) day, not UTC
   assert.match(page, /import \{ todayInKyiv \} from "\.\.\/\.\.\/\.\.\/lib\/booking-rules"/);
   assert.match(page, /defaultValue=\{scheduleEditor\?\.validFrom \|\| todayInKyiv\(\)\}/);
 });
+
+test("personnel VLK expiry badge compares against the clinic (Kyiv) day, not UTC", async () => {
+  const page = await read("app/staff/personnel/page.tsx");
+  // vlkExpiry рахує today київським днем, а horizon — від того ж дня (+30)
+  assert.match(page, /function vlkExpiry[\s\S]*?const today = todayInKyiv\(\);[\s\S]*?horizon\.setUTCDate\(horizon\.getUTCDate\(\) \+ 30\)/);
+  // жодного UTC-«сьогодні» не лишилося на сторінці
+  assert.doesNotMatch(page, /new Date\(\)\.toISOString\(\)\.slice\(0, ?10\)/);
+});

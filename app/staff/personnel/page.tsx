@@ -103,10 +103,14 @@ function vlkLabel(value:string | null) {
 // найближчі 30 днів. ISO-дати порівнюються лексикографічно.
 function vlkExpiry(validUntil:string | null):"expired" | "soon" | null {
   if (!validUntil || !/^\d{4}-\d{2}-\d{2}$/.test(validUntil)) return null;
-  const today = new Date().toISOString().slice(0, 10);
+  // Клінічний день (Europe/Kyiv), а не UTC: `validUntil` — календарна дата, і за
+  // UTC-«сьогодні» вночі 00:00–03:00 за Києвом бейдж «прострочено»/«скоро»
+  // зривався на добу. Horizon рахуємо від того ж київського дня (+30 днів).
+  const today = todayInKyiv();
   if (validUntil < today) return "expired";
-  const horizon = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-  return validUntil <= horizon ? "soon" : null;
+  const horizon = new Date(`${today}T00:00:00Z`);
+  horizon.setUTCDate(horizon.getUTCDate() + 30);
+  return validUntil <= horizon.toISOString().slice(0, 10) ? "soon" : null;
 }
 
 function hoursLabel(minutes:number) {
