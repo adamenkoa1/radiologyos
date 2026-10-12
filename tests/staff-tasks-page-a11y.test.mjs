@@ -13,8 +13,25 @@ const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 test("tasks state filter exposes tab semantics to assistive tech", async () => {
   const page = await read("app/staff/tasks/page.tsx");
   assert.match(page, /className="taskSegments" role="tablist" aria-label="Фільтр завдань за станом"/);
-  assert.match(page, /role="tab" aria-selected=\{mode==="open"\}/);
-  assert.match(page, /role="tab" aria-selected=\{mode==="done"\}/);
+  assert.match(page, /role="tab" id="task-tab-open" aria-selected=\{mode==="open"\}/);
+  assert.match(page, /role="tab" id="task-tab-done" aria-selected=\{mode==="done"\}/);
+});
+
+test("tasks tabs are a complete WAI-ARIA pattern (roving tabindex, arrow keys, linked panel)", async () => {
+  const page = await read("app/staff/tasks/page.tsx");
+  // roving tabindex + aria-controls на обох вкладках
+  assert.match(page, /aria-controls="task-panel" tabIndex=\{mode==="open"\?0:-1\}[\s\S]*?onKeyDown=\{onTabKeyDown\}/);
+  assert.match(page, /aria-controls="task-panel" tabIndex=\{mode==="done"\?0:-1\}[\s\S]*?onKeyDown=\{onTabKeyDown\}/);
+  // стрілкова навігація
+  assert.match(page, /function onTabKeyDown/);
+  assert.match(page, /event\.key==="ArrowRight"\|\|event\.key==="ArrowDown"/);
+  // список — це tabpanel, підписаний активною вкладкою
+  assert.match(page, /className="taskList" role="tabpanel" id="task-panel" aria-labelledby=\{`task-tab-\$\{mode\}`\} tabIndex=\{0\}/);
+});
+
+test("tasks loading placeholder is announced as a status", async () => {
+  const page = await read("app/staff/tasks/page.tsx");
+  assert.match(page, /<p className="dashLoading" role="status" aria-live="polite">Завантаження завдань…<\/p>/);
 });
 
 test("tasks custom controls have a visible keyboard focus ring", async () => {

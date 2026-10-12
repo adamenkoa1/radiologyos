@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { type KeyboardEvent as ReactKeyboardEvent, useEffect, useMemo, useRef, useState } from "react";
 import StaffWorkspaceShell from "../workspace-shell";
 
 type Task = {
@@ -13,6 +13,7 @@ type Member = { email:string;displayName:string;role:string };
 type Staff = { email:string;displayName:string;role:string };
 type Payload = { tasks:Task[];members:Member[];staff:Staff };
 const priorityLabel:Record<Task["priority"],string> = { high:"Високий",normal:"Звичайний",low:"Низький" };
+const MODES:{ id:"open"|"done"; label:string }[] = [{ id:"open",label:"В роботі" },{ id:"done",label:"Виконані" }];
 
 function todayKyiv() {
   return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
@@ -76,6 +77,19 @@ export default function TasksPage() {
   const today=todayKyiv();
   const overdue=(t:Task)=>t.status==="open" && !!t.dueDate && t.dueDate<today;
 
+  // Повна WAI-ARIA таб-навігація фільтра станів (як на /staff/finance):
+  // стрілки/Home/End перемикають вкладку й переносять фокус.
+  function onTabKeyDown(event:ReactKeyboardEvent<HTMLButtonElement>){
+    const idx=MODES.findIndex(m=>m.id===mode);let next=idx;
+    if(event.key==="ArrowRight"||event.key==="ArrowDown")next=(idx+1)%MODES.length;
+    else if(event.key==="ArrowLeft"||event.key==="ArrowUp")next=(idx-1+MODES.length)%MODES.length;
+    else if(event.key==="Home")next=0;
+    else if(event.key==="End")next=MODES.length-1;
+    else return;
+    event.preventDefault();setMode(MODES[next].id);
+    document.getElementById(`task-tab-${MODES[next].id}`)?.focus();
+  }
+
   async function createTask() {
     if(!form.title.trim()||submitting) return;
     setSubmitting(true);
@@ -107,11 +121,11 @@ export default function TasksPage() {
   return <StaffWorkspaceShell active="tasks" title="Завдання" description="Особисті, командні й автоматичні задачі відділення: відповідальний, термін, пріоритет і контроль виконання." staffName={data?.staff.displayName||data?.staff.email} staffRole={data?.staff.role}>
     {error && <p className="notice error" role="alert">{error}</p>}
     {loadError && !data ? <section className="accessDenied"><b>Не вдалося завантажити</b><p>Не вдалося завантажити завдання. Перевірте зʼєднання та спробуйте ще раз.</p><button type="button" className="button compact" onClick={()=>{ setLoadError(false); setLoaded(false); void load(); }}>Повторити</button></section>
-      : !loaded ? <p className="dashLoading">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
+      : !loaded ? <p className="dashLoading" role="status" aria-live="polite">Завантаження завдань…</p> : !data ? null : <section className="taskWorkspace">
       <div className="taskToolbar">
         <div className="taskSegments" role="tablist" aria-label="Фільтр завдань за станом">
-          <button type="button" role="tab" aria-selected={mode==="open"} className={mode==="open"?"on":""} onClick={()=>setMode("open")}>В роботі</button>
-          <button type="button" role="tab" aria-selected={mode==="done"} className={mode==="done"?"on":""} onClick={()=>setMode("done")}>Виконані</button>
+          <button type="button" role="tab" id="task-tab-open" aria-selected={mode==="open"} aria-controls="task-panel" tabIndex={mode==="open"?0:-1} className={mode==="open"?"on":""} onClick={()=>setMode("open")} onKeyDown={onTabKeyDown}>В роботі</button>
+          <button type="button" role="tab" id="task-tab-done" aria-selected={mode==="done"} aria-controls="task-panel" tabIndex={mode==="done"?0:-1} className={mode==="done"?"on":""} onClick={()=>setMode("done")} onKeyDown={onTabKeyDown}>Виконані</button>
         </div>
         <label className="taskMine"><input type="checkbox" checked={mine} onChange={e=>setMine(e.target.checked)}/> Тільки мої</label>
         <button className="taskNew" onClick={()=>setCreating(v=>!v)}>{creating?"Закрити":"+ Нове завдання"}</button>
@@ -134,7 +148,7 @@ export default function TasksPage() {
         <span><b>{(data.tasks||[]).filter(t=>t.status==="open"&&t.assignedEmail===data.staff.email).length}</b>Мої</span>
       </div>
 
-      <div className="taskList">
+      <div className="taskList" role="tabpanel" id="task-panel" aria-labelledby={`task-tab-${mode}`} tabIndex={0}>
         {tasks.length===0 ? <p className="taskEmpty">Завдань у цьому списку немає.</p> : tasks.map(t=><article className={`taskCard priority-${t.priority}${overdue(t)?" overdue":""}`} key={t.id}>
           <div className="taskCardMain">
             <div className="taskCardTop">
