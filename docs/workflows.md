@@ -96,12 +96,29 @@ new
 
 ## 6. Статуси протоколу
 
+Канонічний клінічний lifecycle (поле `protocols.status`):
+
 ```text
-not_started
-→ draft
-→ ready_for_review
-→ signed
-→ delivered
+draft            (чернетка)
+→ ready          (готовий до підпису)
+→ signed         (підписаний лікарем-рентгенологом)
+→ issued         (виданий пацієнту)
+```
+
+- Переходи: `draft → {draft, ready}`, `ready → {ready, signed}`,
+  `signed → issued` (лише за незмінного клінічного змісту); `issued` незмінний.
+  Підпис (`ready → signed`) доступний лише ролі `radiologist`; видачу
+  (`signed → issued`) виконує адміністратор/рентгенолог, а реєстратор —
+  metadata-only (без клінічного тексту).
+- Підписаний зміст незмінний: зміни після підпису — лише через **addenda**
+  (окремі незмінні документи з власним `draft → ready → signed → issued`),
+  а не редагування протоколу. Історія версій (`protocol_revisions`) —
+  append-only.
+- Застаріла booking-проєкція (`bookings.protocol_status`) лишається для черги
+  й звітів зі словником `not_started / in_progress / ready / issued`; статус
+  `signed` проєктується у застарілий `ready` (підписаний, але ще не виданий).
+```text
+not_started → in_progress → ready → issued   (booking read-model, застаріле)
 ```
 
 ## 7. Автоматична прив'язка DICOM/PACS
