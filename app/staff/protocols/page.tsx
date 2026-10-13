@@ -100,6 +100,8 @@ export default function ProtocolsPage() {
   const [query,setQuery] = useState("");
   const [bookingLoading,setBookingLoading] = useState(false);
   const [dirty,setDirty] = useState(false);
+  // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
+  const [showPreview,setShowPreview] = useState(false);
 
   // Конструктор структурованих знахідок (Этап C): локальний стан вибору лікаря.
   // Складений текст ДОДАЄТЬСЯ у вільні поля опису/висновку, нічого не
@@ -710,10 +712,16 @@ export default function ProtocolsPage() {
             {canSign && <button type="button" className="primary" onClick={()=>void save("signed")} disabled={saving}>Підписати протокол</button>}
             {doc.status === "ready" && staff?.role === "admin" && <span className="protocolReadonlyHint">Підпис доступний лише лікарю-рентгенологу.</span>}
             {canIssue && <button type="button" className="primary" onClick={()=>void save("issued")} disabled={saving}>Видати пацієнту</button>}
+            <button type="button" className="ghost" aria-pressed={showPreview} onClick={()=>setShowPreview((on)=>!on)}>{showPreview ? "Сховати перегляд" : "Попередній перегляд"}</button>
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
             {canManage && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
           </div>
+
+          {showPreview && <section className="protocolLivePreview" role="region" aria-label="Попередній перегляд протоколу">
+            <div className="protocolLivePreviewHead"><b>Попередній перегляд (у реальному часі)</b><small>Рендер поточного протоколу; оновлюється під час редагування.</small></div>
+            <pre>{renderProtocolText(docToProtocol(doc))}</pre>
+          </section>}
 
           <article className="protocolPrint" aria-hidden="true">
             <header>
