@@ -210,7 +210,7 @@ export default function StaffBookPage() {
           <h3>Дані пацієнта</h3>
           <label className="settingsField"><span>Прізвище, імʼя та по батькові *</span><NameSuggestInput name="name" required maxLength={120} placeholder="Іваненко Іван Іванович" value={name} onChange={setName} /></label>
           <label className="settingsField"><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00" value={phone} onChange={e=>setPhone(e.target.value)} /></label>
-          <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max="2100-12-31" min="1920-01-01" value={dob} onChange={e=>setDob(e.target.value)} /></label>
+          <label className="settingsField"><span>Дата народження</span><input name="dob" type="date" max={todayInKyiv()} min="1920-01-01" value={dob} onChange={e=>setDob(e.target.value)} /></label>
           <label className="settingsField"><span>Категорія</span>
             <select name="patientCategory" value={category} onChange={e=>{ setCategory(e.target.value); setServiceCode(""); setTime(""); setTimes([]); }}>
               <option value="civilian">Цивільний пацієнт</option>
