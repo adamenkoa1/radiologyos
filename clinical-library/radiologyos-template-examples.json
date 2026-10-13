@@ -1,0 +1,32 @@
+[
+  {
+    "id": "example_001",
+    "modality": "CT",
+    "region": "spine",
+    "finding_id": "finding_018",
+    "parameters": {
+      "level": "C6",
+      "displacement_mm": 3
+    },
+    "expected_review": "Перелом остистого відростка C6. Зміщення потребує підтвердження за зображеннями."
+  },
+  {
+    "id": "example_002",
+    "modality": "CT",
+    "region": "head_neck",
+    "finding_id": "finding_026",
+    "parameters": {
+      "side": "ліворуч",
+      "density_hu": 29
+    },
+    "expected_review": "Гнійний вміст не може бути доведений лише за HU; потрібна оцінка контрастування/УЗД."
+  },
+  {
+    "id": "example_003",
+    "modality": "CT",
+    "region": "brain",
+    "previous_modality": "MRI",
+    "comparison": "На МРТ є осередок, на поточній КТ не диференціюється",
+    "expected_conclusion": "Раніше описані за даними МРТ зміни на поточній КТ переконливо не диференціюються."
+  }
+]

@@ -1,0 +1,66 @@
+[
+  {
+    "id": "side_conflict",
+    "label_uk": "Латералізація опису та висновку",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "gallbladder_conflict",
+    "label_uk": "Збільшення жовчного міхура",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "ascites_conflict",
+    "label_uk": "Наявність асциту",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "fracture_level_conflict",
+    "label_uk": "Рівень перелому",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "disc_morphology_conflict",
+    "label_uk": "Протрузія / грижа",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "native_ct_vascular_claim",
+    "label_uk": "Судинна оклюзія на нативній КТ",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "unit_conversion_conflict",
+    "label_uk": "Розбіжність мм/см",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  },
+  {
+    "id": "different_modality_visibility",
+    "label_uk": "Невидимість на КТ знахідки попередньої МРТ не означає регрес",
+    "severity": "review",
+    "behavior": "warn_only",
+    "auto_rewrite": false,
+    "implementation_status": "specification_only_not_verified_against_PR661"
+  }
+]

@@ -1,0 +1,747 @@
+[
+  {
+    "id": "finding_001",
+    "name_uk": "Кістозно-гліозні зміни",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {location} визначається ділянка кістозно-гліозних змін розміром {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки локальних кістозно-гліозних змін у {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_002",
+    "name_uk": "Гострий внутрішньочерепний крововилив",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {location} визначається гіперденсивне геморагічне вогнище розміром {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки гострого крововиливу у {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_003",
+    "name_uk": "Післяопераційний дефект кісток черепа",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {location} визначається післяопераційний кістковий дефект розміром {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки післяопераційного кісткового дефекту {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_004",
+    "name_uk": "Металеве стороннє тіло",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {location} визначається стороннє тіло металевої щільності розміром {size_mm} мм.",
+    "conclusion_template_uk": "Металеве стороннє тіло {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_005",
+    "name_uk": "Розширення субарахноїдальних просторів",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "severity",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} визначається розширення субарахноїдальних просторів {severity}.",
+    "conclusion_template_uk": "Розширення конвекситальних субарахноїдальних просторів {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_006",
+    "name_uk": "Арахноїдальна кіста",
+    "region": "brain",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {location} визначається лікворної щільності утворення розміром {size_mm} мм.",
+    "conclusion_template_uk": "КТ-картина може відповідати арахноїдальній кісті {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_007",
+    "name_uk": "Консолідація",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "segment",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "air_bronchogram",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {side} легені, {segment}, визначається консолідація з {air_bronchogram} повітряної бронхограми.",
+    "conclusion_template_uk": "КТ-ознаки консолідації у {side} легені, {segment}; етіологія потребує клінічної кореляції.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_008",
+    "name_uk": "Матове скло",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "segment",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {side} легені, {segment}, визначаються ділянки ущільнення за типом «матового скла».",
+    "conclusion_template_uk": "КТ-ознаки ділянок «матового скла» у {side} легені, {segment}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_009",
+    "name_uk": "Плевральний випіт",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У {side} плевральній порожнині визначається рідина максимальною товщиною шару {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки {side} плеврального випоту.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_010",
+    "name_uk": "Пневмоторакс",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {side} плевральній порожнині визначається вільний газ.",
+    "conclusion_template_uk": "КТ-ознаки {side} пневмотораксу.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_011",
+    "name_uk": "Бронхоектази",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "segment",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {side} легені, {segment}, визначаються бронхоектази.",
+    "conclusion_template_uk": "КТ-ознаки бронхоектазів {side} легені, {segment}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_012",
+    "name_uk": "Емфізема",
+    "region": "chest",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "segment",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {side} легені, {segment}, визначаються ділянки емфізематозної перебудови.",
+    "conclusion_template_uk": "КТ-ознаки емфізематозних змін {side} легені.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_013",
+    "name_uk": "Стеатоз печінки",
+    "region": "abdomen",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "density_hu",
+        "required": true,
+        "type": "number",
+        "unit": "HU"
+      },
+      {
+        "key": "spleen_hu",
+        "required": true,
+        "type": "number",
+        "unit": "HU"
+      }
+    ],
+    "description_template_uk": "Середня щільність паренхіми печінки {density_hu} HU, селезінки {spleen_hu} HU, за нативними даними.",
+    "conclusion_template_uk": "КТ-ознаки жирової інфільтрації печінки за умови відповідності діагностичним критеріям.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_014",
+    "name_uk": "Кіста нирки",
+    "region": "abdomen",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      },
+      {
+        "key": "density_hu",
+        "required": true,
+        "type": "number",
+        "unit": "HU"
+      }
+    ],
+    "description_template_uk": "У {side} нирці визначається кістозне утворення розміром {size_mm} мм, щільністю {density_hu} HU.",
+    "conclusion_template_uk": "Кістозне утворення {side} нирки; характеризація залежить від контрастування та морфології.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_015",
+    "name_uk": "Конкременти жовчного міхура",
+    "region": "abdomen",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У просвіті жовчного міхура визначаються конкременти розміром до {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки холецистолітіазу.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_016",
+    "name_uk": "Асцит",
+    "region": "abdomen",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У черевній порожнині визначається вільна рідина у {location}.",
+    "conclusion_template_uk": "КТ-ознаки асциту.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_017",
+    "name_uk": "Відсутність нирки",
+    "region": "abdomen",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У типовій анатомічній ділянці {side} нирка не візуалізується.",
+    "conclusion_template_uk": "{side} нирка не візуалізується; для встановлення агенезії необхідно виключити нефректомію та ектопію.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_018",
+    "name_uk": "Перелом остистого відростка",
+    "region": "spine",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "level",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "displacement_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "На рівні {level} визначається перелом остистого відростка зі зміщенням {displacement_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки перелому остистого відростка {level}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_019",
+    "name_uk": "Дискове випинання",
+    "region": "spine",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "level",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "morphology",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "На рівні {level} визначається {morphology} диска до {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки {morphology} міжхребцевого диска на рівні {level}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_020",
+    "name_uk": "Стеноз хребтового каналу",
+    "region": "spine",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "level",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "На рівні {level} передньозадній розмір хребтового каналу становить {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки звуження хребтового каналу на рівні {level}; ступінь визначається за анатомічними критеріями.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_021",
+    "name_uk": "Спондильоз",
+    "region": "spine",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "Визначаються крайові кісткові розростання тіл хребців до {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки деформуючого спондильозу.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_022",
+    "name_uk": "Багатоуламковий перелом",
+    "region": "bones_joints",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "displacement_status",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} визначається багатоуламковий перелом із {displacement_status} зміщення уламків.",
+    "conclusion_template_uk": "КТ-ознаки багатоуламкового перелому {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_023",
+    "name_uk": "Консолідуючий перелом",
+    "region": "bones_joints",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} визначаються ознаки кісткової консолідації перелому.",
+    "conclusion_template_uk": "КТ-ознаки консолідуючого перелому {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_024",
+    "name_uk": "Деформуючий остеоартроз",
+    "region": "bones_joints",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "severity",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} визначаються звуження суглобової щілини, субхондральний склероз та крайові остеофіти; ступінь {severity}.",
+    "conclusion_template_uk": "Ознаки деформуючого остеоартрозу {location}, {severity} ступеня за відповідною класифікацією.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_025",
+    "name_uk": "Післяампутаційна кукса",
+    "region": "bones_joints",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "Визначається післяампутаційна кукса {location}; оцінюються контури кістки та м’які тканини.",
+    "conclusion_template_uk": "Стан після ампутації {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_026",
+    "name_uk": "Запальні зміни шийних лімфовузлів",
+    "region": "head_neck",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "side",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "density_hu",
+        "required": true,
+        "type": "number",
+        "unit": "HU"
+      }
+    ],
+    "description_template_uk": "У {side} верхньому відділі шиї визначається неоднорідне утворення зі щільністю {density_hu} HU та інфільтрацією клітковини.",
+    "conclusion_template_uk": "КТ-ознаки запально-інфільтративних змін {side} шиї; абсцедування потребує додаткової оцінки.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_027",
+    "name_uk": "Сіалолітіаз",
+    "region": "head_neck",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "У проєкції {location} визначається конкремент розміром {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ознаки сіалолітіазу {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_028",
+    "name_uk": "Перелом кісток обличчя",
+    "region": "head_neck",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "displacement_status",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} визначається лінія перелому з {displacement_status} зміщення фрагментів.",
+    "conclusion_template_uk": "КТ-ознаки перелому {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_029",
+    "name_uk": "Оклюзія артерії",
+    "region": "vascular",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "size_mm",
+        "required": true,
+        "type": "number",
+        "unit": "mm"
+      }
+    ],
+    "description_template_uk": "За даними контрастної ангіографії визначається відсутність контрастування {location} на протязі {size_mm} мм.",
+    "conclusion_template_uk": "КТ-ангіографічні ознаки оклюзії {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_030",
+    "name_uk": "Стеноз артерії",
+    "region": "vascular",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      },
+      {
+        "key": "stenosis_percent",
+        "required": true,
+        "type": "number",
+        "unit": "%"
+      }
+    ],
+    "description_template_uk": "У {location} визначається звуження просвіту судини до {stenosis_percent} %.",
+    "conclusion_template_uk": "КТ-ангіографічні ознаки стенозу {location} до {stenosis_percent} %.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  },
+  {
+    "id": "finding_031",
+    "name_uk": "Колатеральний кровотік",
+    "region": "vascular",
+    "modality": "CT",
+    "parameters": [
+      {
+        "key": "location",
+        "required": true,
+        "type": "string",
+        "unit": null
+      }
+    ],
+    "description_template_uk": "У {location} візуалізуються колатеральні судини.",
+    "conclusion_template_uk": "Колатеральний кровотік у {location}.",
+    "certainty": "requires_image_confirmation",
+    "review_status": "draft_unvalidated",
+    "source_class": "curated_from_accessible_dialogue_and_archive_categories"
+  }
+]
