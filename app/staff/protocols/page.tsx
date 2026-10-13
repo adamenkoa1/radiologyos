@@ -102,6 +102,10 @@ export default function ProtocolsPage() {
   const [dirty,setDirty] = useState(false);
   // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
   const [showPreview,setShowPreview] = useState(false);
+  // Режим роботи (Этап D3, §6): суто ВІЗУАЛЬНА перевага. Перемикання ніколи не
+  // стирає й не перезаписує поля — структуровані дані живуть у `doc` і при
+  // поверненні в структурований режим показуються без втрат.
+  const [mode,setMode] = useState<"quick"|"structured"|"free">("structured");
 
   // Конструктор структурованих знахідок (Этап C): локальний стан вибору лікаря.
   // Складений текст ДОДАЄТЬСЯ у вільні поля опису/висновку, нічого не
@@ -118,7 +122,7 @@ export default function ProtocolsPage() {
 
   function resetComposer() {
     setCTarget(""); setCFinding(""); setCLat("right"); setCLobe(""); setCSeg("");
-    setCMeasures({}); setCMods([]); setCError(""); setComposed([]);
+    setCMeasures({}); setCMods([]); setCError(""); setComposed([]); setMode("structured");
   }
 
   // Знятий до ProtocolDocument вигляд EditorDoc (підписаний → ready для рендера).
@@ -536,11 +540,19 @@ export default function ProtocolsPage() {
             ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
             : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
 
+          <div className="protocolFilterTabs" role="group" aria-label="Режим роботи">
+            <button type="button" aria-pressed={mode==="quick"} className={mode==="quick"?"active":""} onClick={()=>setMode("quick")}>Швидкий</button>
+            <button type="button" aria-pressed={mode==="structured"} className={mode==="structured"?"active":""} onClick={()=>setMode("structured")}>Структурований</button>
+            <button type="button" aria-pressed={mode==="free"} className={mode==="free"?"active":""} onClick={()=>setMode("free")}>Вільний</button>
+          </div>
+          {mode==="quick" && <p className="protocolReadonlyHint">Швидкий режим: натисніть «Заповнити норму», відкоригуйте номер і висновок — протокол готовий. Структуровані поля приховано (дані збережено).</p>}
+          {mode==="free" && <p className="protocolReadonlyHint">Вільний режим: структуровані поля й конструктор приховано; пишіть опис, висновок і рекомендації вручну. Збережені структуровані дані не втрачаються.</p>}
+
           <nav className="protocolToc" aria-label="Зміст протоколу">
             <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
             <a href="#protocol-method" className={doc.method.trim() ? "done" : ""}>Методика</a>
             <a href="#protocol-method-ref" className={doc.methodRef.trim() ? "done" : ""}>Джерело методики</a>
-            {template.sections.map((section)=>{
+            {mode === "structured" && template.sections.map((section)=>{
               const filled = section.fields.some((f)=>(doc.sections[section.key]?.[f.key] || "").trim());
               return <a key={section.key} href={`#protocol-section-${section.key}`} className={filled ? "done" : ""}>{section.title}</a>;
             })}
@@ -575,7 +587,7 @@ export default function ProtocolsPage() {
               <small className="protocolFieldHint">Підстава методики дослідження — потрапляє в текст протоколу (аналог посилання на стандарт).</small>
             </label>
 
-            {template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
+            {mode === "structured" && template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
               <h3>{section.title}</h3>
               <div className="protocolSectionFields">
                 {section.fields.map((field)=>{
@@ -608,7 +620,7 @@ export default function ProtocolsPage() {
             </label>
           </fieldset>
 
-          {canEdit && composerRegion && <section className="findingComposer">
+          {canEdit && mode === "structured" && composerRegion && <section className="findingComposer">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">Конструктор знахідок</p>
@@ -668,9 +680,9 @@ export default function ProtocolsPage() {
               {composed.map((f,index)=><li key={`${f.targetId}-${f.findingId}-${index}`}>{f.description}</li>)}
             </ul>}
           </section>}
-          {canEdit && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
+          {canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
 
-          {canEdit && <section className="aiAssist">
+          {canEdit && mode !== "quick" && <section className="aiAssist">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">AI-асистент</p>

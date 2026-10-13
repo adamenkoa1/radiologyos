@@ -15,8 +15,8 @@ test("editor wires the structured findings composer additively", async () => {
   assert.match(page, /from "\.\.\/\.\.\/\.\.\/lib\/findings-composer"/);
   assert.match(page, /composeFinding/);
   assert.match(page, /insertComposedFinding/);
-  // Блок гейтиться редагованістю і змодельованою ділянкою.
-  assert.match(page, /canEdit && composerRegion && <section className="findingComposer">/);
+  // Блок гейтиться редагованістю, структурованим режимом і змодельованою ділянкою.
+  assert.match(page, /canEdit && mode === "structured" && composerRegion && <section className="findingComposer">/);
   // Складений текст іде через append-хелпер у findings+conclusion (не overwrite).
   assert.match(page, /insertComposedFinding\(docToProtocol\(doc\), result\.finding\)/);
   assert.match(page, /patchDoc\(\{ findings:merged\.findings, conclusion:merged\.conclusion \}\)/);
@@ -41,7 +41,7 @@ test("composer surfaces the finding clinical hint (§4)", async () => {
 
 test("composer is hidden for non-modeled templates and on print", async () => {
   const page = await read("app/staff/protocols/page.tsx");
-  assert.match(page, /canEdit && !composerRegion && <p className="protocolReadonlyHint">/);
+  assert.match(page, /canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">/);
   const css = await read("app/styles/02-workspace.css");
   assert.match(css, /@media print\{\.findingComposer\{display:none!important\}\}/);
 });
