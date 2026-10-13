@@ -352,6 +352,7 @@ export const protocolRevisions = sqliteTable("protocol_revisions", {
 	version: integer().notNull(),
 	templateKey: text("template_key").notNull(),
 	method: text().notNull().default(""),
+	methodRef: text("method_ref").notNull().default(""),
 	sectionsJson: text("sections_json").notNull().default("{}"),
 	findings: text().notNull().default(""),
 	conclusion: text().notNull().default(""),
