@@ -115,6 +115,10 @@ export default function ProtocolsPage() {
   const [macroTitle,setMacroTitle] = useState("");
   const [macroBody,setMacroBody] = useState("");
   const [macroError,setMacroError] = useState("");
+  // Персональні повні шаблони (Этап D5c, §7): збережені заготовки документа.
+  type UserTemplate = { id:number; title:string; baseTemplateKey:string; documentJson:string };
+  const [userTemplates,setUserTemplates] = useState<UserTemplate[]>([]);
+  const [utError,setUtError] = useState("");
 
   // Конструктор структурованих знахідок (Этап C): локальний стан вибору лікаря.
   // Складений текст ДОДАЄТЬСЯ у вільні поля опису/висновку, нічого не
@@ -179,7 +183,7 @@ export default function ProtocolsPage() {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadQueue(); void loadMacros(); }, 0);
+    const timer = window.setTimeout(() => { void loadQueue(); void loadMacros(); void loadUserTemplates(); }, 0);
     return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -476,6 +480,67 @@ export default function ProtocolsPage() {
     if (response.ok) await loadMacros();
   }
 
+  // ── Персональні повні шаблони ────────────────────────────────────────────────
+  async function loadUserTemplates() {
+    try {
+      const response = await fetch("/api/staff/protocols/user-templates", { cache:"no-store" });
+      if (!response.ok) return;
+      const data = await response.json() as { templates?:UserTemplate[] };
+      setUserTemplates(data.templates || []);
+    } catch { /* зручність; тихо ігноруємо збій */ }
+  }
+
+  async function saveAsTemplate() {
+    if (!doc) return;
+    setUtError("");
+    const title = window.prompt("Назва особистого шаблону (на основі поточного протоколу):", "");
+    if (title === null) return;
+    const response = await fetch("/api/staff/protocols/user-templates", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify({
+        title, baseTemplateKey:doc.templateKey,
+        document:{ method:doc.method, methodRef:doc.methodRef, sections:doc.sections,
+          findings:doc.findings, conclusion:doc.conclusion, recommendations:doc.recommendations },
+      }),
+    });
+    const data = await response.json().catch(() => ({})) as { ok?:boolean; error?:string };
+    if (!response.ok || !data.ok) { setUtError(data.error || "Не вдалося зберегти шаблон"); return; }
+    setActionSuccess("Поточний протокол збережено як особистий шаблон.");
+    await loadUserTemplates();
+  }
+
+  // Застосування шаблону — явна дія, що заповнює заготовчі поля. Підтверджуємо,
+  // якщо вже є вміст, щоб не перезаписати роботу мовчки (§6).
+  function applyTemplate(tpl:UserTemplate) {
+    if (!doc) return;
+    let shape:Partial<EditorDoc>;
+    try { shape = JSON.parse(tpl.documentJson) as Partial<EditorDoc>; }
+    catch { setUtError("Пошкоджений шаблон"); return; }
+    const hasContent = doc.findings.trim() || doc.conclusion.trim() || doc.recommendations.trim()
+      || Object.values(doc.sections).some((s) => Object.values(s || {}).some((v) => (v || "").trim()));
+    if (hasContent && !window.confirm("Застосувати шаблон? Поточні структуровані поля та опис/висновок/рекомендації буде замінено збереженими в шаблоні (номер і статус не змінюються).")) return;
+    setDoc((current) => current && ({
+      ...current,
+      templateKey:tpl.baseTemplateKey,
+      method:String(shape.method ?? ""),
+      methodRef:String(shape.methodRef ?? ""),
+      sections:(shape.sections as EditorDoc["sections"]) || {},
+      findings:String(shape.findings ?? ""),
+      conclusion:String(shape.conclusion ?? ""),
+      recommendations:String(shape.recommendations ?? ""),
+    }));
+    setDirty(true);
+    setActionSuccess("Особистий шаблон застосовано. Відредагуйте за потреби.");
+  }
+
+  async function deleteUserTemplate(id:number) {
+    const response = await fetch("/api/staff/protocols/user-templates", {
+      method:"DELETE", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ id }),
+    });
+    if (response.ok) await loadUserTemplates();
+  }
+
   const canManage = staff?.role === "admin" || staff?.role === "radiologist";
   const clinicalLocked = doc?.status === "signed" || doc?.status === "issued";
   const canEdit = Boolean(canManage && !clinicalLocked);
@@ -761,6 +826,24 @@ export default function ProtocolsPage() {
               <textarea value={macroBody} maxLength={4000} placeholder="Текст формулювання" aria-label="Текст нового макроса" onChange={(e)=>setMacroBody(e.target.value)}/>
               <button type="button" className="primary" onClick={()=>void createMacro()}>Зберегти макрос</button>
             </div>
+          </section>}
+
+          {canEdit && mode !== "quick" && <section className="protocolMacros">
+            <div className="aiAssistHead">
+              <div>
+                <p className="eyebrow">Мої шаблони</p>
+                <b>Особисті заготовки протоколів</b>
+                <small>Збережіть поточний протокол як особистий шаблон і застосовуйте його до нових досліджень.</small>
+              </div>
+              <button type="button" onClick={()=>void saveAsTemplate()}>Зберегти поточний як шаблон</button>
+            </div>
+            {utError && <p className="findingComposerWarn" role="alert">{utError}</p>}
+            {userTemplates.length > 0 ? <ul className="protocolMacrosList">
+              {userTemplates.map((t)=><li key={t.id}>
+                <button type="button" title={`Базовий шаблон: ${t.baseTemplateKey}`} onClick={()=>applyTemplate(t)}>{t.title}</button>
+                <button type="button" className="protocolMacroDelete" aria-label={`Видалити шаблон «${t.title}»`} onClick={()=>void deleteUserTemplate(t.id)}>✕</button>
+              </li>)}
+            </ul> : <p className="protocolMacrosEmpty">Ще немає збережених шаблонів.</p>}
           </section>}
 
           {canEdit && mode !== "quick" && <section className="aiAssist">

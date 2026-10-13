@@ -806,6 +806,28 @@ table => [
 	check("protocol_macros_check_3", sql.raw("`length`(`trim`(`body`)) BETWEEN 1 AND 4000")),
 ]);
 
+// Персональні повні шаблони лікаря (§7): збережений заготовлений документ
+// протоколу (методика, джерело методики, структуровані поля, опис/висновок/
+// рекомендації) на базі одного з каталожних шаблонів. Scoped до tenant +
+// власника; зручність авторства, не медичний обʼєкт і не частина протоколу.
+export const protocolUserTemplates = sqliteTable("protocol_user_templates", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().default(1),
+	ownerEmail: text("owner_email").notNull(),
+	title: text().notNull(),
+	baseTemplateKey: text("base_template_key").notNull(),
+	documentJson: text("document_json").notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("protocol_user_templates_owner_idx").on(table.organizationId, table.ownerEmail, table.title),
+	check("protocol_user_templates_check_1", sql.raw("`length`(`trim`(`owner_email`)) > 0")),
+	check("protocol_user_templates_check_2", sql.raw("`length`(`trim`(`title`)) BETWEEN 1 AND 120")),
+	check("protocol_user_templates_check_3", sql.raw("`length`(`trim`(`base_template_key`)) > 0")),
+	check("protocol_user_templates_check_4", sql.raw("`length`(`document_json`) BETWEEN 2 AND 40000")),
+]);
+
 export const businessDocuments = sqliteTable("business_documents", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),
