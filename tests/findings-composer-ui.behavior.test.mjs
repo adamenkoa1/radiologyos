@@ -34,6 +34,11 @@ test("composer does not touch lifecycle, signing, API contract or immutability",
   assert.match(page, /const canSign = staff\?\.role === "radiologist" && doc\?\.status === "ready";/);
 });
 
+test("composer surfaces the finding clinical hint (§4)", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
+  assert.match(page, /composerFinding\?\.hint && <small className="protocolFieldHint">\{composerFinding\.hint\}<\/small>/);
+});
+
 test("composer is hidden for non-modeled templates and on print", async () => {
   const page = await read("app/staff/protocols/page.tsx");
   assert.match(page, /canEdit && !composerRegion && <p className="protocolReadonlyHint">/);
