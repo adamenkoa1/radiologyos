@@ -215,3 +215,69 @@ test("catalog is self-consistent: every region key maps to a protocol template k
     }
   }
 });
+
+// ── D1: розширений каталог ────────────────────────────────────────────────────
+test("catalog covers the five expected regions with correct conclusion prefixes", () => {
+  const prefixes = Object.fromEntries(FINDINGS_CATALOG.map((r) => [r.key, r.conclusionPrefix]));
+  assert.equal(prefixes.ct_chest, "КТ-ознаки");
+  assert.equal(prefixes.ct_brain, "КТ-ознаки");
+  assert.equal(prefixes.ct_abdomen, "КТ-ознаки");
+  assert.equal(prefixes.ct_sinuses, "КТ-ознаки");
+  assert.equal(prefixes.ct_spine, "КТ-ознаки");
+  assert.equal(prefixes.xray_chest, "Рентгенологічні ознаки");
+  assert.equal(prefixes.fluoro_chest, "Флюорографічні ознаки");
+});
+
+test("xray chest uses the radiographic conclusion prefix, not the CT one", () => {
+  const result = composeFinding({ regionKey: "xray_chest", targetId: "lung", findingId: "infiltration", laterality: "right" });
+  assert.equal(result.ok, true);
+  assert.equal(result.finding.description, "У правій легені визначається інфільтративне затемнення легеневої тканини.");
+  assert.equal(result.finding.conclusion, "Рентгенологічні ознаки інфільтративних змін правої легені.");
+});
+
+test("fluorography focal shadow recommends follow-up and uses the fluoro prefix", () => {
+  const result = composeFinding({ regionKey: "fluoro_chest", targetId: "lung", findingId: "focal_shadow", laterality: "left", measurements: { sizeMm: 9 } });
+  assert.equal(result.ok, true);
+  assert.equal(result.finding.description, "У лівій легені визначається вогнищева тінь розміром 9 мм.");
+  assert.match(result.finding.conclusion, /^Флюорографічні ознаки вогнищевих змін лівої легені/);
+  assert.match(result.finding.conclusion, /КТ ОГК/);
+});
+
+test("ct sinuses maxillary sinus declines by side", () => {
+  const result = composeFinding({ regionKey: "ct_sinuses", targetId: "maxillary_sinus", findingId: "mucosal_thickening", laterality: "right", measurements: { sizeMm: 7 } });
+  assert.equal(result.ok, true);
+  assert.equal(result.finding.description, "У правій верхньощелепній пазусі визначається потовщення слизової оболонки розміром 7 мм.");
+  assert.equal(result.finding.conclusion, "КТ-ознаки потовщення слизової правої верхньощелепної пазухи.");
+});
+
+test("ct spine disc protrusion composes with genitive site", () => {
+  const result = composeFinding({ regionKey: "ct_spine", targetId: "disc", findingId: "protrusion", measurements: { sizeMm: 4 } });
+  assert.equal(result.ok, true);
+  assert.equal(result.finding.description, "Визначається протрузія міжхребцевого диска розміром 4 мм.");
+  assert.equal(result.finding.conclusion, "КТ-ознаки протрузії міжхребцевого диска.");
+});
+
+test("ct abdomen gained spleen, gallbladder and pancreas targets", () => {
+  const region = regionByKey("ct_abdomen");
+  const ids = region.targets.map((t) => t.id);
+  for (const id of ["liver", "kidney", "free_fluid", "spleen", "gallbladder", "pancreas"]) assert.ok(ids.includes(id), `abdomen has ${id}`);
+});
+
+test("every catalog finding composes a full sentence with a minimal selection", () => {
+  for (const region of FINDINGS_CATALOG) for (const target of region.targets) for (const finding of target.findings) {
+    const result = composeFinding({
+      regionKey: region.key, targetId: target.id, findingId: finding.id,
+      laterality: target.laterality ? "right" : undefined,
+    });
+    assert.equal(result.ok, true, `${region.key}/${target.id}/${finding.id} composes`);
+    assert.ok(result.finding.description.endsWith("."), "description is a full sentence");
+    assert.ok(result.finding.conclusion.length > 0, "conclusion non-empty");
+  }
+});
+
+test("clinical hints are present on key measurement-bearing findings", () => {
+  const region = regionByKey("ct_chest");
+  const lung = region.targets.find((t) => t.id === "lung");
+  const nodule = lung.findings.find((f) => f.id === "nodule");
+  assert.ok(typeof nodule.hint === "string" && nodule.hint.length > 0);
+});

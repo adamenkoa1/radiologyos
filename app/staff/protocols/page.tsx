@@ -627,6 +627,7 @@ export default function ProtocolsPage() {
                   <option value="">— оберіть —</option>
                   {composerTarget.findings.map((f)=><option key={f.id} value={f.id}>{f.label}</option>)}
                 </select>
+                {composerFinding?.hint && <small className="protocolFieldHint">{composerFinding.hint}</small>}
               </label>}
               {composerFinding && composerNeedsLat && <label><span>Латералізація</span>
                 <select value={cLat} onChange={(e)=>setCLat(e.target.value as Laterality)}>

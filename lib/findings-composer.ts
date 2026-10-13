@@ -106,6 +106,9 @@ export type FindingDef = {
   // Чи потребує знахідка контрастування для коректної характеристики
   // (використовується клінічною перевіркою §10).
   needsContrast?: boolean;
+  // Коротка клінічна підказка для лікаря (§4): не припис, а нагадування про
+  // параметр/критерій. Показується в UI біля вибору знахідки.
+  hint?: string;
   build: (ctx: BuildContext) => { description: string; conclusion: string };
 };
 
@@ -194,6 +197,7 @@ export const FINDINGS_CATALOG: RegionDef[] = [
             label: "Локальна гіперпневматизація (емфізема)",
             laterality: true,
             measurements: ["hu"],
+            hint: "Щільність нижча за −950 HU підтверджує емфізематозні зміни.",
             modifiers: [poorVascularity(), noBullae(), withBullae()],
             build: ({ site, measurements, modifiers, conclusionPrefix }) => {
               let description = `У ${site.locative} визначається локальна ділянка вираженої гіперпневматизації легеневої паренхіми`;
@@ -224,6 +228,7 @@ export const FINDINGS_CATALOG: RegionDef[] = [
             label: "Солідний вузлик",
             laterality: true,
             measurements: ["sizeMm", "hu"],
+            hint: "Вкажіть розмір; для солідного вузлика можлива потреба в контролі за критеріями Fleischner.",
             build: ({ site, measurements, conclusionPrefix }) => {
               let description = `У ${site.locative} визначається солідний вузлик з чіткими контурами`;
               const parts: string[] = [];
@@ -233,6 +238,47 @@ export const FINDINGS_CATALOG: RegionDef[] = [
               description += ".";
               const conclusion = `${conclusionPrefix} солідного легеневого вузлика ${site.genitive}.`;
               return { description, conclusion };
+            },
+          },
+          {
+            id: "ground_glass",
+            label: "Ділянка «матового скла»",
+            laterality: true,
+            measurements: ["sizeMm"],
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається ділянка ущільнення легеневої тканини за типом «матового скла»`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} зміни за типом «матового скла» ${site.genitive}.` };
+            },
+          },
+          {
+            id: "atelectasis",
+            label: "Ділянка ателектазу",
+            laterality: true,
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначається ділянка зниженої повітряності легеневої тканини (ателектаз).`,
+              conclusion: `${conclusionPrefix} ателектазу ${site.genitive}.`,
+            }),
+          },
+        ],
+      },
+      {
+        id: "mediastinum",
+        label: "Середостіння (лімфатичні вузли)",
+        laterality: false,
+        fixedSite: { locative: "середостінні", genitive: "середостіння" },
+        findings: [
+          {
+            id: "lymphadenopathy",
+            label: "Збільшені лімфатичні вузли",
+            measurements: ["sizeMm"],
+            hint: "Для лімфовузла вкажіть короткий діаметр; орієнтовний поріг збільшення — понад 10 мм.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначаються збільшені лімфатичні вузли`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)} за коротким діаметром`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} медіастинальної лімфаденопатії.` };
             },
           },
         ],
@@ -325,6 +371,33 @@ export const FINDINGS_CATALOG: RegionDef[] = [
               return { description, conclusion };
             },
           },
+          {
+            id: "mass",
+            label: "Об’ємне утворення",
+            laterality: true,
+            measurements: ["sizeMm", "hu"],
+            needsContrast: true,
+            hint: "Для характеристики утворення мозку зазвичай потрібне контрастне підсилення.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається об’ємне утворення`;
+              const parts: string[] = [];
+              if (typeof measurements.sizeMm === "number") parts.push(measurementClause("sizeMm", measurements.sizeMm));
+              if (typeof measurements.hu === "number") parts.push(measurementClause("hu", measurements.hu));
+              if (parts.length) description += ` ${parts.join(", ")}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} об’ємного утворення ${site.genitive}, що потребує уточнення.` };
+            },
+          },
+          {
+            id: "atrophy",
+            label: "Церебральна атрофія",
+            laterality: false,
+            hint: "Дифузна знахідка; латералізація не застосовується.",
+            build: ({ conclusionPrefix }) => ({
+              description: "Відзначається розширення субарахноїдальних просторів і шлуночкової системи, що відповідає проявам церебральної атрофії.",
+              conclusion: `${conclusionPrefix} церебральної атрофії.`,
+            }),
+          },
         ],
       },
     ],
@@ -345,6 +418,7 @@ export const FINDINGS_CATALOG: RegionDef[] = [
             label: "Вогнищеве утворення",
             needsContrast: true,
             measurements: ["sizeMm", "hu"],
+            hint: "Для характеристики вогнища потрібне контрастування у фазах (артеріальна/венозна/відстрочена).",
             build: ({ site, measurements, conclusionPrefix }) => {
               let description = `У ${site.locative} визначається вогнищеве утворення`;
               const parts: string[] = [];
@@ -354,6 +428,78 @@ export const FINDINGS_CATALOG: RegionDef[] = [
               description += ".";
               const conclusion = `${conclusionPrefix} вогнищевого утворення ${site.genitive}, що потребує уточнення.`;
               return { description, conclusion };
+            },
+          },
+          {
+            id: "steatosis",
+            label: "Жирова інфільтрація (стеатоз)",
+            measurements: ["hu"],
+            hint: "Дифузне зниження щільності паренхіми нижче за щільність селезінки свідчить про стеатоз.",
+            build: ({ conclusionPrefix, measurements }) => {
+              let description = "Печінка дифузно зниженої щільності";
+              if (typeof measurements.hu === "number") description += ` (до ${fmtNumber(measurements.hu)} HU)`;
+              description += ", що відповідає жировій інфільтрації.";
+              return { description, conclusion: `${conclusionPrefix} жирового гепатозу (стеатозу печінки).` };
+            },
+          },
+        ],
+      },
+      {
+        id: "spleen",
+        label: "Селезінка",
+        laterality: false,
+        fixedSite: { locative: "селезінці", genitive: "селезінки" },
+        findings: [
+          {
+            id: "splenomegaly",
+            label: "Спленомегалія",
+            measurements: ["sizeMm"],
+            hint: "Вкажіть найбільший розмір; орієнтовний поріг спленомегалії — понад 120 мм за довгою віссю.",
+            build: ({ conclusionPrefix, measurements }) => {
+              let description = "Селезінка збільшена в розмірах";
+              if (typeof measurements.sizeMm === "number") description += ` (${measurementClause("sizeMm", measurements.sizeMm)} за довгою віссю)`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} спленомегалії.` };
+            },
+          },
+        ],
+      },
+      {
+        id: "gallbladder",
+        label: "Жовчний міхур",
+        laterality: false,
+        fixedSite: { locative: "жовчному міхурі", genitive: "жовчного міхура" },
+        findings: [
+          {
+            id: "stones",
+            label: "Конкременти",
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначаються конкременти.`,
+              conclusion: `${conclusionPrefix} конкрементів ${site.genitive} (калькульозу).`,
+            }),
+          },
+        ],
+      },
+      {
+        id: "pancreas",
+        label: "Підшлункова залоза",
+        laterality: false,
+        fixedSite: { locative: "підшлунковій залозі", genitive: "підшлункової залози" },
+        findings: [
+          {
+            id: "focal_lesion",
+            label: "Вогнищеве утворення",
+            needsContrast: true,
+            measurements: ["sizeMm", "hu"],
+            hint: "Для характеристики вогнища підшлункової залози потрібне контрастування.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається вогнищеве утворення`;
+              const parts: string[] = [];
+              if (typeof measurements.sizeMm === "number") parts.push(measurementClause("sizeMm", measurements.sizeMm));
+              if (typeof measurements.hu === "number") parts.push(measurementClause("hu", measurements.hu));
+              if (parts.length) description += ` ${parts.join(", ")}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} вогнищевого утворення ${site.genitive}, що потребує уточнення.` };
             },
           },
         ],
@@ -373,6 +519,7 @@ export const FINDINGS_CATALOG: RegionDef[] = [
             label: "Конкремент",
             laterality: true,
             measurements: ["sizeMm", "hu"],
+            hint: "Щільність конкремента (HU) орієнтовно вказує на його склад; вкажіть також розмір.",
             build: ({ site, measurements, conclusionPrefix }) => {
               let description = `У ${site.locative} визначається конкремент`;
               const parts: string[] = [];
@@ -403,6 +550,257 @@ export const FINDINGS_CATALOG: RegionDef[] = [
               const conclusion = `${conclusionPrefix} наявності вільної рідини у ${site.genitive}.`;
               return { description, conclusion };
             },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "ct_sinuses",
+    label: "КТ приносових пазух",
+    conclusionPrefix: "КТ-ознаки",
+    targets: [
+      {
+        id: "maxillary_sinus",
+        label: "Верхньощелепна пазуха",
+        laterality: true,
+        lateralSite: {
+          right: { locative: "правій верхньощелепній пазусі", genitive: "правої верхньощелепної пазухи" },
+          left: { locative: "лівій верхньощелепній пазусі", genitive: "лівої верхньощелепної пазухи" },
+          bilateral: { locative: "обох верхньощелепних пазухах", genitive: "обох верхньощелепних пазух" },
+        },
+        findings: [
+          {
+            id: "mucosal_thickening",
+            label: "Потовщення слизової оболонки",
+            laterality: true,
+            measurements: ["sizeMm"],
+            hint: "Вкажіть максимальну товщину слизової; зіставте з клінічними ознаками синуситу.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається потовщення слизової оболонки`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} потовщення слизової ${site.genitive}.` };
+            },
+          },
+          {
+            id: "fluid_level",
+            label: "Рівень рідини",
+            laterality: true,
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначається горизонтальний рівень рідини.`,
+              conclusion: `${conclusionPrefix} наявності рідини у ${site.genitive} (ознаки синуситу).`,
+            }),
+          },
+        ],
+      },
+      {
+        id: "septum",
+        label: "Носова перегородка",
+        laterality: false,
+        fixedSite: { locative: "носовій перегородці", genitive: "носової перегородки" },
+        findings: [
+          {
+            id: "deviation",
+            label: "Девіація перегородки",
+            build: ({ conclusionPrefix }) => ({
+              description: "Визначається девіація носової перегородки.",
+              conclusion: `${conclusionPrefix} девіації носової перегородки.`,
+            }),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "ct_spine",
+    label: "КТ хребта",
+    conclusionPrefix: "КТ-ознаки",
+    targets: [
+      {
+        id: "disc",
+        label: "Міжхребцевий диск",
+        laterality: false,
+        fixedSite: { locative: "міжхребцевому диску", genitive: "міжхребцевого диска" },
+        findings: [
+          {
+            id: "protrusion",
+            label: "Протрузія диска",
+            measurements: ["sizeMm"],
+            hint: "Вкажіть сагітальний розмір; сформовану грижу виділіть окремою знахідкою.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `Визначається протрузія ${site.genitive}`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} протрузії ${site.genitive}.` };
+            },
+          },
+          {
+            id: "herniation",
+            label: "Грижа диска",
+            measurements: ["sizeMm"],
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `Визначається грижа ${site.genitive}`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} грижі ${site.genitive}.` };
+            },
+          },
+        ],
+      },
+      {
+        id: "vertebra",
+        label: "Тіло хребця",
+        laterality: false,
+        fixedSite: { locative: "тілі хребця", genitive: "тіла хребця" },
+        findings: [
+          {
+            id: "compression_fracture",
+            label: "Компресійний перелом",
+            build: ({ site, conclusionPrefix }) => ({
+              description: `Визначається зниження висоти ${site.genitive}, що відповідає компресійному перелому.`,
+              conclusion: `${conclusionPrefix} компресійного перелому ${site.genitive}.`,
+            }),
+          },
+        ],
+      },
+      {
+        id: "canal",
+        label: "Хребтовий канал",
+        laterality: false,
+        fixedSite: { locative: "хребтовому каналі", genitive: "хребтового каналу" },
+        findings: [
+          {
+            id: "stenosis",
+            label: "Стеноз каналу",
+            measurements: ["sizeMm"],
+            hint: "Вкажіть сагітальний розмір каналу на рівні максимального звуження.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `Визначається звуження ${site.genitive}`;
+              if (typeof measurements.sizeMm === "number") description += ` (сагітальний розмір ${fmtNumber(measurements.sizeMm)} мм)`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} стенозу ${site.genitive}.` };
+            },
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "xray_chest",
+    label: "Рентгенографія органів грудної клітки",
+    conclusionPrefix: "Рентгенологічні ознаки",
+    targets: [
+      {
+        id: "lung",
+        label: "Легеня",
+        laterality: true,
+        lateralSite: {
+          right: { locative: "правій легені", genitive: "правої легені" },
+          left: { locative: "лівій легені", genitive: "лівої легені" },
+          bilateral: { locative: "обох легенях", genitive: "обох легень" },
+        },
+        findings: [
+          {
+            id: "infiltration",
+            label: "Інфільтративне затемнення",
+            laterality: true,
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначається інфільтративне затемнення легеневої тканини.`,
+              conclusion: `${conclusionPrefix} інфільтративних змін ${site.genitive}.`,
+            }),
+          },
+          {
+            id: "focal_shadow",
+            label: "Вогнищева тінь",
+            laterality: true,
+            measurements: ["sizeMm"],
+            hint: "Вогнищеві тіні на рентгенограмі часто потребують уточнення на КТ ОГК.",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається вогнищева тінь`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} вогнищевих змін ${site.genitive} — рекомендовано КТ ОГК для уточнення.` };
+            },
+          },
+        ],
+      },
+      {
+        id: "pleura",
+        label: "Плевральна порожнина",
+        laterality: true,
+        lateralSite: {
+          right: { locative: "правій плевральній порожнині", genitive: "правої плевральної порожнини" },
+          left: { locative: "лівій плевральній порожнині", genitive: "лівої плевральної порожнини" },
+          bilateral: { locative: "обох плевральних порожнинах", genitive: "обох плевральних порожнин" },
+        },
+        findings: [
+          {
+            id: "effusion",
+            label: "Гідроторакс (рідина)",
+            laterality: true,
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначається затемнення з косою верхньою межею, що відповідає наявності рідини.`,
+              conclusion: `${conclusionPrefix} наявності рідини у ${site.genitive}.`,
+            }),
+          },
+        ],
+      },
+      {
+        id: "heart",
+        label: "Серцево-судинна тінь",
+        laterality: false,
+        fixedSite: { locative: "серцево-судинній тіні", genitive: "серцево-судинної тіні" },
+        findings: [
+          {
+            id: "cardiomegaly",
+            label: "Кардіомегалія",
+            hint: "Оцінюйте за кардіоторакальним індексом (понад 0,5 на прямій рентгенограмі).",
+            build: ({ conclusionPrefix }) => ({
+              description: "Серцево-судинна тінь розширена, кардіоторакальний індекс підвищений.",
+              conclusion: `${conclusionPrefix} кардіомегалії.`,
+            }),
+          },
+        ],
+      },
+    ],
+  },
+  {
+    key: "fluoro_chest",
+    label: "Флюорографія органів грудної клітки",
+    conclusionPrefix: "Флюорографічні ознаки",
+    targets: [
+      {
+        id: "lung",
+        label: "Легеня",
+        laterality: true,
+        lateralSite: {
+          right: { locative: "правій легені", genitive: "правої легені" },
+          left: { locative: "лівій легені", genitive: "лівої легені" },
+          bilateral: { locative: "обох легенях", genitive: "обох легень" },
+        },
+        findings: [
+          {
+            id: "focal_shadow",
+            label: "Вогнищева тінь",
+            laterality: true,
+            measurements: ["sizeMm"],
+            hint: "Флюорографія — скринінг; виявлена тінь потребує дообстеження (КТ ОГК).",
+            build: ({ site, measurements, conclusionPrefix }) => {
+              let description = `У ${site.locative} визначається вогнищева тінь`;
+              if (typeof measurements.sizeMm === "number") description += ` ${measurementClause("sizeMm", measurements.sizeMm)}`;
+              description += ".";
+              return { description, conclusion: `${conclusionPrefix} вогнищевих змін ${site.genitive} — рекомендовано дообстеження (КТ ОГК).` };
+            },
+          },
+          {
+            id: "infiltration",
+            label: "Інфільтративні зміни",
+            laterality: true,
+            build: ({ site, conclusionPrefix }) => ({
+              description: `У ${site.locative} визначається ділянка інфільтрації легеневої тканини.`,
+              conclusion: `${conclusionPrefix} інфільтративних змін ${site.genitive} — рекомендовано дообстеження.`,
+            }),
           },
         ],
       },
@@ -551,6 +949,7 @@ const NORM_FIELD_MAP: Record<string, Record<string, { sectionKey: string; fieldK
   ct_chest: {
     lung: { sectionKey: "lungs", fieldKey: "parenchyma" },
     pleura: { sectionKey: "lungs", fieldKey: "pleura" },
+    mediastinum: { sectionKey: "mediastinum", fieldKey: "lymphNodes" },
   },
   ct_brain: {
     brain: { sectionKey: "brain", fieldKey: "parenchyma" },
@@ -558,7 +957,27 @@ const NORM_FIELD_MAP: Record<string, Record<string, { sectionKey: string; fieldK
   ct_abdomen: {
     liver: { sectionKey: "parenchymal", fieldKey: "liver" },
     kidney: { sectionKey: "parenchymal", fieldKey: "kidneys" },
+    spleen: { sectionKey: "parenchymal", fieldKey: "spleen" },
+    gallbladder: { sectionKey: "parenchymal", fieldKey: "gallbladder" },
+    pancreas: { sectionKey: "parenchymal", fieldKey: "pancreas" },
     free_fluid: { sectionKey: "other", fieldKey: "fluid" },
+  },
+  ct_sinuses: {
+    maxillary_sinus: { sectionKey: "sinuses", fieldKey: "maxillary" },
+    septum: { sectionKey: "structures", fieldKey: "septum" },
+  },
+  ct_spine: {
+    disc: { sectionKey: "vertebrae", fieldKey: "discs" },
+    vertebra: { sectionKey: "vertebrae", fieldKey: "bodies" },
+    canal: { sectionKey: "vertebrae", fieldKey: "canal" },
+  },
+  xray_chest: {
+    lung: { sectionKey: "findings", fieldKey: "lungs" },
+    pleura: { sectionKey: "findings", fieldKey: "sinuses" },
+    heart: { sectionKey: "findings", fieldKey: "heart" },
+  },
+  fluoro_chest: {
+    lung: { sectionKey: "findings", fieldKey: "lungs" },
   },
 };
 
