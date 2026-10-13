@@ -1,0 +1,43 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://radiologyos.tech/schemas/protocol-library-intermediate-v0.1.json",
+  "title": "RadiologyOS intermediate protocol library",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "status",
+    "language",
+    "patient_data_included",
+    "normal_template_ids",
+    "finding_ids"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string"
+    },
+    "status": {
+      "const": "draft_unvalidated"
+    },
+    "language": {
+      "const": "uk"
+    },
+    "patient_data_included": {
+      "const": false
+    },
+    "normal_template_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    },
+    "finding_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true
+    }
+  },
+  "additionalProperties": true
+}

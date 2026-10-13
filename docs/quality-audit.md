@@ -171,6 +171,7 @@ credentials + засіяний бекенд. До того візуальні р
 | 2026-10-12 | intake | a11y + focus-ring | #635 |
 | 2026-10-12 | dashboard | focus-ring Пульта | #636 |
 | 2026-10-12 | (наскрізне) loading status | #637; focus baseline #638; DRY labels #639; видалення sheet-preview #640; дати #641 | — |
+| 2026-10-13 | clinical-library import (MP4 Этап 0 / PR1) | аудит проміжної бібліотеки (10 шаблонів + 31 знахідка + 8 правил), 0 даних пацієнта, усі `draft_unvalidated`→`needs_review`, МРТ поза погодженими модальностями; валідатор `lib/clinical-library.ts` + 12 тестів; `docs/clinical-template-import.md` | — |
 
 ## Наступні пріоритети (за ризиком/користю)
 1. `/staff/appointments` — центральний календар, найбільше взаємодій, ще не аудитований.
