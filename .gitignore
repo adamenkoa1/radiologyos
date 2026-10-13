@@ -42,3 +42,6 @@ next-env.d.ts
 /.sites-runtime/
 /outputs/
 /work/
+
+# E2E runtime artifacts (screenshots/traces)
+tests/e2e/artifacts/
