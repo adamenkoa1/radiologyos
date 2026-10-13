@@ -95,7 +95,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/reports` | виправлено | #625 | Tablist ARIA, focus, loading status (#637) |
 | `/staff/finance/services` | не перевірено | — | |
 | `/staff/finance/print`, `/staff/finance/services/print` | не перевірено | — | Друковані форми |
-| `/staff/counterparties` | не перевірено | — | |
+| `/staff/counterparties` | виправлено | #648 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canManage read-only, implicit-label форми, snapshot історичних назв). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
 | `/staff/cash-accounts` | не перевірено | — | |
 | `/staff/supplier-payables` | не перевірено | — | |
 | `/staff/warehouses` | не перевірено | — | |
