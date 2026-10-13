@@ -153,6 +153,33 @@ runtime-importable — value-import extensionless-сусідів прибран�
 `safeForDryRun=true` (reject=0) — дозвіл лише на dry-run; **production-імпорт і
 публікація — окремі кроки за дозволом власника (PR3/PR4).**
 
+## Этап 4 — інтеграція в конструктор (PR3, завершено)
+
+Імпортовані знахідки стали доступними **в наявному конструкторі** `/staff/protocols`
+(не паралельний конструктор) — окремою групою **«Імпортована бібліотека · на
+перевірці»** всередині секції «Конструктор знахідок».
+
+- **Рушій рендеру** `lib/clinical-library-finding.ts` (чистий, runtime-importable):
+  `renderLibraryFinding(finding, values)` заповнює `{плейсхолдери}` шаблону
+  значеннями параметрів; якщо обов'язковий параметр порожній — текст **не**
+  формується (немає напів-порожніх абзаців); числа форматуються з комою й
+  справжнім мінусом (−952 HU). `activeParameters` повертає лише плейсхолдери, що
+  реально вживані в тексті.
+- **UI** (у `page.tsx`): для ділянки поточного шаблону показуються лише знахідки
+  з планом `create` (нові, не дублі, у погоджених КТ-ділянках brain/chest/
+  abdomen/spine — всього 21). Лікар обирає знахідку, заповнює форму параметрів і
+  **явно** тисне «Вставити чернетку в опис і висновок» → append без перезапису.
+  Кнопка неактивна, поки не заповнені обов'язкові параметри. Показується
+  дисклеймер «НЕперевірені шаблони (draft)» і — для `finding_012`/`finding_015` —
+  попередження про можливий дублікат.
+- **Межі.** Нічого не підставляється автоматично; шаблони лишаються
+  `draft_unvalidated`; нічого не публікується; `addLibraryFinding` не зберігає,
+  не шле запит, не змінює статус/lifecycle/права (guard-тест). Панель гейтиться
+  так само, як композер (редактор + структурований режим + змодельована
+  ділянка), прихована на друці, має темну тему.
+- Додано `tests/clinical-library-finding.behavior.test.mjs` (6) +
+  `tests/clinical-library-ui.behavior.test.mjs` (7).
+
 ## Журнал PR
 
 - **PR1 — Library Audit (#664, merged).** Бібліотеку (8 PII-free
@@ -161,7 +188,7 @@ runtime-importable — value-import extensionless-сусідів прибран�
   `scanForPatientData`, `extractPlaceholders`, `AGREED_MODALITY_CODES`) і
   `tests/clinical-library.behavior.test.mjs` (12 тестів). Без рантайм-змін,
   без міграцій. Гейт зелений.
-- **PR2 — Import Adapter (цей PR).** Чистий `lib/clinical-library-adapter.ts`
+- **PR2 — Import Adapter (#665, merged).** Чистий `lib/clinical-library-adapter.ts`
   (`adaptFinding`, `adaptNormalTemplate`, `planImport`, `expectedTemplateKey`,
   `measurementKindFor`, `importKeyFor`, `FINDING_REGION_TO_CATALOG`) + dry-run
   план (22 create / 6 skip / 13 needs_review / 0 reject), ідемпотентність,
@@ -169,12 +196,17 @@ runtime-importable — value-import extensionless-сусідів прибран�
   `tests/clinical-library-adapter.behavior.test.mjs` (11 тестів). **Без нових
   таблиць** (rollback: модуль чистий, видалення файлу/тесту повертає стан), без
   рантайм-змін застосунку, без міграцій. Гейт зелений.
+- **PR3 — Builder Integration (цей PR).** Рушій рендеру
+  `lib/clinical-library-finding.ts` + група «Імпортована бібліотека · на
+  перевірці» в композері `/staff/protocols`: 21 знахідка (КТ brain/chest/abdomen/
+  spine) з формою параметрів і **явною** вставкою чернетки (append, без
+  перезапису); нічого не підставляється авто, нічого не публікується,
+  `draft_unvalidated` зберігається, статус/lifecycle/права не зачіпаються.
+  Додано `tests/clinical-library-finding.behavior.test.mjs` (6) +
+  `tests/clinical-library-ui.behavior.test.mjs` (7). Без міграцій. Гейт зелений.
 
 ## Залишок (наступними PR)
 
-- **PR3 — Builder Integration.** Інтеграція в наявний конструктор (без дублю
-  знахідок/порожніх абзаців/взаємовиключних авто-додавань). Без паралельного
-  конструктора.
 - **PR4 — Clinical Validation.** Звірка 8 правил зі специфікаціями; тести
   (зокрема 3 синтетичні приклади як очікування). Жодної публікації неперевірених
   шаблонів; стоп перед production-імпортом.
