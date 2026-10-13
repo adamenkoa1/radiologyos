@@ -150,6 +150,7 @@ button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;
 .findingComposerMods{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 10px;font-size:12px}
 .findingComposerMods label{display:flex;align-items:center;gap:6px}
 .findingComposerWarn{margin:6px 0 0;padding:9px 12px;background:#fdf2e7;color:#8a5518;border-radius:6px;font-size:11px;line-height:1.5}
+.libraryImport{margin-top:18px;padding-top:16px;border-top:1px dashed #cdd9e8}
 @media(max-width:600px){.findingComposerControls{grid-template-columns:1fr}}
 @media print{.findingComposer{display:none!important}}
 /* Жива панель прев'ю протоколу (Этап D2, §3) */

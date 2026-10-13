@@ -22,6 +22,7 @@ import {
   insertComposedFinding,
   reviewProtocol,
   regionByKey,
+  FINDINGS_CATALOG,
   LATERALITY_LABEL,
   MEASUREMENT_META,
   type Laterality,
@@ -32,6 +33,10 @@ import {
   type ClinicalWarning,
 } from "../../../lib/findings-composer";
 import { findContradictions } from "../../../lib/protocol-contradictions";
+import { planImport, FINDING_REGION_TO_CATALOG } from "../../../lib/clinical-library-adapter";
+import { renderLibraryFinding, activeParameters } from "../../../lib/clinical-library-finding";
+import type { PathologyFinding } from "../../../lib/clinical-library";
+import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-findings.json";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -134,9 +139,16 @@ export default function ProtocolsPage() {
   const [cError,setCError] = useState("");
   const [composed,setComposed] = useState<ComposedFinding[]>([]);
 
+  // Імпортована клінічна бібліотека (MP4 PR3): вибір знахідки «на перевірці» +
+  // значення її параметрів. Вставка — ЯВНА, append, без перезапису; шаблон
+  // лишається draft_unvalidated (лікар перевіряє/редагує перед підписом).
+  const [libFinding,setLibFinding] = useState("");
+  const [libValues,setLibValues] = useState<Record<string,string>>({});
+
   function resetComposer() {
     setCTarget(""); setCFinding(""); setCLat("right"); setCLobe(""); setCSeg("");
     setCMeasures({}); setCMods([]); setCError(""); setComposed([]); setMode("structured");
+    setLibFinding(""); setLibValues({});
   }
 
   // Знятий до ProtocolDocument вигляд EditorDoc (підписаний → ready для рендера).
@@ -413,6 +425,37 @@ export default function ProtocolsPage() {
   }
 
   // Конструктор знахідок: складає речення опису/висновку й ДОДАЄ їх у документ,
+  // ── Імпортована бібліотека (MP4 PR3) ───────────────────────────────────────
+  // Людські підписи параметрів імпортованих знахідок (fallback — ключ+одиниця).
+  const LIB_PARAM_LABELS:Record<string,string> = {
+    location:"Локалізація", size_mm:"Розмір (мм)", side:"Сторона", segment:"Сегмент",
+    severity:"Ступінь", morphology:"Морфологія", density_hu:"Щільність (HU)",
+    spleen_hu:"Щільність селезінки (HU)", displacement_mm:"Зміщення (мм)",
+    displacement_status:"Зміщення", air_bronchogram:"Повітряна бронхограма",
+    stenosis_percent:"Стеноз (%)", level:"Рівень",
+  };
+  function libParamLabel(key:string, unit?:string|null):string {
+    return LIB_PARAM_LABELS[key] || (unit ? `${key} (${unit})` : key);
+  }
+
+  // Вставка ЧЕРНЕТКИ імпортованої знахідки: append у опис/висновок, без
+  // перезапису. Шаблон НЕперевірений — лікар редагує й підписує сам (нічого не
+  // публікується, lifecycle/права/API не зачіпаються).
+  function addLibraryFinding() {
+    if (!doc || !libSelected) return;
+    setCError("");
+    const result = renderLibraryFinding(libSelected.finding, libValues);
+    if (!result.ok) { setCError(`Заповніть обов'язкові параметри: ${result.missing.join(", ")}.`); return; }
+    const baseF = (doc.findings || "").replace(/\s+$/, "");
+    const baseC = (doc.conclusion || "").replace(/\s+$/, "");
+    patchDoc({
+      findings: baseF ? `${baseF}\n${result.description}` : result.description,
+      conclusion: baseC ? `${baseC}\n${result.conclusion}` : result.conclusion,
+    });
+    setActionSuccess("Чернетку імпортованої знахідки додано. Це НЕперевірений шаблон — обов'язково перевірте й відредагуйте текст перед підписом.");
+    setLibFinding(""); setLibValues({});
+  }
+
   // не перезаписуючи ручний текст (insertComposedFinding робить append + дедуп).
   function addComposedFinding() {
     if (!doc) return;
@@ -555,6 +598,35 @@ export default function ProtocolsPage() {
   const composerTarget = composerRegion?.targets.find((entry) => entry.id === cTarget);
   const composerFinding = composerTarget?.findings.find((entry) => entry.id === cFinding);
   const composerNeedsLat = Boolean(composerTarget?.laterality && composerFinding?.laterality !== false);
+
+  // Імпортовані знахідки бібліотеки, згруповані за ключем ділянки каталогу. Лише
+  // записи плану з дією "create" (нові, не дублі, у погоджених ділянках). План
+  // рахується один раз (чиста функція planImport, без мережі/БД).
+  const libraryByRegion = useMemo(() => {
+    const findings = libraryFindingsRaw as PathologyFinding[];
+    const plan = planImport({ templates: [], findings }, {
+      existingCatalog: FINDINGS_CATALOG,
+      existingTemplateKeys: PROTOCOL_TEMPLATES.map((t) => t.key),
+    });
+    const byId = new Map(findings.map((f) => [f.id, f]));
+    const map = new Map<string, { finding: PathologyFinding; possibleDuplicateOf?: string }[]>();
+    for (const item of plan.items) {
+      if (item.kind !== "finding" || item.action !== "create") continue;
+      const finding = byId.get(item.sourceId);
+      if (!finding) continue;
+      const regionKey = FINDING_REGION_TO_CATALOG[finding.region];
+      if (!regionKey) continue;
+      const arr = map.get(regionKey) || [];
+      arr.push({ finding, possibleDuplicateOf: item.possibleDuplicateOf });
+      map.set(regionKey, arr);
+    }
+    return map;
+  }, []);
+  const libCandidates = composerRegion ? (libraryByRegion.get(composerRegion.key) || []) : [];
+  const libSelected = libCandidates.find((c) => c.finding.id === libFinding);
+  const libActiveParams = libSelected ? activeParameters(libSelected.finding) : [];
+  const libReady = Boolean(libSelected) && libActiveParams.filter((p) => p.required).every((p) => (libValues[p.key] || "").trim() !== "");
+
   const composerWarnings:ClinicalWarning[] = (doc && composed.length)
     ? reviewProtocol({ document:docToProtocol(doc), findings:composed })
     : [];
@@ -803,6 +875,27 @@ export default function ProtocolsPage() {
             {composed.length > 0 && <ul className="aiDeviations">
               {composed.map((f,index)=><li key={`${f.targetId}-${f.findingId}-${index}`}>{f.description}</li>)}
             </ul>}
+
+            {libCandidates.length > 0 && <div className="libraryImport">
+              <p className="eyebrow">Імпортована бібліотека · на перевірці</p>
+              <p className="aiDisclaimer">НЕперевірені шаблони (draft). Заповніть параметри й вставте чернетку — текст додасться в опис і висновок, нічого не перезаписуючи. Обов’язково перевірте й відредагуйте перед підписом.</p>
+              <div className="findingComposerControls">
+                <label><span>Знахідка з бібліотеки</span>
+                  <select value={libFinding} onChange={(e)=>{ setLibFinding(e.target.value); setLibValues({}); setCError(""); }}>
+                    <option value="">— оберіть —</option>
+                    {libCandidates.map((c)=><option key={c.finding.id} value={c.finding.id}>{c.finding.name_uk}</option>)}
+                  </select>
+                </label>
+                {libActiveParams.map((p)=><label key={p.key}><span>{libParamLabel(p.key, p.unit)}{p.required ? "" : " (необов’язково)"}</span>
+                  <input inputMode={p.type === "number" ? "decimal" : "text"} value={libValues[p.key] || ""} placeholder={p.unit || ""}
+                    onChange={(e)=>setLibValues((prev)=>({ ...prev, [p.key]:e.target.value }))}/>
+                </label>)}
+              </div>
+              {libSelected?.possibleDuplicateOf && <p className="findingComposerWarn" role="status">⚠ Можливий дублікат наявної знахідки: «{libSelected.possibleDuplicateOf}». Перевірте, чи не дублюєте опис.</p>}
+              <div className="aiDraftMeta">
+                <button type="button" className="primary" disabled={!libReady || saving} onClick={addLibraryFinding}>Вставити чернетку в опис і висновок</button>
+              </div>
+            </div>}
           </section>}
           {canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
 
