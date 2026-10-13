@@ -855,6 +855,13 @@
       "when": 1791878072075,
       "tag": "0122_protocol_revision_method_ref",
       "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "6",
+      "when": 1791879296813,
+      "tag": "0123_protocol_macros",
+      "breakpoints": true
     }
   ]
 }

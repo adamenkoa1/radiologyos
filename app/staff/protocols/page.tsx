@@ -107,6 +107,14 @@ export default function ProtocolsPage() {
   // стирає й не перезаписує поля — структуровані дані живуть у `doc` і при
   // поверненні в структурований режим показуються без втрат.
   const [mode,setMode] = useState<"quick"|"structured"|"free">("structured");
+  // Персональні макроси лікаря (Этап D5b, §7): власні повторно вживані
+  // формулювання, які вставляються (append) у вибране вільне поле.
+  type Macro = { id:number; title:string; body:string };
+  const [macros,setMacros] = useState<Macro[]>([]);
+  const [macroTarget,setMacroTarget] = useState<"findings"|"conclusion"|"recommendations">("conclusion");
+  const [macroTitle,setMacroTitle] = useState("");
+  const [macroBody,setMacroBody] = useState("");
+  const [macroError,setMacroError] = useState("");
 
   // Конструктор структурованих знахідок (Этап C): локальний стан вибору лікаря.
   // Складений текст ДОДАЄТЬСЯ у вільні поля опису/висновку, нічого не
@@ -171,8 +179,9 @@ export default function ProtocolsPage() {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadQueue(); }, 0);
+    const timer = window.setTimeout(() => { void loadQueue(); void loadMacros(); }, 0);
     return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Не оновлюємо у фоні під час збереження, відкриття протоколу чи генерації
@@ -423,6 +432,48 @@ export default function ProtocolsPage() {
     setComposed((prev) => [...prev, result.finding]);
     setActionSuccess("Структуровану знахідку додано в опис і висновок. Перевірте та відредагуйте текст перед підписом.");
     setCFinding(""); setCLat("right"); setCLobe(""); setCSeg(""); setCMeasures({}); setCMods([]);
+  }
+
+  // ── Персональні макроси ─────────────────────────────────────────────────────
+  async function loadMacros() {
+    try {
+      const response = await fetch("/api/staff/protocols/macros", { cache:"no-store" });
+      if (!response.ok) return;
+      const data = await response.json() as { macros?:Macro[] };
+      setMacros(data.macros || []);
+    } catch { /* макроси — зручність; тихо ігноруємо збій завантаження */ }
+  }
+
+  function insertMacro(text:string) {
+    if (!doc) return;
+    const base = (doc[macroTarget] || "").replace(/\s+$/, "");
+    const snippet = text.trim();
+    if (!snippet) return;
+    patchDoc({ [macroTarget]: base ? `${base}\n${snippet}` : snippet });
+    setActionSuccess("Макрос вставлено. Перевірте та відредагуйте текст.");
+  }
+
+  async function createMacro() {
+    setMacroError("");
+    const title = macroTitle.trim();
+    const body = macroBody.trim();
+    if (!title || !body) { setMacroError("Вкажіть назву і текст макроса."); return; }
+    const response = await fetch("/api/staff/protocols/macros", {
+      method:"POST", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ title, body }),
+    });
+    const data = await response.json().catch(() => ({})) as { ok?:boolean; error?:string };
+    if (!response.ok || !data.ok) { setMacroError(data.error || "Не вдалося зберегти макрос"); return; }
+    setMacroTitle(""); setMacroBody("");
+    await loadMacros();
+  }
+
+  async function deleteMacro(id:number) {
+    const response = await fetch("/api/staff/protocols/macros", {
+      method:"DELETE", headers:{"content-type":"application/json"},
+      body:JSON.stringify({ id }),
+    });
+    if (response.ok) await loadMacros();
   }
 
   const canManage = staff?.role === "admin" || staff?.role === "radiologist";
@@ -682,6 +733,35 @@ export default function ProtocolsPage() {
             </ul>}
           </section>}
           {canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
+
+          {canEdit && mode !== "quick" && <section className="protocolMacros">
+            <div className="aiAssistHead">
+              <div>
+                <p className="eyebrow">Макроси</p>
+                <b>Персональні формулювання</b>
+                <small>Ваші повторно вживані фрагменти; вставляються у вибране поле, не перезаписуючи наявний текст.</small>
+              </div>
+              <label className="protocolMacroTarget"><span>Куди вставляти</span>
+                <select value={macroTarget} onChange={(e)=>setMacroTarget(e.target.value as "findings"|"conclusion"|"recommendations")}>
+                  <option value="findings">Опис</option>
+                  <option value="conclusion">Висновок</option>
+                  <option value="recommendations">Рекомендації</option>
+                </select>
+              </label>
+            </div>
+            {macros.length > 0 ? <ul className="protocolMacrosList">
+              {macros.map((m)=><li key={m.id}>
+                <button type="button" title={m.body} onClick={()=>insertMacro(m.body)}>{m.title}</button>
+                <button type="button" className="protocolMacroDelete" aria-label={`Видалити макрос «${m.title}»`} onClick={()=>void deleteMacro(m.id)}>✕</button>
+              </li>)}
+            </ul> : <p className="protocolMacrosEmpty">Ще немає збережених макросів.</p>}
+            <div className="protocolMacrosForm">
+              {macroError && <p className="findingComposerWarn" role="alert">{macroError}</p>}
+              <input value={macroTitle} maxLength={120} placeholder="Назва макроса" aria-label="Назва нового макроса" onChange={(e)=>setMacroTitle(e.target.value)}/>
+              <textarea value={macroBody} maxLength={4000} placeholder="Текст формулювання" aria-label="Текст нового макроса" onChange={(e)=>setMacroBody(e.target.value)}/>
+              <button type="button" className="primary" onClick={()=>void createMacro()}>Зберегти макрос</button>
+            </div>
+          </section>}
 
           {canEdit && mode !== "quick" && <section className="aiAssist">
             <div className="aiAssistHead">

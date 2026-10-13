@@ -25,7 +25,7 @@ test("editor wires the structured findings composer additively", async () => {
 test("composer does not touch lifecycle, signing, API contract or immutability", async () => {
   const page = await read("app/staff/protocols/page.tsx");
   // Додавання знахідки не викликає збереження/підпис і не шле запит.
-  const composerFn = page.slice(page.indexOf("function addComposedFinding"), page.indexOf("const canManage ="));
+  const composerFn = page.slice(page.indexOf("function addComposedFinding"), page.indexOf("// ── Персональні макроси"));
   assert.doesNotMatch(composerFn, /fetch\(/);
   assert.doesNotMatch(composerFn, /save\(/);
   assert.doesNotMatch(composerFn, /status:/); // не змінює статус документа
