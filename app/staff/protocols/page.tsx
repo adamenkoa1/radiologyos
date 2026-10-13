@@ -7,6 +7,7 @@ import {
   type ProtocolDocument,
   type ProtocolStatus,
   defaultMethodRef,
+  isConditionMet,
   normalDocument,
   protocolTemplateByKey,
   renderProtocolText,
@@ -552,7 +553,7 @@ export default function ProtocolsPage() {
             <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
             <a href="#protocol-method" className={doc.method.trim() ? "done" : ""}>Методика</a>
             <a href="#protocol-method-ref" className={doc.methodRef.trim() ? "done" : ""}>Джерело методики</a>
-            {mode === "structured" && template.sections.map((section)=>{
+            {mode === "structured" && template.sections.filter((section)=>isConditionMet(section.showWhen, doc.sections)).map((section)=>{
               const filled = section.fields.some((f)=>(doc.sections[section.key]?.[f.key] || "").trim());
               return <a key={section.key} href={`#protocol-section-${section.key}`} className={filled ? "done" : ""}>{section.title}</a>;
             })}
@@ -587,10 +588,10 @@ export default function ProtocolsPage() {
               <small className="protocolFieldHint">Підстава методики дослідження — потрапляє в текст протоколу (аналог посилання на стандарт).</small>
             </label>
 
-            {mode === "structured" && template.sections.map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
+            {mode === "structured" && template.sections.filter((section)=>isConditionMet(section.showWhen, doc.sections)).map((section)=><div className="protocolSection" id={`protocol-section-${section.key}`} key={section.key}>
               <h3>{section.title}</h3>
               <div className="protocolSectionFields">
-                {section.fields.map((field)=>{
+                {section.fields.filter((field)=>isConditionMet(field.showWhen, doc.sections)).map((field)=>{
                   const value = doc.sections[section.key]?.[field.key] || "";
                   const onChange = (v:string)=>setSectionField(section.key,field.key,v);
                   if (field.type === "select") return <label key={field.key}><span>{field.label}</span>
@@ -750,8 +751,9 @@ export default function ProtocolsPage() {
             </dl>
             {(doc.method || template.method) && <section><h2>Методика</h2><p>{doc.method || template.method}</p></section>}
             {(doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)) && <section><h2>Джерело методики</h2><p>{doc.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)}</p></section>}
-            {template.sections.map((section)=>{
+            {template.sections.filter((section)=>isConditionMet(section.showWhen, doc.sections)).map((section)=>{
               const rendered = section.fields
+                .filter((field)=>isConditionMet(field.showWhen, doc.sections))
                 .map((field)=>({ field, value:(doc.sections[section.key]?.[field.key] || "").trim() }))
                 .filter((entry)=>entry.value);
               if (!rendered.length) return null;

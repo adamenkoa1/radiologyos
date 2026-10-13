@@ -8,6 +8,15 @@ import { serviceByCode } from "./catalog";
 
 export type ProtocolFieldType = "line" | "text" | "select";
 
+// Умовна видимість (Этап D4b): поле/секція показується лише коли значення
+// керівного поля `field` у секції `section` належить до `in`. Поля без умови
+// завжди видимі — тож наявні шаблони поводяться як раніше.
+export type FieldCondition = {
+  section: string;
+  field: string;
+  in: string[];
+};
+
 export type ProtocolField = {
   key: string;
   label: string;
@@ -15,12 +24,14 @@ export type ProtocolField = {
   options?: string[];
   placeholder?: string;
   normal?: string;
+  showWhen?: FieldCondition;
 };
 
 export type ProtocolSection = {
   key: string;
   title: string;
   fields: ProtocolField[];
+  showWhen?: FieldCondition;
 };
 
 export type ProtocolTemplate = {
@@ -83,6 +94,16 @@ const contrast: ProtocolField = choice(
   "Без контрастування",
 );
 
+// Умовне поле: фаза контрастування має сенс лише за внутрішньовенного
+// контрастування. Показується (і потрапляє в текст) тільки тоді.
+const contrastPhase: ProtocolField = {
+  key: "contrastPhase",
+  label: "Фаза контрастування",
+  type: "select",
+  options: ["Артеріальна", "Венозна", "Відстрочена", "Багатофазне дослідження"],
+  showWhen: { section: "parameters", field: "contrast", in: ["Внутрішньовенне контрастування"] },
+};
+
 export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
   {
     key: "ct_chest",
@@ -94,7 +115,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       {
         key: "parameters",
         title: "Умови дослідження",
-        fields: [contrast, line("kv", "Напруга / доза", "", "кВ, мАс, DLP")],
+        fields: [contrast, contrastPhase, line("kv", "Напруга / доза", "", "кВ, мАс, DLP")],
       },
       {
         key: "lungs",
@@ -131,7 +152,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       {
         key: "parameters",
         title: "Умови дослідження",
-        fields: [contrast],
+        fields: [contrast, contrastPhase],
       },
       {
         key: "brain",
@@ -164,7 +185,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       {
         key: "parameters",
         title: "Умови дослідження",
-        fields: [contrast],
+        fields: [contrast, contrastPhase],
       },
       {
         key: "parenchymal",
@@ -257,7 +278,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       {
         key: "parameters",
         title: "Умови дослідження",
-        fields: [contrast],
+        fields: [contrast, contrastPhase],
       },
       {
         key: "sinuses",
@@ -294,6 +315,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
         fields: [
           choice("region", "Відділ хребта", ["Шийний", "Грудний", "Попереково-крижовий"], "Попереково-крижовий"),
           contrast,
+          contrastPhase,
         ],
       },
       {
@@ -324,7 +346,7 @@ export const PROTOCOL_TEMPLATES: ProtocolTemplate[] = [
       {
         key: "parameters",
         title: "Умови дослідження",
-        fields: [contrast],
+        fields: [contrast, contrastPhase],
       },
       {
         key: "urinary",
@@ -433,6 +455,14 @@ export function defaultMethodRef(equipmentId: EquipmentType): string {
   }
 }
 
+// Чи виконується умова видимості поля/секції для цього документа. Без умови —
+// завжди true (тож безумовні поля поводяться як раніше).
+export function isConditionMet(condition: FieldCondition | undefined, sections: ProtocolSectionValues): boolean {
+  if (!condition) return true;
+  const value = ((sections[condition.section] || {})[condition.field] || "").trim();
+  return condition.in.includes(value);
+}
+
 export function protocolTemplateByKey(key: string | null | undefined): ProtocolTemplate {
   return PROTOCOL_TEMPLATES.find((template) => template.key === key)
     || PROTOCOL_TEMPLATES[PROTOCOL_TEMPLATES.length - 1];
@@ -504,8 +534,10 @@ export function renderProtocolText(document: ProtocolDocument): string {
   const methodRef = (document.methodRef || template.methodRef || defaultMethodRef(template.equipmentId)).trim();
   if (methodRef) lines.push(`Джерело методики: ${methodRef}`);
   for (const section of template.sections) {
+    if (!isConditionMet(section.showWhen, document.sections)) continue;
     const values = document.sections[section.key] || {};
     const rendered = section.fields
+      .filter((field) => isConditionMet(field.showWhen, document.sections))
       .map((field) => ({ field, value: (values[field.key] || "").trim() }))
       .filter((entry) => entry.value);
     if (!rendered.length) continue;
@@ -553,6 +585,18 @@ export function sanitizeDocument(input: unknown): ProtocolValidation {
       values[field.key] = value;
     }
     sections[section.key] = values;
+  }
+
+  // Умовна видимість (Этап D4b): прибираємо значення полів і цілі секції, чия
+  // умова showWhen не виконується у фіналізованих даних, щоб у збереженому
+  // документі не лишалося прихованих «застарілих» значень (напр. фаза
+  // контрастування після перемикання на «Без контрастування»).
+  for (const section of template.sections) {
+    if (!isConditionMet(section.showWhen, sections)) { sections[section.key] = {}; continue; }
+    const values = sections[section.key] || {};
+    for (const field of section.fields) {
+      if (field.showWhen && !isConditionMet(field.showWhen, sections)) delete values[field.key];
+    }
   }
 
   const document: ProtocolDocument = {

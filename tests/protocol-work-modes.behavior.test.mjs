@@ -34,7 +34,7 @@ test("structured sections and the findings composer are hidden outside structure
   const page = await read("app/staff/protocols/page.tsx");
   // Секції й композер рендеряться лише у структурованому режимі (умовний рендер,
   // стан полів у `doc` зберігається при поверненні).
-  assert.match(page, /\{mode === "structured" && template\.sections\.map\(\(section\)=><div className="protocolSection"/);
+  assert.match(page, /\{mode === "structured" && template\.sections\.filter\(\(section\)=>isConditionMet\(section\.showWhen, doc\.sections\)\)\.map\(\(section\)=><div className="protocolSection"/);
   assert.match(page, /\{canEdit && mode === "structured" && composerRegion && <section className="findingComposer">/);
 });
 
