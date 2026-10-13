@@ -668,8 +668,9 @@ export default function ProtocolsPage() {
             <button type="button" aria-pressed={mode==="structured"} className={mode==="structured"?"active":""} onClick={()=>setMode("structured")}>Структурований</button>
             <button type="button" aria-pressed={mode==="free"} className={mode==="free"?"active":""} onClick={()=>setMode("free")}>Вільний</button>
           </div>
-          {mode==="quick" && <p className="protocolReadonlyHint">Швидкий режим: натисніть «Заповнити норму», відкоригуйте номер і висновок — протокол готовий. Структуровані поля приховано (дані збережено).</p>}
-          {mode==="free" && <p className="protocolReadonlyHint">Вільний режим: структуровані поля й конструктор приховано; пишіть опис, висновок і рекомендації вручну. Збережені структуровані дані не втрачаються.</p>}
+          {mode==="structured" && canEdit && <p className="protocolModeHint">Структурований режим: нижче доступні конструктор знахідок (КТ ОГК, головного мозку, ОЧП), особисті макроси та шаблони, перевірка суперечностей і попередній перегляд.</p>}
+          {mode==="quick" && <p className="protocolReadonlyHint">Швидкий режим: натисніть «Заповнити норму», відкоригуйте номер і висновок — протокол готовий. Структуровані поля приховано (дані збережено). Щоб відкрити конструктор знахідок і макроси — перемкніться на «Структурований».</p>}
+          {mode==="free" && <p className="protocolReadonlyHint">Вільний режим: структуровані поля й конструктор приховано; пишіть опис, висновок і рекомендації вручну. Збережені структуровані дані не втрачаються. Конструктор знахідок доступний у «Структурованому» режимі.</p>}
 
           <nav className="protocolToc" aria-label="Зміст протоколу">
             <span className="protocolTocLead">Зміст{completeness ? ` · заповнено ${completeness.filled}/${completeness.total}` : ""}</span>
