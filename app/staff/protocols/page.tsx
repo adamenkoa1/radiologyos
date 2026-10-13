@@ -109,6 +109,9 @@ export default function ProtocolsPage() {
   const [dirty,setDirty] = useState(false);
   // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
   const [showPreview,setShowPreview] = useState(false);
+  // Пісочниця: демо-протокол для спроби конструктора без дослідження в черзі.
+  // Нічого не зберігається/не підписується (немає реального бронювання).
+  const [sandbox,setSandbox] = useState(false);
   // Режим роботи (Этап D3, §6): суто ВІЗУАЛЬНА перевага. Перемикання ніколи не
   // стирає й не перезаписує поля — структуровані дані живуть у `doc` і при
   // поверненні в структурований режим показуються без втрат.
@@ -224,7 +227,33 @@ export default function ProtocolsPage() {
     void openBooking(id);
   }
 
+  // ── Пісочниця конструктора ──────────────────────────────────────────────────
+  // Відкриває редактор із демо-КТ-шаблоном БЕЗ дослідження в черзі, щоб одразу
+  // спробувати конструктор та імпортовану бібліотеку. Синтетичне «бронювання»
+  // (id = -1) існує лише в памʼяті; збереження/підпис/видача недоступні — нічого
+  // не пишеться в БД, lifecycle/права не зачіпаються.
+  const SANDBOX_TEMPLATE = "ct_brain";
+  function startSandbox() {
+    setActionError(""); setActionSuccess(""); setAiDraft(null); setDirty(false);
+    setSelectedId(null); setBookingLoading(false); resetComposer();
+    const tpl = protocolTemplateByKey(SANDBOX_TEMPLATE);
+    setBooking({
+      id: -1, code: "ДЕМО", name: "Демонстраційний протокол (не зберігається)",
+      service: tpl?.title || "КТ головного мозку", serviceCode: "", equipmentId: "",
+      desiredDate: "", desiredTime: "", patientCategory: "civilian", performedAt: "",
+      anatomicalRegionsCount: 0, protocolNumber: "", protocolStatus: "not_started",
+      protocolReadyAt: "", protocolIssuedAt: "", assignedRadiologistEmail: "",
+    });
+    setDoc({ ...normalDocument(SANDBOX_TEMPLATE), version: 0, updatedBy: "", updatedAt: "", signedBy: "", signedAt: "", signedVersion: 0 });
+    setMode("structured");
+    setSandbox(true);
+  }
+  function exitSandbox() {
+    setSandbox(false); setBooking(null); setDoc(null); setSelectedId(null); setDirty(false); resetComposer();
+  }
+
   async function openBooking(id:number) {
+    setSandbox(false);
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
     setBookingLoading(true); setDirty(false); resetComposer();
     try {
@@ -317,6 +346,7 @@ export default function ProtocolsPage() {
 
   async function save(status:ProtocolLifecycleStatus) {
     if (!doc || !booking) return;
+    if (sandbox) { setActionError("Пісочниця — збереження недоступне. Створіть дослідження в розкладі, щоб зберігати протоколи."); return; }
     setActionError(""); setActionSuccess("");
     if ((status === "ready" || status === "signed" || status === "issued") && !doc.number.trim()) {
       setActionError("Для готового, підписаного або виданого протоколу вкажіть його номер."); return;
@@ -686,6 +716,7 @@ export default function ProtocolsPage() {
             <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням" placeholder="Код, ПІБ, дослідження"/>
+          {canManage && <button type="button" className="protocolSandboxButton" aria-pressed={sandbox} onClick={()=>sandbox ? exitSandbox() : startSandbox()}>{sandbox ? "Вийти з пісочниці" : "Спробувати конструктор"}</button>}
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
@@ -715,6 +746,7 @@ export default function ProtocolsPage() {
           <span aria-hidden="true">▤</span>
           <b>Оберіть дослідження зі списку</b>
           <p>Структурований протокол відкриється тут. Для нового дослідження шаблон підбереться автоматично за модальністю.</p>
+          {canManage && <p>Немає дослідження під рукою? <button type="button" className="protocolSandboxLink" onClick={startSandbox}>Спробувати конструктор</button> на демо-протоколі — без збереження.</p>}
         </div> : <>
           <header className="protocolEditorHead">
             <div>
@@ -731,6 +763,7 @@ export default function ProtocolsPage() {
             <span className={`protocolTag ${doc.status}`}>{PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
           </header>
 
+          {sandbox && <p className="protocolSandboxBanner" role="status">🧪 Пісочниця — демонстраційний протокол. Спробуйте конструктор та імпортовану бібліотеку; <b>нічого не зберігається й не підписується</b>. Перемикайте шаблон, щоб побачити різні ділянки.</p>}
           {clinicalLocked
             ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
             : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
@@ -899,7 +932,7 @@ export default function ProtocolsPage() {
           </section>}
           {canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
 
-          {canEdit && mode !== "quick" && <section className="protocolMacros">
+          {!sandbox && canEdit && mode !== "quick" && <section className="protocolMacros">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">Макроси</p>
@@ -928,7 +961,7 @@ export default function ProtocolsPage() {
             </div>
           </section>}
 
-          {canEdit && mode !== "quick" && <section className="protocolMacros">
+          {!sandbox && canEdit && mode !== "quick" && <section className="protocolMacros">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">Мої шаблони</p>
@@ -946,7 +979,7 @@ export default function ProtocolsPage() {
             </ul> : <p className="protocolMacrosEmpty">Ще немає збережених шаблонів.</p>}
           </section>}
 
-          {canEdit && mode !== "quick" && <section className="aiAssist">
+          {!sandbox && canEdit && mode !== "quick" && <section className="aiAssist">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">AI-асистент</p>
@@ -985,7 +1018,8 @@ export default function ProtocolsPage() {
           </section>}
 
           <div className="protocolActions">
-            {canEdit && doc.status === "draft" && <>
+            {sandbox && <span className="protocolModeHint">Пісочниця — збереження, підпис і видача недоступні. Створіть дослідження в розкладі, щоб працювати з реальним протоколом.</span>}
+            {!sandbox && canEdit && doc.status === "draft" && <>
               <button type="button" onClick={()=>void save("draft")} disabled={saving}>Зберегти чернетку</button>
               <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Готовий до підпису</button>
             </>}
@@ -997,7 +1031,7 @@ export default function ProtocolsPage() {
             <button type="button" className="ghost" aria-pressed={showPreview} onClick={()=>setShowPreview((on)=>!on)}>{showPreview ? "Сховати перегляд" : "Попередній перегляд"}</button>
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
-            {canManage && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
+            {canManage && !sandbox && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
           </div>
 
           {showPreview && <section className="protocolLivePreview" role="region" aria-label="Попередній перегляд протоколу">
