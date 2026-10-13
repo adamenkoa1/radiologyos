@@ -786,6 +786,26 @@ table => [
 	check("protocol_addendum_revisions_check_7", sql.raw("`version` > 0")),
 ]);
 
+// Персональні текстові макроси лікаря для конструктора протоколів (§7):
+// повторно вживані формулювання, які лікар вставляє у вільні поля опису/
+// висновку/рекомендацій. Scoped до tenant + власника; не медичний документ і
+// не частина протоколу — лише зручність авторства.
+export const protocolMacros = sqliteTable("protocol_macros", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().default(1),
+	ownerEmail: text("owner_email").notNull(),
+	title: text().notNull(),
+	body: text().notNull(),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("protocol_macros_owner_idx").on(table.organizationId, table.ownerEmail, table.title),
+	check("protocol_macros_check_1", sql.raw("`length`(`trim`(`owner_email`)) > 0")),
+	check("protocol_macros_check_2", sql.raw("`length`(`trim`(`title`)) BETWEEN 1 AND 120")),
+	check("protocol_macros_check_3", sql.raw("`length`(`trim`(`body`)) BETWEEN 1 AND 4000")),
+]);
+
 export const businessDocuments = sqliteTable("business_documents", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),
