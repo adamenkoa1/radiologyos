@@ -98,7 +98,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/counterparties` | виправлено | #648 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canManage read-only, implicit-label форми, snapshot історичних назв). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
 | `/staff/cash-accounts` | виправлено | #649 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canEdit read-only, незмінна ідентичність — тип+валюта блокуються після створення, isDefault підтягує active). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
 | `/staff/supplier-payables` | не перевірено | — | |
-| `/staff/warehouses` | не перевірено | — | |
+| `/staff/warehouses` | виправлено | #650 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canEdit read-only, isDefault підтягує active, проведені документи зберігають історичний snapshot назви/коду). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
 | `/staff/directories`, `/staff/directories/personnel-refs` | не перевірено | — | |
 | `/staff/inventory/counts`, `/material-consumption`, `/transfers`, `/print` | не перевірено | — | Складські під-журнали |
 | `/staff/reports/registers` | частково | #625 (h2) | Секційні h2; повного аудиту не було |
