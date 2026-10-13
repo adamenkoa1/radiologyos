@@ -73,7 +73,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/board` | виправлено | #634 | Focus-ring канбану (0 :focus було), loading status |
 | `/staff/intake` | виправлено | #635 | Фільтр ARIA, пошук aria-label, aria-current, focus |
 | `/staff/studies` | виправлено | #631 | Focus-ring кнопок-фільтрів, loading status |
-| `/staff/protocols` | виправлено | #632 | Повний focus-ring черги (спільний із patients) |
+| `/staff/protocols` | виправлено | #632, #651 | Повний focus-ring черги (#632). #651: конструктор структурованих знахідок (Этап C MASTER-завдання) — `lib/findings-composer.ts` складає граматичний укр. опис+висновок зі структурованого вибору (орган→сегмент→латералізація→HU/розмір→модифікатори, еталон §5 відтворено), `insertComposedFinding` додає текст у поля без перезапису правок, `reviewProtocol` — клінічні перевірки §10. UI адитивно, lifecycle/підпис/API/незмінність не зачіпає. Тех ✅ + Функц ✅ (20 нових тестів). Візуал ⛔ незавершено. Деталі — `docs/protocols-constructor.md` |
 | `/staff/tasks` | повторно перевірено | #620,#621,#633 | Resilience + повний WAI-ARIA таб-патерн |
 | `/staff/patients` | повторно перевірено | #630,#642 | Повний чек-лист: a11y (#630/#638), resilience (useSubmit), без мертвого коду й lint-warnings; `type="button"` на 2 поза-формних кнопках (#642). Нових дефектів не виявлено |
 | `/staff/appointments` | потребує виправлення→виправлено | #643 | Тех ✅ + Функц ✅ (resilience, catch, екрани доступу/мережі; week-calendar day/week/list). Візуал ⛔ незавершено (authed browser недоступний). Виправлено: view-toggle/status-tabs `aria-pressed`+`role=group`, aria-label дати/пошуку, loading `role=status` |
