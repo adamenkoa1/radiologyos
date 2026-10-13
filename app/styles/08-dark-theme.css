@@ -34,6 +34,7 @@
 .themeDark .dashListEmpty,.themeDark .settingsCard input[readonly],.themeDark .reportPreviewHead{
   background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolContradictions{background:#1c160c!important;border-color:#3b2f17!important}
+.themeDark .protocolModeHint{background:#0d1a16!important;color:#8fd3c0!important}
 .themeDark .protocolMacrosList li{background:#0b1116!important;border-color:#22303a!important}
 .themeDark .protocolMacrosList li>button:first-child{color:#cfe5de!important}
 .themeDark .protocolMacroDelete{background:#161a1a!important;border-color:#22303a!important;color:#e39a9a!important}
