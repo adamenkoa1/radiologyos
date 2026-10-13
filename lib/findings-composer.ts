@@ -86,6 +86,11 @@ export type ComposedFinding = {
   laterality: Laterality;
   description: string;
   conclusion: string;
+  // Структуровані виміри цієї знахідки (для порівняння з попереднім, E3).
+  measurements: MeasurementInput;
+  // Іменникова фраза (родовий відмінок) для речень динаміки: «поява <noun>»,
+  // «зникнення <noun>». Задається dynamicsNoun або похідна від висновку.
+  noun: string;
 };
 
 type BuildContext = {
@@ -106,6 +111,10 @@ export type FindingDef = {
   // Чи потребує знахідка контрастування для коректної характеристики
   // (використовується клінічною перевіркою §10).
   needsContrast?: boolean;
+  // Іменникова фраза (родовий відмінок) для речень динаміки E3. Якщо не задано —
+  // похідна від висновку (зі зрізаним префіксом). Напр. для асциту:
+  // «вільної рідини в черевній порожнині».
+  dynamicsNoun?: string;
   // Коротка клінічна підказка для лікаря (§4): не припис, а нагадування про
   // параметр/критерій. Показується в UI біля вибору знахідки.
   hint?: string;
@@ -543,6 +552,7 @@ export const FINDINGS_CATALOG: RegionDef[] = [
             id: "ascites",
             label: "Вільна рідина у черевній порожнині",
             measurements: ["volumeMl"],
+            dynamicsNoun: "вільної рідини в черевній порожнині",
             build: ({ site, measurements, conclusionPrefix }) => {
               let description = `У ${site.locative} визначається вільна рідина`;
               if (typeof measurements.volumeMl === "number") description += ` орієнтовним ${measurementClause("volumeMl", measurements.volumeMl)}`;
@@ -899,6 +909,12 @@ export function composeFinding(selection: FindingSelection): ComposeResult {
     modifiers,
     conclusionPrefix: region.conclusionPrefix,
   });
+  const cleanConclusion = conclusion.replace(/\s+/g, " ").trim();
+  // Похідна іменникова фраза для динаміки: зрізаємо префікс висновку й крапку.
+  const fallbackNoun = cleanConclusion
+    .replace(new RegExp(`^${region.conclusionPrefix}\\s+`), "")
+    .replace(/\.$/, "")
+    .trim();
 
   return {
     ok: true,
@@ -908,7 +924,9 @@ export function composeFinding(selection: FindingSelection): ComposeResult {
       findingId: finding.id,
       laterality,
       description: description.replace(/\s+/g, " ").trim(),
-      conclusion: conclusion.replace(/\s+/g, " ").trim(),
+      conclusion: cleanConclusion,
+      measurements,
+      noun: finding.dynamicsNoun || fallbackNoun,
     },
   };
 }
