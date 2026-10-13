@@ -36,7 +36,7 @@ export async function GET(request: Request) {
   }
 
   const row = await db.prepare(
-    `SELECT version, template_key AS templateKey, method, sections_json AS sectionsJson,
+    `SELECT version, template_key AS templateKey, method, method_ref AS methodRef, sections_json AS sectionsJson,
        findings, conclusion, recommendations, number, status,
        saved_by AS savedBy, created_at AS createdAt
      FROM protocol_revisions
@@ -58,6 +58,7 @@ export async function GET(request: Request) {
       version:Number(row.version),
       templateKey:String(row.templateKey || "generic"),
       method:String(row.method || ""),
+      methodRef:String(row.methodRef || ""),
       sections:parseSections(String(row.sectionsJson || "{}")),
       findings:String(row.findings || ""),
       conclusion:String(row.conclusion || ""),

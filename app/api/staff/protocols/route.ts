@@ -308,11 +308,11 @@ export async function PUT(request: Request) {
       ),
       db.prepare(
         `INSERT OR IGNORE INTO protocol_revisions
-           (organization_id, booking_id, version, template_key, method, sections_json, findings, conclusion,
+           (organization_id, booking_id, version, template_key, method, method_ref, sections_json, findings, conclusion,
             recommendations, number, status, saved_by)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
-        ctx.organizationId, bookingId, version, document.templateKey, document.method, sectionsJson,
+        ctx.organizationId, bookingId, version, document.templateKey, document.method, document.methodRef, sectionsJson,
         document.findings, document.conclusion, document.recommendations,
         document.number, document.status, member.email,
       ),
