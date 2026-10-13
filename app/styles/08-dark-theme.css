@@ -30,6 +30,7 @@
 /* Вкладені/тоновані панелі → глибший фон */
 .themeDark .staffAdmin,.themeDark .protocolQueueTools,.themeDark .protocolSection,.themeDark .crmComms .crmCommForm,
 .themeDark .aiAssist,.themeDark .bookingComment,.themeDark .staffNoteForm,.themeDark .bookingOperations,.themeDark .operationDates,
+.themeDark .findingComposer,
 .themeDark .dashListEmpty,.themeDark .settingsCard input[readonly],.themeDark .reportPreviewHead{
   background:#0e151a!important;border-color:#22303a!important}
 .themeDark .staffAdmin{border:1px solid #22303a!important}

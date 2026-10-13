@@ -142,6 +142,15 @@ button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;
 .aiDeviations{margin:10px 0 0;padding-left:18px}.aiDeviations li{font-size:11px;line-height:1.5;color:#7a4a17}
 @media(max-width:600px){.aiAssistHead{flex-direction:column;align-items:flex-start}.aiAssistHead button{width:100%}.aiDraftMeta button{margin-left:0}}
 @media print{.aiAssist{display:none!important}}
+/* Конструктор структурованих знахідок (Этап C /staff/protocols) */
+.findingComposer{margin-top:20px;padding:18px;border:1px solid #cdd9e8;border-radius:8px;background:linear-gradient(120deg,#f3f6fb,#eef4f3)}
+.findingComposerControls{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin:12px 0}
+.findingComposerControls label{display:flex;flex-direction:column;gap:5px;font-size:12px}
+.findingComposerMods{display:flex;flex-wrap:wrap;gap:14px;margin:4px 0 10px;font-size:12px}
+.findingComposerMods label{display:flex;align-items:center;gap:6px}
+.findingComposerWarn{margin:6px 0 0;padding:9px 12px;background:#fdf2e7;color:#8a5518;border-radius:6px;font-size:11px;line-height:1.5}
+@media(max-width:600px){.findingComposerControls{grid-template-columns:1fr}}
+@media print{.findingComposer{display:none!important}}
 /* Dashboard / command centre */
 .dashLoading{max-width:1500px;margin:0 auto;color:#6b7976;font-size:13px}
 .dashKpiGrid{max-width:1500px;margin:0 auto 16px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px;align-items:start}

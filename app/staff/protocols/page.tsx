@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 import {
   PROTOCOL_TEMPLATES,
   type ProtocolDocument,
+  type ProtocolStatus,
   defaultMethodRef,
   normalDocument,
   protocolTemplateByKey,
@@ -15,6 +16,20 @@ import {
   PROTOCOL_LIFECYCLE_STATUS_LABELS,
   type ProtocolLifecycleStatus,
 } from "../../../lib/protocol-lifecycle";
+import {
+  composeFinding,
+  insertComposedFinding,
+  reviewProtocol,
+  regionByKey,
+  LATERALITY_LABEL,
+  MEASUREMENT_META,
+  type Laterality,
+  type FindingSelection,
+  type MeasurementInput,
+  type MeasurementKind,
+  type ComposedFinding,
+  type ClinicalWarning,
+} from "../../../lib/findings-composer";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -86,6 +101,45 @@ export default function ProtocolsPage() {
   const [bookingLoading,setBookingLoading] = useState(false);
   const [dirty,setDirty] = useState(false);
 
+  // Конструктор структурованих знахідок (Этап C): локальний стан вибору лікаря.
+  // Складений текст ДОДАЄТЬСЯ у вільні поля опису/висновку, нічого не
+  // перезаписуючи; lifecycle/підпис/API не зачіпаються.
+  const [cTarget,setCTarget] = useState("");
+  const [cFinding,setCFinding] = useState("");
+  const [cLat,setCLat] = useState<Laterality>("right");
+  const [cLobe,setCLobe] = useState("");
+  const [cSeg,setCSeg] = useState("");
+  const [cMeasures,setCMeasures] = useState<Record<string,string>>({});
+  const [cMods,setCMods] = useState<string[]>([]);
+  const [cError,setCError] = useState("");
+  const [composed,setComposed] = useState<ComposedFinding[]>([]);
+
+  function resetComposer() {
+    setCTarget(""); setCFinding(""); setCLat("right"); setCLobe(""); setCSeg("");
+    setCMeasures({}); setCMods([]); setCError(""); setComposed([]);
+  }
+
+  // Знятий до ProtocolDocument вигляд EditorDoc (підписаний → ready для рендера).
+  function docToProtocol(source:EditorDoc):ProtocolDocument {
+    const status:ProtocolStatus = source.status === "signed" ? "ready" : source.status;
+    return {
+      templateKey:source.templateKey, method:source.method, methodRef:source.methodRef,
+      sections:source.sections, findings:source.findings, conclusion:source.conclusion,
+      recommendations:source.recommendations, number:source.number, status,
+    };
+  }
+
+  function parseMeasures(raw:Record<string,string>, kinds:MeasurementKind[]):MeasurementInput {
+    const out:MeasurementInput = {};
+    for (const kind of kinds) {
+      const str = (raw[kind] || "").trim().replace(/−/g,"-").replace(",",".");
+      if (!str) continue;
+      const value = Number(str);
+      if (Number.isFinite(value)) out[kind] = value;
+    }
+    return out;
+  }
+
   // Єдиний патч документа + позначка «є незбережені зміни».
   function patchDoc(partial:Partial<EditorDoc>) {
     setDoc((current) => current && ({ ...current, ...partial }));
@@ -139,7 +193,7 @@ export default function ProtocolsPage() {
 
   async function openBooking(id:number) {
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
-    setBookingLoading(true); setDirty(false);
+    setBookingLoading(true); setDirty(false); resetComposer();
     try {
       const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
       const data = await response.json() as {
@@ -294,18 +348,7 @@ export default function ProtocolsPage() {
   async function copyText() {
     if (!doc) return;
     try {
-      const renderable:ProtocolDocument = {
-        templateKey:doc.templateKey,
-        method:doc.method,
-        methodRef:doc.methodRef,
-        sections:doc.sections,
-        findings:doc.findings,
-        conclusion:doc.conclusion,
-        recommendations:doc.recommendations,
-        number:doc.number,
-        status:doc.status === "signed" ? "ready" : doc.status,
-      };
-      await navigator.clipboard.writeText(renderProtocolText(renderable));
+      await navigator.clipboard.writeText(renderProtocolText(docToProtocol(doc)));
       setActionSuccess("Текст протоколу скопійовано.");
     } catch {
       setActionError("Не вдалося скопіювати текст.");
@@ -348,12 +391,49 @@ export default function ProtocolsPage() {
     setActionSuccess("AI-чернетку вставлено. Перевірте та відредагуйте перед підписом.");
   }
 
+  // Конструктор знахідок: складає речення опису/висновку й ДОДАЄ їх у документ,
+  // не перезаписуючи ручний текст (insertComposedFinding робить append + дедуп).
+  function addComposedFinding() {
+    if (!doc) return;
+    setCError("");
+    const region = regionByKey(doc.templateKey);
+    const target = region?.targets.find((entry) => entry.id === cTarget);
+    const finding = target?.findings.find((entry) => entry.id === cFinding);
+    if (!target || !finding) { setCError("Оберіть орган і знахідку."); return; }
+    const needsLat = Boolean(target.laterality && finding.laterality !== false);
+    const selection:FindingSelection = {
+      regionKey:doc.templateKey, targetId:cTarget, findingId:cFinding,
+      laterality:needsLat ? cLat : undefined,
+      lobeId:cLobe || undefined,
+      segmentId:cSeg || undefined,
+      measurements:parseMeasures(cMeasures, finding.measurements || []),
+      modifierIds:cMods,
+    };
+    const result = composeFinding(selection);
+    if (!result.ok) { setCError(result.error); return; }
+    const merged = insertComposedFinding(docToProtocol(doc), result.finding);
+    patchDoc({ findings:merged.findings, conclusion:merged.conclusion });
+    setComposed((prev) => [...prev, result.finding]);
+    setActionSuccess("Структуровану знахідку додано в опис і висновок. Перевірте та відредагуйте текст перед підписом.");
+    setCFinding(""); setCLat("right"); setCLobe(""); setCSeg(""); setCMeasures({}); setCMods([]);
+  }
+
   const canManage = staff?.role === "admin" || staff?.role === "radiologist";
   const clinicalLocked = doc?.status === "signed" || doc?.status === "issued";
   const canEdit = Boolean(canManage && !clinicalLocked);
   const canSign = staff?.role === "radiologist" && doc?.status === "ready";
   const canIssue = Boolean(canManage && doc?.status === "signed");
   const template = doc ? protocolTemplateByKey(doc.templateKey) : null;
+
+  // Конструктор знахідок активний лише для змодельованих ділянок (КТ ОГК,
+  // головний мозок, черевна порожнина). Для решти шаблонів лишається вільний текст.
+  const composerRegion = doc ? regionByKey(doc.templateKey) : undefined;
+  const composerTarget = composerRegion?.targets.find((entry) => entry.id === cTarget);
+  const composerFinding = composerTarget?.findings.find((entry) => entry.id === cFinding);
+  const composerNeedsLat = Boolean(composerTarget?.laterality && composerFinding?.laterality !== false);
+  const composerWarnings:ClinicalWarning[] = (doc && composed.length)
+    ? reviewProtocol({ document:docToProtocol(doc), findings:composed })
+    : [];
 
   const visible = useMemo(() => queue
     .filter((item) => {
@@ -525,6 +605,67 @@ export default function ProtocolsPage() {
                 onChange={(e)=>patchDoc({recommendations:e.target.value})}/>
             </label>
           </fieldset>
+
+          {canEdit && composerRegion && <section className="findingComposer">
+            <div className="aiAssistHead">
+              <div>
+                <p className="eyebrow">Конструктор знахідок</p>
+                <b>Структурована знахідка → граматичний опис і висновок</b>
+                <small>Оберіть орган, знахідку й параметри — речення складеться українською і додасться в поля «Опис» та «Висновок», не перезаписуючи ваш текст.</small>
+              </div>
+            </div>
+            {cError && <p className="findingComposerWarn" role="alert">{cError}</p>}
+            <div className="findingComposerControls">
+              <label><span>Орган / структура</span>
+                <select value={cTarget} onChange={(e)=>{ const v=e.target.value; setCTarget(v); setCFinding(""); setCLat("right"); setCLobe(""); setCSeg(""); setCMeasures({}); setCMods([]); setCError(""); }}>
+                  <option value="">— оберіть —</option>
+                  {composerRegion.targets.map((t)=><option key={t.id} value={t.id}>{t.label}</option>)}
+                </select>
+              </label>
+              {composerTarget && <label><span>Знахідка</span>
+                <select value={cFinding} onChange={(e)=>{ setCFinding(e.target.value); setCMeasures({}); setCMods([]); setCError(""); }}>
+                  <option value="">— оберіть —</option>
+                  {composerTarget.findings.map((f)=><option key={f.id} value={f.id}>{f.label}</option>)}
+                </select>
+              </label>}
+              {composerFinding && composerNeedsLat && <label><span>Латералізація</span>
+                <select value={cLat} onChange={(e)=>setCLat(e.target.value as Laterality)}>
+                  {(["right","left","bilateral"] as const).map((l)=><option key={l} value={l}>{LATERALITY_LABEL[l]}</option>)}
+                </select>
+              </label>}
+              {composerFinding && composerTarget?.lobes && <label><span>Частка (необов’язково)</span>
+                <select value={cLobe} onChange={(e)=>setCLobe(e.target.value)}>
+                  <option value="">— не вказувати —</option>
+                  {composerTarget.lobes.map((lobe)=><option key={lobe.id} value={lobe.id}>{lobe.label}</option>)}
+                </select>
+              </label>}
+              {composerFinding && composerTarget?.segmentPresets && <label><span>Сегменти (необов’язково)</span>
+                <select value={cSeg} onChange={(e)=>setCSeg(e.target.value)}>
+                  <option value="">— не вказувати —</option>
+                  {composerTarget.segmentPresets.map((seg)=><option key={seg.id} value={seg.id}>{seg.label}</option>)}
+                </select>
+              </label>}
+              {(composerFinding?.measurements || []).map((kind)=><label key={kind}><span>{MEASUREMENT_META[kind].label} ({MEASUREMENT_META[kind].unit})</span>
+                <input inputMode="decimal" value={cMeasures[kind] || ""} placeholder={MEASUREMENT_META[kind].unit}
+                  onChange={(e)=>setCMeasures((prev)=>({ ...prev, [kind]:e.target.value }))}/>
+              </label>)}
+            </div>
+            {composerFinding?.modifiers && composerFinding.modifiers.length > 0 && <div className="findingComposerMods">
+              {composerFinding.modifiers.map((mod)=><label key={mod.id}>
+                <input type="checkbox" checked={cMods.includes(mod.id)}
+                  onChange={(e)=>setCMods((prev)=>e.target.checked ? [...prev, mod.id] : prev.filter((id)=>id!==mod.id))}/>
+                {mod.label}
+              </label>)}
+            </div>}
+            <div className="aiDraftMeta">
+              <button type="button" className="primary" disabled={!composerFinding || saving} onClick={addComposedFinding}>Додати у опис і висновок</button>
+            </div>
+            {composerWarnings.map((w,index)=><p key={`${w.code}-${index}`} className="findingComposerWarn" role="status">⚠ {w.message}</p>)}
+            {composed.length > 0 && <ul className="aiDeviations">
+              {composed.map((f,index)=><li key={`${f.targetId}-${f.findingId}-${index}`}>{f.description}</li>)}
+            </ul>}
+          </section>}
+          {canEdit && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
 
           {canEdit && <section className="aiAssist">
             <div className="aiAssistHead">
