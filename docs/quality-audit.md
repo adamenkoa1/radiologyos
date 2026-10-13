@@ -96,7 +96,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/finance/services` | не перевірено | — | |
 | `/staff/finance/print`, `/staff/finance/services/print` | не перевірено | — | Друковані форми |
 | `/staff/counterparties` | виправлено | #648 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canManage read-only, implicit-label форми, snapshot історичних назв). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
-| `/staff/cash-accounts` | не перевірено | — | |
+| `/staff/cash-accounts` | виправлено | #649 | Тех ✅ + Функц ✅ (BAS master-detail; useSubmit-резилієнс, best-effort reload, canEdit read-only, незмінна ідентичність — тип+валюта блокуються після створення, isDefault підтягує active). Візуал ⛔ незавершено. Виправлено: `financeLoading` `role=status`, `aria-label` пошуку, `aria-label="Дії"` порожньої колонки |
 | `/staff/supplier-payables` | не перевірено | — | |
 | `/staff/warehouses` | не перевірено | — | |
 | `/staff/directories`, `/staff/directories/personnel-refs` | не перевірено | — | |
