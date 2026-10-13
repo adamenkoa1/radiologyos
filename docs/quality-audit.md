@@ -80,7 +80,7 @@ credentials + засіяний бекенд. До того візуальні р
 | `/staff/imaging` | виправлено | #644 | Тех ✅ + Функц ✅ (useSubmit-резилієнс, catch, екрани доступу/мережі, PACS-банер, readonly fieldset). Візуал ⛔ незавершено. Виправлено неузгодженість: `protocolFilterTabs` приведено до `role=group`+`aria-pressed` (був неповний tablist) як на protocols; `aria-label` пошуку; `aria-current` вибраного; `role=status` на empty/loading |
 | `/staff/chat` | виправлено | #646 | Тех ✅ + Функц ✅ (контакт-центр; сувора ідентифікація patient/legacy/shared-phone із reply-gating — клінічна безпека, не чіпано; resilience у load/open/reply). Візуал ⛔ незавершено. Виправлено: канальні фільтри `aria-pressed`, елементи списку `aria-current`, loading `role=status`, інпут відповіді `aria-label` |
 | `/staff/critical-findings` | виправлено | #645 | Тех ✅ + Функц ✅ (act/load try/catch/finally, екран доступу + net-retry, actionError role=alert; потік flag→communicate→resolve із фіксацією ким/коли). Візуал ⛔ незавершено. Виправлено: loading `role=status`, `aria-label` на інпуті «як доведено» |
-| `/staff/book` | не перевірено | — | Реєстратор: створення запису |
+| `/staff/book` | виправлено | #647 | Тех ✅ + Функц ✅ (усі поля labelled через `<label><span>`, resilience loadRefs/submit, `todayInKyiv()` min, nearest-slot finder, контраст-алерт із CRM, category-filter послуг, deep-link prefill). Візуал ⛔ незавершено. Виправлено: DOB `max` 2100→`todayInKyiv()` (не допускає майбутню дату народження) |
 | `/staff/patients/import` | не перевірено | — | CSV-імпорт |
 | `/staff/patients/issues` | не перевірено | — | Аудит неузгодженостей |
 | `/staff/protocols/corrections` | не перевірено | — | |
