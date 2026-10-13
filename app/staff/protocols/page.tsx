@@ -31,6 +31,7 @@ import {
   type ComposedFinding,
   type ClinicalWarning,
 } from "../../../lib/findings-composer";
+import { findContradictions } from "../../../lib/protocol-contradictions";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -557,6 +558,11 @@ export default function ProtocolsPage() {
   const composerWarnings:ClinicalWarning[] = (doc && composed.length)
     ? reviewProtocol({ document:docToProtocol(doc), findings:composed })
     : [];
+  // Детермінована перевірка суперечностей опис↔висновок (E2) — дорадча, не
+  // переписує текст. Рахується з поточного документа в реальному часі.
+  const contradictions = doc
+    ? findContradictions({ findings:doc.findings, conclusion:doc.conclusion, contrast:(doc.sections.parameters || {}).contrast })
+    : [];
 
   const visible = useMemo(() => queue
     .filter((item) => {
@@ -876,6 +882,12 @@ export default function ProtocolsPage() {
                 {aiDraft.deviations.map((deviation)=><li key={`${deviation.section}-${deviation.field}`}><b>{deviation.label}:</b> {deviation.value}</li>)}
               </ul>}
             </div>}
+          </section>}
+
+          {contradictions.length > 0 && <section className="protocolContradictions" role="status" aria-live="polite">
+            <p className="eyebrow">Перевірка суперечностей</p>
+            {contradictions.map((c)=><p key={c.code} className="findingComposerWarn">⚠ {c.message}</p>)}
+            <small>Це дорадчі сигнали — текст не змінюється автоматично. Перевірте й відредагуйте за потреби.</small>
           </section>}
 
           <div className="protocolActions">
