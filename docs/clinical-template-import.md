@@ -105,21 +105,73 @@ E2): латералізація, жовчний міхур, асцит, ріве
 майбутній dry-run адаптера/імпортера (PR2–PR3), НЕ на production-імпорт і НЕ на
 публікацію.** Усі записи лишаються `needs_review` до клінічної перевірки.
 
+## Этап 2–3 — адаптер + dry-run план імпорту (PR2, завершено)
+
+Чистий адаптер `lib/clinical-library-adapter.ts` (без мережі/egress/БД/запису;
+runtime-importable — value-import extensionless-сусідів прибрано, два leaf-
+значення інлайнено з guard-тестом на синхронність) відображає записи бібліотеки
+у внутрішні моделі конструктора й будує **детермінований dry-run план імпорту**.
+**Без нових таблиць.** Нічого не створюється й не публікується — план лише
+показує, що адаптер зробив би; усі нові записи — `published:false` +
+`requiresReview:true`.
+
+### Відображення моделей
+
+- **Знахідки → каталог `findings-composer`.** `FINDING_REGION_TO_CATALOG`
+  (лише КТ): `brain→ct_brain`, `chest→ct_chest`, `abdomen→ct_abdomen`,
+  `spine→ct_spine`, `sinuses→ct_sinuses`. Ділянки `bones_joints`, `head_neck`,
+  `vascular` представлення **не мають** → знахідки тримаються на огляд.
+  `measurementKindFor` відображає параметри на метрики конструктора
+  (`*_hu`/HU→`hu`, `size*`+mm→`sizeMm`, `displacement/shift`+mm→`shiftMm`); решта
+  лишаються «вільними» параметрами. `build()`-функції НЕ генеруються тут —
+  клінічне формулювання робиться в PR3 під оглядом.
+- **Нормальні шаблони → базові шаблони `protocols.ts`.** `expectedTemplateKey
+  (modality,region)` будує очікуваний ключ (`ct`/`xray`/`fluoro`/`mri` +
+  `brain`/`chest`/`abdomen`/`spine`/`bone`/`sinuses`) і звіряє з **наявними**
+  ключами (передаються ззовні — чистота).
+
+### Dry-run план (детермінований, звірено автотестом)
+
+| Дія | К-сть | Що саме |
+|---|---|---|
+| **create** (огляд, не публікується) | **22** | `ct_bones_normal` + 21 знахідка в наявних ділянках (brain 6, chest 6, abdomen 5, spine 4) |
+| **skip** | **6** | наявні базові шаблони `ct_brain/ct_chest/ct_abdomen/ct_spine/xray_chest/xray_bone` — **не перезаписуємо** |
+| **needs_review** | **13** | МРТ (`mri_brain_base`), ділянки без представлення (`ct_neck`, `cta_vascular` + 10 знахідок bones/neck/vascular) |
+| **reject** | **0** | hard-помилок (невизначені плейсхолдери) немає |
+
+- **Ідемпотентність.** Кожен запис має стабільний `importKey` (`clinlib:<id>`).
+  Повторний запуск із набором уже імпортованих ключів → **усі 41 → skip**,
+  жодних create (`alreadyImported`-перевірка).
+- **Детекція дублікатів.** Точний нормалізований збіг назви з наявною знахідкою
+  ділянки → `skip` (не дублюємо). Часткова схожість → `create` з **дорадчим**
+  `possibleDuplicateOf` (рішення — людині, не авто-skip і не авто-публікація).
+  Виявлено 2: `finding_012` (емфізема ~ гіперпневматизація), `finding_015`
+  (конкременти жовчного ~ конкременти).
+- **Збереження існуючого.** Системні базові шаблони → `skip` (не перезапис);
+  персональні шаблони/макроси лікарів адаптер не читає й не чіпає.
+
+`safeForDryRun=true` (reject=0) — дозвіл лише на dry-run; **production-імпорт і
+публікація — окремі кроки за дозволом власника (PR3/PR4).**
+
 ## Журнал PR
 
-- **PR1 — Library Audit (цей PR).** Бібліотеку (8 PII-free `draft_unvalidated`
-  файлів) закомічено в `clinical-library/`; додано чистий валідатор/завантажувач
-  `lib/clinical-library.ts` (`auditLibrary`, `scanForPatientData`,
-  `extractPlaceholders`, `AGREED_MODALITY_CODES`) і
-  `tests/clinical-library.behavior.test.mjs` (12 тестів переобчислюють прямі
-  підрахунки й інваріанти). Без рантайм-змін застосунку, без міграцій, без
-  торкання lifecycle/підпису/прав. Гейт зелений.
+- **PR1 — Library Audit (#664, merged).** Бібліотеку (8 PII-free
+  `draft_unvalidated` файлів) закомічено в `clinical-library/`; додано чистий
+  валідатор/завантажувач `lib/clinical-library.ts` (`auditLibrary`,
+  `scanForPatientData`, `extractPlaceholders`, `AGREED_MODALITY_CODES`) і
+  `tests/clinical-library.behavior.test.mjs` (12 тестів). Без рантайм-змін,
+  без міграцій. Гейт зелений.
+- **PR2 — Import Adapter (цей PR).** Чистий `lib/clinical-library-adapter.ts`
+  (`adaptFinding`, `adaptNormalTemplate`, `planImport`, `expectedTemplateKey`,
+  `measurementKindFor`, `importKeyFor`, `FINDING_REGION_TO_CATALOG`) + dry-run
+  план (22 create / 6 skip / 13 needs_review / 0 reject), ідемпотентність,
+  детекція дублікатів; нічого не публікується (`published:false`). Додано
+  `tests/clinical-library-adapter.behavior.test.mjs` (11 тестів). **Без нових
+  таблиць** (rollback: модуль чистий, видалення файлу/тесту повертає стан), без
+  рантайм-змін застосунку, без міграцій. Гейт зелений.
 
 ## Залишок (наступними PR)
 
-- **PR2 — Import Adapter.** Чистий адаптер проміжний JSON → модель RadiologyOS
-  (без нових таблиць, якщо не потрібні; з документованим rollback). Dry-run,
-  валідація, детекція дублікатів, ідемпотентність, звіт create/update/skip/reject.
 - **PR3 — Builder Integration.** Інтеграція в наявний конструктор (без дублю
   знахідок/порожніх абзаців/взаємовиключних авто-додавань). Без паралельного
   конструктора.
