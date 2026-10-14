@@ -101,7 +101,10 @@ test("CRM card shows a loading state, exact book action, and context-correct vis
   assert.match(page, /\/staff\/book\?/);
   assert.match(page, /Записати на дослідження/);
   assert.match(page, /\/staff\/appointments\?date=/);
-  assert.match(page, /performedAt \|\| \["ready","issued","in_progress"\]/);
+  // PR-D: посилання на протокол доступне для будь-якого не-скасованого візиту
+  // (лейбл залежить від статусу протоколу), а не лише для виконаних/розпочатих.
+  assert.match(page, /booking\.status !== "cancelled" && <div className="crmVisitLinks">/);
+  assert.match(page, /"Відкрити протокол →" : "Створити протокол →"/);
   assert.match(page, /<BookingDrawer/);
   assert.match(page, /button type="button" className="crmVisitHead"/);
   assert.match(page, /drawerPatch/);
