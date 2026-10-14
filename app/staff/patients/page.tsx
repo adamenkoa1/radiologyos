@@ -422,12 +422,11 @@ export default function PatientsPage() {
                     <span>Оплата: {paymentLabels[booking.paymentStatus] || booking.paymentStatus}{booking.paidAmount?` · ${booking.paidAmount} грн`:""}</span>
                     {booking.performedAt && <span>Виконано: {formatDateTime(booking.performedAt)}</span>}
                   </div>
-                  {booking.performedAt || ["ready","issued","in_progress"].includes(booking.protocolStatus)
-                    ? <div className="crmVisitLinks">
-                        <a className="crmVisitLink" href={`/staff/protocols?open=${booking.id}`}>Протокол дослідження →</a>
-                        <a className="crmVisitLink" href={`/staff/imaging?open=${booking.id}`}>Знімки →</a>
-                      </div>
-                    : <a className="crmVisitLink" href={`/staff/appointments?date=${booking.desiredDate}&view=day`}>Відкрити в календарі →</a>}
+                  {booking.status !== "cancelled" && <div className="crmVisitLinks">
+                    <a className="crmVisitLink" href={`/staff/protocols?studyId=${booking.id}`}>{["ready","issued","in_progress"].includes(booking.protocolStatus) ? "Відкрити протокол →" : "Створити протокол →"}</a>
+                    <a className="crmVisitLink" href={`/staff/imaging?open=${booking.id}`}>Знімки →</a>
+                    <a className="crmVisitLink" href={`/staff/appointments?date=${booking.desiredDate}&view=day`}>Календар →</a>
+                  </div>}
                 </li>)}
               </ol>}
             </section>

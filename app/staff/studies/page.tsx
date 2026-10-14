@@ -357,7 +357,7 @@ export default function StudiesPage() {
               {data.features?.dicomPacs ? <td>{s.studyStatus && s.studyStatus !== "not_linked"
                 ? <span className="studiesLinked" title={s.accessionNumber || ""}>прив’язано</span>
                 : <span className="studiesUnlinked">—</span>}</td> : null}
-              <td><button type="button" className="studiesClear" onClick={()=>setContextStudy(s)}>Історія</button></td>
+              <td><button type="button" className="studiesClear" onClick={()=>setContextStudy(s)}>Історія</button> <a className="studiesClear" href={`/staff/protocols?studyId=${s.id}`}>Протокол →</a></td>
               <td>
                 {data.canManage && s.nextStates.length > 0 ?
                   <select
