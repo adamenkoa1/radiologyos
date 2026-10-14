@@ -161,6 +161,8 @@ button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;
 .protocolNewStudyForm input,.protocolNewStudyForm select,.protocolNewStudyForm textarea{font:inherit;padding:8px 10px;border:1px solid #cdd9e8;border-radius:6px;background:#fff}
 .protocolNewStudyForm textarea{min-height:56px;resize:vertical}
 .protocolNewStudyActions{display:flex;gap:8px;margin-top:4px}
+.protocolPhoneRow{display:flex;gap:8px;align-items:center}
+.protocolPhoneRow input{flex:1;min-width:0}
 @media(max-width:600px){.findingComposerControls{grid-template-columns:1fr}}
 @media print{.findingComposer{display:none!important}}
 /* Жива панель прев'ю протоколу (Этап D2, §3) */

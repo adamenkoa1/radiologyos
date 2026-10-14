@@ -63,6 +63,29 @@ test("assigned radiologist must be an active radiologist in the tenant", async (
   });
 });
 
+test("walk-in links an existing patient card by patientId (dedupe)", async () => {
+  await withD1(async (db) => {
+    const admin = await seedStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });
+    const pid = "a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6";
+    await db.prepare(
+      `INSERT INTO patient_profiles (patient_id, organization_id, phone_normalized, display_name, birth_date, updated_by)
+       VALUES (?, 1, '380501234567', 'Іваненко Іван', '1980-01-02', 'admin@example.com')`
+    ).bind(pid).run();
+    const res = await createStudy(db, admin, { name: "Іваненко Іван", phone: "0501234567", serviceCode: CT_BRAIN, patientId: pid });
+    const { bookingId } = await res.json();
+    const row = await db.prepare("SELECT patient_id AS pid FROM bookings WHERE id = ?").bind(bookingId).first();
+    assert.equal(row.pid, pid, "booking must be linked to the existing patient card");
+  });
+});
+
+test("walk-in rejects a patientId from another tenant / unknown", async () => {
+  await withD1(async (db) => {
+    const admin = await seedStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });
+    const res = await createStudy(db, admin, { name: "X", phone: "0501234567", serviceCode: CT_BRAIN, patientId: "ffffffffffffffffffffffffffffffff" });
+    assert.equal(res.status, 400, "unknown patient id must be rejected");
+  });
+});
+
 test("walk-in study is tenant-scoped (created in caller's org)", async () => {
   await withD1(async (db) => {
     const admin = await seedStaffSession(db, { email: "admin@example.com", role: "admin", organizationId: 1 });

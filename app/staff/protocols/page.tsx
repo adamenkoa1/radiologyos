@@ -119,6 +119,10 @@ export default function ProtocolsPage() {
   const [nsIndication,setNsIndication] = useState("");
   const [nsSaving,setNsSaving] = useState(false);
   const [nsError,setNsError] = useState("");
+  // Дедуплікація пацієнта за телефоном: прив'язка до наявної картки або нова.
+  const [nsPatientId,setNsPatientId] = useState("");
+  type NsLookup = { status:"idle"|"loading"|"found"|"ambiguous"|"none"|"error"; label?:string; matches?:{patientId:string;displayName:string;birthDate:string}[]; message?:string };
+  const [nsLookup,setNsLookup] = useState<NsLookup>({ status:"idle" });
   // Режим роботи (Этап D3, §6): суто ВІЗУАЛЬНА перевага. Перемикання ніколи не
   // стирає й не перезаписує поля — структуровані дані живуть у `doc` і при
   // поверненні в структурований режим показуються без втрат.
@@ -238,6 +242,37 @@ export default function ProtocolsPage() {
   // Пацієнт уже присутній/ретроспективно: створюємо дослідження без слота й
   // одразу відкриваємо редактор. Пише в канонічні bookings (POST
   // /api/staff/protocols/studies), lifecycle протоколу не зачіпається.
+  // Пошук наявної картки пацієнта за телефоном (безпечна перевірка дублікатів).
+  // Прив'язка лише за явним вибором лікаря; інакше буде створено нову картку.
+  async function checkPatient() {
+    const phone = nsPhone.trim();
+    if (!phone) { setNsLookup({ status:"error", message:"Спершу вкажіть телефон." }); return; }
+    setNsPatientId(""); setNsLookup({ status:"loading" });
+    try {
+      const response = await fetch(`/api/staff/patients?phone=${encodeURIComponent(phone)}`, { cache:"no-store" });
+      const data = await response.json() as Record<string, unknown>;
+      if (response.status === 409 && Array.isArray(data.matches)) {
+        setNsLookup({ status:"ambiguous", matches: data.matches as NsLookup["matches"], message: "Кілька карток із цим номером — оберіть одну або створіть нову." });
+        return;
+      }
+      if (response.ok && typeof data.patientId === "string") {
+        setNsLookup({ status:"found", matches:[{ patientId: data.patientId as string, displayName: String(data.displayName || ""), birthDate: String(data.birthDate || "") }] });
+        return;
+      }
+      // 404 або неприв'язані заявки без картки → нова картка.
+      setNsLookup({ status:"none", message:"Картку з цим номером не знайдено — буде створено нову." });
+    } catch {
+      setNsLookup({ status:"error", message:"Помилка мережі під час пошуку." });
+    }
+  }
+  function linkPatient(m:{patientId:string;displayName:string;birthDate:string}) {
+    setNsPatientId(m.patientId);
+    if (m.displayName) setNsName(m.displayName);
+    if (m.birthDate) setNsDob(m.birthDate);
+    setNsLookup({ status:"found", label:`${m.displayName || m.patientId}${m.birthDate ? ` · ${m.birthDate}` : ""}`, matches:[m] });
+  }
+  function unlinkPatient() { setNsPatientId(""); setNsLookup({ status:"idle" }); }
+
   async function createWalkInStudy() {
     if (nsSaving) return;
     setNsError("");
@@ -246,12 +281,12 @@ export default function ProtocolsPage() {
     try {
       const response = await fetch("/api/staff/protocols/studies", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: nsName, phone: nsPhone, dob: nsDob, serviceCode: nsService, clinicalIndication: nsIndication }),
+        body: JSON.stringify({ name: nsName, phone: nsPhone, dob: nsDob, serviceCode: nsService, clinicalIndication: nsIndication, patientId: nsPatientId }),
       });
       const data = await response.json() as { ok?: boolean; bookingId?: number; error?: string };
       if (!response.ok || !data.ok || !data.bookingId) { setNsError(data.error || "Не вдалося створити дослідження"); return; }
       setNewStudyOpen(false);
-      setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401");
+      setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401"); setNsPatientId(""); setNsLookup({ status:"idle" });
       await loadQueue();
       await openBooking(data.bookingId);
       setActionSuccess("Дослідження створено. Заповніть опис і висновок, збережіть чернетку.");
@@ -737,7 +772,19 @@ export default function ProtocolsPage() {
             <p className="eyebrow">Швидке дослідження (walk-in) — без онлайн-заявки</p>
             {nsError && <p className="findingComposerWarn" role="alert">{nsError}</p>}
             <label><span>Пацієнт (ПІБ)</span><input value={nsName} maxLength={120} onChange={(e)=>setNsName(e.target.value)}/></label>
-            <label><span>Телефон</span><input value={nsPhone} maxLength={40} inputMode="tel" placeholder="0971234567" onChange={(e)=>setNsPhone(e.target.value)}/></label>
+            <label><span>Телефон</span>
+              <span className="protocolPhoneRow">
+                <input value={nsPhone} maxLength={40} inputMode="tel" placeholder="0971234567" onChange={(e)=>{ setNsPhone(e.target.value); if (nsPatientId) unlinkPatient(); }}/>
+                <button type="button" className="ghost" disabled={nsLookup.status==="loading"} onClick={()=>void checkPatient()}>{nsLookup.status==="loading" ? "Пошук…" : "Перевірити"}</button>
+              </span>
+            </label>
+            {nsPatientId
+              ? <p className="protocolModeHint">Прив’язано до картки пацієнта{nsLookup.label ? `: ${nsLookup.label}` : ""}. <button type="button" className="protocolInlineLink" onClick={unlinkPatient}>Відв’язати</button></p>
+              : nsLookup.status==="found" && nsLookup.matches?.[0]
+                ? <p className="protocolModeHint">Знайдено картку: {nsLookup.matches[0].displayName || nsLookup.matches[0].patientId}{nsLookup.matches[0].birthDate ? ` · ${nsLookup.matches[0].birthDate}` : ""}. <button type="button" className="protocolInlineLink" onClick={()=>linkPatient(nsLookup.matches![0])}>Прив’язати</button></p>
+                : nsLookup.status==="ambiguous"
+                  ? <div className="protocolModeHint"><p>{nsLookup.message}</p>{(nsLookup.matches||[]).map((m)=><p key={m.patientId}>{m.displayName || m.patientId}{m.birthDate ? ` · ${m.birthDate}` : ""} <button type="button" className="protocolInlineLink" onClick={()=>linkPatient(m)}>Прив’язати</button></p>)}</div>
+                  : (nsLookup.status==="none" || nsLookup.status==="error") ? <p className={nsLookup.status==="error" ? "findingComposerWarn" : "protocolReadonlyHint"}>{nsLookup.message}</p> : null}
             <label><span>Дата народження (необов’язково)</span><input type="date" value={nsDob} onChange={(e)=>setNsDob(e.target.value)}/></label>
             <label><span>Послуга / модальність</span>
               <select value={nsService} onChange={(e)=>setNsService(e.target.value)}>
