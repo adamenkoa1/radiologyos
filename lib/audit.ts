@@ -31,6 +31,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   pacs_update: "Змінено налаштування PACS",
   imaging_study_viewed: "Переглянуто медичні зображення",
   booking_confirm: "Підтверджено запис",
+  booking_walkin_created: "Створено walk-in дослідження (без онлайн-заявки)",
   booking_cancel: "Скасовано запис",
   booking_reschedule: "Перенесено запис",
   member_add: "Додано співробітника",
