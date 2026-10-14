@@ -24,7 +24,7 @@ const QUEUE_SQL = `SELECT b.id, b.code, b.name, b.service, b.service_code AS ser
     COALESCE(p.signed_version, 0) AS signedVersion
   FROM bookings b
   LEFT JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
-  WHERE b.status != 'cancelled' AND (b.performed_at != '' OR b.protocol_status != 'not_started')
+  WHERE b.status != 'cancelled'
   ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
   LIMIT 300`;
 
