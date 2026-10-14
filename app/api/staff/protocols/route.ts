@@ -86,7 +86,9 @@ export async function GET(request: Request) {
         performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
         protocol_number AS protocolNumber, protocol_status AS protocolStatus,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
-        assigned_radiologist_email AS assignedRadiologistEmail
+        assigned_radiologist_email AS assignedRadiologistEmail,
+        clinical_indication AS clinicalIndication, referral, referral_type AS referralType,
+        referral_number AS referralNumber, date_of_birth AS dateOfBirth, phone
        FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
     ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
