@@ -37,6 +37,7 @@ import { planImport, FINDING_REGION_TO_CATALOG } from "../../../lib/clinical-lib
 import { renderLibraryFinding, activeParameters } from "../../../lib/clinical-library-finding";
 import type { PathologyFinding } from "../../../lib/clinical-library";
 import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-findings.json";
+import { SERVICES } from "../../../lib/catalog";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -109,9 +110,15 @@ export default function ProtocolsPage() {
   const [dirty,setDirty] = useState(false);
   // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
   const [showPreview,setShowPreview] = useState(false);
-  // Пісочниця: демо-протокол для спроби конструктора без дослідження в черзі.
-  // Нічого не зберігається/не підписується (немає реального бронювання).
-  const [sandbox,setSandbox] = useState(false);
+  // Швидке (walk-in) створення дослідження прямо з робочого місця.
+  const [newStudyOpen,setNewStudyOpen] = useState(false);
+  const [nsName,setNsName] = useState("");
+  const [nsPhone,setNsPhone] = useState("");
+  const [nsDob,setNsDob] = useState("");
+  const [nsService,setNsService] = useState("401");
+  const [nsIndication,setNsIndication] = useState("");
+  const [nsSaving,setNsSaving] = useState(false);
+  const [nsError,setNsError] = useState("");
   // Режим роботи (Этап D3, §6): суто ВІЗУАЛЬНА перевага. Перемикання ніколи не
   // стирає й не перезаписує поля — структуровані дані живуть у `doc` і при
   // поверненні в структурований режим показуються без втрат.
@@ -227,33 +234,35 @@ export default function ProtocolsPage() {
     void openBooking(id);
   }
 
-  // ── Пісочниця конструктора ──────────────────────────────────────────────────
-  // Відкриває редактор із демо-КТ-шаблоном БЕЗ дослідження в черзі, щоб одразу
-  // спробувати конструктор та імпортовану бібліотеку. Синтетичне «бронювання»
-  // (id = -1) існує лише в памʼяті; збереження/підпис/видача недоступні — нічого
-  // не пишеться в БД, lifecycle/права не зачіпаються.
-  const SANDBOX_TEMPLATE = "ct_brain";
-  function startSandbox() {
-    setActionError(""); setActionSuccess(""); setAiDraft(null); setDirty(false);
-    setSelectedId(null); setBookingLoading(false); resetComposer();
-    const tpl = protocolTemplateByKey(SANDBOX_TEMPLATE);
-    setBooking({
-      id: -1, code: "ДЕМО", name: "Демонстраційний протокол (не зберігається)",
-      service: tpl?.title || "КТ головного мозку", serviceCode: "", equipmentId: "",
-      desiredDate: "", desiredTime: "", patientCategory: "civilian", performedAt: "",
-      anatomicalRegionsCount: 0, protocolNumber: "", protocolStatus: "not_started",
-      protocolReadyAt: "", protocolIssuedAt: "", assignedRadiologistEmail: "",
-    });
-    setDoc({ ...normalDocument(SANDBOX_TEMPLATE), version: 0, updatedBy: "", updatedAt: "", signedBy: "", signedAt: "", signedVersion: 0 });
-    setMode("structured");
-    setSandbox(true);
-  }
-  function exitSandbox() {
-    setSandbox(false); setBooking(null); setDoc(null); setSelectedId(null); setDirty(false); resetComposer();
+  // ── Швидке (walk-in) створення дослідження ──────────────────────────────────
+  // Пацієнт уже присутній/ретроспективно: створюємо дослідження без слота й
+  // одразу відкриваємо редактор. Пише в канонічні bookings (POST
+  // /api/staff/protocols/studies), lifecycle протоколу не зачіпається.
+  async function createWalkInStudy() {
+    if (nsSaving) return;
+    setNsError("");
+    if (!nsName.trim() || !nsPhone.trim()) { setNsError("Вкажіть ім'я та телефон пацієнта."); return; }
+    setNsSaving(true);
+    try {
+      const response = await fetch("/api/staff/protocols/studies", {
+        method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: nsName, phone: nsPhone, dob: nsDob, serviceCode: nsService, clinicalIndication: nsIndication }),
+      });
+      const data = await response.json() as { ok?: boolean; bookingId?: number; error?: string };
+      if (!response.ok || !data.ok || !data.bookingId) { setNsError(data.error || "Не вдалося створити дослідження"); return; }
+      setNewStudyOpen(false);
+      setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401");
+      await loadQueue();
+      await openBooking(data.bookingId);
+      setActionSuccess("Дослідження створено. Заповніть опис і висновок, збережіть чернетку.");
+    } catch {
+      setNsError("Помилка мережі — спробуйте ще раз");
+    } finally {
+      setNsSaving(false);
+    }
   }
 
   async function openBooking(id:number) {
-    setSandbox(false);
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
     setBookingLoading(true); setDirty(false); resetComposer();
     try {
@@ -282,11 +291,14 @@ export default function ProtocolsPage() {
     }
   }
 
-  // Глибоке посилання ?open=<id> відкриває протокол одразу після завантаження черги.
+  // Глибоке посилання ?studyId=<id> (або legacy ?open=<id>) відкриває протокол
+  // одразу після завантаження черги — дія «Створити/відкрити протокол» із картки
+  // пацієнта чи дошки веде саме сюди.
   useEffect(() => {
     if (!queue.length || selectedId !== null) return;
-    const open = Number(new URLSearchParams(window.location.search).get("open"));
-    if (Number.isInteger(open) && open > 0 && queue.some((item) => item.id === open)) void openBooking(open);
+    const params = new URLSearchParams(window.location.search);
+    const target = Number(params.get("studyId") || params.get("open"));
+    if (Number.isInteger(target) && target > 0 && queue.some((item) => item.id === target)) void openBooking(target);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
@@ -346,7 +358,6 @@ export default function ProtocolsPage() {
 
   async function save(status:ProtocolLifecycleStatus) {
     if (!doc || !booking) return;
-    if (sandbox) { setActionError("Пісочниця — збереження недоступне. Створіть дослідження в розкладі, щоб зберігати протоколи."); return; }
     setActionError(""); setActionSuccess("");
     if ((status === "ready" || status === "signed" || status === "issued") && !doc.number.trim()) {
       setActionError("Для готового, підписаного або виданого протоколу вкажіть його номер."); return;
@@ -616,6 +627,7 @@ export default function ProtocolsPage() {
   }
 
   const canManage = staff?.role === "admin" || staff?.role === "radiologist";
+  const canCreateStudy = staff?.role === "admin" || staff?.role === "registrar";
   const clinicalLocked = doc?.status === "signed" || doc?.status === "issued";
   const canEdit = Boolean(canManage && !clinicalLocked);
   const canSign = staff?.role === "radiologist" && doc?.status === "ready";
@@ -716,7 +728,28 @@ export default function ProtocolsPage() {
             <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням" placeholder="Код, ПІБ, дослідження"/>
-          {canManage && <button type="button" className="protocolSandboxButton" aria-pressed={sandbox} onClick={()=>sandbox ? exitSandbox() : startSandbox()}>{sandbox ? "Вийти з пісочниці" : "Спробувати конструктор"}</button>}
+          {canCreateStudy && <div className="protocolQueueActions">
+            <button type="button" className="protocolNewStudyButton" aria-expanded={newStudyOpen} onClick={()=>{ setNewStudyOpen((v)=>!v); setNsError(""); }}>+ Нове дослідження</button>
+            <a className="protocolQueueLink" href="/staff/book">Заплановане (розклад)</a>
+            <a className="protocolQueueLink" href="/staff/patients">Пацієнти</a>
+          </div>}
+          {canCreateStudy && newStudyOpen && <div className="protocolNewStudyForm">
+            <p className="eyebrow">Швидке дослідження (walk-in) — без онлайн-заявки</p>
+            {nsError && <p className="findingComposerWarn" role="alert">{nsError}</p>}
+            <label><span>Пацієнт (ПІБ)</span><input value={nsName} maxLength={120} onChange={(e)=>setNsName(e.target.value)}/></label>
+            <label><span>Телефон</span><input value={nsPhone} maxLength={40} inputMode="tel" placeholder="0971234567" onChange={(e)=>setNsPhone(e.target.value)}/></label>
+            <label><span>Дата народження (необов’язково)</span><input type="date" value={nsDob} onChange={(e)=>setNsDob(e.target.value)}/></label>
+            <label><span>Послуга / модальність</span>
+              <select value={nsService} onChange={(e)=>setNsService(e.target.value)}>
+                {SERVICES.map((s)=><option key={s.code} value={s.code}>{s.title}</option>)}
+              </select>
+            </label>
+            <label><span>Клінічні дані / показання</span><textarea value={nsIndication} maxLength={400} onChange={(e)=>setNsIndication(e.target.value)}/></label>
+            <div className="protocolNewStudyActions">
+              <button type="button" className="primary" disabled={nsSaving} onClick={()=>void createWalkInStudy()}>{nsSaving ? "Створення…" : "Створити й відкрити опис"}</button>
+              <button type="button" className="ghost" onClick={()=>{ setNewStudyOpen(false); setNsError(""); }}>Скасувати</button>
+            </div>
+          </div>}
         </div>
         <div className="protocolQueueList">
           {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
@@ -746,7 +779,7 @@ export default function ProtocolsPage() {
           <span aria-hidden="true">▤</span>
           <b>Оберіть дослідження зі списку</b>
           <p>Структурований протокол відкриється тут. Для нового дослідження шаблон підбереться автоматично за модальністю.</p>
-          {canManage && <p>Немає дослідження під рукою? <button type="button" className="protocolSandboxLink" onClick={startSandbox}>Спробувати конструктор</button> на демо-протоколі — без збереження.</p>}
+          {canCreateStudy && <p>Немає дослідження під рукою? <button type="button" className="protocolInlineLink" onClick={()=>{ setNewStudyOpen(true); setNsError(""); }}>Створити нове дослідження</button> (walk-in, без онлайн-заявки).</p>}
         </div> : <>
           <header className="protocolEditorHead">
             <div>
@@ -763,7 +796,6 @@ export default function ProtocolsPage() {
             <span className={`protocolTag ${doc.status}`}>{PROTOCOL_LIFECYCLE_STATUS_LABELS[doc.status]}</span>
           </header>
 
-          {sandbox && <p className="protocolSandboxBanner" role="status">🧪 Пісочниця — демонстраційний протокол. Спробуйте конструктор та імпортовану бібліотеку; <b>нічого не зберігається й не підписується</b>. Перемикайте шаблон, щоб побачити різні ділянки.</p>}
           {clinicalLocked
             ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
             : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
@@ -932,7 +964,7 @@ export default function ProtocolsPage() {
           </section>}
           {canEdit && mode === "structured" && !composerRegion && <p className="protocolReadonlyHint">Конструктор структурованих знахідок поки доступний для КТ ОГК, КТ головного мозку та КТ органів черевної порожнини. Для інших шаблонів заповнюйте опис вручну.</p>}
 
-          {!sandbox && canEdit && mode !== "quick" && <section className="protocolMacros">
+          {canEdit && mode !== "quick" && <section className="protocolMacros">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">Макроси</p>
@@ -961,7 +993,7 @@ export default function ProtocolsPage() {
             </div>
           </section>}
 
-          {!sandbox && canEdit && mode !== "quick" && <section className="protocolMacros">
+          {canEdit && mode !== "quick" && <section className="protocolMacros">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">Мої шаблони</p>
@@ -979,7 +1011,7 @@ export default function ProtocolsPage() {
             </ul> : <p className="protocolMacrosEmpty">Ще немає збережених шаблонів.</p>}
           </section>}
 
-          {!sandbox && canEdit && mode !== "quick" && <section className="aiAssist">
+          {canEdit && mode !== "quick" && <section className="aiAssist">
             <div className="aiAssistHead">
               <div>
                 <p className="eyebrow">AI-асистент</p>
@@ -1018,8 +1050,7 @@ export default function ProtocolsPage() {
           </section>}
 
           <div className="protocolActions">
-            {sandbox && <span className="protocolModeHint">Пісочниця — збереження, підпис і видача недоступні. Створіть дослідження в розкладі, щоб працювати з реальним протоколом.</span>}
-            {!sandbox && canEdit && doc.status === "draft" && <>
+            {canEdit && doc.status === "draft" && <>
               <button type="button" onClick={()=>void save("draft")} disabled={saving}>Зберегти чернетку</button>
               <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Готовий до підпису</button>
             </>}
@@ -1031,7 +1062,7 @@ export default function ProtocolsPage() {
             <button type="button" className="ghost" aria-pressed={showPreview} onClick={()=>setShowPreview((on)=>!on)}>{showPreview ? "Сховати перегляд" : "Попередній перегляд"}</button>
             <button type="button" className="ghost" onClick={()=>void copyText()}>Копіювати текст</button>
             <button type="button" className="ghost" onClick={()=>window.print()}>Друк / PDF</button>
-            {canManage && !sandbox && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
+            {canManage && <button type="button" className="ghost" onClick={()=>void flagCritical()} title="Позначити ургентну знахідку для термінового доведення">⚠ Критична знахідка</button>}
           </div>
 
           {showPreview && <section className="protocolLivePreview" role="region" aria-label="Попередній перегляд протоколу">

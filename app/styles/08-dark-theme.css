@@ -36,10 +36,9 @@
 .themeDark .protocolContradictions{background:#1c160c!important;border-color:#3b2f17!important}
 .themeDark .protocolModeHint{background:#0d1a16!important;color:#8fd3c0!important}
 .themeDark .libraryImport{border-top-color:#22303a!important}
-.themeDark .protocolSandboxButton{background:#0d1a16!important;color:#8fd3c0!important;border-color:#1c5a4a!important}
-.themeDark .protocolSandboxButton[aria-pressed="true"]{background:#1c5a4a!important;color:#eafff8!important}
-.themeDark .protocolSandboxLink{color:#8fd3c0!important}
-.themeDark .protocolSandboxBanner{background:#0d1a16!important;color:#8fd3c0!important;border-color:#1c5a4a!important}
+.themeDark .protocolInlineLink,.themeDark .protocolQueueLink{color:#8fd3c0!important}
+.themeDark .protocolNewStudyForm{background:#0e151a!important;border-color:#22303a!important}
+.themeDark .protocolNewStudyForm input,.themeDark .protocolNewStudyForm select,.themeDark .protocolNewStudyForm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolMacrosList li{background:#0b1116!important;border-color:#22303a!important}
 .themeDark .protocolMacrosList li>button:first-child{color:#cfe5de!important}
 .themeDark .protocolMacroDelete{background:#161a1a!important;border-color:#22303a!important;color:#e39a9a!important}
