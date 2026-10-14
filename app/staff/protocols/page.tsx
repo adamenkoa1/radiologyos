@@ -59,6 +59,7 @@ type BookingDetail = {
   dateOfBirth?:string; phone?:string;
 };
 type Revision = { version:number; number:string; status:string; savedBy:string; createdAt:string };
+type PriorStudy = { id:number; code:string; service:string; serviceCode:string; equipmentId:string; performedAt:string; desiredDate:string; protocolStatus:string; protocolNumber:string };
 type EditorDoc = Omit<ProtocolDocument,"status"> & {
   status:ProtocolLifecycleStatus; version:number; updatedBy:string; updatedAt:string;
   signedBy:string; signedAt:string; signedVersion:number;
@@ -99,6 +100,11 @@ export default function ProtocolsPage() {
   const [booking,setBooking] = useState<BookingDetail | null>(null);
   const [doc,setDoc] = useState<EditorDoc | null>(null);
   const [revisions,setRevisions] = useState<Revision[]>([]);
+  // Порівняння з попереднім дослідженням того самого пацієнта (read-only, #8).
+  const [priorStudies,setPriorStudies] = useState<PriorStudy[]>([]);
+  const [compareId,setCompareId] = useState<number | null>(null);
+  const [compareText,setCompareText] = useState("");
+  const [compareLoading,setCompareLoading] = useState(false);
   const [error,setError] = useState("");
   // Мережевий збій завантаження черги — щоб показати «Повторити», а не тиху
   // порожню чергу (яка виглядає як «роботи немає»).
@@ -303,15 +309,17 @@ export default function ProtocolsPage() {
 
   async function openBooking(id:number) {
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null); setRevisions([]);
+    setPriorStudies([]); setCompareId(null); setCompareText("");
     setBookingLoading(true); setDirty(false); resetComposer();
     try {
       const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
       const data = await response.json() as {
-        booking?:BookingDetail; protocol?:(EditorDoc | null); revisions?:Revision[]; error?:string;
+        booking?:BookingDetail; protocol?:(EditorDoc | null); revisions?:Revision[]; priorStudies?:PriorStudy[]; error?:string;
       };
       if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
       setBooking(data.booking);
       setRevisions(Array.isArray(data.revisions) ? data.revisions : []);
+      setPriorStudies(Array.isArray(data.priorStudies) ? data.priorStudies : []);
       setDoc(data.protocol
         ? {
             templateKey:data.protocol.templateKey, method:data.protocol.method,
@@ -328,6 +336,33 @@ export default function ProtocolsPage() {
       setActionError("Помилка мережі — спробуйте ще раз");
     } finally {
       setBookingLoading(false);
+    }
+  }
+
+  // Завантажити текст протоколу попереднього дослідження для порівняння (#8,
+  // read-only). Нічого не змінює; динаміку формулює лікар вручну.
+  async function loadComparison(id:number | null) {
+    setCompareId(id); setCompareText("");
+    if (!id) return;
+    setCompareLoading(true);
+    try {
+      const res = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
+      const data = await res.json() as { protocol?:(EditorDoc | null) };
+      if (res.ok && data.protocol) {
+        const p = data.protocol;
+        const status:ProtocolStatus = p.status === "signed" || p.status === "issued" ? "issued" : p.status === "ready" ? "ready" : "draft";
+        setCompareText(renderProtocolText({
+          templateKey:p.templateKey, method:p.method, methodRef:p.methodRef || "",
+          sections:p.sections || {}, findings:p.findings, conclusion:p.conclusion,
+          recommendations:p.recommendations, number:p.number, status,
+        }));
+      } else {
+        setCompareText("Для цього дослідження ще немає протоколу.");
+      }
+    } catch {
+      setCompareText("Не вдалося завантажити попереднє дослідження.");
+    } finally {
+      setCompareLoading(false);
     }
   }
 
@@ -1134,6 +1169,22 @@ export default function ProtocolsPage() {
           {showPreview && <section className="protocolLivePreview" role="region" aria-label="Попередній перегляд протоколу">
             <div className="protocolLivePreviewHead"><b>Попередній перегляд (у реальному часі)</b><small>Рендер поточного протоколу; оновлюється під час редагування.</small></div>
             <pre>{renderProtocolText(docToProtocol(doc))}</pre>
+          </section>}
+
+          {priorStudies.length > 0 && <section className="protocolCompare" aria-label="Порівняння з попереднім дослідженням">
+            <p className="eyebrow">Порівняння з попереднім дослідженням</p>
+            <label className="protocolCompareSelect"><span>Попереднє дослідження того самого пацієнта</span>
+              <select value={compareId ?? ""} onChange={(e)=>void loadComparison(Number(e.target.value) || null)}>
+                <option value="">— оберіть —</option>
+                {priorStudies.map((p)=><option key={p.id} value={p.id}>{p.service} · {p.performedAt ? formatDateTime(p.performedAt) : p.desiredDate}{p.protocolNumber ? ` · №${p.protocolNumber}` : ""}</option>)}
+              </select>
+            </label>
+            {compareLoading ? <p className="protocolReadonlyHint">Завантаження…</p>
+              : compareText && <div className="protocolCompareGrid">
+                  <div><b>Попереднє дослідження</b><pre>{compareText}</pre></div>
+                  <div><b>Поточне дослідження</b><pre>{renderProtocolText(docToProtocol(doc))}</pre></div>
+                </div>}
+            {compareId ? <p className="protocolReadonlyHint">Порівняння довідкове (read-only). Динаміку формулює лікар; попередній протокол не змінюється. Різні модальності не означають регрес автоматично.</p> : null}
           </section>}
 
           {revisions.length > 0 && <section className="protocolRevisions" aria-label="Історія версій протоколу">

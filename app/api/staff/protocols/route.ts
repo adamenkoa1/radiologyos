@@ -88,11 +88,14 @@ export async function GET(request: Request) {
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         assigned_radiologist_email AS assignedRadiologistEmail,
         clinical_indication AS clinicalIndication, referral, referral_type AS referralType,
-        referral_number AS referralNumber, date_of_birth AS dateOfBirth, phone
+        referral_number AS referralNumber, date_of_birth AS dateOfBirth, phone,
+        patient_id AS patientId, phone_normalized AS phoneNormalized
        FROM bookings WHERE id = ? AND organization_id = ? LIMIT 1`
     ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
     if (!booking) return Response.json({ error: "Заявку не знайдено" }, { status: 404 });
-    const [row, revisions] = await Promise.all([
+    const patientId = String(booking.patientId || "");
+    const phoneNormalized = String(booking.phoneNormalized || "");
+    const [row, revisions, priorStudies] = await Promise.all([
       db.prepare(
       `SELECT template_key AS templateKey, method, method_ref AS methodRef, sections_json AS sectionsJson,
         findings, conclusion, recommendations, number, status, version,
@@ -104,6 +107,19 @@ export async function GET(request: Request) {
         `SELECT version, number, status, saved_by AS savedBy, created_at AS createdAt
          FROM protocol_revisions WHERE booking_id = ? AND organization_id = ? ORDER BY version DESC LIMIT 20`
       ).bind(bookingId, ctx.organizationId).all(),
+      // Попередні дослідження ТОГО САМОГО пацієнта з наявним протоколом (для
+      // блоку порівняння). Матчимо за patient_id, якщо він є, інакше за телефоном.
+      db.prepare(
+        `SELECT b.id, b.code, b.service, b.service_code AS serviceCode, b.equipment_id AS equipmentId,
+           b.performed_at AS performedAt, b.desired_date AS desiredDate,
+           b.protocol_status AS protocolStatus, b.protocol_number AS protocolNumber
+         FROM bookings b
+         JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
+         WHERE b.organization_id = ? AND b.id != ? AND b.status != 'cancelled'
+           AND ( (? != '' AND b.patient_id = ?) OR (? = '' AND b.phone_normalized = ?) )
+         ORDER BY (b.performed_at != '') DESC, b.desired_date DESC, b.desired_time DESC
+         LIMIT 10`
+      ).bind(ctx.organizationId, bookingId, patientId, patientId, patientId, phoneNormalized).all(),
     ]);
     const protocol = row
       ? {
@@ -133,7 +149,7 @@ export async function GET(request: Request) {
       targetId: bookingId,
     });
     return Response.json(
-      { booking, protocol, revisions: revisions.results, staff: member },
+      { booking, protocol, revisions: revisions.results, priorStudies: priorStudies.results, staff: member },
       { headers: { "cache-control": "no-store" } },
     );
   }
