@@ -42,6 +42,18 @@ test("deep link ?studyId opens the study (plus legacy ?open)", async () => {
   assert.match(page, /params\.get\("studyId"\) \|\| params\.get\("open"\)/);
 });
 
+test("walk-in form has patient dedupe: phone lookup + link/unlink + sends patientId", async () => {
+  const page = await read("app/staff/protocols/page.tsx");
+  assert.match(page, /async function checkPatient\(\)/);
+  assert.match(page, /fetch\(`\/api\/staff\/patients\?phone=/);
+  assert.match(page, /status === 409 && Array\.isArray\(data\.matches\)/); // ambiguous handling
+  assert.match(page, /function linkPatient\(/);
+  assert.match(page, /function unlinkPatient\(/);
+  // створення передає прив'язаний patientId
+  const fn = page.slice(page.indexOf("async function createWalkInStudy"), page.indexOf("async function openBooking"));
+  assert.match(fn, /patientId: nsPatientId/);
+});
+
 test("endpoint exists and is role-guarded + audited", async () => {
   const route = await read("app/api/staff/protocols/studies/route.ts");
   assert.match(route, /canManageBookings\(member\.role\)/);
