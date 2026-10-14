@@ -55,7 +55,10 @@ type BookingDetail = {
   desiredDate:string; desiredTime:string; patientCategory:string; performedAt:string;
   anatomicalRegionsCount:number; protocolNumber:string; protocolStatus:string;
   protocolReadyAt:string; protocolIssuedAt:string; assignedRadiologistEmail:string;
+  clinicalIndication?:string; referral?:string; referralType?:string; referralNumber?:string;
+  dateOfBirth?:string; phone?:string;
 };
+type Revision = { version:number; number:string; status:string; savedBy:string; createdAt:string };
 type EditorDoc = Omit<ProtocolDocument,"status"> & {
   status:ProtocolLifecycleStatus; version:number; updatedBy:string; updatedAt:string;
   signedBy:string; signedAt:string; signedVersion:number;
@@ -95,6 +98,7 @@ export default function ProtocolsPage() {
   const [selectedId,setSelectedId] = useState<number | null>(null);
   const [booking,setBooking] = useState<BookingDetail | null>(null);
   const [doc,setDoc] = useState<EditorDoc | null>(null);
+  const [revisions,setRevisions] = useState<Revision[]>([]);
   const [error,setError] = useState("");
   // Мережевий збій завантаження черги — щоб показати «Повторити», а не тиху
   // порожню чергу (яка виглядає як «роботи немає»).
@@ -298,15 +302,16 @@ export default function ProtocolsPage() {
   }
 
   async function openBooking(id:number) {
-    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null);
+    setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null); setRevisions([]);
     setBookingLoading(true); setDirty(false); resetComposer();
     try {
       const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
       const data = await response.json() as {
-        booking?:BookingDetail; protocol?:(EditorDoc | null); error?:string;
+        booking?:BookingDetail; protocol?:(EditorDoc | null); revisions?:Revision[]; error?:string;
       };
       if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
       setBooking(data.booking);
+      setRevisions(Array.isArray(data.revisions) ? data.revisions : []);
       setDoc(data.protocol
         ? {
             templateKey:data.protocol.templateKey, method:data.protocol.method,
@@ -434,6 +439,11 @@ export default function ProtocolsPage() {
       protocolReadyAt:data.protocolReadyAt ?? current.protocolReadyAt,
       protocolIssuedAt:data.protocolIssuedAt ?? current.protocolIssuedAt,
     }));
+    const newVersion = data.version ?? (doc.version || 0);
+    setRevisions((current) => [
+      { version:newVersion, number:data.protocolNumber ?? doc.number, status:resolvedStatus, savedBy:staff?.email || "", createdAt:new Date().toISOString() },
+      ...current.filter((r) => r.version !== newVersion),
+    ]);
     setQueue((current) => current.map((item) => item.id === booking.id ? {
       ...item,
       protocolNumber:data.protocolNumber ?? item.protocolNumber,
@@ -847,6 +857,15 @@ export default function ProtocolsPage() {
             ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
             : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
 
+          {(booking.referral || booking.clinicalIndication || booking.referralNumber || booking.dateOfBirth) && <section className="protocolReferralBlock">
+            <p className="eyebrow">Направлення та клінічні відомості</p>
+            <dl>
+              {booking.dateOfBirth && <div><dt>Дата народження</dt><dd>{booking.dateOfBirth}</dd></div>}
+              {booking.referral && <div><dt>Направлення</dt><dd>{booking.referral}{booking.referralNumber ? ` · № ${booking.referralNumber}` : ""}</dd></div>}
+              {booking.clinicalIndication && <div><dt>Клінічні показання</dt><dd>{booking.clinicalIndication}</dd></div>}
+            </dl>
+          </section>}
+
           <div className="protocolFilterTabs" role="group" aria-label="Режим роботи">
             <button type="button" aria-pressed={mode==="quick"} className={mode==="quick"?"active":""} onClick={()=>setMode("quick")}>Швидкий</button>
             <button type="button" aria-pressed={mode==="structured"} className={mode==="structured"?"active":""} onClick={()=>setMode("structured")}>Структурований</button>
@@ -1115,6 +1134,18 @@ export default function ProtocolsPage() {
           {showPreview && <section className="protocolLivePreview" role="region" aria-label="Попередній перегляд протоколу">
             <div className="protocolLivePreviewHead"><b>Попередній перегляд (у реальному часі)</b><small>Рендер поточного протоколу; оновлюється під час редагування.</small></div>
             <pre>{renderProtocolText(docToProtocol(doc))}</pre>
+          </section>}
+
+          {revisions.length > 0 && <section className="protocolRevisions" aria-label="Історія версій протоколу">
+            <p className="eyebrow">Історія версій та виправлень</p>
+            <ol className="protocolRevisionList">
+              {revisions.map((r)=><li key={r.version}>
+                <b>Версія {r.version}</b>
+                <span className={`protocolTag ${r.status}`}>{lifecycleLabel(r.status)}</span>
+                {r.number && <span>№ {r.number}</span>}
+                <small>{r.savedBy || "—"}{r.createdAt ? ` · ${formatDateTime(r.createdAt)}` : ""}</small>
+              </li>)}
+            </ol>
           </section>}
 
           <article className="protocolPrint" aria-hidden="true">

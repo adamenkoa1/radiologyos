@@ -39,6 +39,9 @@
 .themeDark .protocolInlineLink,.themeDark .protocolQueueLink{color:#8fd3c0!important}
 .themeDark .protocolNewStudyForm{background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolNewStudyForm input,.themeDark .protocolNewStudyForm select,.themeDark .protocolNewStudyForm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
+.themeDark .protocolReferralBlock,.themeDark .protocolRevisions{background:#0e151a!important;border-color:#22303a!important}
+.themeDark .protocolReferralBlock dd{color:#cfe5de!important}
+.themeDark .protocolRevisionList li{border-bottom-color:#22303a!important}
 .themeDark .protocolMacrosList li{background:#0b1116!important;border-color:#22303a!important}
 .themeDark .protocolMacrosList li>button:first-child{color:#cfe5de!important}
 .themeDark .protocolMacroDelete{background:#161a1a!important;border-color:#22303a!important;color:#e39a9a!important}
