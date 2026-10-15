@@ -147,6 +147,7 @@ export const protocols = sqliteTable("protocols", {
 	methodRef: text("method_ref").notNull().default(""),
 	sectionsJson: text("sections_json").notNull().default("{}"),
 	findings: text().notNull().default(""),
+	findingsStructuredJson: text("findings_structured_json").notNull().default(""),
 	conclusion: text().notNull().default(""),
 	recommendations: text().notNull().default(""),
 	number: text().notNull().default(""),

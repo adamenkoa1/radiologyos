@@ -41,6 +41,9 @@
 .themeDark .protocolNewStudyForm input,.themeDark .protocolNewStudyForm select,.themeDark .protocolNewStudyForm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolReferralBlock,.themeDark .protocolRevisions,.themeDark .protocolCompare{background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolCompareGrid pre,.themeDark .protocolCompareSelect select{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
+.themeDark .protocolAutoCompare{border-top-color:#22303a!important}
+.themeDark .protocolAutoCompare>button{background:#0d1a16!important;color:#8fd3c0!important;border-color:#1c5a4a!important}
+.themeDark .protocolAutoCompareResult pre{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolReferralBlock dd{color:#cfe5de!important}
 .themeDark .protocolRevisionList li{border-bottom-color:#22303a!important}
 .themeDark .protocolMacrosList li{background:#0b1116!important;border-color:#22303a!important}
