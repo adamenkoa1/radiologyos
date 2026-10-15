@@ -181,6 +181,11 @@ button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;
 .protocolCompareGrid b{display:block;font-size:12px;margin-bottom:6px;color:#415566}
 .protocolCompareGrid pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:12px;line-height:1.5;padding:12px;border:1px solid #e3eaf1;border-radius:6px;background:#fff;margin:0}
 @media(max-width:700px){.protocolCompareGrid{grid-template-columns:1fr}}
+.protocolAutoCompare{margin-top:12px;padding-top:12px;border-top:1px dashed #cdd9e8;display:flex;flex-direction:column;gap:8px}
+.protocolAutoCompare>button{align-self:flex-start;padding:9px 14px;border:1px solid #1c5a4a;border-radius:6px;background:#eaf4f1;color:#1c5a4a;font-weight:700;font-size:13px;cursor:pointer}
+.protocolAutoCompare>button:disabled{opacity:.55;cursor:not-allowed}
+.protocolAutoCompareResult{display:flex;flex-direction:column;gap:8px}
+.protocolAutoCompareResult pre{white-space:pre-wrap;word-break:break-word;font:inherit;font-size:12px;line-height:1.5;padding:12px;border:1px solid #bcdad1;border-radius:6px;background:#f2f9f6;margin:0}
 @media(max-width:600px){.findingComposerControls{grid-template-columns:1fr}}
 @media print{.findingComposer{display:none!important}}
 /* Жива панель прев'ю протоколу (Этап D2, §3) */

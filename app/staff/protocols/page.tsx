@@ -33,6 +33,7 @@ import {
   type ClinicalWarning,
 } from "../../../lib/findings-composer";
 import { findContradictions } from "../../../lib/protocol-contradictions";
+import { compareStudies, type ComparisonResult } from "../../../lib/protocol-comparison";
 import { planImport, FINDING_REGION_TO_CATALOG } from "../../../lib/clinical-library-adapter";
 import { renderLibraryFinding, activeParameters } from "../../../lib/clinical-library-finding";
 import type { PathologyFinding } from "../../../lib/clinical-library";
@@ -105,6 +106,9 @@ export default function ProtocolsPage() {
   const [compareId,setCompareId] = useState<number | null>(null);
   const [compareText,setCompareText] = useState("");
   const [compareLoading,setCompareLoading] = useState(false);
+  const [comparePriorStructured,setComparePriorStructured] = useState<ComposedFinding[]>([]);
+  const [comparePriorRegion,setComparePriorRegion] = useState("");
+  const [autoDelta,setAutoDelta] = useState<ComparisonResult | null>(null);
   const [error,setError] = useState("");
   // Мережевий збій завантаження черги — щоб показати «Повторити», а не тиху
   // порожню чергу (яка виглядає як «роботи немає»).
@@ -309,12 +313,12 @@ export default function ProtocolsPage() {
 
   async function openBooking(id:number) {
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null); setRevisions([]);
-    setPriorStudies([]); setCompareId(null); setCompareText("");
+    setPriorStudies([]); setCompareId(null); setCompareText(""); setComparePriorStructured([]); setComparePriorRegion(""); setAutoDelta(null);
     setBookingLoading(true); setDirty(false); resetComposer();
     try {
       const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
       const data = await response.json() as {
-        booking?:BookingDetail; protocol?:(EditorDoc | null); revisions?:Revision[]; priorStudies?:PriorStudy[]; error?:string;
+        booking?:BookingDetail; protocol?:((EditorDoc & { findingsStructured?:ComposedFinding[] }) | null); revisions?:Revision[]; priorStudies?:PriorStudy[]; error?:string;
       };
       if (!response.ok || !data.booking) { setActionError(data.error || "Не вдалося відкрити протокол"); return; }
       setBooking(data.booking);
@@ -332,6 +336,8 @@ export default function ProtocolsPage() {
             signedVersion:data.protocol.signedVersion || 0,
           }
         : emptyDoc(data.booking.serviceCode));
+      // Відновлюємо структуровані знахідки конструктора (для авто-порівняння E3).
+      setComposed(data.protocol && Array.isArray(data.protocol.findingsStructured) ? data.protocol.findingsStructured : []);
     } catch {
       setActionError("Помилка мережі — спробуйте ще раз");
     } finally {
@@ -342,12 +348,12 @@ export default function ProtocolsPage() {
   // Завантажити текст протоколу попереднього дослідження для порівняння (#8,
   // read-only). Нічого не змінює; динаміку формулює лікар вручну.
   async function loadComparison(id:number | null) {
-    setCompareId(id); setCompareText("");
+    setCompareId(id); setCompareText(""); setComparePriorStructured([]); setComparePriorRegion(""); setAutoDelta(null);
     if (!id) return;
     setCompareLoading(true);
     try {
       const res = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
-      const data = await res.json() as { protocol?:(EditorDoc | null) };
+      const data = await res.json() as { protocol?:((EditorDoc & { findingsStructured?:ComposedFinding[] }) | null) };
       if (res.ok && data.protocol) {
         const p = data.protocol;
         const status:ProtocolStatus = p.status === "signed" || p.status === "issued" ? "issued" : p.status === "ready" ? "ready" : "draft";
@@ -356,6 +362,8 @@ export default function ProtocolsPage() {
           sections:p.sections || {}, findings:p.findings, conclusion:p.conclusion,
           recommendations:p.recommendations, number:p.number, status,
         }));
+        setComparePriorStructured(Array.isArray(p.findingsStructured) ? p.findingsStructured : []);
+        setComparePriorRegion(p.templateKey);
       } else {
         setCompareText("Для цього дослідження ще немає протоколу.");
       }
@@ -364,6 +372,26 @@ export default function ProtocolsPage() {
     } finally {
       setCompareLoading(false);
     }
+  }
+
+  // Авто-порівняння E3: будує чернетку динаміки зі СТРУКТУРОВАНИХ знахідок
+  // (поточні composed vs структуровані знахідки попереднього дослідження).
+  // Guard блокує різні ділянки/модальності. Нічого не змінює — лише чернетка.
+  function runAutoCompare() {
+    if (!doc) return;
+    const assessed = (fs:ComposedFinding[]) => [...new Set(fs.map((f)=>f.targetId))];
+    const priorLabel = priorStudies.find((p)=>p.id===compareId)?.service || "Попереднє дослідження";
+    const result = compareStudies(
+      { label:priorLabel, regionKey:comparePriorRegion, findings:comparePriorStructured, assessedTargets:assessed(comparePriorStructured) },
+      { label:"Поточне", regionKey:doc.templateKey, findings:composed, assessedTargets:assessed(composed) },
+    );
+    setAutoDelta(result);
+  }
+  function insertDynamicsDraft() {
+    if (!doc || !autoDelta || !autoDelta.ok || !autoDelta.draft.trim()) return;
+    const base = (doc.conclusion || "").replace(/\s+$/, "");
+    patchDoc({ conclusion: base ? `${base}\n${autoDelta.draft}` : autoDelta.draft });
+    setActionSuccess("Чернетку динаміки додано у висновок. Перевірте та відредагуйте перед підписом.");
   }
 
   // Глибоке посилання ?studyId=<id> (або legacy ?open=<id>) відкриває протокол
@@ -447,7 +475,7 @@ export default function ProtocolsPage() {
     setSaving(true);
     const response = await fetch("/api/staff/protocols", {
       method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status }),
+      body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status, findingsStructured:composed }),
     });
     const data = await response.json() as {
       ok?:boolean; version?:number; protocolStatus?:string; protocolNumber?:string;
@@ -1185,6 +1213,16 @@ export default function ProtocolsPage() {
                   <div><b>Поточне дослідження</b><pre>{renderProtocolText(docToProtocol(doc))}</pre></div>
                 </div>}
             {compareId ? <p className="protocolReadonlyHint">Порівняння довідкове (read-only). Динаміку формулює лікар; попередній протокол не змінюється. Різні модальності не означають регрес автоматично.</p> : null}
+            {compareId && canEdit && <div className="protocolAutoCompare">
+              <button type="button" onClick={runAutoCompare} disabled={composed.length === 0 && comparePriorStructured.length === 0}>Авто-порівняння структурованих знахідок (E3)</button>
+              {composed.length === 0 && <small className="protocolFieldHint">Авто-порівняння працює зі структурованими знахідками конструктора. Для поточного дослідження їх ще немає — додайте знахідки через конструктор.</small>}
+              {autoDelta && (autoDelta.ok
+                ? <div className="protocolAutoCompareResult">
+                    <pre>{autoDelta.draft}</pre>
+                    <button type="button" className="primary" disabled={!autoDelta.draft.trim() || saving} onClick={insertDynamicsDraft}>Вставити чернетку динаміки у висновок</button>
+                  </div>
+                : <p className="findingComposerWarn" role="status">⚠ {autoDelta.note}</p>)}
+            </div>}
           </section>}
 
           {revisions.length > 0 && <section className="protocolRevisions" aria-label="Історія версій протоколу">
