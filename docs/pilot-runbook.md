@@ -57,12 +57,16 @@ Staging автоматизовано окремими workflow-ами (productio
   свіжої локальної синтетичної бази (`scripts/apply-d1-migrations-local.mjs`);
   SHA релізу й звіт міграцій зберігаються як summary + артефакт.
 - **`staging.yml`** (тригер: push у `main` після злиття, а також `workflow_dispatch`)
-  — рендерить `wrangler.staging.toml` з прикладу + значень оточення, застосовує
-  міграції до staging (fail-closed guards), деплоїть **лише** з
-  `wrangler.staging.toml`, робить health check розгорнутого staging і безпечний
-  in-process E2E (пацієнт→дослідження→опис, ролі, ізоляція, Telegram через
-  тестовий секрет вебхука). Summary + артефакт. **Інертний**, доки
-  `vars.STAGING_ENABLED != 'true'`.
+  — **preflight** (`scripts/staging-preflight.mjs`) до будь-якого звернення до
+  Cloudflare доводить, що staging D1 id / R2 bucket / hostname **не** збігаються з
+  production (значення production читаються з `wrangler.cloudflare.toml`, не
+  захардкоджені; hostname нормалізується; креденшели не читаються; fail-closed на
+  збіг, відсутні чи плейсхолдерні значення). Далі рендерить `wrangler.staging.toml`
+  з прикладу + значень оточення, застосовує міграції до staging (fail-closed
+  guards), деплоїть **лише** з `wrangler.staging.toml`, робить health check
+  розгорнутого staging і безпечний in-process E2E (пацієнт→дослідження→опис,
+  ролі, ізоляція, Telegram через тестовий секрет вебхука). Summary + артефакт.
+  **Інертний**, доки `vars.STAGING_ENABLED != 'true'`.
 - **`staging-restore-rehearsal.yml`** (тригер: лише `workflow_dispatch` із
   підтвердженням `REHEARSE`) — створює **тимчасову** staging-базу, застосовує
   міграції, засіває синтетику, робить Time Travel bookmark → мутацію →

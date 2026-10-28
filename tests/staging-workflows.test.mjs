@@ -49,15 +49,29 @@ test("staging workflow runs post-merge + manual, is gated, and never uses the pr
   const job = doc.jobs.staging;
   assert.match(String(job.if), /vars\.STAGING_ENABLED == 'true'/);
   assert.equal(job.environment, "staging");
-  // Лише staging-конфіг, ніколи production.
+  // Лише staging-конфіг у будь-якій операції Cloudflare; production-конфіг
+  // може лише ЗЧИТУВАТИСЬ preflight-ом для порівняння, але ніколи не передається
+  // як --config у wrangler.
   assert.match(s, /--config wrangler\.staging\.toml/);
-  assert.doesNotMatch(s, /wrangler\.cloudflare\.toml/);
+  assert.doesNotMatch(s, /--config wrangler\.cloudflare\.toml/);
   assert.match(s, /apply-d1-migrations-remote\.sh radiologyos-staging wrangler\.staging\.toml drizzle/);
   // Построзгортальні перевірки: health + безпечний in-process E2E + summary/artifact.
   assert.match(s, /api\/public-services/);
   assert.match(s, /run: npm test/);
   assert.match(s, /GITHUB_STEP_SUMMARY/);
   assert.match(s, /actions\/upload-artifact/);
+});
+
+test("staging workflow runs the non-production preflight before any Cloudflare call", async () => {
+  const s = await read(".github/workflows/staging.yml");
+  assert.match(s, /node scripts\/staging-preflight\.mjs/);
+  const preflight = s.indexOf("scripts/staging-preflight.mjs");
+  const render = s.indexOf("wrangler.staging.example.toml > wrangler.staging.toml");
+  const migrate = s.indexOf("apply-d1-migrations-remote.sh radiologyos-staging");
+  const deploy = s.indexOf("wrangler deploy --keep-vars");
+  assert.ok(preflight !== -1 && render !== -1, "preflight and render steps exist");
+  assert.ok(preflight < render, "preflight must run before rendering the staging config");
+  assert.ok(preflight < migrate && preflight < deploy, "preflight must run before any Cloudflare call");
 });
 
 test("staging workflow takes credentials from secrets and ids from vars, rendering config at runtime", async () => {

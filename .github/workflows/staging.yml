@@ -82,6 +82,16 @@ jobs:
             exit 1
           fi
 
+      - name: Preflight — staging values must not be production
+        # Fail-closed перевірка ДО будь-якого звернення до Cloudflare: production
+        # D1 id / R2 bucket / hostname читаються з wrangler.cloudflare.toml (не
+        # захардкоджено) і звіряються зі staging-змінними. Креденшели не читаються.
+        env:
+          STAGING_D1_DATABASE_ID: ${{ vars.STAGING_D1_DATABASE_ID }}
+          STAGING_R2_BUCKET: ${{ vars.STAGING_R2_BUCKET }}
+          STAGING_HOSTNAME: ${{ vars.STAGING_HOSTNAME }}
+        run: node scripts/staging-preflight.mjs
+
       - name: Render wrangler.staging.toml from the committed example
         # Генеруємо робочий конфіг У РАНЕРІ з прикладу, підставляючи значення
         # оточення. Файл не комітиться. Продакшн id/домен сюди не потрапляють.
