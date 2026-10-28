@@ -29,6 +29,8 @@ concurrency:
 jobs:
   rehearse:
     name: Create throwaway D1, restore via Time Travel, verify, delete
+    # STAGING_ENABLED — REPOSITORY-variable (job-level `if` не бачить environment-
+    # variables, бо обчислюється до призначення environment).
     if: ${{ vars.STAGING_ENABLED == 'true' && github.event.inputs.confirmation == 'REHEARSE' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25

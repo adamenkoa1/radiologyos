@@ -80,16 +80,29 @@ Staging автоматизовано окремими workflow-ами (productio
   відновлення → перевірку, і **завжди** (`always()`) видаляє **лише** створену
   ним тимчасову базу. Відмовляє, якщо ціль — реальне середовище чи продакшн id.
 
-### Одноразове налаштування командою (GitHub → Environment `staging`)
+### Одноразове налаштування командою
 
 Нічого з цього не комітиться; значення задає команда у своєму акаунті. Поки
 їх немає — staging-workflow-и інертні (не падають, не шумлять).
+
+> ⚠️ **Важливо про scope `STAGING_ENABLED`.** Це **repository**-variable, а не
+> environment. Вмикач перевіряється в `if:` **на рівні job** — GitHub обчислює
+> його **до** призначення `environment: staging`, тож environment-variable там
+> **не видно** і job завжди пропускатиметься. Створіть його в
+> **Settings → Secrets and variables → Actions → Variables → Repository variables**.
+> Решта staging-значень (D1 id, bucket, hostname) — у **Environment `staging`**:
+> вони читаються в кроках job (вже після призначення environment), тож там усе гаразд.
+
+**Repository variable** (Settings → Secrets and variables → Actions → Variables):
+
+| Назва | Призначення |
+|---|---|
+| `STAGING_ENABLED` | `true`, щоб увімкнути staging-workflow-и (інакше job пропускається) — **repository**, не environment |
 
 **Variables** (Environment `staging`):
 
 | Назва | Призначення |
 |---|---|
-| `STAGING_ENABLED` | `true`, щоб увімкнути staging-workflow-и (інакше вони пропускаються) |
 | `STAGING_D1_DATABASE_ID` | id вашої staging-D1 (`radiologyos-staging`); **не** продакшн-id |
 | `STAGING_R2_BUCKET` | імʼя приватного staging R2-бакета |
 | `STAGING_HOSTNAME` | staging-домен (напр. `staging.example`) — **не** продакшн-домен |

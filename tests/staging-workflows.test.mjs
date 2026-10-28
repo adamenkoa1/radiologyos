@@ -49,6 +49,9 @@ test("staging workflow runs post-merge + manual, is gated, and never uses the pr
   const job = doc.jobs.staging;
   assert.match(String(job.if), /vars\.STAGING_ENABLED == 'true'/);
   assert.equal(job.environment, "staging");
+  // STAGING_ENABLED має бути repository-variable (job-level if не бачить
+  // environment-variables) — зафіксовано коментарем, щоб не регресувало.
+  assert.match(s, /REPOSITORY-variable/i);
   // Лише staging-конфіг у будь-якій операції Cloudflare; production-конфіг
   // може лише ЗЧИТУВАТИСЬ preflight-ом для порівняння, але ніколи не передається
   // як --config у wrangler.

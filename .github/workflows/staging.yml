@@ -25,6 +25,9 @@ jobs:
     name: Migrate, deploy and verify staging
     # Інертний, доки команда явно не ввімкне staging. Без цього job не запускається
     # (жодного шуму й жодних вигаданих значень).
+    # УВАГА: STAGING_ENABLED має бути REPOSITORY-variable, а не environment —
+    # job-level `if` обчислюється ДО призначення environment, тож environment-
+    # variable тут не видно й job завжди пропускатиметься.
     if: ${{ vars.STAGING_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
