@@ -47,6 +47,57 @@
 
 ---
 
+## 0b. Автоматизація через GitHub Actions
+
+Staging автоматизовано окремими workflow-ами (production workflow `deploy.yml`
+**не змінювався** й не запускається ними):
+
+- **`ci.yml`** (тригер: кожен PR і push у `main`) — наявні перевірки (lint, tsc,
+  build, тести, production-gate) **плюс** застосування **всіх** D1-міграцій до
+  свіжої локальної синтетичної бази (`scripts/apply-d1-migrations-local.mjs`);
+  SHA релізу й звіт міграцій зберігаються як summary + артефакт.
+- **`staging.yml`** (тригер: push у `main` після злиття, а також `workflow_dispatch`)
+  — рендерить `wrangler.staging.toml` з прикладу + значень оточення, застосовує
+  міграції до staging (fail-closed guards), деплоїть **лише** з
+  `wrangler.staging.toml`, робить health check розгорнутого staging і безпечний
+  in-process E2E (пацієнт→дослідження→опис, ролі, ізоляція, Telegram через
+  тестовий секрет вебхука). Summary + артефакт. **Інертний**, доки
+  `vars.STAGING_ENABLED != 'true'`.
+- **`staging-restore-rehearsal.yml`** (тригер: лише `workflow_dispatch` із
+  підтвердженням `REHEARSE`) — створює **тимчасову** staging-базу, застосовує
+  міграції, засіває синтетику, робить Time Travel bookmark → мутацію →
+  відновлення → перевірку, і **завжди** (`always()`) видаляє **лише** створену
+  ним тимчасову базу. Відмовляє, якщо ціль — реальне середовище чи продакшн id.
+
+### Одноразове налаштування командою (GitHub → Environment `staging`)
+
+Нічого з цього не комітиться; значення задає команда у своєму акаунті. Поки
+їх немає — staging-workflow-и інертні (не падають, не шумлять).
+
+**Variables** (Environment `staging`):
+
+| Назва | Призначення |
+|---|---|
+| `STAGING_ENABLED` | `true`, щоб увімкнути staging-workflow-и (інакше вони пропускаються) |
+| `STAGING_D1_DATABASE_ID` | id вашої staging-D1 (`radiologyos-staging`); **не** продакшн-id |
+| `STAGING_R2_BUCKET` | імʼя приватного staging R2-бакета |
+| `STAGING_HOSTNAME` | staging-домен (напр. `staging.example`) — **не** продакшн-домен |
+
+**Secrets** (Environment `staging`, мінімальні права):
+
+| Назва | Призначення |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | токен з правами лише на staging-ресурси (D1 edit, Workers deploy, R2 read) |
+| `CLOUDFLARE_ACCOUNT_ID` | id Cloudflare-акаунту |
+| `STAGING_E2E_STAFF_COOKIE` | *(необов'язково)* cookie **синтетичної** staff-сесії для браузерного E2E; без нього E2E чесно пропускається |
+
+Cloudflare-ресурси (створює команда): staging-D1 `radiologyos-staging`,
+приватний staging R2-бакет, staging-домен/маршрут. Рекомендовано ввімкнути
+**required reviewers** на Environment `staging`, щоб deploy проходив людське
+підтвердження.
+
+---
+
 ## 1. Версія та застосовані міграції
 
 **Версія коду (SHA):** реліз розгортається з `main`; збережіть SHA з логів

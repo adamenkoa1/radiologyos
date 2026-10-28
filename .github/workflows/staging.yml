@@ -1,0 +1,167 @@
+name: Staging
+
+# Автоматизація staging (НЕ production). Запускається після злиття в main.
+# Інертний, доки команда не ввімкне його змінною STAGING_ENABLED=true в
+# GitHub Environment `staging` і не задасть потрібні vars/secrets (див. нижче).
+#
+# Нічого з цього не чіпає production: використовується ВИКЛЮЧНО
+# wrangler.staging.toml, згенерований у ранері з прикладу + значень оточення.
+# Реальні id/секрети не комітяться — вони живуть у GitHub Environment `staging`.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-deploy
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    name: Migrate, deploy and verify staging
+    # Інертний, доки команда явно не ввімкне staging. Без цього job не запускається
+    # (жодного шуму й жодних вигаданих значень).
+    if: ${{ vars.STAGING_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies deterministically
+        run: npm run install:ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Type check
+        run: npm exec tsc -- --noEmit --incremental false
+
+      - name: Build artifact
+        run: npm run build
+
+      - name: Safe in-process end-to-end suite (synthetic, no network, no real messages)
+        # Поведінкові тести будують воркер + in-memory D1 і прокручують
+        # пацієнт→дослідження→опис→підпис/видача, ролі, ізоляцію організацій і
+        # Telegram через тестовий секрет вебхука (mock/test adapter). Жодних
+        # реальних даних чи повідомлень.
+        run: npm test
+
+      - name: Apply all D1 migrations to a local synthetic database
+        run: node scripts/apply-d1-migrations-local.mjs --report d1-local-migration-report.md
+
+      - name: Preflight — required staging configuration present
+        # Голосно падаємо, якщо staging увімкнено, але бракує значень. Не вигадуємо
+        # дефолтів. Імена секретів/змінних — у docs/pilot-runbook.md.
+        env:
+          STAGING_D1_DATABASE_ID: ${{ vars.STAGING_D1_DATABASE_ID }}
+          STAGING_R2_BUCKET: ${{ vars.STAGING_R2_BUCKET }}
+          STAGING_HOSTNAME: ${{ vars.STAGING_HOSTNAME }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          missing=()
+          [ -n "${STAGING_D1_DATABASE_ID}" ] || missing+=("vars.STAGING_D1_DATABASE_ID")
+          [ -n "${STAGING_R2_BUCKET}" ] || missing+=("vars.STAGING_R2_BUCKET")
+          [ -n "${STAGING_HOSTNAME}" ] || missing+=("vars.STAGING_HOSTNAME")
+          [ -n "${CLOUDFLARE_API_TOKEN}" ] || missing+=("secrets.CLOUDFLARE_API_TOKEN")
+          [ -n "${CLOUDFLARE_ACCOUNT_ID}" ] || missing+=("secrets.CLOUDFLARE_ACCOUNT_ID")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "✗ staging is enabled but these Environment values are missing: ${missing[*]}" >&2
+            exit 1
+          fi
+
+      - name: Render wrangler.staging.toml from the committed example
+        # Генеруємо робочий конфіг У РАНЕРІ з прикладу, підставляючи значення
+        # оточення. Файл не комітиться. Продакшн id/домен сюди не потрапляють.
+        env:
+          STAGING_D1_DATABASE_ID: ${{ vars.STAGING_D1_DATABASE_ID }}
+          STAGING_R2_BUCKET: ${{ vars.STAGING_R2_BUCKET }}
+          STAGING_HOSTNAME: ${{ vars.STAGING_HOSTNAME }}
+        run: |
+          set -euo pipefail
+          test -f wrangler.staging.example.toml
+          sed \
+            -e "s|REPLACE_WITH_STAGING_D1_ID|${STAGING_D1_DATABASE_ID}|g" \
+            -e "s|REPLACE_WITH_STAGING_R2_BUCKET|${STAGING_R2_BUCKET}|g" \
+            -e "s|REPLACE_WITH_STAGING_HOSTNAME|${STAGING_HOSTNAME}|g" \
+            wrangler.staging.example.toml > wrangler.staging.toml
+          # Fail-closed: жоден плейсхолдер не повинен лишитися.
+          if grep -Eq 'REPLACE_WITH_' wrangler.staging.toml; then
+            echo "✗ wrangler.staging.toml still contains a placeholder after rendering." >&2
+            exit 1
+          fi
+          echo "Rendered wrangler.staging.toml (database_name must be radiologyos-staging):"
+          grep -E '^(name|database_name) =' wrangler.staging.toml
+
+      - name: Apply D1 migrations to staging
+        # Спільний виконавець із fail-closed guards: відхиляє незамінений
+        # плейсхолдер, невідповідність обраної бази та database_name, і будь-який
+        # не-продакшн конфіг, що вказує на ПРОДАКШН database_id.
+        run: bash scripts/apply-d1-migrations-remote.sh radiologyos-staging wrangler.staging.toml drizzle
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy Worker and assets to staging
+        run: npx wrangler deploy --keep-vars --config wrangler.staging.toml
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Health check (deployed staging URL)
+        env:
+          STAGING_HOSTNAME: ${{ vars.STAGING_HOSTNAME }}
+        run: |
+          set -euo pipefail
+          base="https://${STAGING_HOSTNAME}"
+          curl --fail --silent --show-error --retry 5 --retry-all-errors "${base}/" > /dev/null
+          curl --fail --silent --show-error --retry 5 --retry-all-errors \
+            "${base}/api/public-services" > /tmp/staging-public-services.json
+          node -e '
+            const p = JSON.parse(require("node:fs").readFileSync("/tmp/staging-public-services.json","utf8"));
+            if (!Array.isArray(p?.services)) { console.error("staging health: /api/public-services has no services array"); process.exit(1); }
+          '
+          echo "STAGING_HEALTH=ok" >> "$GITHUB_ENV"
+
+      - name: Deployed-instance E2E (optional, honest skip without a synthetic staff session)
+        # Playwright-раннер сам чесно пропускається (exit 0), якщо не задано
+        # E2E_BASE_URL/E2E_STAFF_COOKIE. Дані лише синтетичні; це НЕ production.
+        env:
+          E2E_BASE_URL: https://${{ vars.STAGING_HOSTNAME }}
+          E2E_STAFF_COOKIE: ${{ secrets.STAGING_E2E_STAFF_COOKIE }}
+        run: npm run test:e2e
+
+      - name: Write staging run summary
+        if: always()
+        run: |
+          {
+            echo "### Staging run"
+            echo
+            echo "- Commit SHA: \`${GITHUB_SHA}\`"
+            echo "- Config used: \`wrangler.staging.toml\` (rendered; production config untouched)"
+            echo "- Health check: ${STAGING_HEALTH:-not-reached}"
+            echo
+            if [ -f d1-local-migration-report.md ]; then cat d1-local-migration-report.md; fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload staging artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: staging-run-${{ github.sha }}
+          path: |
+            d1-local-migration-report.md
+            test-output.log
+          if-no-files-found: ignore

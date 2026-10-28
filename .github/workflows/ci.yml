@@ -69,3 +69,27 @@ jobs:
 
       - name: Production release gate
         run: npm run test:production-gate
+
+      - name: Apply all D1 migrations to a local synthetic database
+        # Deterministic, offline proof that every committed migration applies to a
+        # fresh database and accepts a synthetic write. No Cloudflare, no network,
+        # no real data. Writes a summary and a report artifact.
+        run: node scripts/apply-d1-migrations-local.mjs --report d1-local-migration-report.md
+
+      - name: Record release SHA in the job summary
+        if: always()
+        run: |
+          {
+            echo "### Release build"
+            echo
+            echo "- Commit SHA: \`${GITHUB_SHA}\`"
+            echo "- Ref: \`${GITHUB_REF}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload D1 local migration report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: d1-local-migration-report-${{ github.sha }}
+          path: d1-local-migration-report.md
+          if-no-files-found: ignore
