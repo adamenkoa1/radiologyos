@@ -163,6 +163,18 @@ button.crmVisitHead:hover b{text-decoration:underline;text-underline-offset:2px;
 .protocolNewStudyActions{display:flex;gap:8px;margin-top:4px}
 .protocolPhoneRow{display:flex;gap:8px;align-items:center}
 .protocolPhoneRow input{flex:1;min-width:0}
+.intakePanel{margin-top:10px;border:1px solid #cdd9e8;border-radius:8px;background:#fff;overflow:hidden}
+.intakePanelHead{width:100%;text-align:left;padding:10px 12px;border:0;background:#eef4f3;color:#1c5a4a;font-weight:700;font-size:13px;cursor:pointer;display:flex;justify-content:space-between;align-items:center}
+.intakePanelHead b{background:#1c5a4a;color:#fff;border-radius:10px;padding:1px 8px;font-size:12px}
+.intakeList{list-style:none;margin:0;padding:0}
+.intakeList li{padding:10px 12px;border-top:1px solid #eef2f6}
+.intakeMsg{margin:0 0 4px;font-size:13px;color:#1d2b36;white-space:pre-wrap;word-break:break-word}
+.intakeList small{color:#6b7b86;font-size:11px}
+.intakeActions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.intakeActions button{padding:6px 10px;border:1px solid #cdd9e8;border-radius:6px;background:#fff;font-size:12px;cursor:pointer}
+.intakeActions button.primary{background:#1c5a4a;color:#fff;border-color:#1c5a4a}
+.intakeConfirm{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.intakeConfirm textarea{font:inherit;font-size:12px;min-height:52px;padding:8px 10px;border:1px solid #cdd9e8;border-radius:6px;resize:vertical}
 .protocolReferralBlock{margin:0 0 16px;padding:12px 14px;border:1px solid #cdd9e8;border-radius:8px;background:#f6f9fc}
 .protocolReferralBlock dl{margin:0;display:grid;gap:6px}
 .protocolReferralBlock dl div{display:flex;gap:10px;font-size:12px}

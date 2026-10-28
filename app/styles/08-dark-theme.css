@@ -37,6 +37,12 @@
 .themeDark .protocolModeHint{background:#0d1a16!important;color:#8fd3c0!important}
 .themeDark .libraryImport{border-top-color:#22303a!important}
 .themeDark .protocolInlineLink,.themeDark .protocolQueueLink{color:#8fd3c0!important}
+.themeDark .intakePanel{background:#0e151a!important;border-color:#22303a!important}
+.themeDark .intakePanelHead{background:#0d1a16!important;color:#8fd3c0!important}
+.themeDark .intakeList li{border-top-color:#22303a!important}
+.themeDark .intakeMsg{color:#cfe5de!important}
+.themeDark .intakeActions button,.themeDark .intakeConfirm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
+.themeDark .intakeActions button.primary,.themeDark .intakePanelHead b{background:#1c5a4a!important;color:#eafff8!important}
 .themeDark .protocolNewStudyForm{background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolNewStudyForm input,.themeDark .protocolNewStudyForm select,.themeDark .protocolNewStudyForm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolReferralBlock,.themeDark .protocolRevisions,.themeDark .protocolCompare{background:#0e151a!important;border-color:#22303a!important}
