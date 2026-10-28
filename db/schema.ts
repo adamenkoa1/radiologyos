@@ -829,6 +829,33 @@ table => [
 	check("protocol_user_templates_check_4", sql.raw("`length`(`document_json`) BETWEEN 2 AND 40000")),
 ]);
 
+// Вхідні заявки на запис із месенджерів (стартовий канал — Telegram), щоб
+// звернення пацієнта не губилося. Це НЕ підтверджене бронювання: реєстратор
+// переглядає заявку, створює/знаходить пацієнта й дослідження, і лише тоді
+// надсилає підтвердження. Канал лишено розширюваним (phone/whatsapp/email/viber).
+export const intakeRequests = sqliteTable("intake_requests", {
+	id: integer().primaryKey({ autoIncrement: true }).notNull(),
+	organizationId: integer("organization_id").notNull().default(1),
+	channel: text().notNull().default("telegram"),
+	externalRef: text("external_ref").notNull().default(""),
+	externalUpdateId: text("external_update_id").notNull().default(""),
+	contact: text().notNull().default(""),
+	message: text().notNull().default(""),
+	desiredService: text("desired_service").notNull().default(""),
+	desiredTime: text("desired_time").notNull().default(""),
+	status: text().notNull().default("new"),
+	assignedEmail: text("assigned_email").notNull().default(""),
+	linkedBookingId: integer("linked_booking_id").notNull().default(0),
+	linkedPatientId: text("linked_patient_id").notNull().default(""),
+	createdAt: text("created_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+	updatedAt: text("updated_at").notNull().default(sql`(CURRENT_TIMESTAMP)`),
+},
+table => [
+	index("intake_requests_org_status_idx").on(table.organizationId, table.status, table.createdAt),
+	index("intake_requests_dedup_idx").on(table.organizationId, table.channel, table.externalUpdateId),
+	check("intake_requests_status_check", sql.raw("`status` IN ('new','in_progress','converted','declined')")),
+]);
+
 export const businessDocuments = sqliteTable("business_documents", {
 	id: integer().primaryKey({ autoIncrement: true }).notNull(),
 	organizationId: integer("organization_id").notNull().references(() => organizations.id),

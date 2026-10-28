@@ -3,6 +3,7 @@
 
 import { hashToken, newSessionToken } from "./auth";
 import type { PatientIdentityScope } from "./patient-auth";
+import { captureIntakeRequest, INTAKE_ACK_REPLY } from "./intake-requests";
 
 export const TELEGRAM_LINK_TTL_SECONDS = 15 * 60;
 const STALE_LINK_REPLY = "Посилання застаріло. Відкрийте кабінет і натисніть «Підключити Telegram» ще раз.";
@@ -76,7 +77,7 @@ export async function unlinkPatientTelegram(db:D1Database, organizationId:number
   ).bind(organizationId, chatId).run().catch(() => undefined);
 }
 
-interface TelegramUpdate { message?: { chat?: { id?:number|string }; text?:string } }
+interface TelegramUpdate { update_id?:number|string; message?: { chat?: { id?:number|string }; text?:string } }
 
 export async function handleTelegramUpdate(
   db:D1Database,
@@ -93,9 +94,21 @@ export async function handleTelegramUpdate(
   }
 
   const m = text.match(/^\/start\s+([a-f0-9]{64})$/);
-  if (!m) return { chatId, reply:"Щоб підключити сповіщення, відкрийте кабінет на сайті й натисніть «Підключити Telegram»." };
-  const target = await consumeTelegramLinkToken(db, m[1]);
-  if (!target || target.organizationId !== organizationId) return { chatId, reply:STALE_LINK_REPLY };
-  await linkPatientTelegram(db, target.organizationId, target.phone, target.identity, chatId, target.patientId);
-  return { chatId, reply:"✅ Готово! Сповіщення про ваші дослідження надходитимуть у цей чат." };
+  if (m) {
+    const target = await consumeTelegramLinkToken(db, m[1]);
+    if (!target || target.organizationId !== organizationId) return { chatId, reply:STALE_LINK_REPLY };
+    await linkPatientTelegram(db, target.organizationId, target.phone, target.identity, chatId, target.patientId);
+    return { chatId, reply:"✅ Готово! Сповіщення про ваші дослідження надходитимуть у цей чат." };
+  }
+
+  // Інша команда (зокрема /start без токена) — лише підказка, не заявка.
+  if (/^\//.test(text)) {
+    return { chatId, reply:"Щоб підключити сповіщення, відкрийте кабінет на сайті й натисніть «Підключити Telegram»." };
+  }
+
+  // Вільний текст пацієнта — фіксуємо як вхідну заявку на запис (ідемпотентно за
+  // update_id), щоб звернення не губилося. Реєстратор опрацює її на сайті.
+  const updateId = update?.update_id != null ? String(update.update_id) : "";
+  await captureIntakeRequest(db, { channel:"telegram", externalRef:chatId, externalUpdateId:updateId, contact:chatId, message:text }, organizationId);
+  return { chatId, reply:INTAKE_ACK_REPLY };
 }

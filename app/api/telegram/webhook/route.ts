@@ -16,6 +16,7 @@ export async function POST(request: Request) {
   if (!organizationId) return new Response("forbidden", { status: 401 });
 
   const update = await request.json().catch(() => ({})) as {
+    update_id?:number|string;
     message?: { chat?: { id?:number|string }; text?:string };
     callback_query?: {
       id?:string;
