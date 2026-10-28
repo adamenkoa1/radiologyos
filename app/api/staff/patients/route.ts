@@ -22,7 +22,7 @@ const BOOKING_COLUMNS = `id, code, name, phone_normalized AS phoneNormalized, pa
   performed_at AS performedAt, created_at AS createdAt`;
 
 const PROFILE_COLUMNS = `patient_id AS patientId, phone_normalized AS phoneNormalized, display_name AS displayName,
-  birth_year AS birthYear, birth_date AS birthDate, email, address,
+  birth_year AS birthYear, birth_date AS birthDate, sex, email, address,
   tags, notes, do_not_contact AS doNotContact,
   contrast_alert AS contrastAlert, allergy_note AS allergyNote,
   updated_by AS updatedBy, updated_at AS updatedAt`;
@@ -200,13 +200,13 @@ export async function PUT(request: Request) {
     }
     const updated = await db.prepare(
       `UPDATE patient_profiles SET
-         phone_normalized = ?, display_name = ?, birth_year = ?, birth_date = ?,
+         phone_normalized = ?, display_name = ?, birth_year = ?, birth_date = ?, sex = ?,
          email = ?, address = ?, tags = ?, notes = ?, do_not_contact = ?,
          contrast_alert = ?, allergy_note = ?,
          updated_by = ?, updated_at = CURRENT_TIMESTAMP
        WHERE organization_id = ? AND patient_id = ?`
     ).bind(
-      profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate,
+      profile.phoneNormalized, profile.displayName, profile.birthYear, profile.birthDate, profile.sex,
       profile.email, profile.address, profile.tags, profile.notes, profile.doNotContact,
       profile.contrastAlert, profile.allergyNote,
       member.email, ctx.organizationId, patientId,
@@ -232,11 +232,11 @@ export async function PUT(request: Request) {
   const newPatientId = crypto.randomUUID().replace(/-/g, "").toLowerCase();
   await db.prepare(
     `INSERT INTO patient_profiles
-       (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, email, address, tags, notes, do_not_contact, contrast_alert, allergy_note, updated_by, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
+       (patient_id, organization_id, phone_normalized, display_name, birth_year, birth_date, sex, email, address, tags, notes, do_not_contact, contrast_alert, allergy_note, updated_by, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`
   ).bind(
     newPatientId, ctx.organizationId, profile.phoneNormalized, profile.displayName,
-    profile.birthYear, profile.birthDate, profile.email, profile.address,
+    profile.birthYear, profile.birthDate, profile.sex, profile.email, profile.address,
     profile.tags, profile.notes, profile.doNotContact, profile.contrastAlert, profile.allergyNote, member.email,
   ).run();
 

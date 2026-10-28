@@ -716,6 +716,7 @@ export const patientProfiles = sqliteTable("patient_profiles", {
 	displayName: text("display_name").notNull().default(""),
 	birthYear: integer("birth_year").notNull().default(0),
 	birthDate: text("birth_date").notNull().default(""),
+	sex: text().notNull().default(""),
 	email: text().notNull().default(""),
 	address: text().notNull().default(""),
 	tags: text().notNull().default(""),

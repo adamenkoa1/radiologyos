@@ -19,10 +19,16 @@ export type PatientBookingRow = {
   performedAt:string; createdAt:string;
 };
 
+export type PatientSex = "" | "female" | "male" | "other";
+export const PATIENT_SEX_VALUES:readonly PatientSex[] = ["", "female", "male", "other"];
+export const PATIENT_SEX_LABELS:Record<PatientSex,string> = {
+  "": "Не вказано", female: "Жіноча", male: "Чоловіча", other: "Інша",
+};
+
 export type PatientProfile = {
   patientId?:string;
   phoneNormalized:string; displayName:string; birthYear:number;
-  birthDate:string; email:string; address:string;
+  birthDate:string; sex:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number;
   contrastAlert:number; allergyNote:string;
   updatedBy:string; updatedAt:string;
@@ -174,7 +180,7 @@ export function segmentCounts(summaries:PatientSummary[]):Record<PatientSegment,
 }
 
 export type ProfileValidation =
-  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; birthDate:string; email:string; address:string; tags:string; notes:string; doNotContact:number; contrastAlert:number; allergyNote:string } }
+  | { ok:true; profile:{ phoneNormalized:string; displayName:string; birthYear:number; birthDate:string; sex:PatientSex; email:string; address:string; tags:string; notes:string; doNotContact:number; contrastAlert:number; allergyNote:string } }
   | { ok:false; error:string };
 
 export function sanitizeProfile(input:unknown):ProfileValidation {
@@ -200,7 +206,12 @@ export function sanitizeProfile(input:unknown):ProfileValidation {
     return { ok:false, error:"Рік народження вкажіть у форматі РРРР" };
   }
   birthYear = birthYear || 0;
-  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, birthDate, email:emailRaw, address, tags, notes, doNotContact, contrastAlert, allergyNote } };
+  const sexRaw = String(raw.sex ?? "").trim().toLowerCase();
+  if (sexRaw && !PATIENT_SEX_VALUES.includes(sexRaw as PatientSex)) {
+    return { ok:false, error:"Некоректне значення статі пацієнта" };
+  }
+  const sex = sexRaw as PatientSex;
+  return { ok:true, profile:{ phoneNormalized, displayName, birthYear, birthDate, sex, email:emailRaw, address, tags, notes, doNotContact, contrastAlert, allergyNote } };
 }
 
 export type CommunicationValidation =

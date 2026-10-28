@@ -21,10 +21,16 @@ type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
 type StaffInfo = { email:string; displayName:string; role:StaffRole };
 type PatientProfile = {
   patientId:string; phoneNormalized:string; displayName:string; birthYear:number;
-  birthDate:string; email:string; address:string;
+  birthDate:string; sex:string; email:string; address:string;
   tags:string; notes:string; doNotContact:number;
   contrastAlert:number; allergyNote:string; updatedBy:string; updatedAt:string;
 };
+const SEX_OPTIONS:ReadonlyArray<{ value:string; label:string }> = [
+  { value:"", label:"Не вказано" },
+  { value:"female", label:"Жіноча" },
+  { value:"male", label:"Чоловіча" },
+  { value:"other", label:"Інша" },
+];
 type PatientBooking = {
   id:number; code:string; service:string; serviceCode:string; equipmentId:string;
   desiredDate:string; desiredTime:string; status:string; patientCategory:string;
@@ -170,6 +176,7 @@ export default function PatientsPage() {
       phone:card.phone,
       displayName:String(data.get("displayName") || ""),
       birthDate:String(data.get("birthDate") || ""),
+      sex:String(data.get("sex") || ""),
       email:String(data.get("email") || ""),
       address:String(data.get("address") || ""),
       tags:String(data.get("tags") || ""),
@@ -197,6 +204,7 @@ export default function PatientsPage() {
       phone:String(data.get("phone") || ""),
       displayName:String(data.get("displayName") || ""),
       birthDate:String(data.get("birthDate") || ""),
+      sex:String(data.get("sex") || ""),
       email:String(data.get("email") || ""),
       address:String(data.get("address") || ""),
       tags:String(data.get("tags") || ""),
@@ -332,6 +340,7 @@ export default function PatientsPage() {
             <label><span>ПІБ *</span><input name="displayName" maxLength={120} required placeholder="Прізвище Імʼя По батькові"/></label>
             <label><span>Телефон *</span><input name="phone" required inputMode="tel" placeholder="+380 97 000 00 00"/></label>
             <label><span>Дата народження</span><input name="birthDate" type="date" max="2100-12-31" min="1900-01-01"/></label>
+            <label><span>Стать</span><select name="sex" defaultValue="">{SEX_OPTIONS.map((o)=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
             <label><span>Email</span><input name="email" type="email" placeholder="name@example.com"/></label>
             <label className="crmWide"><span>Адреса</span><input name="address" maxLength={200} placeholder="Місто, вулиця, будинок"/></label>
             <label><span>Теги (через кому)</span><input name="tags" maxLength={200} placeholder="VIP, потребує супроводу"/></label>
@@ -355,7 +364,7 @@ export default function PatientsPage() {
         </div> : <>
           <header className="protocolEditorHead">
             <div>
-              <p className="eyebrow">CRM · {card.patient?.visits || card.bookings.length} візит(и){card.profile?.birthDate ? ` · нар. ${formatDate(card.profile.birthDate)}` : card.profile?.birthYear ? ` · ${card.profile.birthYear} р.н.` : ""}{card.patientId ? "" : " · legacy"}</p>
+              <p className="eyebrow">CRM · {card.patient?.visits || card.bookings.length} візит(и){card.profile?.birthDate ? ` · нар. ${formatDate(card.profile.birthDate)}` : card.profile?.birthYear ? ` · ${card.profile.birthYear} р.н.` : ""}{card.profile?.sex ? ` · ${SEX_OPTIONS.find((o)=>o.value===card.profile?.sex)?.label || ""}` : ""}{card.patientId ? "" : " · legacy"}</p>
               <h2>{card.profile?.displayName || card.patient?.name || "Без імені"}</h2>
               <p><a href={`tel:${card.phone}`}>{displayPhone(card.phone)}</a>{card.patient?.category ? ` · ${categoryLabels[card.patient.category] || card.patient.category}` : ""}</p>
               {(card.profile?.email || card.profile?.address) && <p className="crmContactLine">{card.profile?.email}{card.profile?.email && card.profile?.address ? " · " : ""}{card.profile?.address}</p>}
@@ -395,6 +404,7 @@ export default function PatientsPage() {
             <form onSubmit={(e)=>{e.preventDefault();void saveProfile(e.currentTarget);}}>
               <label><span>ПІБ</span><input name="displayName" maxLength={120} defaultValue={card.profile?.displayName || card.patient?.name || ""}/></label>
               <label><span>Дата народження</span><input name="birthDate" type="date" max="2100-12-31" min="1900-01-01" defaultValue={card.profile?.birthDate || ""}/></label>
+              <label><span>Стать</span><select name="sex" defaultValue={card.profile?.sex || ""}>{SEX_OPTIONS.map((o)=><option key={o.value} value={o.value}>{o.label}</option>)}</select></label>
               <label><span>Email</span><input name="email" type="email" defaultValue={card.profile?.email || ""} placeholder="name@example.com"/></label>
               <label className="crmWide"><span>Адреса</span><input name="address" maxLength={200} defaultValue={card.profile?.address || ""} placeholder="Місто, вулиця, будинок"/></label>
               <label><span>Теги (через кому)</span><input name="tags" maxLength={200} defaultValue={card.profile?.tags || ""} placeholder="VIP, потребує супроводу"/></label>
