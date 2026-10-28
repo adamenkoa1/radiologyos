@@ -10,6 +10,14 @@ if [[ ! -d "${MIGRATIONS_DIR}" ]]; then
   exit 1
 fi
 
+# Fail closed on an unreplaced D1 id placeholder (prod: REPLACE_WITH_YOUR_D1_DATABASE_ID,
+# staging: REPLACE_WITH_STAGING_D1_ID). This stops a migration/deploy from running
+# against a template config whose database_id was never filled in, before any D1 call.
+if [[ -f "${CONFIG}" ]] && grep -Eq 'REPLACE_WITH_[A-Z_]*D1[A-Z_]*ID' "${CONFIG}"; then
+  echo "✗ ${CONFIG} still has a placeholder D1 database_id. Replace it (staging: REPLACE_WITH_STAGING_D1_ID) with your real database id before migrating/deploying." >&2
+  exit 1
+fi
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 

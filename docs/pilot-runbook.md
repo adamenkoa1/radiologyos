@@ -22,9 +22,12 @@
 Продакшн і staging **не можна** ділити одну базу. Створіть окреме середовище:
 
 1. Створіть окрему D1: `npx wrangler d1 create radiologyos-staging`.
-2. Зробіть копію конфігу, напр. `wrangler.staging.toml`: той самий вміст, але
-   `database_id` зі staging-бази, окремі `routes`/домен staging, і **свої**
-   секрети. Не вказуйте продакшн-домен.
+2. Скопіюйте шаблон `wrangler.staging.example.toml` → `wrangler.staging.toml` і
+   замініть `REPLACE_WITH_STAGING_D1_ID` (та `REPLACE_WITH_STAGING_R2_BUCKET`,
+   `REPLACE_WITH_STAGING_HOSTNAME`) на свої staging-значення. Продакшн
+   `database_id`/домен у шаблон **не** скопійовано навмисно. Міграційний скрипт
+   `apply-d1-migrations-remote.sh` **зупиниться**, доки плейсхолдер id не
+   замінено (fail-closed).
 3. Секрети staging (Telegram-токени тощо) — лише тестові, у Cloudflare secrets
    або БД `organization_integration_settings`, **не** в Git.
 4. Застосуйте міграції на staging тим самим контрольованим шляхом:
