@@ -28,7 +28,7 @@ test("sanitizeProfile handles full DOB, email and address and derives the year",
   assert.match(src, /normalizeDob\(raw\.birthDate\)/);
   assert.match(src, /birthDate \? Number\(birthDate\.slice\(0, 4\)\)/);
   assert.match(src, /Некоректний email пацієнта/);
-  assert.match(src, /birthDate, email:emailRaw, address/);
+  assert.match(src, /birthDate, sex, email:emailRaw, address/);
 });
 
 test("buildPatientSummaries lists profile-only patients by immutable id", async () => {
@@ -51,8 +51,8 @@ test("patients page exposes an add-patient form and uses exact selection keys", 
 
 test("profile write persists contact fields and updates by patient_id", async () => {
   const route = await read("app/api/staff/patients/route.ts");
-  assert.match(route, /birth_date, email, address/);
-  assert.match(route, /birth_date AS birthDate, email, address/);
+  assert.match(route, /birth_date, sex, email, address/);
+  assert.match(route, /birth_date AS birthDate, sex, email, address/);
   assert.match(route, /WHERE organization_id = \? AND patient_id = \?/);
   assert.doesNotMatch(route, /ON CONFLICT\(organization_id, phone_normalized\)/);
 });
