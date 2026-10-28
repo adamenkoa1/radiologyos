@@ -133,6 +133,14 @@ export default function ProtocolsPage() {
   const [nsIndication,setNsIndication] = useState("");
   const [nsSaving,setNsSaving] = useState(false);
   const [nsError,setNsError] = useState("");
+  // Вхідні заявки (Telegram) — черга реєстратора прямо на робочому місці.
+  type IntakeRequest = { id:number; channel:string; contact:string; message:string; status:string; assignedEmail:string; linkedBookingId:number; createdAt:string };
+  const [intakeRequests,setIntakeRequests] = useState<IntakeRequest[]>([]);
+  const [intakeOpen,setIntakeOpen] = useState(false);
+  const [intakeBusy,setIntakeBusy] = useState(0);
+  const [confirmFor,setConfirmFor] = useState<number | null>(null);
+  const [confirmText,setConfirmText] = useState("");
+  const [pendingIntakeId,setPendingIntakeId] = useState<number | null>(null);
   // Дедуплікація пацієнта за телефоном: прив'язка до наявної картки або нова.
   const [nsPatientId,setNsPatientId] = useState("");
   type NsLookup = { status:"idle"|"loading"|"found"|"ambiguous"|"none"|"error"; label?:string; matches?:{patientId:string;displayName:string;birthDate:string}[]; message?:string };
@@ -224,7 +232,7 @@ export default function ProtocolsPage() {
   }
 
   useEffect(() => {
-    const timer = window.setTimeout(() => { void loadQueue(); void loadMacros(); void loadUserTemplates(); }, 0);
+    const timer = window.setTimeout(() => { void loadQueue(); void loadMacros(); void loadUserTemplates(); void loadIntakeRequests(); }, 0);
     return () => window.clearTimeout(timer);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -287,6 +295,40 @@ export default function ProtocolsPage() {
   }
   function unlinkPatient() { setNsPatientId(""); setNsLookup({ status:"idle" }); }
 
+  // ── Вхідні заявки (Telegram) ────────────────────────────────────────────────
+  async function loadIntakeRequests() {
+    try {
+      const res = await fetch("/api/staff/intake-requests?status=new", { cache:"no-store" });
+      if (!res.ok) { if (res.status === 403) setIntakeRequests([]); return; }
+      const data = await res.json() as { requests?:IntakeRequest[] };
+      const open = (data.requests || []).filter((r)=>r.status === "new" || r.status === "in_progress");
+      setIntakeRequests(open);
+    } catch { /* заявки — допоміжна панель; тихо ігноруємо збій */ }
+  }
+  async function patchIntake(id:number, body:Record<string,unknown>) {
+    setIntakeBusy(id);
+    try {
+      const res = await fetch("/api/staff/intake-requests", { method:"PATCH", headers:{"content-type":"application/json"}, body:JSON.stringify({ id, ...body }) });
+      return await res.json() as { ok?:boolean; status?:string; sent?:boolean; error?:string };
+    } catch { return { ok:false, error:"Помилка мережі" }; }
+    finally { setIntakeBusy(0); }
+  }
+  async function claimIntake(id:number) { const r = await patchIntake(id, { action:"claim" }); if (r.ok) await loadIntakeRequests(); }
+  async function declineIntake(id:number) { const r = await patchIntake(id, { action:"decline" }); if (r.ok) await loadIntakeRequests(); }
+  async function sendIntakeConfirmation(id:number) {
+    if (!confirmText.trim()) return;
+    const r = await patchIntake(id, { action:"confirm", text:confirmText });
+    if (r.sent) { setActionSuccess("Підтвердження надіслано в Telegram."); setConfirmFor(null); setConfirmText(""); }
+    else setActionError(r.error || "Не вдалося надіслати підтвердження (перевірте токен бота в налаштуваннях).");
+  }
+  function startStudyFromIntake(req:IntakeRequest) {
+    setPendingIntakeId(req.id);
+    setNewStudyOpen(true); setNsError("");
+    setNsIndication(req.message.slice(0, 400));
+    void claimIntake(req.id);
+    try { document.querySelector(".protocolNewStudyForm")?.scrollIntoView({ behavior:"smooth", block:"center" }); } catch { /* no-op */ }
+  }
+
   async function createWalkInStudy() {
     if (nsSaving) return;
     setNsError("");
@@ -301,6 +343,12 @@ export default function ProtocolsPage() {
       if (!response.ok || !data.ok || !data.bookingId) { setNsError(data.error || "Не вдалося створити дослідження"); return; }
       setNewStudyOpen(false);
       setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401"); setNsPatientId(""); setNsLookup({ status:"idle" });
+      // Якщо дослідження створене із заявки — звʼязуємо її (converted) й оновлюємо чергу заявок.
+      if (pendingIntakeId) {
+        await patchIntake(pendingIntakeId, { action:"link", bookingId:data.bookingId, patientId:nsPatientId });
+        setPendingIntakeId(null);
+        await loadIntakeRequests();
+      }
       await loadQueue();
       await openBooking(data.bookingId);
       setActionSuccess("Дослідження створено. Заповніть опис і висновок, збережіть чернетку.");
@@ -869,6 +917,25 @@ export default function ProtocolsPage() {
               <button type="button" className="primary" disabled={nsSaving} onClick={()=>void createWalkInStudy()}>{nsSaving ? "Створення…" : "Створити й відкрити опис"}</button>
               <button type="button" className="ghost" onClick={()=>{ setNewStudyOpen(false); setNsError(""); }}>Скасувати</button>
             </div>
+          </div>}
+          {canCreateStudy && intakeRequests.length > 0 && <div className="intakePanel">
+            <button type="button" className="intakePanelHead" aria-expanded={intakeOpen} onClick={()=>{ setIntakeOpen((v)=>!v); void loadIntakeRequests(); }}>📨 Вхідні заявки <b>{intakeRequests.length}</b></button>
+            {intakeOpen && <ul className="intakeList">
+              {intakeRequests.map((r)=><li key={r.id}>
+                <p className="intakeMsg">{r.message}</p>
+                <small>{r.channel} · {r.contact}{r.status==="in_progress" ? " · у роботі" : ""} · {formatDateTime(r.createdAt)}</small>
+                <div className="intakeActions">
+                  <button type="button" className="primary" disabled={intakeBusy===r.id} onClick={()=>startStudyFromIntake(r)}>Створити дослідження</button>
+                  {r.status!=="in_progress" && <button type="button" disabled={intakeBusy===r.id} onClick={()=>void claimIntake(r.id)}>В роботу</button>}
+                  <button type="button" onClick={()=>{ setConfirmFor(confirmFor===r.id ? null : r.id); setConfirmText(""); }}>Підтвердити</button>
+                  <button type="button" className="ghost" disabled={intakeBusy===r.id} onClick={()=>void declineIntake(r.id)}>Відхилити</button>
+                </div>
+                {confirmFor===r.id && <div className="intakeConfirm">
+                  <textarea value={confirmText} maxLength={600} placeholder="Текст підтвердження — без діагнозу, результатів чи зображень" onChange={(e)=>setConfirmText(e.target.value)}/>
+                  <button type="button" className="primary" disabled={!confirmText.trim() || intakeBusy===r.id} onClick={()=>void sendIntakeConfirmation(r.id)}>Надіслати в Telegram</button>
+                </div>}
+              </li>)}
+            </ul>}
           </div>}
         </div>
         <div className="protocolQueueList">
