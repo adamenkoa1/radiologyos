@@ -18,6 +18,36 @@ if [[ -f "${CONFIG}" ]] && grep -Eq 'REPLACE_WITH_[A-Z_]*D1[A-Z_]*ID' "${CONFIG}
   exit 1
 fi
 
+# Read the first database_name / database_id declared in a wrangler TOML config.
+toml_value() { grep -E "^[[:space:]]*$2[[:space:]]*=" "$1" | head -1 | sed -E 's/.*=[[:space:]]*"([^"]*)".*/\1/'; }
+
+PROD_CONFIG="wrangler.cloudflare.toml"
+
+# Guard 1: the selected database must match the database_name declared in the
+# chosen config. Stops migrating the wrong database because the arg and the
+# config disagree (e.g. passing radiologyos-staging at a config that still
+# declares the production database_name).
+if [[ -f "${CONFIG}" ]]; then
+  CONFIG_DB_NAME="$(toml_value "${CONFIG}" database_name)"
+  if [[ -n "${CONFIG_DB_NAME}" && "${CONFIG_DB_NAME}" != "${DATABASE}" ]]; then
+    echo "✗ Selected database '${DATABASE}' does not match database_name '${CONFIG_DB_NAME}' in ${CONFIG}. Refusing to migrate a database the selected config does not declare." >&2
+    exit 1
+  fi
+fi
+
+# Guard 2: only the production config may carry the production D1 id. Any other
+# config (e.g. wrangler.staging.toml) that points at the production database_id
+# is a dangerous misconfiguration — reject it before any D1 call. The production
+# id is read from the canonical prod config, not hardcoded, so id rotation is safe.
+if [[ -f "${CONFIG}" && -f "${PROD_CONFIG}" && "${CONFIG}" != "${PROD_CONFIG}" ]]; then
+  PROD_DB_ID="$(toml_value "${PROD_CONFIG}" database_id)"
+  THIS_DB_ID="$(toml_value "${CONFIG}" database_id)"
+  if [[ -n "${PROD_DB_ID}" && "${PROD_DB_ID}" != REPLACE_WITH_* && "${THIS_DB_ID}" == "${PROD_DB_ID}" ]]; then
+    echo "✗ ${CONFIG} points at the PRODUCTION D1 id (${PROD_DB_ID}). A non-production config must use its own database. Refusing to migrate production through a non-production config." >&2
+    exit 1
+  fi
+fi
+
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "${TMP_DIR}"' EXIT
 

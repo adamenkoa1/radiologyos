@@ -45,6 +45,61 @@ test("migration executor fails closed on an unreplaced D1 id placeholder before 
   assert.match(result.stderr, /placeholder D1 database id|REPLACE_WITH_STAGING_D1_ID/i);
 });
 
+test("guard rejects a non-production config that carries the production D1 id", async () => {
+  const scriptPath = fileURLToPath(new URL("../scripts/apply-d1-migrations-remote.sh", import.meta.url));
+  const prodConfig = await read("wrangler.cloudflare.toml");
+  const prodId = /database_id\s*=\s*"([^"]+)"/.exec(prodConfig)[1];
+
+  const dir = await mkdtemp(path.join(tmpdir(), "stg-"));
+  const migDir = path.join(dir, "drizzle");
+  await mkdir(migDir);
+  await writeFile(path.join(migDir, "0001_x.sql"), "SELECT 1;\n");
+  const cfg = path.join(dir, "wrangler.staging.toml");
+  // name matches the selected DATABASE (so guard 1 passes) but id is production's.
+  await writeFile(cfg, `database_name = "radiologyos-staging"\ndatabase_id = "${prodId}"\n`);
+
+  const result = spawnSync("bash", [scriptPath, "radiologyos-staging", cfg, migDir], {
+    encoding: "utf8",
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+  });
+  assert.notEqual(result.status, 0, "must refuse a staging config pointing at the production D1 id");
+  assert.match(result.stderr, /PRODUCTION D1 id/);
+});
+
+test("guard rejects a selected database that disagrees with the config's database_name", async () => {
+  const scriptPath = fileURLToPath(new URL("../scripts/apply-d1-migrations-remote.sh", import.meta.url));
+  const dir = await mkdtemp(path.join(tmpdir(), "stg-"));
+  const migDir = path.join(dir, "drizzle");
+  await mkdir(migDir);
+  await writeFile(path.join(migDir, "0001_x.sql"), "SELECT 1;\n");
+  const cfg = path.join(dir, "wrangler.staging.toml");
+  await writeFile(cfg, 'database_name = "radiologyos"\ndatabase_id = "00000000-aaaa-bbbb-cccc-000000000000"\n');
+
+  // Caller asks to migrate radiologyos-staging but the config declares radiologyos.
+  const result = spawnSync("bash", [scriptPath, "radiologyos-staging", cfg, migDir], {
+    encoding: "utf8",
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+  });
+  assert.notEqual(result.status, 0, "must refuse when arg and config database_name disagree");
+  assert.match(result.stderr, /does not match database_name/);
+});
+
+test("a well-formed staging config (own id, matching name) passes the config guards", async () => {
+  const scriptPath = fileURLToPath(new URL("../scripts/apply-d1-migrations-remote.sh", import.meta.url));
+  const dir = await mkdtemp(path.join(tmpdir(), "stg-"));
+  const migDir = path.join(dir, "drizzle");
+  await mkdir(migDir);
+  const cfg = path.join(dir, "wrangler.staging.toml");
+  await writeFile(cfg, 'database_name = "radiologyos-staging"\ndatabase_id = "11111111-2222-3333-4444-555555555555"\n');
+
+  const result = spawnSync("bash", [scriptPath, "radiologyos-staging", cfg, migDir], {
+    encoding: "utf8",
+    cwd: fileURLToPath(new URL("..", import.meta.url)),
+  });
+  // It will fail later reaching wrangler/npx, but NOT with any config-guard refusal.
+  assert.doesNotMatch(result.stderr, /PRODUCTION D1 id|does not match database_name|placeholder D1 database_id/);
+});
+
 test("the placeholder guard lives in the shared executor and the script stays valid bash", async () => {
   const script = await read("scripts/apply-d1-migrations-remote.sh");
   assert.match(script, /REPLACE_WITH_\[A-Z_\]\*D1\[A-Z_\]\*ID/, "guard regex covers prod + staging placeholders");
