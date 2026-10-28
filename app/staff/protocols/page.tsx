@@ -454,6 +454,19 @@ export default function ProtocolsPage() {
     setActionSuccess("Чернетку динаміки додано у висновок. Перевірте та відредагуйте перед підписом.");
   }
 
+  // Вхід із дашборду: ?queue=<awaiting|ready|signed|issued|all> вибирає вкладку
+  // черги, ?new=1 відкриває форму швидкого створення. Повторне використання
+  // наявних станів (filter / newStudyOpen) — без нової бізнес-логіки. Один раз.
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      const q = params.get("queue");
+      if (q === "awaiting" || q === "ready" || q === "signed" || q === "issued" || q === "all") setFilter(q);
+      if (params.get("new") === "1") { setNewStudyOpen(true); setNsError(""); }
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
+
   // Глибоке посилання ?studyId=<id> (або legacy ?open=<id>) відкриває протокол
   // одразу після завантаження черги — дія «Створити/відкрити протокол» із картки
   // пацієнта чи дошки веде саме сюди.
