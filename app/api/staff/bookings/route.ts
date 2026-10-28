@@ -17,6 +17,7 @@ import {
 import { projectBookingForStaff, staffBookingCapabilities } from "../../../../lib/staff-booking-projection";
 import { requireOrgContext } from "../../../../lib/tenant";
 import { nextBookingCode } from "../../../../lib/booking-code";
+import { serializeRegions, sanitizeContrast } from "../../../../lib/study-attributes";
 import { dbBinding } from "../../../../lib/db";
 
 function clean(value: unknown, max: number) {
@@ -69,6 +70,8 @@ export async function POST(request: Request) {
   if (!REFERRAL_TYPES.includes(referralType)) referralType = "none";
   const comment = clean(body.comment, 700);
   const clinicalIndication = clean(body.clinicalIndication, 400);
+  const anatomicalRegions = serializeRegions(body.anatomicalRegions);
+  const contrastMethod = sanitizeContrast(body.contrastMethod);
   let radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
   let radiographer = clean(body.assignedRadiographerEmail, 254).toLowerCase();
 
@@ -114,13 +117,15 @@ export async function POST(request: Request) {
       organization_id, code, name, phone, phone_normalized, service, service_code, equipment_id,
       duration_minutes, desired_date, desired_time, referral, patient_category, referral_type,
       payment_status, payment_amount, nszu_status, comment, clinical_indication, date_of_birth, patient_email,
+      anatomical_regions, contrast_method,
       assigned_radiologist_email, assigned_radiographer_email, status,
       consent_at, consent_version, consent_source
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,'confirmed',CURRENT_TIMESTAMP,?,?)`
   ).bind(
     ctx.organizationId, code, name, phone, phoneNormalized, service.title, service.code, service.equipmentId,
     service.durationMinutes, desiredDate, desiredTime, referral, category, referralType,
     paymentStatus, service.price, nszuStatus, comment, clinicalIndication, dob, email,
+    anatomicalRegions, contrastMethod,
     radiologist, radiographer, "2026-07-29", "staff",
   ).run();
 
@@ -172,6 +177,7 @@ export async function GET(request: Request) {
         assigned_radiologist_email AS assignedRadiologistEmail,
         assigned_radiographer_email AS assignedRadiographerEmail,
         performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
+        anatomical_regions AS anatomicalRegions, contrast_method AS contrastMethod,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         paid_amount AS paidAmount, external_reference AS externalReference,
         date_of_birth AS dateOfBirth,
@@ -246,6 +252,7 @@ export async function PATCH(request: Request) {
     edit?: {
       name?: string; phone?: string; email?: string; dob?: string;
       patientCategory?: string; serviceCode?: string; comment?: string; clinicalIndication?: string;
+      anatomicalRegions?: unknown; contrastMethod?: unknown;
     };
   };
   if (!Number.isInteger(body.id)) return Response.json({ error: "Некоректні дані" }, { status: 400 });
@@ -292,6 +299,10 @@ export async function PATCH(request: Request) {
     }
     if (typeof e.comment === "string") { sets.push("comment = ?"); binds.push(e.comment.trim().slice(0, 700)); }
     if (typeof e.clinicalIndication === "string") { sets.push("clinical_indication = ?"); binds.push(e.clinicalIndication.trim().slice(0, 400)); }
+    // Структуровані параметри дослідження — приймаємо лише коли ключ переданий,
+    // тож незгадані поля не затираються; значення валідуються канонічною таксономією.
+    if ("anatomicalRegions" in e) { sets.push("anatomical_regions = ?"); binds.push(serializeRegions(e.anatomicalRegions)); }
+    if ("contrastMethod" in e) { sets.push("contrast_method = ?"); binds.push(sanitizeContrast(e.contrastMethod)); }
     if (typeof e.serviceCode === "string") {
       const svc = await effectiveServiceByCode(db, e.serviceCode.trim().slice(0, 12), ctx.organizationId);
       const targetCategory = e.patientCategory === "military"

@@ -40,6 +40,7 @@ import type { PathologyFinding } from "../../../lib/clinical-library";
 import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-findings.json";
 import { SERVICES } from "../../../lib/catalog";
 import { EQUIPMENT_LABELS } from "../../../lib/labels";
+import { ANATOMICAL_REGIONS, CONTRAST_METHODS, regionLabels, contrastLabel, sanitizeContrast } from "../../../lib/study-attributes";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -58,6 +59,7 @@ type BookingDetail = {
   anatomicalRegionsCount:number; protocolNumber:string; protocolStatus:string;
   protocolReadyAt:string; protocolIssuedAt:string; assignedRadiologistEmail:string;
   clinicalIndication?:string; referral?:string; referralType?:string; referralNumber?:string;
+  anatomicalRegions?:string; contrastMethod?:string;
   dateOfBirth?:string; phone?:string;
 };
 type Revision = { version:number; number:string; status:string; savedBy:string; createdAt:string };
@@ -139,6 +141,8 @@ export default function ProtocolsPage() {
   const [nsDob,setNsDob] = useState("");
   const [nsService,setNsService] = useState("401");
   const [nsIndication,setNsIndication] = useState("");
+  const [nsRegions,setNsRegions] = useState<string[]>([]);
+  const [nsContrast,setNsContrast] = useState("");
   const [nsSaving,setNsSaving] = useState(false);
   const [nsError,setNsError] = useState("");
   // Вхідні заявки (Telegram) — черга реєстратора прямо на робочому місці.
@@ -345,12 +349,12 @@ export default function ProtocolsPage() {
     try {
       const response = await fetch("/api/staff/protocols/studies", {
         method: "POST", headers: { "content-type": "application/json" },
-        body: JSON.stringify({ name: nsName, phone: nsPhone, dob: nsDob, serviceCode: nsService, clinicalIndication: nsIndication, patientId: nsPatientId }),
+        body: JSON.stringify({ name: nsName, phone: nsPhone, dob: nsDob, serviceCode: nsService, clinicalIndication: nsIndication, anatomicalRegions: nsRegions, contrastMethod: nsContrast, patientId: nsPatientId }),
       });
       const data = await response.json() as { ok?: boolean; bookingId?: number; error?: string };
       if (!response.ok || !data.ok || !data.bookingId) { setNsError(data.error || "Не вдалося створити дослідження"); return; }
       setNewStudyOpen(false);
-      setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401"); setNsPatientId(""); setNsLookup({ status:"idle" });
+      setNsName(""); setNsPhone(""); setNsDob(""); setNsIndication(""); setNsService("401"); setNsRegions([]); setNsContrast(""); setNsPatientId(""); setNsLookup({ status:"idle" });
       // Якщо дослідження створене із заявки — звʼязуємо її (converted) й оновлюємо чергу заявок.
       if (pendingIntakeId) {
         await patchIntake(pendingIntakeId, { action:"link", bookingId:data.bookingId, patientId:nsPatientId });
@@ -963,6 +967,21 @@ export default function ProtocolsPage() {
                 {SERVICES.map((s)=><option key={s.code} value={s.code}>{s.title}</option>)}
               </select>
             </label>
+            <fieldset className="protocolStudyRegions">
+              <legend>Анатомічна ділянка (можна кілька)</legend>
+              <div className="protocolRegionGrid">
+                {ANATOMICAL_REGIONS.map((r)=><label key={r.key} className="protocolRegionCheck">
+                  <input type="checkbox" checked={nsRegions.includes(r.key)} onChange={(e)=>setNsRegions((prev)=>e.target.checked ? [...prev, r.key] : prev.filter((k)=>k!==r.key))}/>
+                  <span>{r.label}</span>
+                </label>)}
+              </div>
+            </fieldset>
+            <label><span>Контрастування</span>
+              <select value={nsContrast} onChange={(e)=>setNsContrast(e.target.value)}>
+                <option value="">Не вказано</option>
+                {CONTRAST_METHODS.map((c)=><option key={c.key} value={c.key}>{c.label}</option>)}
+              </select>
+            </label>
             <label><span>Клінічні дані / показання</span><textarea value={nsIndication} maxLength={400} onChange={(e)=>setNsIndication(e.target.value)}/></label>
             <div className="protocolNewStudyActions">
               <button type="button" className="primary" disabled={nsSaving} onClick={()=>void createWalkInStudy()}>{nsSaving ? "Створення…" : "Створити й відкрити опис"}</button>
@@ -1041,11 +1060,13 @@ export default function ProtocolsPage() {
             ? <p className="protocolReadonlyHint">Підписаний клінічний зміст незмінний. Після підпису доступна лише видача пацієнту.</p>
             : !canManage && <p className="protocolReadonlyHint">Режим перегляду. Редагувати протокол можуть лише лікар-рентгенолог або адміністратор.</p>}
 
-          {(booking.referral || booking.clinicalIndication || booking.referralNumber || booking.dateOfBirth) && <section className="protocolReferralBlock">
+          {(booking.referral || booking.clinicalIndication || booking.referralNumber || booking.dateOfBirth || regionLabels(booking.anatomicalRegions).length || sanitizeContrast(booking.contrastMethod)) && <section className="protocolReferralBlock">
             <p className="eyebrow">Направлення та клінічні відомості</p>
             <dl>
               {booking.dateOfBirth && <div><dt>Дата народження</dt><dd>{booking.dateOfBirth}</dd></div>}
               {booking.referral && <div><dt>Направлення</dt><dd>{booking.referral}{booking.referralNumber ? ` · № ${booking.referralNumber}` : ""}</dd></div>}
+              {regionLabels(booking.anatomicalRegions).length > 0 && <div><dt>Анатомічна ділянка</dt><dd>{regionLabels(booking.anatomicalRegions).join(", ")}</dd></div>}
+              {sanitizeContrast(booking.contrastMethod) && <div><dt>Контрастування</dt><dd>{contrastLabel(sanitizeContrast(booking.contrastMethod))}</dd></div>}
               {booking.clinicalIndication && <div><dt>Клінічні показання</dt><dd>{booking.clinicalIndication}</dd></div>}
             </dl>
           </section>}
@@ -1369,6 +1390,8 @@ export default function ProtocolsPage() {
               <div><dt>Пацієнт</dt><dd>{booking.name}</dd></div>
               <div><dt>Код запису</dt><dd>{booking.code}</dd></div>
               <div><dt>Дослідження</dt><dd>{booking.service}</dd></div>
+              {regionLabels(booking.anatomicalRegions).length > 0 && <div><dt>Анатомічна ділянка</dt><dd>{regionLabels(booking.anatomicalRegions).join(", ")}</dd></div>}
+              {sanitizeContrast(booking.contrastMethod) && <div><dt>Контрастування</dt><dd>{contrastLabel(sanitizeContrast(booking.contrastMethod))}</dd></div>}
               <div><dt>{booking.performedAt ? "Дата виконання" : "Запланована дата"}</dt><dd>{booking.performedAt ? formatDateTime(booking.performedAt) : `${booking.desiredDate} ${booking.desiredTime}`}</dd></div>
             </dl>
             {(doc.method || template.method) && <section><h2>Методика</h2><p>{doc.method || template.method}</p></section>}

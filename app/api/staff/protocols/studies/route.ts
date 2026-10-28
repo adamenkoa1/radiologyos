@@ -6,6 +6,7 @@ import { canManageBookings } from "../../../../../lib/staff-auth";
 import { requireOrgContext } from "../../../../../lib/tenant";
 import { dbBinding } from "../../../../../lib/db";
 import { audit } from "../../../../../lib/audit";
+import { serializeRegions, sanitizeContrast } from "../../../../../lib/study-attributes";
 
 // Швидке (walk-in) створення дослідження прямо з робочого місця лікаря
 // (/staff/protocols). Пацієнт уже присутній/ретроспективно — БЕЗ вибору слота,
@@ -42,6 +43,9 @@ export async function POST(request: Request) {
   const category = clean(body.patientCategory, 20) === "military" ? "military" : "civilian";
   const radiologist = clean(body.assignedRadiologistEmail, 254).toLowerCase();
   const patientId = clean(body.patientId, 64).toLowerCase();
+  // Структуровані параметри дослідження — лише з явного вводу, не з тексту.
+  const anatomicalRegions = serializeRegions(body.anatomicalRegions);
+  const contrastMethod = sanitizeContrast(body.contrastMethod);
 
   const service = await effectiveServiceByCode(db, serviceCode, ctx.organizationId);
   if (!name || !phoneNormalized || !service) {
@@ -69,11 +73,12 @@ export async function POST(request: Request) {
     `INSERT INTO bookings (
        organization_id, code, name, phone, phone_normalized, date_of_birth, service, service_code, equipment_id,
        duration_minutes, desired_date, desired_time, referral, patient_category, clinical_indication,
+       anatomical_regions, contrast_method,
        assigned_radiologist_email, status, performed_at, patient_id, consent_at, consent_source
-     ) VALUES (?,?,?,?,?,?,?,?,?,?, date('now'), strftime('%H:%M','now'), 'Walk-in / без онлайн-заявки', ?, ?, ?, 'completed', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP, 'staff_walkin')`
+     ) VALUES (?,?,?,?,?,?,?,?,?,?, date('now'), strftime('%H:%M','now'), 'Walk-in / без онлайн-заявки', ?, ?, ?, ?, ?, 'completed', CURRENT_TIMESTAMP, ?, CURRENT_TIMESTAMP, 'staff_walkin')`
   ).bind(
     ctx.organizationId, code, name, phone, phoneNormalized, dob, service.title, service.code, service.equipmentId,
-    service.durationMinutes, category, clinicalIndication, radiologist, patientId,
+    service.durationMinutes, category, clinicalIndication, anatomicalRegions, contrastMethod, radiologist, patientId,
   ).run();
   const bookingId = Number(result.meta.last_row_id);
 

@@ -34,6 +34,8 @@ export const bookings = sqliteTable("bookings", {
 	assignedRadiographerEmail: text("assigned_radiographer_email").notNull().default(""),
 	performedAt: text("performed_at").notNull().default(""),
 	anatomicalRegionsCount: integer("anatomical_regions_count").notNull().default(1),
+	anatomicalRegions: text("anatomical_regions").notNull().default(""),
+	contrastMethod: text("contrast_method").notNull().default(""),
 	protocolReadyAt: text("protocol_ready_at").notNull().default(""),
 	protocolIssuedAt: text("protocol_issued_at").notNull().default(""),
 	paidAmount: integer("paid_amount").notNull().default(0),

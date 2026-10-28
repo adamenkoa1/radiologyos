@@ -1,5 +1,6 @@
 import type { EquipmentType } from "./catalog";
 import { serviceByCode } from "./catalog";
+import { CONTRAST_METHOD_LABELS } from "./study-attributes";
 
 // Structured protocol builder. Templates live in code (like the service
 // catalog); a filled protocol document is stored per booking in the
@@ -87,10 +88,12 @@ const area = (key: string, label: string, normal?: string, placeholder?: string)
 const choice = (key: string, label: string, options: string[], normal?: string): ProtocolField =>
   ({ key, label, type: "select", options, normal });
 
+// Опції беруться з канонічної таксономії дослідження (lib/study-attributes),
+// щоб мітки контрастування мали єдине джерело й не розходились.
 const contrast: ProtocolField = choice(
   "contrast",
   "Контрастування",
-  ["Без контрастування", "Внутрішньовенне контрастування", "Пероральне контрастування"],
+  [...CONTRAST_METHOD_LABELS],
   "Без контрастування",
 );
 

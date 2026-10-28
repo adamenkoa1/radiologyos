@@ -5,6 +5,7 @@ import StaffWorkspaceShell from "../workspace-shell";
 import { SERVICES, groupedServices } from "../../../lib/catalog";
 import { todayInKyiv } from "../../../lib/booking-rules";
 import { EQUIPMENT_LABELS as EQUIP_UK } from "../../../lib/labels";
+import { ANATOMICAL_REGIONS, CONTRAST_METHODS, sanitizeRegions } from "../../../lib/study-attributes";
 
 // Дошка прийому заявок: ліворуч — черга вхідних (сайт + вручну), праворуч —
 // картка заявки з повним редагуванням (корекція) і діями в одному місці.
@@ -16,6 +17,7 @@ type Booking = {
   status:string; createdAt:string; dateOfBirth?:string; paymentStatus?:string;
   referralType?:string; referralNumber?:string; marketingSource?:string;
   paymentAmount?:number; paymentMethod?:string; protocolNumber?:string;
+  anatomicalRegions?:string; contrastMethod?:string;
 };
 type EventRow = { bookingId:number; action:string };
 type StaffInfo = { email:string; displayName:string; role:string };
@@ -52,7 +54,7 @@ function ageFrom(dob?:string) {
   return a >= 0 && a < 130 ? a : null;
 }
 const serviceGroups = groupedServices();
-const emptyForm = { name:"", phone:"", email:"", dob:"", patientCategory:"civilian", serviceCode:SERVICES[0].code, comment:"", date:"", time:"" };
+const emptyForm = { name:"", phone:"", email:"", dob:"", patientCategory:"civilian", serviceCode:SERVICES[0].code, comment:"", date:"", time:"", regions:[] as string[], contrastMethod:"" };
 type Form = typeof emptyForm;
 
 export default function IntakePage() {
@@ -138,7 +140,8 @@ export default function IntakePage() {
     if (!selected) return true;
     return form.name===(selected.name||"") && form.phone===(selected.phone||"") && form.email===(selected.patientEmail||"")
       && form.dob===(selected.dateOfBirth||"") && form.patientCategory===(selected.patientCategory||"civilian")
-      && form.serviceCode===(selected.serviceCode||SERVICES[0].code) && form.comment===(selected.comment||"");
+      && form.serviceCode===(selected.serviceCode||SERVICES[0].code) && form.comment===(selected.comment||"")
+      && form.regions.join(",")===sanitizeRegions(selected.anatomicalRegions).join(",") && form.contrastMethod===(selected.contrastMethod||"");
   }
   function guardUnsaved() {
     return !(selected && !creating && !formMatchesSelected()) || window.confirm("Незбережені зміни буде втрачено. Продовжити?");
@@ -154,6 +157,7 @@ export default function IntakePage() {
       dob:b.dateOfBirth || "", patientCategory:b.patientCategory || "civilian",
       serviceCode:b.serviceCode || SERVICES[0].code, comment:b.comment || "",
       date:b.desiredDate || "", time:b.desiredTime || "",
+      regions:sanitizeRegions(b.anatomicalRegions), contrastMethod:b.contrastMethod || "",
     });
   }
 
@@ -176,6 +180,7 @@ export default function IntakePage() {
   }, [data, filter, query]);
 
   const set = (k:keyof Form) => (e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>) => setForm(f => ({ ...f, [k]:e.target.value }));
+  const toggleRegion = (key:string, on:boolean) => setForm(f => ({ ...f, regions:on ? [...f.regions, key] : f.regions.filter(k => k!==key) }));
 
   async function patch(bodyExtra:Record<string,unknown>, okMsg:string) {
     if (!selected) return;
@@ -194,7 +199,7 @@ export default function IntakePage() {
   }
 
   function saveEdits() {
-    void patch({ edit:{ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, comment:form.comment } }, "Заявку скориговано");
+    void patch({ edit:{ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, comment:form.comment, anatomicalRegions:form.regions, contrastMethod:form.contrastMethod } }, "Заявку скориговано");
   }
   function confirmBooking() { void patch({ confirm:true }, "Запис підтверджено — канал зв’язку опрацьовано"); }
   function cancelBooking() { if (window.confirm("Скасувати заявку?")) void patch({ status:"cancelled" }, "Скасовано"); }
@@ -205,7 +210,7 @@ export default function IntakePage() {
     try {
       const res = await fetch("/api/staff/bookings", {
         method:"POST", headers:{"content-type":"application/json","idempotency-key":crypto.randomUUID()},
-        body:JSON.stringify({ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, date:form.date, time:form.time, comment:form.comment, referralType:"none" }),
+        body:JSON.stringify({ name:form.name, phone:form.phone, email:form.email, dob:form.dob, patientCategory:form.patientCategory, serviceCode:form.serviceCode, date:form.date, time:form.time, comment:form.comment, anatomicalRegions:form.regions, contrastMethod:form.contrastMethod, referralType:"none" }),
       });
       const d = await res.json().catch(()=>({})) as { error?:string; code?:string };
       if (!res.ok) { flash(d.error || "Не вдалося створити"); return; }
@@ -257,7 +262,7 @@ export default function IntakePage() {
         <section className="intakeDetail">
           {creating ? <>
             <div className="intakeDetailHead"><h2>Нова заявка (вручну)</h2><button className="intakeClose" onClick={()=>setCreating(false)}>✕</button></div>
-            <IntakeForm form={form} set={set} times={times} serviceGroups={serviceGroups} />
+            <IntakeForm form={form} set={set} toggleRegion={toggleRegion} times={times} serviceGroups={serviceGroups} />
             <div className="intakeActions">
               <button className="primary" disabled={busy || !form.name || !form.phone || !form.date || !form.time} onClick={()=>void createBooking()}>Створити й підтвердити</button>
               <button onClick={()=>setCreating(false)}>Скасувати</button>
@@ -307,7 +312,7 @@ export default function IntakePage() {
 
             {!readOnly && <details className="intakeEdit">
               <summary>Корекція заявки</summary>
-              <IntakeForm form={form} set={set} times={times} serviceGroups={serviceGroups} readOnly={readOnly} />
+              <IntakeForm form={form} set={set} toggleRegion={toggleRegion} times={times} serviceGroups={serviceGroups} readOnly={readOnly} />
               <div className="intakeActions">
                 <button className="primary" disabled={busy} onClick={saveEdits}>Зберегти зміни</button>
                 <button disabled={busy || !form.date || !form.time} onClick={reschedule}>Перенести на {form.date} {form.time}</button>
@@ -324,8 +329,9 @@ export default function IntakePage() {
   </StaffWorkspaceShell>;
 }
 
-function IntakeForm({ form, set, times, serviceGroups, readOnly=false }:{
+function IntakeForm({ form, set, toggleRegion, times, serviceGroups, readOnly=false }:{
   form:Form; set:(k:keyof Form)=>(e:React.ChangeEvent<HTMLInputElement|HTMLSelectElement|HTMLTextAreaElement>)=>void;
+  toggleRegion:(key:string, on:boolean)=>void;
   times:string[]; serviceGroups:Record<string,typeof SERVICES>; readOnly?:boolean;
 }) {
   return <div className="intakeForm">
@@ -343,6 +349,20 @@ function IntakeForm({ form, set, times, serviceGroups, readOnly=false }:{
     <label><span>Час</span><select value={form.time} disabled={readOnly} onChange={set("time")}>
       <option value="">—</option>
       {(times.includes(form.time) || !form.time ? times : [form.time, ...times]).map(t => <option key={t} value={t}>{t}</option>)}
+    </select></label>
+    <fieldset className="intakeWide intakeRegions" disabled={readOnly}>
+      <legend>Анатомічна ділянка (можна кілька)</legend>
+      <div className="intakeRegionGrid">
+        {ANATOMICAL_REGIONS.map(r => <label key={r.key} className="intakeRegionCheck">
+          <input type="checkbox" checked={form.regions.includes(r.key)} disabled={readOnly}
+            onChange={(e)=>toggleRegion(r.key, e.target.checked)}/>
+          <span>{r.label}</span>
+        </label>)}
+      </div>
+    </fieldset>
+    <label><span>Контрастування</span><select value={form.contrastMethod} disabled={readOnly} onChange={set("contrastMethod")}>
+      <option value="">Не вказано</option>
+      {CONTRAST_METHODS.map(c => <option key={c.key} value={c.key}>{c.label}</option>)}
     </select></label>
     <label className="intakeWide"><span>Коментар</span><textarea rows={2} value={form.comment} readOnly={readOnly} onChange={set("comment")} /></label>
   </div>;

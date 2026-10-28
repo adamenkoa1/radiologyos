@@ -110,6 +110,7 @@ export async function GET(request: Request) {
       `SELECT id, code, name, service, service_code AS serviceCode, equipment_id AS equipmentId,
         desired_date AS desiredDate, desired_time AS desiredTime, patient_category AS patientCategory,
         performed_at AS performedAt, anatomical_regions_count AS anatomicalRegionsCount,
+        anatomical_regions AS anatomicalRegions, contrast_method AS contrastMethod,
         protocol_number AS protocolNumber, protocol_status AS protocolStatus,
         protocol_ready_at AS protocolReadyAt, protocol_issued_at AS protocolIssuedAt,
         assigned_radiologist_email AS assignedRadiologistEmail,
