@@ -1,0 +1,63 @@
+# RadiologyOS — ПРИКЛАД конфігурації staging (НЕ продакшн).
+#
+# Це шаблон. Скопіюйте його у `wrangler.staging.toml` (не комітьте реальні id/секрети)
+# і заповніть власними staging-ресурсами у СВОЄМУ Cloudflare-акаунті. Продакшн-база
+# навмисно сюди НЕ скопійована — staging має власну окрему D1.
+#
+# Підготовка (команда робить у своєму Cloudflare-акаунті):
+#   1) npx wrangler d1 create radiologyos-staging
+#   2) Вставте отриманий id замість REPLACE_WITH_STAGING_D1_ID нижче.
+#   3) Створіть приватний staging R2-бакет і вкажіть його ім'я нижче.
+#   4) Налаштуйте окремий staging-домен/маршрут (не продакшн).
+#
+# Застосування міграцій на staging — ЯВНО вказуючи цей конфіг і staging-базу:
+#   bash scripts/apply-d1-migrations-remote.sh radiologyos-staging wrangler.staging.toml drizzle
+#
+# Міграційний скрипт ЗУПИНИТЬ роботу, доки REPLACE_WITH_STAGING_D1_ID не замінено
+# на справжній id (див. scripts/apply-d1-migrations-remote.sh).
+#
+# Деплой Worker на staging — також ЯВНО з цим конфігом:
+#   RADIOLOGYOS_DEPLOY_CONFIRM=DEPLOY npx wrangler deploy --keep-vars --config wrangler.staging.toml
+# (повний деплой-скрипт scripts/deploy-cloudflare.sh призначений для продакшну;
+#  staging розгортайте окремою командою вище або власним staging-воркфлоу).
+
+name = "radiologyos-staging"
+main = "dist/server/index.js"
+compatibility_date = "2026-03-24"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+
+# Окремий staging-домен/маршрут — замініть на власний. НЕ використовуйте
+# продакшн-домен, щоб staging не конкурував за той самий хост.
+routes = [
+  { pattern = "REPLACE_WITH_STAGING_HOSTNAME", custom_domain = true },
+]
+
+[triggers]
+crons = ["*/15 * * * *"]
+
+[assets]
+directory = "dist/client"
+binding = "ASSETS"
+run_worker_first = true
+html_handling = "none"
+
+[browser]
+binding = "BROWSER"
+
+# Окремий приватний staging-бакет (створіть власний; не продакшн-бакет).
+[[r2_buckets]]
+binding = "PRINTED_FORMS"
+bucket_name = "REPLACE_WITH_STAGING_R2_BUCKET"
+
+# Окрема staging-база D1. Залиште плейсхолдер, доки не вставите реальний id зі
+# своєї staging-бази. Перевірка міграцій/деплою зупиняється, поки він тут.
+[[d1_databases]]
+binding = "DB"
+database_name = "radiologyos-staging"
+database_id = "REPLACE_WITH_STAGING_D1_ID"
+migrations_dir = "drizzle"
+
+# Cloudflare Images — як і в продакшні, за замовчуванням вимкнено (платний план).
+# [images]
+# binding = "IMAGES"
