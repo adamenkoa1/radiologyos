@@ -1,0 +1,178 @@
+name: Staging D1 restore rehearsal
+
+# РУЧНИЙ workflow: репетиція відновлення D1 Time Travel на ТИМЧАСОВІЙ staging-базі
+# з синтетичними даними. Ніколи не торкається production і не чіпає основну
+# staging-базу — створює власну одноразову базу, відновлює її й видаляє.
+#
+# Запуск лише вручну (workflow_dispatch) з підтвердженням REHEARSE. Інертний,
+# доки STAGING_ENABLED != true у GitHub Environment `staging`.
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirmation:
+        description: Type REHEARSE to run the throwaway restore rehearsal
+        required: true
+        type: choice
+        default: CANCEL
+        options:
+          - CANCEL
+          - REHEARSE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: staging-restore-rehearsal
+  cancel-in-progress: false
+
+jobs:
+  rehearse:
+    name: Create throwaway D1, restore via Time Travel, verify, delete
+    if: ${{ vars.STAGING_ENABLED == 'true' && github.event.inputs.confirmation == 'REHEARSE' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    environment: staging
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Унікальне ім'я тимчасової бази цього прогону. Патерн навмисно відрізняється
+      # від продакшн-імені `radiologyos` і основної staging `radiologyos-staging`.
+      TEMP_DB: radiologyos-sr-rehearsal-${{ github.run_id }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 22.13.0
+          cache: npm
+
+      - name: Install dependencies deterministically
+        run: npm run install:ci
+
+      - name: Target guard — refuse production identifiers
+        # Цільова база має бути саме одноразовою. Ніколи не продакшн-ім'я і не
+        # основна staging-база. Продакшн id зчитуємо з канонічного конфігу.
+        run: |
+          set -euo pipefail
+          case "${TEMP_DB}" in
+            radiologyos|radiologyos-staging)
+              echo "✗ Refusing: temporary DB name must not be a real environment (${TEMP_DB})." >&2
+              exit 1 ;;
+          esac
+          case "${TEMP_DB}" in
+            *sr-rehearsal-*) : ;;
+            *) echo "✗ Refusing: temporary DB name does not match the rehearsal pattern." >&2; exit 1 ;;
+          esac
+          PROD_ID="$(grep -E '^[[:space:]]*database_id[[:space:]]*=' wrangler.cloudflare.toml | head -1 | sed -E 's/.*=[[:space:]]*"([^"]*)".*/\1/')"
+          echo "PROD_DB_ID=${PROD_ID}" >> "$GITHUB_ENV"
+          echo "Temporary DB: ${TEMP_DB}"
+
+      - name: Create the throwaway D1 database
+        # Записуємо прапорець created ДО будь-чого іншого, щоб cleanup видалив базу
+        # навіть якщо наступні кроки впадуть.
+        run: |
+          set -euo pipefail
+          npx wrangler d1 create "${TEMP_DB}" --json > /tmp/created.json || {
+            echo "create failed" >&2; cat /tmp/created.json || true; exit 1; }
+          echo "${TEMP_DB}" > .restore-temp-db
+          NEW_ID="$(node -e '
+            const p = JSON.parse(require("node:fs").readFileSync("/tmp/created.json","utf8"));
+            const id = p.uuid || p.database_id || p?.d1_databases?.[0]?.database_id || (Array.isArray(p) ? p[0]?.uuid : "") || "";
+            process.stdout.write(String(id));
+          ')"
+          test -n "${NEW_ID}"
+          echo "TEMP_DB_ID=${NEW_ID}" >> "$GITHUB_ENV"
+
+      - name: Refuse if the created database somehow carries the production id
+        run: |
+          set -euo pipefail
+          if [ -n "${PROD_DB_ID}" ] && [ "${TEMP_DB_ID}" = "${PROD_DB_ID}" ]; then
+            echo "✗ Created database id equals the PRODUCTION id. Aborting (cleanup will delete it)." >&2
+            exit 1
+          fi
+
+      - name: Render a temporary wrangler config for the throwaway DB
+        # Рендеримо конфіг з прикладу, підставляючи ТИМЧАСОВІ ім'я та id, щоб
+        # fail-closed guards міграційного виконавця проходили саме для цієї бази.
+        run: |
+          set -euo pipefail
+          sed \
+            -e "s|REPLACE_WITH_STAGING_D1_ID|${TEMP_DB_ID}|g" \
+            -e "s|REPLACE_WITH_STAGING_R2_BUCKET|rehearsal-${{ github.run_id }}|g" \
+            -e "s|REPLACE_WITH_STAGING_HOSTNAME|rehearsal.invalid|g" \
+            -e "s|radiologyos-staging|${TEMP_DB}|g" \
+            wrangler.staging.example.toml > wrangler.rehearsal.toml
+          grep -E '^(name|database_name|database_id) =' wrangler.rehearsal.toml
+
+      - name: Apply migrations to the throwaway DB
+        run: bash scripts/apply-d1-migrations-remote.sh "${TEMP_DB}" wrangler.rehearsal.toml drizzle
+
+      - name: Seed a synthetic marker and record a Time Travel bookmark
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute "${TEMP_DB}" --remote --config wrangler.rehearsal.toml \
+            --command "INSERT INTO patient_profiles (patient_id, organization_id, phone_normalized, display_name, updated_by) VALUES (lower(hex(randomblob(16))), 1, '380000000009', 'SYNTHETIC RESTORE REHEARSAL', 'rehearsal@example.com');"
+          npx wrangler d1 time-travel info "${TEMP_DB}" --json > /tmp/tt.json
+          BM="$(node -e '
+            const p = JSON.parse(require("node:fs").readFileSync("/tmp/tt.json","utf8"));
+            process.stdout.write(String(p.bookmark || p?.result?.bookmark || ""));
+          ')"
+          test -n "${BM}"
+          echo "BOOKMARK=${BM}" >> "$GITHUB_ENV"
+
+      - name: Mutate, then restore to the bookmark, then verify
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute "${TEMP_DB}" --remote --config wrangler.rehearsal.toml \
+            --command "DELETE FROM patient_profiles WHERE display_name = 'SYNTHETIC RESTORE REHEARSAL';"
+          npx wrangler d1 time-travel restore "${TEMP_DB}" --bookmark "${BOOKMARK}"
+          npx wrangler d1 execute "${TEMP_DB}" --remote --config wrangler.rehearsal.toml --json \
+            --command "SELECT COUNT(*) AS n FROM patient_profiles WHERE display_name = 'SYNTHETIC RESTORE REHEARSAL';" > /tmp/verify.json
+          node -e '
+            const p = JSON.parse(require("node:fs").readFileSync("/tmp/verify.json","utf8"));
+            const n = Number(p?.[0]?.results?.[0]?.n ?? 0);
+            if (n !== 1) { console.error("Restore rehearsal FAILED: synthetic row not recovered (n="+n+")"); process.exit(1); }
+            console.log("Restore rehearsal OK: synthetic row recovered after Time Travel restore.");
+          '
+          echo "REHEARSAL_RESULT=ok" >> "$GITHUB_ENV"
+
+      - name: Rehearsal summary
+        if: always()
+        run: |
+          {
+            echo "### D1 Time Travel restore rehearsal"
+            echo
+            echo "- Commit SHA: \`${GITHUB_SHA}\`"
+            echo "- Throwaway DB: \`${TEMP_DB}\`"
+            echo "- Result: ${REHEARSAL_RESULT:-failed-or-incomplete}"
+            echo "- Production DB was never targeted (dedicated throwaway database only)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Cleanup — delete ONLY the throwaway database (always)
+        if: always()
+        run: |
+          set -uo pipefail
+          if [ ! -f .restore-temp-db ]; then
+            echo "No throwaway database was recorded; nothing to delete."
+            exit 0
+          fi
+          NAME="$(cat .restore-temp-db)"
+          # Останній бар'єр: ніколи не видаляти реальні середовища чи продакшн id.
+          case "${NAME}" in
+            radiologyos|radiologyos-staging|"")
+              echo "✗ Refusing to delete '${NAME}': not a throwaway database." >&2
+              exit 1 ;;
+          esac
+          case "${NAME}" in
+            *sr-rehearsal-*) : ;;
+            *) echo "✗ Refusing to delete '${NAME}': does not match the rehearsal pattern." >&2; exit 1 ;;
+          esac
+          if [ -n "${TEMP_DB_ID:-}" ] && [ -n "${PROD_DB_ID:-}" ] && [ "${TEMP_DB_ID}" = "${PROD_DB_ID}" ]; then
+            echo "✗ Refusing to delete a database whose id matches production." >&2
+            exit 1
+          fi
+          echo "Deleting throwaway database ${NAME}…"
+          npx wrangler d1 delete "${NAME}" --skip-confirmation || npx wrangler d1 delete "${NAME}" -y || true
