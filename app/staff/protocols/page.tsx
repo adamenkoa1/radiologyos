@@ -39,6 +39,7 @@ import { renderLibraryFinding, activeParameters } from "../../../lib/clinical-li
 import type { PathologyFinding } from "../../../lib/clinical-library";
 import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-findings.json";
 import { SERVICES } from "../../../lib/catalog";
+import { EQUIPMENT_LABELS } from "../../../lib/labels";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -120,6 +121,13 @@ export default function ProtocolsPage() {
   const [aiLoading,setAiLoading] = useState(false);
   const [filter,setFilter] = useState<"awaiting"|"ready"|"signed"|"issued"|"all">("awaiting");
   const [query,setQuery] = useState("");
+  // Додаткові фільтри черги: модальність, виконавець, діапазон дат (клієнтський
+  // шар над уже tenant/роль-скоупованою серверною чергою — не розширює доступ).
+  const [fModality,setFModality] = useState("all");
+  const [fPerformer,setFPerformer] = useState("all");
+  const [fDateFrom,setFDateFrom] = useState("");
+  const [fDateTo,setFDateTo] = useState("");
+  const [filtersOpen,setFiltersOpen] = useState(false);
   const [bookingLoading,setBookingLoading] = useState(false);
   const [dirty,setDirty] = useState(false);
   // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
@@ -834,6 +842,19 @@ export default function ProtocolsPage() {
     ? findContradictions({ findings:doc.findings, conclusion:doc.conclusion, contrast:(doc.sections.parameters || {}).contrast })
     : [];
 
+  // Опції фільтрів беремо лише з наявної (вже скоупованої) черги — лікарю ніколи
+  // не пропонуємо модальність/виконавця поза його доступом.
+  const modalityOptions = useMemo(
+    () => Array.from(new Set(queue.map((i) => i.equipmentId).filter(Boolean))).sort(),
+    [queue]);
+  const performerOptions = useMemo(
+    () => Array.from(new Set(queue.map((i) => i.assignedRadiologistEmail).filter(Boolean))).sort(),
+    [queue]);
+  // Дата дослідження: виконане → performedAt, інакше заплановане → desiredDate.
+  const itemDate = (item:QueueItem) => (item.performedAt || item.desiredDate || "").slice(0, 10);
+  const filtersActive = fModality !== "all" || fPerformer !== "all" || Boolean(fDateFrom) || Boolean(fDateTo);
+  function resetFilters() { setFModality("all"); setFPerformer("all"); setFDateFrom(""); setFDateTo(""); }
+
   const visible = useMemo(() => queue
     .filter((item) => {
       if (filter === "awaiting") return !["ready","signed","issued"].includes(item.documentStatus);
@@ -842,8 +863,12 @@ export default function ProtocolsPage() {
       if (filter === "issued") return item.documentStatus === "issued";
       return true;
     })
-    .filter((item) => !query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase())),
-  [queue,filter,query]);
+    .filter((item) => !query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase()))
+    .filter((item) => fModality === "all" || item.equipmentId === fModality)
+    .filter((item) => fPerformer === "all" || item.assignedRadiologistEmail === fPerformer)
+    .filter((item) => { const d = itemDate(item); return !fDateFrom || (Boolean(d) && d >= fDateFrom); })
+    .filter((item) => { const d = itemDate(item); return !fDateTo || (Boolean(d) && d <= fDateTo); }),
+  [queue,filter,query,fModality,fPerformer,fDateFrom,fDateTo]);
 
   const counts = useMemo(() => ({
     awaiting:queue.filter((item) => !["ready","signed","issued"].includes(item.documentStatus)).length,
@@ -884,6 +909,32 @@ export default function ProtocolsPage() {
             <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
           </div>
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням" placeholder="Код, ПІБ, дослідження"/>
+          <div className="protocolQueueFilters">
+            <button type="button" className="protocolFilterToggle" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen((v)=>!v)}>
+              Фільтри{filtersActive ? <b> •</b> : ""}
+            </button>
+            {filtersActive && <button type="button" className="protocolFilterReset" onClick={resetFilters}>Скинути фільтри</button>}
+          </div>
+          {filtersOpen && <div className="protocolFilterPanel">
+            <label><span>Модальність</span>
+              <select value={fModality} onChange={(e)=>setFModality(e.target.value)} aria-label="Фільтр за модальністю">
+                <option value="all">Усі модальності</option>
+                {modalityOptions.map((m)=><option key={m} value={m}>{EQUIPMENT_LABELS[m] || m}</option>)}
+              </select>
+            </label>
+            <label><span>Виконавець</span>
+              <select value={fPerformer} onChange={(e)=>setFPerformer(e.target.value)} aria-label="Фільтр за виконавцем">
+                <option value="all">Усі виконавці</option>
+                {performerOptions.map((p)=><option key={p} value={p}>{p}</option>)}
+              </select>
+            </label>
+            <label><span>Дата від</span>
+              <input type="date" value={fDateFrom} max={fDateTo || undefined} onChange={(e)=>setFDateFrom(e.target.value)} aria-label="Дата дослідження від"/>
+            </label>
+            <label><span>Дата до</span>
+              <input type="date" value={fDateTo} min={fDateFrom || undefined} onChange={(e)=>setFDateTo(e.target.value)} aria-label="Дата дослідження до"/>
+            </label>
+          </div>}
           {canCreateStudy && <div className="protocolQueueActions">
             <button type="button" className="protocolNewStudyButton" aria-expanded={newStudyOpen} onClick={()=>{ setNewStudyOpen((v)=>!v); setNsError(""); }}>+ Нове дослідження</button>
             <a className="protocolQueueLink" href="/staff/book">Заплановане (розклад)</a>
@@ -939,7 +990,10 @@ export default function ProtocolsPage() {
           </div>}
         </div>
         <div className="protocolQueueList">
-          {visible.length === 0 ? <p className="empty">Немає досліджень у цій категорії.</p> : visible.map((item) => <button
+          {visible.length === 0 ? (query.trim() || filtersActive
+            ? <p className="empty">За цим запитом досліджень не знайдено. <button type="button" className="protocolInlineLink" onClick={()=>{ setQuery(""); resetFilters(); }}>Скинути пошук і фільтри</button></p>
+            : <p className="empty">Немає досліджень у цій категорії.</p>
+          ) : visible.map((item) => <button
             key={item.id}
             aria-current={selectedId === item.id ? "true" : undefined}
             className={`protocolQueueItem${selectedId === item.id ? " active":""}`}
