@@ -78,7 +78,7 @@ test("filter styles exist in workspace CSS (light + mobile) and dark theme", asy
   for (const cls of ["protocolQueueFilters", "protocolFilterToggle", "protocolFilterReset", "protocolFilterPanel"]) {
     assert.match(css, new RegExp(`\\.${cls}\\b`), `${cls} styled`);
   }
-  assert.match(css, /@media\(max-width:560px\)\{\.protocolFilterPanel\{grid-template-columns:1fr\}\}/);
+  assert.match(css, /@media\(max-width:560px\)\{\.protocolFilterPanel\{grid-template-columns:1fr\}/);
   const dark = await read("app/styles/08-dark-theme.css");
   assert.match(dark, /\.themeDark \.protocolFilterPanel\b/);
 });

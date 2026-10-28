@@ -45,6 +45,7 @@
 .themeDark .intakeActions button.primary,.themeDark .intakePanelHead b{background:#1c5a4a!important;color:#eafff8!important}
 .themeDark .protocolNewStudyForm{background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolNewStudyForm input,.themeDark .protocolNewStudyForm select,.themeDark .protocolNewStudyForm textarea{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
+.themeDark .protocolStudyRegions,.themeDark .intakeRegions{border-color:#22303a!important}.themeDark .protocolStudyRegions legend,.themeDark .intakeRegions legend,.themeDark .protocolRegionCheck,.themeDark .intakeRegionCheck{color:#aebeca!important}
 .themeDark .protocolFilterToggle{background:#0e151a!important;border-color:#26333d!important;color:#aebeca!important}.themeDark .protocolFilterToggle b{color:#8fd3c0!important}
 .themeDark .protocolFilterReset{color:#8fd3c0!important}
 .themeDark .protocolFilterPanel{background:#0e151a!important;border-color:#22303a!important}.themeDark .protocolFilterPanel label{color:#aebeca!important}.themeDark .protocolFilterPanel select,.themeDark .protocolFilterPanel input{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
