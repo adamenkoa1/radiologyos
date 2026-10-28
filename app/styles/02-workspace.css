@@ -287,6 +287,16 @@ a.dashStat:hover{border-color:#c9d6d0;transform:translateY(-1px)}
 .dashMcItem.violet{border-left-color:#7048c4}.dashMcItem.violet b{color:#5a37a3}
 @media(max-width:1000px){.dashMc{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:620px){.dashMc{grid-template-columns:repeat(2,1fr)}.dashMcItem b{font-size:22px}}
+/* Прямі входи робочого процесу: однорядкові кнопки з підписами. */
+.dashEntries{max-width:var(--dash-w);margin:0 auto 16px;display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.dashEntry{display:flex;align-items:center;justify-content:center;gap:7px;min-height:48px;padding:10px 12px;border-radius:12px;text-decoration:none;background:#fff;border:1px solid #e7ece9;color:#1b211e;transition:var(--dur-fast) var(--ease);text-align:center}
+.dashEntry:hover{transform:translateY(-1px);box-shadow:0 4px 14px rgba(20,40,35,.08);border-color:#89aca3}
+.dashEntry:focus-visible{outline:2px solid #0d5b50;outline-offset:2px}
+.dashEntry b{font-size:13px;font-weight:750}
+.dashEntry span{font-size:18px;line-height:1;color:#0d5b50}
+.dashEntry.new{background:#0d5b50;border-color:#0d5b50;color:#fff}.dashEntry.new span{color:#fff}
+@media(max-width:1000px){.dashEntries{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:620px){.dashEntries{grid-template-columns:repeat(2,1fr)}}
 /* Нові заявки — картки (TickTick-стиль) */
 .dashCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:10px}
 .dashCard{display:flex;flex-direction:column;gap:5px;padding:12px 13px;border:1px solid #f0d9b6;background:#fffaf1;border-radius:12px;animation:dashBlink 1.8s ease-in-out infinite}
@@ -354,6 +364,8 @@ details.dashAnalytics[open]>summary{margin-bottom:14px}
 .themeDark .patLink:hover{color:#7fd4dc}
 .themeDark .dashMcItem,.themeDark .dashChip{background:#121a20;border-color:#22303a;color:#cdd9df}
 .themeDark .dashMcItem b{color:#e6edf1}
+.themeDark .dashEntry{background:#121a20;border-color:#22303a;color:#cdd9df}.themeDark .dashEntry b{color:#e6edf1}.themeDark .dashEntry span{color:#2aa198}
+.themeDark .dashEntry.new{background:#1c5a4a;border-color:#1c5a4a;color:#eafff8}.themeDark .dashEntry.new b,.themeDark .dashEntry.new span{color:#eafff8}
 .themeDark .dashChip.on{background:#2aa198;border-color:#2aa198;color:#08201f}
 .themeDark .dashAnalytics{border-top-color:#22303a}
 /* Пульт — нові заявки з миготінням і підтвердженням у 1 клік */

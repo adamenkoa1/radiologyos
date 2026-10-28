@@ -373,6 +373,17 @@ export default function DashboardPage() {
     <>
       {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
 
+      {/* Прямі входи робочого процесу опису: створення → черга → перевірка →
+          видача → заявки. Самі маршрути вже є (права доступу — на боці сторінок);
+          лінки лише ведуть у потрібний стан без дублювання логіки. */}
+      <nav className="dashEntries" aria-label="Прямі входи робочого процесу">
+        <a className="dashEntry new" href="/staff/protocols?new=1"><span aria-hidden="true">＋</span><b>Нове дослідження</b></a>
+        <a className="dashEntry" href="/staff/protocols?queue=awaiting"><b>Черга описів</b></a>
+        <a className="dashEntry" href="/staff/protocols?queue=ready"><b>На перевірці</b></a>
+        <a className="dashEntry" href="/staff/protocols?queue=issued"><b>Видано</b></a>
+        <a className="dashEntry" href="/staff/intake"><b>Заявки</b></a>
+      </nav>
+
       {/* Стійкий робочий список: підтверджено, але сповіщення не дійшло —
           реєстратор має зателефонувати вручну, а не покладатись на зниклий тост. */}
       {needsCall.length > 0 &&

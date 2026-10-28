@@ -49,6 +49,7 @@ export const AUDIT_LABELS: Record<string, string> = {
   protocol_revision_viewed: "Переглянуто версію протоколу",
   protocol_addenda_viewed: "Переглянуто виправлення до протоколу",
   protocol_saved: "Збережено протокол",
+  protocol_signed: "Підписано протокол",
   protocol_issued: "Видано протокол",
   protocol_macro_created: "Створено макрос протоколу",
   protocol_macro_updated: "Оновлено макрос протоколу",
