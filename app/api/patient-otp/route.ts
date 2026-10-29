@@ -89,29 +89,23 @@ async function provePatientIdentity(
   phoneNormalized: string,
   body: { dob?: unknown; bookingCode?: unknown },
 ): Promise<ProvenPatientIdentity | null> {
-  const dob = normalizeDob(body.dob);
-  if (dob) {
-    // Спільна перевірка phone+DOB (fail-closed на неоднозначність). Тут ambiguous
-    // і none однаково не дають доказу — далі йде опак-відповідь без витоку.
-    const proof = await provePatientDobIdentity(db, PRIMARY_ORGANIZATION_ID, phoneNormalized, dob);
-    if (proof.status !== "ok") return null;
-    return {
-      organizationId: PRIMARY_ORGANIZATION_ID,
-      identity: { kind:"dob", value:dob },
-      patientId: proof.patientId,
-    };
-  }
-
+  // An exact booking code resolves a shared phone+DOB identity. When DOB is also
+  // supplied, bind all three facts together as the cabinet login does.
   const bookingCode = normalizeBookingCode(body.bookingCode);
   if (bookingCode) {
+    const dob = normalizeDob(body.dob);
+    const dobClause = dob ? " AND b.date_of_birth = ?" : "";
+    const bindings = dob
+      ? [PRIMARY_ORGANIZATION_ID, phoneNormalized, dob, bookingCode]
+      : [PRIMARY_ORGANIZATION_ID, phoneNormalized, bookingCode];
     const row = await db.prepare(
       `SELECT b.organization_id AS organizationId, b.patient_id AS patientId,
          COALESCE(p.phone_normalized, '') AS profilePhone
        FROM bookings b
        LEFT JOIN patient_profiles p
          ON p.organization_id = b.organization_id AND p.patient_id = b.patient_id
-       WHERE b.organization_id = ? AND b.phone_normalized = ? AND b.code = ? LIMIT 1`,
-    ).bind(PRIMARY_ORGANIZATION_ID, phoneNormalized, bookingCode).first<{
+       WHERE b.organization_id = ? AND b.phone_normalized = ?${dobClause} AND b.code = ? LIMIT 1`,
+    ).bind(...bindings).first<{
       organizationId:number; patientId:string; profilePhone:string;
     }>();
     if (!row) return null;
@@ -124,9 +118,21 @@ async function provePatientIdentity(
       patientId: row.patientId && row.profilePhone === phoneNormalized ? row.patientId : "",
     };
   }
+
+  const dob = normalizeDob(body.dob);
+  if (dob) {
+    // Shared phone+DOB remains fail-closed; the exact booking-code branch above
+    // is the supported way to select one visit without revealing the others.
+    const proof = await provePatientDobIdentity(db, PRIMARY_ORGANIZATION_ID, phoneNormalized, dob);
+    if (proof.status !== "ok") return null;
+    return {
+      organizationId: PRIMARY_ORGANIZATION_ID,
+      identity: { kind:"dob", value:dob },
+      patientId: proof.patientId,
+    };
+  }
   return null;
 }
-
 // Step 1: prove a known booking identity (phone+DOB or phone+booking code), then
 // deliver a possession challenge. Unknown identities receive the same neutral
 // response shape and never get a session/challenge row. The proof scope is
