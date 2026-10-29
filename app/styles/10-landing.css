@@ -120,7 +120,7 @@
   .rosFeatureGrid{grid-template-columns:1fr 1fr}
   .rosAudienceGrid{grid-template-columns:1fr}
   .rosPricing{grid-template-columns:1fr 1fr}
-  .rosTier.popular{transform:none}
+
   .rosCalc{grid-template-columns:1fr}
   .rosFooterCols{grid-template-columns:1fr 1fr}
 }
