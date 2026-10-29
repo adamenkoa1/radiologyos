@@ -172,7 +172,9 @@ export async function PATCH(request:Request) {
     return Response.json({ error:"Завдання не знайдено" }, { status:404 });
   }
 
-  const canEdit = ctx.member.role === "admin" || existing.assignedEmail === ctx.member.email || existing.createdBy === ctx.member.email;
+  const canEdit = ctx.member.role === "admin"
+    || (existing.sourceEntityType === "booking_followup" && ctx.member.role === "registrar")
+    || existing.assignedEmail === ctx.member.email || existing.createdBy === ctx.member.email;
   if (!canEdit) return Response.json({ error:"Немає прав змінювати це завдання" }, { status:403 });
   if (existing.source === "automation" && existing.status === "done" && body.status === "open") {
     return Response.json({ error:"Автоматичне завдання буде створено знову, якщо проблема все ще актуальна" }, { status:409 });
