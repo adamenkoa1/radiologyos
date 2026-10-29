@@ -279,6 +279,7 @@ export default function IntakePage() {
                 {contact === "telegram" && digits(selected.phone) && <a className="intakePatientLink" href={`tg://resolve?phone=${digits(selected.phone)}`}>Відкрити Telegram</a>}
                 {contact === "email" && selected.patientEmail && <a className="intakePatientLink" href={`mailto:${selected.patientEmail}`}>Написати email</a>}
                 {digits(selected.phone) && <a className="intakePatientLink" href={`/staff/patients?phone=${digits(selected.phone)}`}>Картка пацієнта →</a>}
+                {selected.status !== "cancelled" && selected.desiredDate && <a className="intakePatientLink" href={`/staff/appointments?date=${encodeURIComponent(selected.desiredDate)}&view=day`}>Календар на цей день →</a>}
                 {!readOnly && (selected.status==="new"||selected.status==="rescheduled") && <button className="intakeConfirm" disabled={busy} onClick={confirmBooking}>✓ Підтвердити</button>}
               </div>
             </div>
