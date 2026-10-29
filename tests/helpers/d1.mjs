@@ -228,6 +228,7 @@ export async function seedPatientSession(
   organizationId = 1,
   identity = null,
   patientId = "",
+  authMethod = "otp",
 ) {
   let scope = identity;
   if (!scope) {
@@ -246,9 +247,9 @@ export async function seedPatientSession(
   const tokenHash = createHash("sha256").update(rawToken, "utf8").digest("hex");
   await db.prepare(
     `INSERT INTO patient_sessions
-      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now', '+30 minutes'))`
-  ).bind(tokenHash, phoneNormalized, organizationId, scope.kind, scope.value, patientId).run();
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, auth_method, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', '+30 minutes'))`
+  ).bind(tokenHash, phoneNormalized, organizationId, scope.kind, scope.value, patientId, authMethod).run();
   return `rid_patient=${rawToken}`;
 }
 
