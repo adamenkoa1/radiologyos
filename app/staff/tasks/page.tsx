@@ -19,11 +19,13 @@ function todayKyiv() {
   return new Intl.DateTimeFormat("en-CA",{timeZone:"Europe/Kyiv",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date());
 }
 function sourceHref(task:Task) {
+  if(task.sourceEntityType==="booking_followup"&&task.bookingId) return `/staff?open=${task.bookingId}#bookings`;
   if(task.sourceEntityType==="inventory_item") return "/staff/inventory";
   if(task.sourceEntityType==="equipment_maintenance") return "/staff/maintenance";
   return "";
 }
 function sourceLabel(task:Task) {
+  if(task.sourceEntityType==="booking_followup") return "Відкрити запис";
   if(task.sourceEntityType==="inventory_item") return "Відкрити склад";
   if(task.sourceEntityType==="equipment_maintenance") return "Відкрити ТО";
   return "";
