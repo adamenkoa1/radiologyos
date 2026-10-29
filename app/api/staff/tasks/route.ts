@@ -78,6 +78,9 @@ export async function GET(request:Request) {
   if (status === "open" || status === "done") { where.push("t.status = ?"); binds.push(status); }
   if (mine) { where.push("t.assigned_email = ?"); binds.push(ctx.member.email); }
   addBookingVisibility(where,binds,ctx.member);
+  if (ctx.member.role !== "admin" && ctx.member.role !== "registrar") {
+    where.push("t.source_entity_type <> 'booking_followup'");
+  }
 
   const rows = await db.prepare(
     `SELECT t.id, t.title, t.details, t.status, t.priority,
@@ -156,10 +159,15 @@ export async function PATCH(request:Request) {
   if (!Number.isInteger(id) || id < 1) return Response.json({ error:"Некоректне завдання" }, { status:400 });
 
   const existing = await db.prepare(
-    `SELECT id, status, booking_id AS bookingId, assigned_email AS assignedEmail, created_by AS createdBy, source
+    `SELECT id, status, booking_id AS bookingId, assigned_email AS assignedEmail, created_by AS createdBy, source,
+            source_entity_type AS sourceEntityType
      FROM staff_tasks WHERE organization_id = ? AND id = ? LIMIT 1`
-  ).bind(ctx.organizationId,id).first<{id:number;status:string;bookingId:number|null;assignedEmail:string;createdBy:string;source:string}>();
+  ).bind(ctx.organizationId,id).first<{id:number;status:string;bookingId:number|null;assignedEmail:string;createdBy:string;source:string;sourceEntityType:string}>();
   if (!existing) return Response.json({ error:"Завдання не знайдено" }, { status:404 });
+  if (existing.sourceEntityType === "booking_followup"
+    && ctx.member.role !== "admin" && ctx.member.role !== "registrar") {
+    return Response.json({ error:"Завдання не знайдено" }, { status:404 });
+  }
   if (existing.bookingId && !(await canAccessBooking(db,ctx.member,existing.bookingId,ctx.organizationId))) {
     return Response.json({ error:"Завдання не знайдено" }, { status:404 });
   }
