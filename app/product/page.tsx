@@ -44,12 +44,10 @@ const faq = [
   { q:"Як дізнатися, який тариф мені підійде?", a:"Напишіть нам у WhatsApp — обговоримо формат роботи вашого закладу, потрібні можливості та умови підключення." },
   { q:"Скільки триває підключення?", a:"Термін і порядок підключення залежать від налаштувань закладу та потрібних модулів. Напишіть нам — уточнимо деталі." },
 
-  
   { q:"Наскільки захищені дані пацієнтів?", a:"Доступ — лише за ролями й паролями, кожна дія фіксується в журналі. Дані ізольовані по закладу; медичні реєстри зберігаються захищено." },
   { q:"Чи можна перенести пацієнтів з Excel або іншої програми?", a:"Так. Ми допоможемо імпортувати пацієнтів, послуги й ціни зі звичайних таблиць — переносити вручну не доведеться." },
   { q:"WhatsApp і SMS запрацюють одразу?", a:"Так, після підключення вашого шлюзу в налаштуваннях. До того нагадування ставляться в чергу й нічого не блокують." },
   { q:"Як уточнити умови оплати?", a:"Напишіть нам у WhatsApp — уточнимо вартість, спосіб оплати та порядок підключення." },
-
 ];
 
 export default function ProductPage() {
@@ -86,7 +84,7 @@ export default function ProductPage() {
       <div className="rosHeroCta">
         <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Написати у WhatsApp →</a>
       </div>
-      <p className="rosHeroNote">Залишились питання? <a href="https://wa.me/380972808899">Напишіть у WhatsApp</a></p>
+      <p className="rosHeroNote">Залишились питання? <a href={whatsappHref(contactMessage)}>Напишіть у WhatsApp</a></p>
     </section>
 
     <section className="rosIntegr">
@@ -188,7 +186,7 @@ export default function ProductPage() {
         </div>
         <div><b>Продукт</b><a href="#features">Можливості</a><a href="#calc">Розрахунок утрат</a><a href="#pricing">Тарифи</a><a href="#audience">Кому підходить</a></div>
         <div><b>Рішення</b><span>Госпітальна радіологія</span><span>Приватний КТ</span><span>Стоматологія</span><span>Клініка</span></div>
-        <div><b>Звʼязатися</b><a href="https://wa.me/380972808899">WhatsApp</a><a href="mailto:hello@radiologyos.tech">hello@radiologyos.tech</a><Link href="/">Сайт госпіталю</Link></div>
+        <div><b>Звʼязатися</b><a href={whatsappHref(contactMessage)}>WhatsApp</a><a href="mailto:hello@radiologyos.tech">hello@radiologyos.tech</a><Link href="/">Сайт госпіталю</Link></div>
       </div>
       <div className="rosFooterBottom"><span>© {new Date().getFullYear()} RadiologyOS</span><span>Єдина кодова база — заклад збирається з налаштувань і модулів.</span></div>
     </footer>
