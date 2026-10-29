@@ -1,5 +1,5 @@
-/* ================= Комерційний лендинг RadiologyOS (стиль Doctime) ================= */
-.rosLanding{--ros-bg:#f6f3ec;--ros-bg2:#ece7db;--ros-ink:#2b2621;--ros-muted:#6b655e;--ros-teal:#2e9e85;--ros-teal-deep:#256f60;--ros-orange:#e8794b;--ros-card:#fff;--ros-line:#e6e0d1;--ros-footer:#2b2621;background:var(--ros-bg);color:var(--ros-ink);font-family:var(--font-sans);line-height:1.5;letter-spacing:-.005em}
+/* ================= Product landing page — RadiologyOS ================= */
+.rosLanding{--ros-bg:#f4f7f5;--ros-bg2:#e9f1ec;--ros-ink:#182a24;--ros-muted:#5e7068;--ros-teal:#0c6b50;--ros-teal-deep:#084d3b;--ros-orange:#d88752;--ros-card:#fff;--ros-line:#d5e2da;--ros-footer:#10231d;background:var(--ros-bg);color:var(--ros-ink);font-family:var(--font-sans);line-height:1.5;letter-spacing:-.005em}
 .rosLanding *{box-sizing:border-box}
 .rosLanding h1,.rosLanding h2,.rosLanding h3{font-family:var(--font-serif);font-weight:600;letter-spacing:-.02em;margin:0;text-wrap:balance}
 .rosLanding a{color:inherit;text-decoration:none}
@@ -83,24 +83,12 @@
 /* pricing */
 .rosPricing{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:left;align-items:start}
 .rosTier{position:relative;background:var(--ros-card);border:1px solid var(--ros-line);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;box-shadow:0 10px 26px rgba(43,38,33,.05)}
-.rosTier.popular{background:var(--ros-teal);color:#fff;border-color:var(--ros-teal);transform:translateY(-8px);box-shadow:0 18px 40px rgba(37,111,96,.28)}
-.rosTierBadge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ros-orange);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:5px 14px;border-radius:999px;white-space:nowrap}
 .rosTierName{font-size:16px;font-weight:800}
 .rosTierWho{font-size:12.5px;color:var(--ros-muted);margin:4px 0 14px}
-.rosTier.popular .rosTierWho{color:#d8efe8}
-.rosTierPrice{display:flex;align-items:baseline;gap:6px}
-.rosTierPrice b{font-family:var(--font-serif);font-size:30px;line-height:1}
-.rosTierPrice span{font-size:12px;color:var(--ros-muted)}
-.rosTier.popular .rosTierPrice span{color:#d8efe8}
-.rosTierSeats{display:block;font-size:12.5px;font-weight:700;margin:6px 0 16px;color:#3f3a34}
-.rosTier.popular .rosTierSeats{color:#eaf6f2}
 .rosTier ul{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-direction:column;gap:9px;flex:1}
 .rosTier li{position:relative;padding-left:22px;font-size:13px;color:#3f3a34}
 .rosTier li::before{content:"✓";position:absolute;left:0;color:var(--ros-teal);font-weight:800}
-.rosTier.popular li{color:#eaf6f2}.rosTier.popular li::before{color:#fff}
 .rosTierBtn{justify-content:center;background:var(--ros-teal)}
-.rosTier.popular .rosTierBtn{background:#fff;color:var(--ros-teal-deep)}
-.rosTier.popular .rosTierBtn:hover{background:#eef7f4}
 .rosPricingNote{text-align:center;color:#9a9186;font-size:12.5px;margin:26px 0 0}
 
 /* faq */
@@ -132,7 +120,7 @@
   .rosFeatureGrid{grid-template-columns:1fr 1fr}
   .rosAudienceGrid{grid-template-columns:1fr}
   .rosPricing{grid-template-columns:1fr 1fr}
-  .rosTier.popular{transform:none}
+
   .rosCalc{grid-template-columns:1fr}
   .rosFooterCols{grid-template-columns:1fr 1fr}
 }
@@ -362,3 +350,65 @@
 @media(max-width:1200px){.serviceAssignmentRow{grid-template-columns:minmax(240px,2fr) repeat(3,minmax(130px,1fr))}.serviceAssignmentRow>div{grid-row:span 2}}
 @media(max-width:760px){.serviceAssignmentRow{grid-template-columns:1fr 1fr}.serviceAssignmentRow>div{grid-column:1/-1;grid-row:auto}}
 @media(max-width:520px){.serviceAssignmentRow{grid-template-columns:1fr}}
+/* product page availability and unpriced contact card */
+.rosPricingContact{grid-template-columns:minmax(0,620px);justify-content:center}
+.rosTierContact{width:100%;max-width:620px;margin-inline:auto;text-align:center}
+.rosTierContact p{color:var(--ros-muted);line-height:1.55}
+
+/* Product landing page: workflow-led layout inspired by common clinic CRM patterns */
+.rosHero{max-width:1220px;display:grid;grid-template-columns:minmax(0,1.08fr) minmax(320px,.92fr);gap:clamp(28px,5vw,68px);align-items:center;text-align:left;padding-top:clamp(56px,8vw,104px);padding-bottom:clamp(52px,7vw,86px)}
+.rosHeroCopy h1{font-size:clamp(34px,5.2vw,60px);line-height:1.04;margin:16px 0 18px}
+.rosHeroCopy h1 em{color:var(--ros-teal)}
+.rosHeroCopy>p{font-size:clamp(16px,2vw,18px);color:var(--ros-muted);max-width:610px;margin:0;line-height:1.6}
+.rosHeroCopy .rosHeroCta{margin:26px 0 12px}
+.rosHeroCopy .rosHeroNote{font-size:13px}
+.rosHeroPreview{background:linear-gradient(145deg,#173a2d,#0f251e);color:#f4fbf6;border:1px solid rgba(255,255,255,.1);border-radius:26px;padding:clamp(22px,3vw,34px);box-shadow:0 24px 64px rgba(16,35,29,.2);min-height:340px;display:flex;flex-direction:column;justify-content:space-between}
+.rosPreviewTop{display:flex;justify-content:space-between;gap:12px;color:#bad0c4;font-size:12px;font-weight:700}
+.rosPreviewTitle{display:flex;flex-direction:column;gap:5px;margin:38px 0 20px}
+.rosPreviewTitle b{font-size:24px;letter-spacing:-.02em}
+.rosPreviewTitle span,.rosPreviewFoot{font-size:12px;color:#afc6b9}
+.rosPreviewRows{display:flex;flex-direction:column;gap:10px}
+.rosPreviewRows>div{display:grid;grid-template-columns:12px minmax(0,1fr) auto;align-items:center;gap:10px;padding:14px 15px;border:1px solid rgba(223,243,231,.13);border-radius:12px;background:rgba(255,255,255,.055);font-size:14px}
+.rosPreviewRows>div span{color:#afc6b9;font-size:12px}
+.rosDot{width:9px;height:9px;border-radius:50%;background:#e2b96a}
+.rosDot.ready{background:#81c5a1}.rosDot.issued{background:#86b9d8}
+.rosPreviewFoot{margin-top:18px}
+.rosProofStrip{max-width:1220px}
+.rosProofStrip .rosChip{border-radius:12px;background:rgba(255,255,255,.72);font-weight:700}
+.rosComparisonSection{padding-top:clamp(48px,6vw,72px)}
+.rosComparisonWrap{overflow-x:auto;border:1px solid var(--ros-line);border-radius:18px;background:var(--ros-card);box-shadow:0 12px 32px rgba(16,35,29,.05);text-align:left}
+.rosComparison{width:100%;border-collapse:collapse;min-width:680px}
+.rosComparison th,.rosComparison td{padding:18px 20px;border-bottom:1px solid var(--ros-line);vertical-align:top;font-size:14px;line-height:1.5}
+.rosComparison thead th{background:#edf4ef;color:var(--ros-teal-deep);font-size:12px;text-transform:uppercase;letter-spacing:.06em}
+.rosComparison tbody tr:last-child th,.rosComparison tbody tr:last-child td{border-bottom:0}
+.rosComparison tbody th{width:20%;font-weight:800}
+.rosComparison td:last-child{color:var(--ros-teal-deep);font-weight:650}
+.rosProcess{list-style:none;display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;padding:0;margin:0;text-align:left}
+.rosProcess li{min-height:190px;border:1px solid var(--ros-line);background:var(--ros-card);border-radius:16px;padding:22px;display:flex;flex-direction:column;gap:24px}
+.rosProcessNumber{font-size:12px;font-weight:900;color:var(--ros-teal);letter-spacing:.1em}
+.rosProcess h3,.rosRoleCard h3{font-size:18px;margin:0 0 8px}
+.rosProcess p,.rosRoleCard p{font-size:13.5px;line-height:1.55;color:var(--ros-muted);margin:0}
+.rosRoleGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;text-align:left}
+.rosRoleCard{background:var(--ros-card);border:1px solid var(--ros-line);border-radius:16px;padding:24px}
+.rosStatusGrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;text-align:left}
+.rosStatusCard{padding:18px;background:var(--ros-card);border:1px solid var(--ros-line);border-radius:14px}
+.rosStatusCard b{font-size:14px}
+.rosStatusCard p{margin:8px 0 0;color:var(--ros-muted);font-size:12.5px;line-height:1.5}
+.rosPricingContact{grid-template-columns:minmax(0,620px);justify-content:center}
+.rosTierContact{width:100%;max-width:620px;margin-inline:auto;text-align:center}
+.rosTierContact p{color:var(--ros-muted);line-height:1.55}
+@media(max-width:960px){
+  .rosHero{grid-template-columns:1fr;max-width:900px}
+  .rosHeroPreview{min-height:300px}
+  .rosProcess{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .rosProcess li:last-child{grid-column:1/-1}
+  .rosStatusGrid{grid-template-columns:1fr 1fr}
+}
+@media(max-width:560px){
+  .rosHero{gap:26px;padding-top:40px}
+  .rosHeroPreview{min-height:280px;padding:20px;border-radius:18px}
+  .rosPreviewTitle{margin:24px 0 16px}
+  .rosRoleGrid,.rosProcess,.rosStatusGrid{grid-template-columns:1fr}
+  .rosProcess li,.rosProcess li:last-child{grid-column:auto;min-height:unset}
+  .rosComparison th,.rosComparison td{padding:14px}
+}

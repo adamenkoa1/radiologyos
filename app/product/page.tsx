@@ -5,39 +5,59 @@ import { useEffect, useState } from "react";
 
 const money = new Intl.NumberFormat("uk-UA");
 const whatsappHref = (message: string) => `https://wa.me/380972808899?text=${encodeURIComponent(message)}`;
-const contactMessage = "Добрий день! Хочу обговорити можливості й умови підключення RadiologyOS для свого закладу.";
+const contactMessage = "Добрий день! Хочу обговорити роботу RadiologyOS для відділення діагностики та доступні зараз можливості.";
+
+const proofItems = [
+  "Заявка й картка пацієнта",
+  "Черга досліджень",
+  "Протокол: чернетка → підпис → видача",
+  "Рольовий доступ і журнал подій",
+];
+
+const processSteps = [
+  { number:"01", title:"Заявка", text:"Плановий запис або walk-in потрапляє в робочу систему." },
+  { number:"02", title:"Пацієнт", text:"Заявка пов’язується з карткою пацієнта без тихого злиття дублікатів." },
+  { number:"03", title:"Дослідження", text:"Реєстратура бачить стан, обладнання та призначення." },
+  { number:"04", title:"Протокол", text:"Лікар готує опис, підписує його й передає на видачу." },
+  { number:"05", title:"Результат", text:"Видача фіксується в життєвому циклі документа та аудиті." },
+];
+
+const safetyItems = [
+  { title:"Ізоляція закладу", text:"Захищені запити обмежують дані організацією користувача." },
+  { title:"Перевірка ролей", text:"Сервер перевіряє право на дію, а не лише видимість кнопки." },
+  { title:"Незмінність підпису", text:"Підписаний протокол не можна непомітно переписати." },
+  { title:"Журнал подій", text:"Ключові дії фіксуються в окремому журналі аудиту." },
+];
+
+const roleCards = [
+  { title:"Реєстратура", text:"Опрацьовує заявки, картки пацієнтів і запис відповідно до своїх прав." },
+  { title:"Лікар-рентгенолог", text:"Працює з призначеними дослідженнями, створює та підписує протоколи." },
+  { title:"Адміністратор", text:"Керує налаштуваннями й доступами у межах ролі закладу." },
+];
 
 const features = [
-  { icon:"◷", title:"Онлайн-запис і розклад", text:"Запис із сайту, бота й реєстратури в один календар — по днях, кабінетах і апаратах." },
-  { icon:"▤", title:"Медкартки й протоколи", text:"Історія візитів, конструктор протоколів дослідження з шаблонами й нормами." },
-  { icon:"◔", title:"Нагадування пацієнтам", text:"WhatsApp, SMS і Telegram про підтвердження та перенесення — без ручних дзвінків." },
-  { icon:"₴", title:"Каса, оплати та звірка", text:"Статуси оплат, каса й зміни, звірка з банком, рахунки й квитанції." },
-  { icon:"▦", title:"Знімки DICOM / PACS", text:"Прив'язка досліджень до знімків, перегляд у вебглядачі, обмін із лікарями." },
-  { icon:"▥", title:"Аналітика й звіти", text:"Виручка, завантаженість апаратів і лікарів, експорт у Excel одним кліком." },
-  { icon:"◉", title:"Ролі, права та аудит", text:"Адмін, реєстратор, лікар, лаборант. Журнал дій і захист медичних даних." },
-  { icon:"◑", title:"Свій бренд і домен", text:"Назва, логотип, кольори й домен вашого закладу — сайт і кабінет у вашому стилі." },
+  { icon:"◷", title:"Запис і розклад", text:"Календар заявок і досліджень із прив'язкою до дати, часу та обладнання." },
+  { icon:"▤", title:"Картки пацієнтів", text:"Профіль пацієнта, контактні дані, позначки й історія взаємодій." },
+  { icon:"◉", title:"Дослідження й протоколи", text:"Черга досліджень, редактор протоколів, підписання та видача результату." },
+  { icon:"▧", title:"Вхідні заявки", text:"Реєстратура може переглядати заявки та опрацьовувати їх у робочій черзі." },
+  { icon:"☷", title:"Ролі й аудит", text:"Доступ до робочих дій розмежований за ролями; ключові події фіксуються в журналі." },
+  { icon:"⌕", title:"Операційні екрани", text:"Черги й реєстри допомагають команді бачити поточний стан роботи." },
 ];
 
 const audience = [
-  { icon:"🏥", tint:"teal", title:"Багатопрофільна клініка", text:"Кілька лікарів і реєстратура, що веде телефон, живу чергу й касу. RadiologyOS знімає рутину, а керівнику дає прозорі показники по кожному лікарю.", points:["Розклад і запис для всієї команди","Ролі: адміністратор, лікар, реєстратор","Зарплата лікарів за відсотком — без Excel","Аналітика по клініці й по кожному лікарю"], cta:"Обговорити для клініки" },
-  { icon:"🩻", tint:"blue", title:"Приватний КТ-кабінет", text:"Один-два апарати й потік досліджень. Онлайн-запис, слоти з реального розкладу апарата, протоколи й знімки — усе в одному місці.", points:["Запис за вільними слотами апарата","Протоколи КТ з шаблонами","Знімки DICOM під рукою","Каса й звіти по виручці"], cta:"Обговорити для КТ-кабінету" },
-  { icon:"🦷", tint:"orange", title:"Стоматологія та інші", text:"Панорамна рентгенографія й прийом без окремого адміністратора. Запис, нагадування й картки працюють самі, поки ви зайняті пацієнтом.", points:["Особистий кабінет і свій розклад","Сторінка запису зі своїм посиланням","Картка пацієнта завжди під рукою","WhatsApp-нагадування замість дзвінків"], cta:"Обговорити для лікаря" },
+  { icon:"🏥", tint:"teal", title:"Багатопрофільна клініка", text:"Для команди, якій важливо узгодити прийом, роботу реєстратури та облік досліджень.", points:["Покажемо поточні робочі сценарії","Уточнимо потрібні ролі та процеси","Підтвердимо доступні модулі до домовленості"], cta:"Обговорити для клініки" },
+  { icon:"🩻", tint:"blue", title:"Приватний КТ-кабінет", text:"Обговоримо, як RadiologyOS може вписатися у процеси кабінету та роботу з дослідженнями.", points:["Звіримо процес запису й черги","Окремо уточнимо потрібні інтеграції","Підтвердимо доступний функціонал"], cta:"Обговорити для КТ-кабінету" },
+  { icon:"🦷", tint:"orange", title:"Приватна практика", text:"Почнемо з ваших поточних процесів і визначимо, які можливості системи підходять для них.", points:["Обговоримо формат роботи","Уточнимо потрібні сценарії","Не обіцяємо функції до їх підтвердження"], cta:"Обговорити для лікаря" },
 ];
 
-const integrations = [
-  { name:"Приват24", note:"· приймання оплат" },
-  { name:"WhatsApp", note:"· нагадування й запис через бота" },
-  { name:"Telegram", note:"· сповіщення реєстратурі" },
-  { name:"Google Календар", note:"· синхронізація розкладу" },
+const featureStatus = [
+  { name:"DICOM/PACS", note:"внутрішній модуль є; потрібне налаштування PACS" },
+  { name:"Звіти Excel", note:"XLSX-експорт є для дозволених ролей персоналу" },
+  { name:"Розрахунок зарплати", note:"готовий модуль не підтверджено" },
+  { name:"Підтримка 24/7", note:"графік підтримки не підтверджено" },
 ];
 
-const tiers = [
-  { name:"Базовий", who:"Для приватного прийому", price:"990", unit:"₴/міс", seats:"1 лікар", points:["Онлайн-запис пацієнтів","WhatsApp-нагадування","Картки пацієнтів"] },
-  { name:"Старт", who:"Для невеликої клініки", price:"2 490", unit:"₴/міс", seats:"до 5 лікарів", points:["Усе з Базового","Шаблони протоколів","Зарплата лікарів","Підтримка 24/7"] },
-  { name:"Про", who:"Для клініки, що росте", price:"4 990", unit:"₴/міс", seats:"до 15 лікарів", popular:true, points:["Усе зі Старту","Каса й рахунки","Аналітика по клініці","Пріоритетна підтримка"] },
-  { name:"Про+", who:"Клініка зі своїм сайтом", price:"7 990", unit:"₴/міс", seats:"до 25 лікарів", points:["Усе з Про","Сайт клініки на домені","5 тем оформлення","Онлайн-запис із сайту"] },
-  { name:"Мережа", who:"Для мережі чи центру", price:"14 990", unit:"₴/міс", seats:"без обмежень", points:["Усе з Про+","Безліміт лікарів","Свій номер WhatsApp","Персональний менеджер"] },
-];
+const pricingMessage = "Добрий день! Хочу уточнити, які можливості RadiologyOS доступні зараз і скільки коштуватиме підключення для мого закладу.";
 
 const faq = [
   { q:"Розрахунок утрат — це реальна статистика?", a:"Ні, і ми не видаємо його за неї. Це відкрита формула на розумних припущеннях — кількість записів, частка неявок і середній чек. Підставте свої цифри — логіка залишиться тією ж, а результат стане вашим." },
@@ -45,8 +65,9 @@ const faq = [
   { q:"Скільки триває підключення?", a:"Термін і порядок підключення залежать від налаштувань закладу та потрібних модулів. Напишіть нам — уточнимо деталі." },
 
   { q:"Наскільки захищені дані пацієнтів?", a:"Доступ — лише за ролями й паролями, кожна дія фіксується в журналі. Дані ізольовані по закладу; медичні реєстри зберігаються захищено." },
-  { q:"Чи можна перенести пацієнтів з Excel або іншої програми?", a:"Так. Ми допоможемо імпортувати пацієнтів, послуги й ціни зі звичайних таблиць — переносити вручну не доведеться." },
-  { q:"WhatsApp і SMS запрацюють одразу?", a:"Так, після підключення вашого шлюзу в налаштуваннях. До того нагадування ставляться в чергу й нічого не блокують." },
+  { q:"Які модулі доступні зараз?", a:"У внутрішній системі є модуль DICOM/PACS і XLSX-експорт звітів для дозволених ролей персоналу. Підключення PACS для вашого закладу треба налаштувати окремо. Готовий розрахунок зарплати та підтримка 24/7 не підтверджені як доступні послуги." },
+  { q:"Чи можна перенести дані з іншої програми?", a:"Імпорт даних не обіцяємо як готову функцію. Перед підключенням окремо перевіримо формат даних і можливість перенесення." },
+  { q:"Які канали повідомлень підключені?", a:"Доступність WhatsApp, SMS та інших каналів залежить від поточного стану інтеграцій. Підтвердимо конкретний канал до домовленості." },
   { q:"Як уточнити умови оплати?", a:"Напишіть нам у WhatsApp — уточнимо вартість, спосіб оплати та порядок підключення." },
 ];
 
@@ -65,9 +86,9 @@ export default function ProductPage() {
     <header className="rosHeader">
       <a className="rosBrand" href="#top"><span className="rosBrandMark">✦</span> RadiologyOS</a>
       <nav className="rosNav">
-        <a href="#features">Можливості</a>
+        <a href="#features">Можливості</a>\n        <a href="#flow">Як працює</a>\n        <a href="#safety">Дані та доступ</a>
         <a href="#calc">Розрахунок утрат</a>
-        <a href="#audience">Кому підходить</a>
+        <a href="#audience">Для кого</a>
         <a href="#pricing">Тарифи</a>
         <a href="#faq">Питання</a>
       </nav>
@@ -78,50 +99,48 @@ export default function ProductPage() {
     </header>
 
     <section className="rosHero" id="top">
-      <span className="rosEyebrow">Розумна реєстратура для клінік і лікарів</span>
-      <h1>Обговоріть RadiologyOS<br/><em>для вашого закладу</em></h1>
-      <p>Запитайте про можливості системи, тарифи та порядок підключення для вашого закладу.</p>
-      <div className="rosHeroCta">
-        <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Написати у WhatsApp →</a>
-      </div>
-      <p className="rosHeroNote">Залишились питання? <a href={whatsappHref(contactMessage)}>Напишіть у WhatsApp</a></p>
-    </section>
-
-    <section className="rosIntegr">
-      <p className="rosIntegrCap">Працює через сервіси, якими ваші пацієнти користуються щодня</p>
-      <div className="rosIntegrChips">
-        {integrations.map(i=><span className="rosChip" key={i.name}><b>{i.name}</b> <span>{i.note}</span></span>)}
-      </div>
-    </section>
-
-    <section className="rosSection" id="features">
-      <p className="rosSectionEyebrow">Можливості</p>
-      <h2>Єдине ядро для всього закладу</h2>
-      <p className="rosLead">Пацієнти, запис, дослідження, оплати й аналітика — в одній системі. Організація збирається з налаштувань і модулів.</p>
-      <div className="rosFeatureGrid">
-        {features.map(f=><article className="rosFeature" key={f.title}>
-          <span className="rosFeatureIcon" aria-hidden="true">{f.icon}</span>
-          <h3>{f.title}</h3><p>{f.text}</p>
-        </article>)}
-      </div>
-    </section>
-
-    <section className="rosSection rosSectionAlt" id="calc">
-      <p className="rosSectionEyebrow">Розрахунок утрат</p>
-      <h2>Скільки коштують неявки</h2>
-      <p className="rosLead">Відкрита формула на ваших цифрах. Порахуйте, скільки втрачає заклад на неявках — і скільки з цього повертають нагадування.</p>
-      <div className="rosCalc">
-        <div className="rosCalcInputs">
-          <label><span>Записів на місяць</span><input type="number" min={0} max={100000} value={visits} onChange={e=>setVisits(Math.max(0,Number(e.target.value)||0))}/></label>
-          <label><span>Частка неявок, %</span><input type="number" min={0} max={100} value={noShow} onChange={e=>setNoShow(Math.min(100,Math.max(0,Number(e.target.value)||0)))}/></label>
-          <label><span>Середній чек, ₴</span><input type="number" min={0} max={1000000} value={avg} onChange={e=>setAvg(Math.max(0,Number(e.target.value)||0))}/></label>
+      <div className="rosHeroCopy">
+        <span className="rosEyebrow">Робочий простір радіологічного відділення</span>
+        <h1>Від заявки до виданого протоколу<br/><em>в одному радіологічному процесі</em></h1>
+        <p>Заявки, картки пацієнтів, дослідження та протоколи — в узгодженій робочій черзі. Перед підключенням підтвердимо доступний для вашого закладу склад.</p>
+        <div className="rosHeroCta">
+          <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Обговорити систему →</a>
         </div>
-        <div className="rosCalcResult">
-          <span className="rosCalcResultCap">Орієнтовні втрати</span>
-          <b className="rosCalcMonthly">{money.format(monthlyLoss)} ₴<small>/міс</small></b>
-          <span className="rosCalcYearly">≈ {money.format(yearlyLoss)} ₴ на рік</span>
-          <p>Місяць роботи на тарифі «Старт» дешевший за один день неявок із розрахунку вище.</p>
+        <p className="rosHeroNote">Спершу звіримо ваш процес, потрібні модулі та умови.</p>
+      </div>
+      <div className="rosHeroPreview" aria-label="Схема робочої черги, демонстраційні дані">
+        <div className="rosPreviewTop"><span>RadiologyOS</span><span>Схема робочого процесу</span></div>
+        <div className="rosPreviewTitle"><b>Дослідження</b><span>Стан черги</span></div>
+        <div className="rosPreviewRows">
+          <div><i className="rosDot pending"/>Очікує опису<span>Черга</span></div>
+          <div><i className="rosDot ready"/>До підпису<span>Перевірка</span></div>
+          <div><i className="rosDot issued"/>Видано<span>Завершено</span></div>
         </div>
+        <div className="rosPreviewFoot">Схематичний інтерфейс · без даних пацієнтів</div>
+      </div>
+    </section>
+
+    <section className="rosIntegr" aria-label="Основні частини робочого процесу">
+      <p className="rosIntegrCap">Один маршрут дослідження</p>
+      <div className="rosIntegrChips rosProofStrip">
+        {proofItems.map(item=><span className="rosChip" key={item}>{item}</span>)}
+      </div>
+    </section>
+
+    <section className="rosSection rosComparisonSection" id="compare">
+      <p className="rosSectionEyebrow">Один контур роботи</p>
+      <h2>Від розрізнених кроків — до видимого процесу</h2>
+      <p className="rosLead">RadiologyOS з’єднує запис, дослідження та протокол. Фактичний склад вашої конфігурації уточнимо перед підключенням.</p>
+      <div className="rosComparisonWrap">
+        <table className="rosComparison">
+          <thead><tr><th>Етап</th><th>Коли дані розділені</th><th>У робочому контурі RadiologyOS</th></tr></thead>
+          <tbody>
+            <tr><th>Пацієнт і заявка</th><td>Потрібно окремо звіряти картку й запис.</td><td>Картка пов’язана із заявкою та дослідженням.</td></tr>
+            <tr><th>Черга досліджень</th><td>Стан уточнюють між кабінетом і реєстратурою.</td><td>Стан і призначення видно в реєстрі.</td></tr>
+            <tr><th>Опис і видача</th><td>Результат може бути окремо від робочої черги.</td><td>Протокол проходить чернетку, підписання та видачу.</td></tr>
+            <tr><th>Доступ</th><td>Права доводиться узгоджувати вручну.</td><td>Серверні дії перевіряють роль та організацію.</td></tr>
+          </tbody>
+        </table>
       </div>
     </section>
 
@@ -139,22 +158,89 @@ export default function ProductPage() {
       </div>
     </section>
 
+    <section className="rosSection rosProcessSection" id="flow">
+      <p className="rosSectionEyebrow">Як працює</p>
+      <h2>Шлях пацієнта — від заявки до результату</h2>
+      <p className="rosLead">П’ять кроків клінічного процесу в системі. Медичне рішення й текст висновку лишаються за лікарем.</p>
+      <ol className="rosProcess">
+        {processSteps.map(step=><li key={step.number}>
+          <span className="rosProcessNumber">{step.number}</span>
+          <div><h3>{step.title}</h3><p>{step.text}</p></div>
+        </li>)}
+      </ol>
+    </section>
+
+    <section className="rosSection rosRolesSection" id="roles">
+      <p className="rosSectionEyebrow">Командна робота</p>
+      <h2>Кожній ролі — своя робоча зона</h2>
+      <p className="rosLead">Сервер перевіряє роль і доступ до закладу на кожній захищеній дії.</p>
+      <div className="rosRoleGrid">
+        {roleCards.map(role=><article className="rosRoleCard" key={role.title}><h3>{role.title}</h3><p>{role.text}</p></article>)}
+      </div>
+    </section>
+
+    <section className="rosSection" id="features">
+      <p className="rosSectionEyebrow">Операційна система відділення</p>
+      <h2>Кожен етап дослідження видно команді</h2>
+      <p className="rosLead">Від реєстрації пацієнта до видачі результату команда працює в спільній черзі. Доступні модулі та налаштування погоджуємо окремо.</p>
+      <div className="rosFeatureGrid">
+        {features.map(f=><article className="rosFeature" key={f.title}>
+          <span className="rosFeatureIcon" aria-hidden="true">{f.icon}</span>
+          <h3>{f.title}</h3><p>{f.text}</p>
+        </article>)}
+      </div>
+    </section>
+
+    <section className="rosSection rosSectionAlt" id="calc">
+      <p className="rosSectionEyebrow">Розрахунок утрат</p>
+      <h2>Скільки коштують неявки</h2>
+      <p className="rosLead">Орієнтовна оцінка за введеними вами цифрами. Це математична модель, а не виміряна статистика чи прогноз ефекту від нагадувань.</p>
+      <div className="rosCalc">
+        <div className="rosCalcInputs">
+          <label><span>Записів на місяць</span><input type="number" min={0} max={100000} value={visits} onChange={e=>setVisits(Math.max(0,Number(e.target.value)||0))}/></label>
+          <label><span>Частка неявок, %</span><input type="number" min={0} max={100} value={noShow} onChange={e=>setNoShow(Math.min(100,Math.max(0,Number(e.target.value)||0)))}/></label>
+          <label><span>Середній чек, ₴</span><input type="number" min={0} max={1000000} value={avg} onChange={e=>setAvg(Math.max(0,Number(e.target.value)||0))}/></label>
+        </div>
+        <div className="rosCalcResult">
+          <span className="rosCalcResultCap">Орієнтовні втрати</span>
+          <b className="rosCalcMonthly">{money.format(monthlyLoss)} ₴<small>/міс</small></b>
+          <span className="rosCalcYearly">≈ {money.format(yearlyLoss)} ₴ на рік</span>
+          <p>Результат залежить від введених значень і не є обіцянкою економії чи повернення коштів.</p>
+        </div>
+      </div>
+    </section>
+
+    <section className="rosSection rosSecuritySection" id="safety">
+      <p className="rosSectionEyebrow">Дані та доступ</p>
+      <h2>Клінічний процес має чіткі межі доступу</h2>
+      <p className="rosLead">Ці технічні властивості описують реалізацію системи й не є заявою про сертифікацію чи регуляторну відповідність.</p>
+      <div className="rosRoleGrid rosSafetyGrid">
+        {safetyItems.map(item=><article className="rosRoleCard" key={item.title}><h3>{item.title}</h3><p>{item.text}</p></article>)}
+      </div>
+    </section>
+
+    <section className="rosSection rosSectionAlt rosStatusSection" id="availability">
+      <p className="rosSectionEyebrow">Доступність модулів</p>
+      <h2>Що підтверджено зараз</h2>
+      <p className="rosLead">Розділяємо функції у внутрішній системі та послуги, доступність яких для клієнтського середовища ще треба погодити.</p>
+      <div className="rosStatusGrid">
+        {featureStatus.map(item=><article className="rosStatusCard" key={item.name}><b>{item.name}</b><p>{item.note}</p></article>)}
+      </div>
+    </section>
+
     <section className="rosSection rosSectionAlt" id="pricing">
       <p className="rosSectionEyebrow">Тарифи</p>
       <h2>Тарифи та вартість</h2>
-      <p className="rosLead">Вартість залежить лише від числа лікарів — платити за невикористані місця не потрібно.</p>
-      <div className="rosPricing">
-        {tiers.map(t=><article className={`rosTier${t.popular?" popular":""}`} key={t.name}>
-          {t.popular && <span className="rosTierBadge">Популярний</span>}
-          <b className="rosTierName">{t.name}</b>
-          <span className="rosTierWho">{t.who}</span>
-          <div className="rosTierPrice"><b>{t.price}</b> <span>{t.unit}</span></div>
-          <span className="rosTierSeats">{t.seats}</span>
-          <ul>{t.points.map(p=><li key={p}>{p}</li>)}</ul>
-          <a className="rosBtn rosTierBtn" href={whatsappHref(`Добрий день! Хочу уточнити умови тарифу «${t.name}» RadiologyOS.`)}>Запитати про тариф</a>
-        </article>)}
+      <p className="rosLead">Публічні тарифи й ціни ще не підтверджені для клієнтського підключення. Спочатку узгодимо доступні модулі та процеси, після цього повідомимо вартість.</p>
+      <div className="rosPricing rosPricingContact">
+        <article className="rosTier rosTierContact">
+          <b className="rosTierName">Індивідуальні умови</b>
+          <span className="rosTierWho">Після підтвердження доступних функцій</span>
+          <p>Запитайте про поточну доступність системи й вартість для вашого закладу.</p>
+          <a className="rosBtn rosTierBtn" href={whatsappHref(pricingMessage)}>Уточнити умови й вартість</a>
+        </article>
       </div>
-      <p className="rosPricingNote">Напишіть нам, щоб уточнити умови тарифу та підключення.</p>
+      <p className="rosPricingNote">Ціни не публікуємо, доки не підтверджено склад доступної пропозиції.</p>
     </section>
 
     <section className="rosSection" id="faq">
