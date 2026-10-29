@@ -22,6 +22,7 @@ export type PatientSession = {
   identityKind: "dob" | "booking";
   identityValue: string;
   patientId: string;
+  authMethod: "knowledge" | "otp";
 };
 
 export function normalizeBookingCode(value: unknown): string {
