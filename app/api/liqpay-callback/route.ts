@@ -3,8 +3,9 @@
 // and on a paid status settle every civilian booking named in order_id through
 // the verified-provider ledger path (finance document + booking flip), so online
 // and desk payments post identically. Amounts are authoritative from D1 — the
-// callback's signed total must cover them. Idempotent and replay-safe. Always
-// answers 200 so LiqPay stops retrying.
+// callback's signed total must cover them. Settlement is idempotent and
+// replay-safe. Retryable storage failures return 503; invalid and non-paid
+// callbacks return 200 so they are not retried.
 
 import { dbBinding } from "../../../lib/db";
 import { getOrganizationIntegrationSetting } from "../../../lib/settings";
@@ -15,10 +16,6 @@ import { recordAnalyticsEvent } from "../../../lib/analytics";
 const PUBLIC_ORGANIZATION_ID = 1;
 
 const ok = () => new Response("ok", { status: 200, headers: { "cache-control": "no-store" } });
-const retryableFailure = () => new Response("temporarily unavailable", {
-  status: 503,
-  headers: { "cache-control": "no-store", "retry-after": "5" },
-});
 const retryableFailure = () => new Response("temporarily unavailable", {
   status: 503,
   headers: { "cache-control": "no-store", "retry-after": "5" },
@@ -57,15 +54,16 @@ export async function POST(request: Request) {
   if (!codes.length) return ok();
 
   const placeholders = codes.map(() => "?").join(",");
-  let rows;
+  type LiqpayBookingRow = {
+    id: number; code: string; serviceCode: string; amount: number; paymentStatus: string; paidAmount: number; category: string;
+  };
+  let rows: { results: LiqpayBookingRow[] };
   try {
     rows = await db.prepare(
       `SELECT id, code, service_code AS serviceCode, payment_amount AS amount, payment_status AS paymentStatus,
               paid_amount AS paidAmount, patient_category AS category
        FROM bookings WHERE organization_id = ? AND code IN (${placeholders})`,
-    ).bind(PUBLIC_ORGANIZATION_ID, ...codes).all<{
-      id: number; code: string; serviceCode: string; amount: number; paymentStatus: string; paidAmount: number; category: string;
-    }>();
+    ).bind(PUBLIC_ORGANIZATION_ID, ...codes).all<LiqpayBookingRow>();
   } catch {
     console.error("liqpay_callback_booking_lookup_failed");
     return retryableFailure();
@@ -83,7 +81,7 @@ export async function POST(request: Request) {
   }
 
   let settlementFailed = false;
-  const settled = [];
+  const settled: LiqpayBookingRow[] = [];
   for (const row of payable) {
     try {
       await settleVerifiedProviderPayment(db as never, {
