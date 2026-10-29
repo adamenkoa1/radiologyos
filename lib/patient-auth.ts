@@ -175,8 +175,8 @@ export async function createPatientSession(
   const tokenHash = await hashToken(rawToken);
   await db.prepare(
     `INSERT INTO patient_sessions
-      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))`,
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, auth_method, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
   ).bind(
     tokenHash,
     phoneNormalized,
