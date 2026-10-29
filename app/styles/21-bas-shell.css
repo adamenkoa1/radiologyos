@@ -4,6 +4,8 @@
    the stable business navigation surface shared by all staff modules.
    ============================================================ */
 .basWorkspaceShell .workspaceBusinessBar{
+  display:block;
+  min-width:0;
   position:sticky;
   top:64px;
   z-index:29;
