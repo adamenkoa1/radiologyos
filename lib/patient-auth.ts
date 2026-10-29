@@ -169,6 +169,7 @@ export async function createPatientSession(
   organizationId: number,
   identity: PatientIdentityScope,
   patientId = "",
+  authMethod: "knowledge" | "otp" = "knowledge",
 ): Promise<string> {
   const rawToken = newSessionToken();
   const tokenHash = await hashToken(rawToken);
