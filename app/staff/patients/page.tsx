@@ -436,6 +436,7 @@ export default function PatientsPage() {
                     <a className="crmVisitLink" href={`/staff/protocols?studyId=${booking.id}`}>{["ready","issued","in_progress"].includes(booking.protocolStatus) ? "Відкрити протокол →" : "Створити протокол →"}</a>
                     <a className="crmVisitLink" href={`/staff/imaging?open=${booking.id}`}>Знімки →</a>
                     <a className="crmVisitLink" href={`/staff/appointments?date=${booking.desiredDate}&view=day`}>Календар →</a>
+                    {canManage && <a className="crmVisitLink" href={`/staff/tasks?followUp=1&bookingId=${booking.id}`}>Запланувати дію →</a>}
                   </div>}
                 </li>)}
               </ol>}
