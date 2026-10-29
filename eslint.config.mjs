@@ -12,6 +12,9 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Wrangler bundles and local tooling state are generated, not app sources.
+    ".wrangler/**",
+    ".sites-runtime/**",
   ]),
 ]);
 

@@ -16,7 +16,9 @@
 включає записи тригерів; умовний UPDATE … RETURNING тепер підтверджує точний рядок.
 Збірка, typecheck, 19 цільових і 1555/1555 повних тестів пройшли. Lint вихідного
 коду: 0 errors / 40 warnings з виключенням .wrangler/** та .sites-runtime/**;
-стандартна команда після запуску Wrangler захоплює згенеровані файли — це ще відкрите.
+стандартна команда після запуску Wrangler захоплювала згенеровані файли.
+Окреме локальне tooling-виправлення виключило .wrangler/** і .sites-runtime/**
+у ESLint config: звичайний npm run lint пройшов, 0 errors / 40 baseline warnings.
 Desktop 1440 і tablet 768: незмінний протокол читається без page-level overflow;
 mobile 390: знайдене переповнення спільного workspaceBusinessCommands до 574 px.
 Наступним локальним виправленням панелі задано явний display:block: 12/12 browser
