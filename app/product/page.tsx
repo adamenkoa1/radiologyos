@@ -22,6 +22,13 @@ const processSteps = [
   { number:"05", title:"Результат", text:"Видача фіксується в життєвому циклі документа та аудиті." },
 ];
 
+const safetyItems = [
+  { title:"Ізоляція закладу", text:"Захищені запити обмежують дані організацією користувача." },
+  { title:"Перевірка ролей", text:"Сервер перевіряє право на дію, а не лише видимість кнопки." },
+  { title:"Незмінність підпису", text:"Підписаний протокол не можна непомітно переписати." },
+  { title:"Журнал подій", text:"Ключові дії фіксуються в окремому журналі аудиту." },
+];
+
 const roleCards = [
   { title:"Реєстратура", text:"Опрацьовує заявки, картки пацієнтів і запис відповідно до своїх прав." },
   { title:"Лікар-рентгенолог", text:"Працює з призначеними дослідженнями, створює та підписує протоколи." },
@@ -79,7 +86,7 @@ export default function ProductPage() {
     <header className="rosHeader">
       <a className="rosBrand" href="#top"><span className="rosBrandMark">✦</span> RadiologyOS</a>
       <nav className="rosNav">
-        <a href="#features">Можливості</a>\n        <a href="#flow">Як працює</a>
+        <a href="#features">Можливості</a>\n        <a href="#flow">Як працює</a>\n        <a href="#safety">Дані та доступ</a>
         <a href="#calc">Розрахунок утрат</a>
         <a href="#audience">Для кого</a>
         <a href="#pricing">Тарифи</a>
@@ -200,6 +207,15 @@ export default function ProductPage() {
           <span className="rosCalcYearly">≈ {money.format(yearlyLoss)} ₴ на рік</span>
           <p>Результат залежить від введених значень і не є обіцянкою економії чи повернення коштів.</p>
         </div>
+      </div>
+    </section>
+
+    <section className="rosSection rosSecuritySection" id="safety">
+      <p className="rosSectionEyebrow">Дані та доступ</p>
+      <h2>Клінічний процес має чіткі межі доступу</h2>
+      <p className="rosLead">Ці технічні властивості описують реалізацію системи й не є заявою про сертифікацію чи регуляторну відповідність.</p>
+      <div className="rosRoleGrid rosSafetyGrid">
+        {safetyItems.map(item=><article className="rosRoleCard" key={item.title}><h3>{item.title}</h3><p>{item.text}</p></article>)}
       </div>
     </section>
 
