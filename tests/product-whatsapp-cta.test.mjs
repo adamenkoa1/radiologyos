@@ -9,8 +9,8 @@ test("product signup and plan actions open WhatsApp with context", async () => {
   assert.match(page, /const whatsappHref = \(message: string\).*encodeURIComponent\(message\)/);
   assert.match(page, /className="rosBtn" href=\{whatsappHref\(contactMessage\)\}/);
   assert.match(page, /className="rosBtn rosBtnLg" href=\{whatsappHref\(contactMessage\)\}/);
-  assert.match(page, /rosAudienceCta" href=\{whatsappHref\(\`[^\n]*\$\{a\.title\}/);
-  assert.match(page, /rosTierBtn" href=\{whatsappHref\(\`[^\n]*\$\{t\.name\}/);
+  assert.ok(page.includes('href={whatsappHref(`Добрий день! Хочу обговорити RadiologyOS для формату «${a.title}».`)}'));
+  assert.ok(page.includes('href={whatsappHref(`Добрий день! Хочу уточнити умови тарифу «${t.name}» RadiologyOS.`)}'));
   assert.match(page, /rosBtnOutline" href=\{whatsappHref\(contactMessage\)\}/);
   assert.match(page, />Запитати про тариф<\/a>/);
 });
