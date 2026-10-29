@@ -22,6 +22,7 @@ export type PatientSession = {
   identityKind: "dob" | "booking";
   identityValue: string;
   patientId: string;
+  authMethod: "knowledge" | "otp";
 };
 
 export function normalizeBookingCode(value: unknown): string {
@@ -168,13 +169,14 @@ export async function createPatientSession(
   organizationId: number,
   identity: PatientIdentityScope,
   patientId = "",
+  authMethod: "knowledge" | "otp" = "knowledge",
 ): Promise<string> {
   const rawToken = newSessionToken();
   const tokenHash = await hashToken(rawToken);
   await db.prepare(
     `INSERT INTO patient_sessions
-      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, expires_at)
-     VALUES (?, ?, ?, ?, ?, ?, datetime('now', ?))`,
+      (token_hash, phone_normalized, organization_id, identity_kind, identity_value, patient_id, auth_method, expires_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, datetime('now', ?))`,
   ).bind(
     tokenHash,
     phoneNormalized,
@@ -182,6 +184,7 @@ export async function createPatientSession(
     identity.kind,
     identity.value,
     patientId,
+    authMethod,
     `+${PATIENT_SESSION_TTL_SECONDS} seconds`,
   ).run();
   await db.prepare("DELETE FROM patient_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
@@ -195,7 +198,7 @@ export async function requirePatientSession(request: Request, db: D1Database): P
   return db.prepare(
     `SELECT phone_normalized AS phoneNormalized, organization_id AS organizationId,
        identity_kind AS identityKind, identity_value AS identityValue,
-       patient_id AS patientId
+       patient_id AS patientId, auth_method AS authMethod
      FROM patient_sessions
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
        AND identity_kind IN ('dob','booking') AND identity_value != ''

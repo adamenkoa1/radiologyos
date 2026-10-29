@@ -13,6 +13,7 @@ export const patientSessionsScoped = sqliteTable("patient_sessions", {
   identityKind: text("identity_kind").notNull().default(""),
   identityValue: text("identity_value").notNull().default(""),
   patientId: text("patient_id").notNull().default(""),
+  authMethod: text("auth_method").notNull().default("knowledge"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
   expiresAt: text("expires_at").notNull(),
 }, table => [

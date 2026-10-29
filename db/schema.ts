@@ -333,6 +333,7 @@ export const patientSessions = sqliteTable("patient_sessions", {
 	identityKind: text("identity_kind").notNull().default(""),
 	identityValue: text("identity_value").notNull().default(""),
 	patientId: text("patient_id").notNull().default(""),
+	authMethod: text("auth_method").notNull().default("knowledge"),
 },
 table => [
 	index("patient_sessions_patient_idx").on(table.organizationId, table.patientId, table.expiresAt),

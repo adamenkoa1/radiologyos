@@ -21,6 +21,12 @@ export async function POST(request: Request) {
       { status: 409, headers: { "cache-control": "no-store" } },
     );
   }
+  if (session.authMethod !== "otp") {
+    return Response.json(
+      { error: "Для перегляду протоколу підтвердіть номер одноразовим кодом.", requiresOtp: true },
+      { status: 403, headers: { "cache-control": "no-store" } },
+    );
+  }
 
   const body = await request.json().catch(() => ({})) as { code?: string };
   const code = normalizeBookingCode(body.code);

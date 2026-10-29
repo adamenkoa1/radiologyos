@@ -52,7 +52,7 @@ test("DOB-scoped patient session cannot cross a shared family phone boundary", a
     await issueProtocol(db, bookingA, "PR-A", "Висновок А");
     await issueProtocol(db, bookingB, "PR-B", "Висновок Б — секрет");
 
-    const cookie = await seedPatientSession(db, PHONE, 1, { kind:"dob", value:DOB_A });
+    const cookie = await seedPatientSession(db, PHONE, 1, { kind:"dob", value:DOB_A }, "", "otp");
 
     const listResponse = await callWorker(patientRequest("/api/my-bookings", cookie), db);
     assert.equal(listResponse.status, 200);

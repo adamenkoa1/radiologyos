@@ -78,7 +78,7 @@ test("a patient session in tenant B cannot reach tenant A's record by direct cod
 
     // Session belongs to organization B. Scoped by phone + DOB — both identical
     // to org A's booking — so the only thing keeping org A out is organization_id.
-    const cookieB = await seedPatientSession(db, PHONE, ORG_B, { kind: "dob", value: DOB });
+    const cookieB = await seedPatientSession(db, PHONE, ORG_B, { kind: "dob", value: DOB }, "", "otp");
 
     // Read: the foreign protocol is invisible across the tenant boundary.
     const foreignProtocol = await callWorker(patientRequest("/api/my-protocol", cookieB, { code: CODE_A }), db);
@@ -113,7 +113,7 @@ test("positive control: a correctly-scoped tenant A session reads tenant A's pro
     const bookingA = await seedBooking(db, { organizationId: ORG_A, code: CODE_A, time: "10:00", amount: 1500 });
     await issueProtocol(db, ORG_A, bookingA, "PR-A", "Висновок А — тільки для орендаря А");
 
-    const cookieA = await seedPatientSession(db, PHONE, ORG_A, { kind: "booking", value: CODE_A });
+    const cookieA = await seedPatientSession(db, PHONE, ORG_A, { kind: "booking", value: CODE_A }, "", "otp");
     const ownProtocol = await callWorker(patientRequest("/api/my-protocol", cookieA, { code: CODE_A }), db);
     assert.equal(ownProtocol.status, 200);
     const body = await ownProtocol.json();

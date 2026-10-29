@@ -342,7 +342,7 @@ test("patient protocol returns issued addenda only", async () => {
          signed_at = CURRENT_TIMESTAMP, signed_version = 3, updated_at = CURRENT_TIMESTAMP WHERE id = ?`,
     ).run(ADDENDUM_HIDDEN);
 
-    const cookie = await seedPatientSession(db, PHONE, 1, { kind: "booking", value: CODE });
+    const cookie = await seedPatientSession(db, PHONE, 1, { kind: "booking", value: CODE }, "", "otp");
     const response = await callWorker(
       jsonRequest("/api/my-protocol", { code: CODE }, { method: "POST", headers: { cookie } }),
       db,

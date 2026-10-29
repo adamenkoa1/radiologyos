@@ -187,3 +187,7 @@ Telegram-кнопка реєстратора є лише trusted adapter до к
 ## 25. WhatsApp розклад: номер достатній лише для мінімального нагадування
 
 За рішенням власника, вхідний WhatsApp-акаунт може отримати найближчу дату, час і назву послуги для того самого нормалізованого номера. Це не переноситься на patient cabinet або медичні результати: там лишаються OTP чи точний код заявки. Спільний номер ділить видимість таких записів між його користувачами; не розширювати список полів без окремого рішення.
+
+## 26. Patient knowledge proof does not authorize clinical records
+
+Phone plus date of birth may identify a booking scope and support limited booking checks; it is not proof of control over the patient's phone or e-mail. Patient sessions therefore record their assurance level. Protocol/result access requires a session created only after a single-use OTP challenge delivered to a contact already on file. Keep booking lookup and protocol authorization separate, fail closed when the assurance field is missing, and test both paths through the API. A shared phone number does not weaken this boundary.
