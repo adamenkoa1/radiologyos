@@ -83,24 +83,12 @@
 /* pricing */
 .rosPricing{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;text-align:left;align-items:start}
 .rosTier{position:relative;background:var(--ros-card);border:1px solid var(--ros-line);border-radius:18px;padding:24px 20px;display:flex;flex-direction:column;box-shadow:0 10px 26px rgba(43,38,33,.05)}
-.rosTier.popular{background:var(--ros-teal);color:#fff;border-color:var(--ros-teal);transform:translateY(-8px);box-shadow:0 18px 40px rgba(37,111,96,.28)}
-.rosTierBadge{position:absolute;top:-12px;left:50%;transform:translateX(-50%);background:var(--ros-orange);color:#fff;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:5px 14px;border-radius:999px;white-space:nowrap}
 .rosTierName{font-size:16px;font-weight:800}
 .rosTierWho{font-size:12.5px;color:var(--ros-muted);margin:4px 0 14px}
-.rosTier.popular .rosTierWho{color:#d8efe8}
-.rosTierPrice{display:flex;align-items:baseline;gap:6px}
-.rosTierPrice b{font-family:var(--font-serif);font-size:30px;line-height:1}
-.rosTierPrice span{font-size:12px;color:var(--ros-muted)}
-.rosTier.popular .rosTierPrice span{color:#d8efe8}
-.rosTierSeats{display:block;font-size:12.5px;font-weight:700;margin:6px 0 16px;color:#3f3a34}
-.rosTier.popular .rosTierSeats{color:#eaf6f2}
 .rosTier ul{list-style:none;margin:0 0 20px;padding:0;display:flex;flex-direction:column;gap:9px;flex:1}
 .rosTier li{position:relative;padding-left:22px;font-size:13px;color:#3f3a34}
 .rosTier li::before{content:"✓";position:absolute;left:0;color:var(--ros-teal);font-weight:800}
-.rosTier.popular li{color:#eaf6f2}.rosTier.popular li::before{color:#fff}
 .rosTierBtn{justify-content:center;background:var(--ros-teal)}
-.rosTier.popular .rosTierBtn{background:#fff;color:var(--ros-teal-deep)}
-.rosTier.popular .rosTierBtn:hover{background:#eef7f4}
 .rosPricingNote{text-align:center;color:#9a9186;font-size:12.5px;margin:26px 0 0}
 
 /* faq */
