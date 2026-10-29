@@ -198,7 +198,7 @@ export async function requirePatientSession(request: Request, db: D1Database): P
   return db.prepare(
     `SELECT phone_normalized AS phoneNormalized, organization_id AS organizationId,
        identity_kind AS identityKind, identity_value AS identityValue,
-       patient_id AS patientId
+       patient_id AS patientId, auth_method AS authMethod
      FROM patient_sessions
      WHERE token_hash = ? AND expires_at > CURRENT_TIMESTAMP
        AND identity_kind IN ('dob','booking') AND identity_value != ''
