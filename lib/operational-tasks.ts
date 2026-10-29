@@ -9,7 +9,7 @@ type Candidate = {
   dueDate:string;
   bookingId:number|null;
   assignedEmail:string;
-  sourceEntityType:"inventory_item"|"equipment_maintenance"|"booking";
+  sourceEntityType:"inventory_item"|"equipment_maintenance"|"booking"|"booking_followup";
   sourceEntityId:string;
 };
 
@@ -78,6 +78,15 @@ async function activeAssignee(db:D1Database,organizationId:number,email:string) 
   return row?.ok?email:"";
 }
 
+async function activeRegistrar(db:D1Database,organizationId:number) {
+  const row=await db.prepare(`SELECT m.member_email AS email FROM memberships m
+    JOIN staff_members s ON s.email=m.member_email AND s.active=1
+    WHERE m.organization_id=? AND m.role='registrar' AND m.active=1
+    ORDER BY m.member_email LIMIT 1`)
+    .bind(organizationId).first<{email:string}>();
+  return row?.email||"";
+}
+
 async function candidatesForOrg(db:D1Database,organizationId:number,today:string):Promise<Candidate[]> {
   const [inventory,maintenance,bookings]=await Promise.all([
     db.prepare(`SELECT i.id,i.name,i.unit,i.min_stock AS minStock,
@@ -103,7 +112,7 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
       FROM bookings
       WHERE organization_id=? AND status IN (
         'new','requested','needs_verification','arrived','queued','in_progress',
-        'performed','images_ready','reporting','protocol_ready'
+        'performed','images_ready','reporting','protocol_ready','no_show'
       )
       ORDER BY id`)
       .bind(organizationId).all<BookingCandidateRow>(),
@@ -133,6 +142,22 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
     });
   }
   for(const booking of bookings.results||[]) {
+    if(booking.status==="no_show") {
+      const key=`booking:no_show_followup:${booking.id}`;
+      const completed=await db.prepare(`SELECT 1 AS done FROM staff_tasks
+        WHERE organization_id=? AND automation_key=? AND status='done' LIMIT 1`)
+        .bind(organizationId,key).first<{done:number}>();
+      if(completed)continue;
+      out.push({
+        organizationId,key,
+        title:"Зв'язатися щодо повторного запису",
+        details:"Запис позначено як неявка. Уточніть, чи потрібне перенесення.",
+        priority:"normal",dueDate:today,bookingId:booking.id,
+        assignedEmail:await activeRegistrar(db,organizationId),
+        sourceEntityType:"booking_followup",sourceEntityId:String(booking.id),
+      });
+      continue;
+    }
     const handoff=clinicalHandoff(booking.status);
     if(!handoff)continue;
     const requestedAssignee=handoff.assignee==="radiologist"
