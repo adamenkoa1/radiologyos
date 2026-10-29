@@ -15,7 +15,7 @@
 
 ### Changed
 
-- **Read-only аудит WhatsApp webhook.** `docs/quality-audit.md` фіксує tenant-scoped secret, 503 при відсутній D1 і UNIQUE дедуплікацію повідомлень. Виявлено питання моделі identity: бот може показати перелік послуг і час записів за самим номером WhatsApp, тоді як доменна модель вимагає OTP або точний код заявки для patient self-service. Поведінку не змінено — потрібне рішення власника.
+- **Read-only аудит WhatsApp webhook.** `docs/quality-audit.md` фіксує tenant-scoped secret, 503 при відсутній D1 і UNIQUE дедуплікацію повідомлень. Виявлено питання моделі identity: бот може показати перелік послуг і час записів за самим номером WhatsApp, тоді як доменна модель вимагає OTP або точний код заявки для patient self-service. Власник підтвердив вузьку видачу найближчої послуги й дати/часу за WhatsApp-номером; спільний номер означає спільну видимість цих записів, OTP для кабінету лишається.
 
 - **Звірено матрицю якості з main станом на 2026-10-29.** Оновлено статуси `/staff/dashboard`, `/staff/intake`, `/staff/studies`, `/staff/protocols`, `/staff/tasks`, `/staff/patients` і `/staff/audit` за PR #686–#703; старий пріоритет `/staff/appointments` виправлено з урахуванням аудиту #643. Видалено застарілі приблизні підрахунки API й тестів, локальний browser-block позначено як історичне спостереження, наступним пріоритетом визначено per-route API inventory та read-only review.
 
