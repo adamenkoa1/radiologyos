@@ -87,9 +87,7 @@ export default function ProductPage() {
       <a className="rosBrand" href="#top"><span className="rosBrandMark">✦</span> RadiologyOS</a>
       <nav className="rosNav">
         <a href="#features">Можливості</a>
-        <a href="#flow">Як працює</a>\n        <a href="#safety">Дані та доступ</a>
-        <a href="#calc">Розрахунок утрат</a>
-        <a href="#audience">Для кого</a>
+        <a href="#flow">Як працює</a>
         <a href="#pricing">Тарифи</a>
         <a href="#faq">Питання</a>
       </nav>
