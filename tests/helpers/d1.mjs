@@ -228,7 +228,7 @@ export async function seedPatientSession(
   organizationId = 1,
   identity = null,
   patientId = "",
-  authMethod = "otp",
+  authMethod = "knowledge",
 ) {
   let scope = identity;
   if (!scope) {
