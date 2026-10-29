@@ -362,3 +362,9 @@
 @media(max-width:1200px){.serviceAssignmentRow{grid-template-columns:minmax(240px,2fr) repeat(3,minmax(130px,1fr))}.serviceAssignmentRow>div{grid-row:span 2}}
 @media(max-width:760px){.serviceAssignmentRow{grid-template-columns:1fr 1fr}.serviceAssignmentRow>div{grid-column:1/-1;grid-row:auto}}
 @media(max-width:520px){.serviceAssignmentRow{grid-template-columns:1fr}}
+/* product page availability and unpriced contact card */
+.rosUnavailableList .rosChip{background:transparent}
+.rosUnavailableList .rosChip span{color:var(--ros-muted)}
+.rosPricingContact{grid-template-columns:minmax(0,620px);justify-content:center}
+.rosTierContact{width:100%;max-width:620px;margin-inline:auto;text-align:center}
+.rosTierContact p{color:var(--ros-muted);line-height:1.55}
