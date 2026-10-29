@@ -36,6 +36,10 @@ test("patient data requires a short-lived OTP-backed tenant + immutable-or-legac
   assert.match(auth, /HttpOnly; Secure; SameSite=Strict/);
   assert.match(auth, /identity_kind AS identityKind, identity_value AS identityValue/);
   assert.match(auth, /patient_id AS patientId/);
+  assert.match(auth, /auth_method AS authMethod/);
+  assert.match(otp, /verified\.patientId \|\| ""[\s\S]*"otp"/);
+  assert.match(bookings, /protocolRequiresOtp: session\.authMethod !== "otp"/);
+  assert.match(protocol, /session\.authMethod !== "otp"[\s\S]*requiresOtp: true/);
   assert.match(otp, /createPatientSession\([\s\S]*verified\.organizationId,[\s\S]*verified\.identity,[\s\S]*verified\.patientId/);
   assert.match(bookings, /requirePatientSession\(/);
   assert.doesNotMatch(bookings, /createPatientSession\(/);
