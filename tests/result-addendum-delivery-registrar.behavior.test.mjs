@@ -85,7 +85,7 @@ test("issued addendum atomically creates immutable neutral result-delivery subty
   await assert.rejects(db.prepare("DELETE FROM result_addendum_delivery_details WHERE document_id=?").bind(delivery.id).run(),/snapshot_immutable/i);
   await assert.rejects(db.prepare("UPDATE business_documents SET state='reversed' WHERE id=?").bind(delivery.id).run(),/result_delivery_document_immutable/i);
   await assert.rejects(db.prepare(`INSERT INTO business_documents (organization_id,document_type,number,occurred_at,state,comment,created_by,posted_by,posted_at,basis_document_id) VALUES (1,'result_delivery',?,CURRENT_TIMESTAMP,'posted','Видача виправлення до протоколу пацієнту',?,?,CURRENT_TIMESTAMP,?)`).bind(delivery.number,managerEmail,managerEmail,base.id).run(),/UNIQUE constraint failed/i);
-  const patient=await seedPatientSession(db,PHONE,1,{kind:"booking",value:"RD-260925-1"},"PAT-ADD-DELIVERY");
+  const patient=await seedPatientSession(db,PHONE,1,{kind:"booking",value:"RD-260925-1"},"PAT-ADD-DELIVERY","otp");
   const pr=await callWorker(jsonRequest("/api/my-protocol",{code:"RD-260925-1"},{method:"POST",headers:{cookie:patient}}),db); assert.equal(pr.status,200); const pb=await pr.json(); assert.equal(pb.protocol.addenda.some(a=>a.id===id),true);
  });
 });
