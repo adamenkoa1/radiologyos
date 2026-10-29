@@ -68,7 +68,7 @@ export async function POST(request: Request) {
   }));
 
   return Response.json(
-    { bookings },
+    { bookings, protocolRequiresOtp: session.authMethod !== "otp" },
     { headers: { "cache-control": "no-store" } },
   );
 }
