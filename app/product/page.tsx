@@ -86,7 +86,8 @@ export default function ProductPage() {
     <header className="rosHeader">
       <a className="rosBrand" href="#top"><span className="rosBrandMark">✦</span> RadiologyOS</a>
       <nav className="rosNav">
-        <a href="#features">Можливості</a>\n        <a href="#flow">Як працює</a>\n        <a href="#safety">Дані та доступ</a>
+        <a href="#features">Можливості</a>
+        <a href="#flow">Як працює</a>\n        <a href="#safety">Дані та доступ</a>
         <a href="#calc">Розрахунок утрат</a>
         <a href="#audience">Для кого</a>
         <a href="#pricing">Тарифи</a>
@@ -101,10 +102,11 @@ export default function ProductPage() {
     <section className="rosHero" id="top">
       <div className="rosHeroCopy">
         <span className="rosEyebrow">Робочий простір радіологічного відділення</span>
-        <h1>Від заявки до виданого протоколу<br/><em>в одному радіологічному процесі</em></h1>
+        <h1>Від заявки до результату<br/><em>в одному процесі відділення</em></h1>
         <p>Заявки, картки пацієнтів, дослідження та протоколи — в узгодженій робочій черзі. Перед підключенням підтвердимо доступний для вашого закладу склад.</p>
         <div className="rosHeroCta">
           <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Обговорити систему →</a>
+          <a className="rosBtn rosBtnLg rosBtnOutline" href="#features">Переглянути можливості</a>
         </div>
         <p className="rosHeroNote">Спершу звіримо ваш процес, потрібні модулі та умови.</p>
       </div>
