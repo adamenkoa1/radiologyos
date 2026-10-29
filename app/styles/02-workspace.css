@@ -969,6 +969,7 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 @media(max-width:600px){.pacsFormGrid,.pacsSettings form{grid-template-columns:1fr}.pacsFormActions{flex-direction:column}}
 @media print{.pacsBanner,.pacsSettings,.pacsViewerButton{display:none!important}}
 .protocolPrint{display:none}
+@media print{.workspaceBusinessBar,.protocolEditor>.protocolFilterTabs{display:none!important}}
 @media(max-width:1000px){.protocolWorkspace{grid-template-columns:1fr}.protocolQueue{position:static;max-height:none}.protocolQueueList{max-height:340px}.protocolFilterTabs{grid-template-columns:1fr 1fr 1fr 1fr}}
 @media(max-width:560px){.protocolFilterPanel{grid-template-columns:1fr}.protocolRegionGrid,.intakeRegionGrid{grid-template-columns:1fr}}
 @media(max-width:600px){.protocolRow,.protocolSectionFields{grid-template-columns:1fr}.protocolNormButton{width:100%}.protocolActions button{flex:1 1 auto}}
