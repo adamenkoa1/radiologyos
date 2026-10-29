@@ -118,12 +118,15 @@ export async function POST(request:Request) {
     try {
       result=await db.prepare(
         `UPDATE protocols SET status='issued',updated_by=?,updated_at=CURRENT_TIMESTAMP
-         WHERE organization_id=? AND booking_id=? AND status='signed' AND version=?`,
-      ).bind(ctx.member.email,ctx.organizationId,bookingId,expectedVersion).run();
+         WHERE organization_id=? AND booking_id=? AND status='signed' AND version=?
+         RETURNING booking_id`,
+      ).bind(ctx.member.email,ctx.organizationId,bookingId,expectedVersion).first();
     } catch {
       return Response.json({error:"Не вдалося видати підписаний протокол. Оновіть список видачі."},{status:409});
     }
-    if(Number(result.meta.changes||0)!==1) return Response.json({error:"Статус протоколу змінився. Оновіть список видачі."},{status:409});
+    // D1 changes includes trigger writes. RETURNING identifies the exact parent
+    // transition without mistaking its registrar/projection writes for a race.
+    if(!result) return Response.json({error:"Статус протоколу змінився. Оновіть список видачі."},{status:409});
 
     const delivery=await db.prepare(
       `SELECT d.id AS documentId,d.number,r.delivered_by AS deliveredBy,r.delivered_at AS deliveredAt
@@ -162,12 +165,13 @@ export async function POST(request:Request) {
   try {
     result=await db.prepare(
       `UPDATE protocol_addenda SET status='issued',updated_by=?,updated_at=CURRENT_TIMESTAMP
-       WHERE organization_id=? AND id=? AND status='signed' AND version=?`,
-    ).bind(ctx.member.email,ctx.organizationId,addendumId,expectedVersion).run();
+       WHERE organization_id=? AND id=? AND status='signed' AND version=?
+       RETURNING id`,
+    ).bind(ctx.member.email,ctx.organizationId,addendumId,expectedVersion).first();
   } catch {
     return Response.json({error:"Не вдалося видати підписане виправлення. Оновіть список видачі."},{status:409});
   }
-  if(Number(result.meta.changes||0)!==1) return Response.json({error:"Статус виправлення змінився. Оновіть список видачі."},{status:409});
+  if(!result) return Response.json({error:"Статус виправлення змінився. Оновіть список видачі."},{status:409});
 
   const delivery=await db.prepare(
     `SELECT d.id AS documentId,d.number,r.delivered_by AS deliveredBy,r.delivered_at AS deliveredAt
