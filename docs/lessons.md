@@ -191,3 +191,7 @@ Telegram-кнопка реєстратора є лише trusted adapter до к
 ## 26. Patient knowledge proof does not authorize clinical records
 
 Phone plus date of birth may identify a booking scope and support limited booking checks; it is not proof of control over the patient's phone or e-mail. Patient sessions therefore record their assurance level. Protocol/result access requires a session created only after a single-use OTP challenge delivered to a contact already on file. Keep booking lookup and protocol authorization separate, fail closed when the assurance field is missing, and test both paths through the API. A shared phone number does not weaken this boundary.
+
+## Рішення власника від 2026-10-29: внутрішній продукт, без sales positioning
+
+RadiologyOS зараз розвивається для роботи власного рентгенвідділення і не позиціонується для продажу. Публічну сторінку `/product` не використовувати як sales-вітрину. Із зовнішніх CRM-референсів брати лише доречні робочі принципи — зрозумілі етапи, рольові дії, швидкий перехід до наступного кроку — і застосовувати їх у захищеному `/staff` без дублювання наявних маршрутів. Публічний сайт залишається вітриною послуг відділення для пацієнтів.

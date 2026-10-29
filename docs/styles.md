@@ -31,7 +31,7 @@
 | `07-negatoscope.css` | **theme** | Негатоскоп-акцент: брендовий зелений → клінічний teal у кабінеті. |
 | `08-dark-theme.css` | **theme** | Темна тема кабінету (`.themeDark`). |
 | `09-records.css` | ws | «Записи»: таби, групи по днях. |
-| `10-landing.css` | public | Комерційний лендинг (`.rosLanding`, токени `--ros-*`). |
+| `10-landing.css` | ws | Історична назва; стилі реєстру досліджень, Пульта, організації та прийому. Публічний product-landing блок видалений. |
 | `11-command-palette.css` | ws | Командна палітра (⌘K). |
 | `12-design-system.css` | **ws** | **Семантичний шар `--ws-*`**: статуси, іконки, поліш кнопок. Вантажиться останнім, щоб модернізувати кабінет без переписування legacy-CSS. |
 | `13-dashboard-monitor.css` | ws | BAS-монітор керівника (`--dash-kpi`). |
@@ -116,7 +116,6 @@
 
 Живуть у своїй зоні й нікуди не «підіймаються»:
 
-- `10-landing.css` — `--ros-*` (лендинг, скоуп `.rosLanding`).
 - `24-reports-minimal.css` — `--rp-*` (екран «Звіти»).
 - `23-bas-enterprise-density.css` — `--bas-*` (щільний режим, скоуп `.basWorkspaceShell`).
 - `13-dashboard-monitor.css` — `--dash-kpi`.
