@@ -92,13 +92,25 @@ export default function ProductPage() {
     </header>
 
     <section className="rosHero" id="top">
-      <span className="rosEyebrow">Розумна реєстратура для клінік і лікарів</span>
-      <h1>Від заявки до виданого протоколу<br/><em>в одному радіологічному процесі</em></h1>
-      <p>Уточніть, які можливості вже доступні для вашого закладу, які модулі можна підключити та якими будуть умови.</p>
-      <div className="rosHeroCta">
-        <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Написати у WhatsApp →</a>
+      <div className="rosHeroCopy">
+        <span className="rosEyebrow">Робочий простір радіологічного відділення</span>
+        <h1>Від заявки до виданого протоколу<br/><em>в одному радіологічному процесі</em></h1>
+        <p>Заявки, картки пацієнтів, дослідження та протоколи — в узгодженій робочій черзі. Перед підключенням підтвердимо доступний для вашого закладу склад.</p>
+        <div className="rosHeroCta">
+          <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Обговорити систему →</a>
+        </div>
+        <p className="rosHeroNote">Спершу звіримо ваш процес, потрібні модулі та умови.</p>
       </div>
-      <p className="rosHeroNote">Залишились питання? <a href={whatsappHref(contactMessage)}>Напишіть у WhatsApp</a></p>
+      <div className="rosHeroPreview" aria-label="Схема робочої черги, демонстраційні дані">
+        <div className="rosPreviewTop"><span>RadiologyOS</span><span>Схема робочого процесу</span></div>
+        <div className="rosPreviewTitle"><b>Дослідження</b><span>Стан черги</span></div>
+        <div className="rosPreviewRows">
+          <div><i className="rosDot pending"/>Очікує опису<span>Черга</span></div>
+          <div><i className="rosDot ready"/>До підпису<span>Перевірка</span></div>
+          <div><i className="rosDot issued"/>Видано<span>Завершено</span></div>
+        </div>
+        <div className="rosPreviewFoot">Схематичний інтерфейс · без даних пацієнтів</div>
+      </div>
     </section>
 
     <section className="rosIntegr" aria-label="Основні частини робочого процесу">
