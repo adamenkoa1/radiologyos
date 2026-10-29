@@ -72,7 +72,7 @@ test("exact legacy booking-code session remains compatible and exposes only that
     await seedLegacyBooking(db, CODE_B, "Legacy Beta", "10:30");
     await seedIssuedProtocol(db, bookingA);
 
-    const raw = await createPatientSession(db, PHONE, 1, { kind:"booking", value:CODE_A });
+    const raw = await createPatientSession(db, PHONE, 1, { kind:"booking", value:CODE_A }, "", "otp");
     const cookie = `rid_patient=${raw}`;
 
     const cabinet = await callWorker(request("/api/my-bookings", cookie), db);
