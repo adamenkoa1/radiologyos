@@ -115,7 +115,7 @@ export async function POST(request:Request) {
   if (!ctx) return Response.json({ error:"Доступ лише для персоналу" }, { status:403 });
 
   const body = await request.json().catch(()=>({})) as {
-    title?:string;details?:string;priority?:string;dueDate?:string;assignedEmail?:string;bookingId?:number|null;
+    title?:string;details?:string;priority?:string;dueDate?:string;assignedEmail?:string;bookingId?:number|null;sourceEntityType?:string;
   };
   const title = String(body.title || "").trim().slice(0,180);
   const details = String(body.details || "").trim().slice(0,4000);
@@ -123,6 +123,13 @@ export async function POST(request:Request) {
   const dueDate = String(body.dueDate || "").trim();
   const assignedEmail = String(body.assignedEmail || "").trim().toLowerCase().slice(0,254);
   const bookingId = Number.isInteger(Number(body.bookingId)) && Number(body.bookingId) > 0 ? Number(body.bookingId) : null;
+  const sourceEntityType = String(body.sourceEntityType || "").trim();
+  if (sourceEntityType && sourceEntityType !== "booking_followup") return Response.json({ error:"Некоректне джерело завдання" }, { status:400 });
+  if (sourceEntityType === "booking_followup") {
+    if (ctx.member.role !== "admin" && ctx.member.role !== "registrar") return Response.json({ error:"Немає прав створювати follow-up завдання" }, { status:403 });
+    if (!bookingId || !dueDate || !assignedEmail) return Response.json({ error:"Для follow-up потрібні запис, строк і відповідальний" }, { status:400 });
+  }
+  const sourceEntityId = sourceEntityType === "booking_followup" ? String(bookingId) : "";
 
   if (!title) return Response.json({ error:"Вкажіть назву завдання" }, { status:400 });
   if (dueDate && !DATE_RE.test(dueDate)) return Response.json({ error:"Некоректна дата виконання" }, { status:400 });
@@ -140,11 +147,11 @@ export async function POST(request:Request) {
 
   const result = await db.prepare(
     `INSERT INTO staff_tasks
-      (organization_id,title,details,status,priority,due_date,booking_id,assigned_email,created_by,source)
-     VALUES (?,?,?,'open',?,?,?,?,?,'manual')`
-  ).bind(ctx.organizationId,title,details,priority,dueDate,bookingId,assignedEmail,ctx.member.email).run();
+      (organization_id,title,details,status,priority,due_date,booking_id,assigned_email,created_by,source,source_entity_type,source_entity_id)
+     VALUES (?,?,?,'open',?,?,?,?,?,'manual',?,?)`
+  ).bind(ctx.organizationId,title,details,priority,dueDate,bookingId,assignedEmail,ctx.member.email,sourceEntityType,sourceEntityId).run();
   const id = Number(result.meta.last_row_id || 0);
-  await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"task_created", resource:"task", targetId:id, details:{ priority, assigned:!!assignedEmail, linkedBooking:!!bookingId } });
+  await audit(db,{ organizationId:ctx.organizationId, actorEmail:ctx.member.email, action:"task_created", resource:"task", targetId:id, details:{ priority, assigned:!!assignedEmail, linkedBooking:!!bookingId, sourceEntityType } });
   return Response.json({ ok:true,id }, { status:201 });
 }
 
