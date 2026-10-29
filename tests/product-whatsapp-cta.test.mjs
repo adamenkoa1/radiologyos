@@ -7,6 +7,7 @@ const read = (path) => readFile(new URL(`../${path}`, import.meta.url), "utf8");
 test("product signup and plan actions open WhatsApp with context", async () => {
   const page = await read("app/product/page.tsx");
   assert.match(page, /const whatsappHref = \(message: string\).*encodeURIComponent\(message\)/);
+  assert.equal(page.includes('href="https://wa.me/380972808899"'), false, "all WhatsApp links use the prefilled helper");
   assert.match(page, /className="rosBtn" href=\{whatsappHref\(contactMessage\)\}/);
   assert.match(page, /className="rosBtn rosBtnLg" href=\{whatsappHref\(contactMessage\)\}/);
   assert.ok(page.includes('href={whatsappHref(`Добрий день! Хочу обговорити RadiologyOS для формату «${a.title}».`)}'));
