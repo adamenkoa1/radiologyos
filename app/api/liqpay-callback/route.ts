@@ -3,8 +3,9 @@
 // and on a paid status settle every civilian booking named in order_id through
 // the verified-provider ledger path (finance document + booking flip), so online
 // and desk payments post identically. Amounts are authoritative from D1 — the
-// callback's signed total must cover them. Idempotent and replay-safe. Always
-// answers 200 so LiqPay stops retrying.
+// callback's signed total must cover them. Settlement is idempotent and
+// replay-safe. Retryable storage failures return 503; invalid and non-paid
+// callbacks return 200 so they are not retried.
 
 import { dbBinding } from "../../../lib/db";
 import { getOrganizationIntegrationSetting } from "../../../lib/settings";
@@ -15,10 +16,14 @@ import { recordAnalyticsEvent } from "../../../lib/analytics";
 const PUBLIC_ORGANIZATION_ID = 1;
 
 const ok = () => new Response("ok", { status: 200, headers: { "cache-control": "no-store" } });
+const retryableFailure = () => new Response("temporarily unavailable", {
+  status: 503,
+  headers: { "cache-control": "no-store", "retry-after": "5" },
+});
 
 export async function POST(request: Request) {
   const db = dbBinding();
-  if (!db) return ok();
+  if (!db) return retryableFailure();
 
   let data = "";
   let signature = "";
@@ -31,8 +36,14 @@ export async function POST(request: Request) {
   }
   if (!data || !signature) return ok();
 
-  const privateKey = await getOrganizationIntegrationSetting(db, PUBLIC_ORGANIZATION_ID, "liqpay_private_key");
-  const result = await verifyLiqpayCallback(privateKey || "", data, signature);
+  let privateKey = "";
+  try {
+    privateKey = await getOrganizationIntegrationSetting(db, PUBLIC_ORGANIZATION_ID, "liqpay_private_key") || "";
+  } catch {
+    console.error("liqpay_callback_config_lookup_failed");
+    return retryableFailure();
+  }
+  const result = await verifyLiqpayCallback(privateKey, data, signature);
   if (!result.ok) {
     console.warn("liqpay_callback_bad_signature");
     return ok();
@@ -43,13 +54,20 @@ export async function POST(request: Request) {
   if (!codes.length) return ok();
 
   const placeholders = codes.map(() => "?").join(",");
-  const rows = await db.prepare(
-    `SELECT id, code, service_code AS serviceCode, payment_amount AS amount, payment_status AS paymentStatus,
-            paid_amount AS paidAmount, patient_category AS category
-     FROM bookings WHERE organization_id = ? AND code IN (${placeholders})`,
-  ).bind(PUBLIC_ORGANIZATION_ID, ...codes).all<{
+  type LiqpayBookingRow = {
     id: number; code: string; serviceCode: string; amount: number; paymentStatus: string; paidAmount: number; category: string;
-  }>();
+  };
+  let rows: { results: LiqpayBookingRow[] };
+  try {
+    rows = await db.prepare(
+      `SELECT id, code, service_code AS serviceCode, payment_amount AS amount, payment_status AS paymentStatus,
+              paid_amount AS paidAmount, patient_category AS category
+       FROM bookings WHERE organization_id = ? AND code IN (${placeholders})`,
+    ).bind(PUBLIC_ORGANIZATION_ID, ...codes).all<LiqpayBookingRow>();
+  } catch {
+    console.error("liqpay_callback_booking_lookup_failed");
+    return retryableFailure();
+  }
 
   const payable = (rows.results || []).filter((row) =>
     row.category === "civilian" && row.amount > 0 && !(row.paymentStatus === "paid" && row.paidAmount === row.amount));
@@ -62,6 +80,8 @@ export async function POST(request: Request) {
     return ok();
   }
 
+  let settlementFailed = false;
+  const settled: LiqpayBookingRow[] = [];
   for (const row of payable) {
     try {
       await settleVerifiedProviderPayment(db as never, {
@@ -72,6 +92,22 @@ export async function POST(request: Request) {
         amount: row.amount,
         actor: "online:liqpay",
       });
+      settled.push(row);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "payment_already_settled") continue;
+      settlementFailed = true;
+      console.error("liqpay_settle_failed", row.id);
+    }
+  }
+
+  // If one booking could not be persisted, let the provider retry the whole
+  // signed callback. Earlier rows are safe to replay through the idempotent
+  // settlement function; analytics waits until every payable row is settled.
+  if (settlementFailed) return retryableFailure();
+
+  for (const row of settled) {
+    try {
       await recordAnalyticsEvent(db, {
         eventName: "payment_completed",
         organizationId: PUBLIC_ORGANIZATION_ID,
@@ -79,10 +115,10 @@ export async function POST(request: Request) {
         patientCategory: "civilian",
         source: "server",
       });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-      if (message === "payment_already_settled") continue;
-      console.error("liqpay_settle_failed", row.code, error);
+    } catch {
+      // Analytics is best-effort and must not turn a persisted payment into a
+      // retryable callback (which could duplicate analytics events on replay).
+      console.warn("liqpay_payment_analytics_failed");
     }
   }
   return ok();
