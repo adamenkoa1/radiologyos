@@ -41,6 +41,7 @@ export default function TasksPage() {
   const [mine,setMine] = useState(false);
   const [busy,setBusy] = useState<number|null>(null);
   const [creating,setCreating] = useState(false);
+  const [followUpMode,setFollowUpMode] = useState(false);
   const [submitting,setSubmitting] = useState(false);
   const [form,setForm] = useState<{title:string;details:string;priority:string;dueDate:string;assignedEmail:string;bookingId:number|null}>({ title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId:null });
 
@@ -66,7 +67,8 @@ export default function TasksPage() {
       if(params.get("followUp")!=="1") return;
       const bookingId=Number(params.get("bookingId"));
       if(!Number.isInteger(bookingId)||bookingId<1) return;
-      setForm({title:"Повторно зв’язатися щодо запису",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId});
+      setForm({title:"Повторно зв’язатися щодо запису",details:"",priority:"normal",dueDate:todayKyiv(),assignedEmail:"",bookingId});
+      setFollowUpMode(true);
       setCreating(true);
     },0);
     return()=>window.clearTimeout(timer);
@@ -107,12 +109,17 @@ export default function TasksPage() {
 
   async function createTask() {
     if(!form.title.trim()||submitting) return;
+    const assignedEmail=form.assignedEmail||(followUpMode?data?.staff.email||"": "");
+    if(followUpMode&&(!form.bookingId||!form.dueDate||!assignedEmail)){
+      setError("Для follow-up задачі вкажіть строк і відповідального.");
+      return;
+    }
     setSubmitting(true);
     try {
-      const res=await fetch("/api/staff/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});
+      const res=await fetch("/api/staff/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({...form,assignedEmail,sourceEntityType:followUpMode?"booking_followup":""})});
       const payload=await res.json().catch(()=>({})) as {error?:string};
       if(!res.ok){setError(payload.error||"Не вдалося створити завдання");return;}
-      setCreating(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId:null});await load();
+      setCreating(false);setFollowUpMode(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId:null});await load();
     } catch {
       // Мережевий збій створення — показуємо помилку, а не мовчазний no-op.
       setError("Не вдалося створити завдання. Перевірте зʼєднання та спробуйте ще раз.");
@@ -150,10 +157,11 @@ export default function TasksPage() {
         <label><span>Назва</span><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} maxLength={180} placeholder="Що потрібно зробити"/></label>
         <label><span>Деталі</span><textarea value={form.details} onChange={e=>setForm(f=>({...f,details:e.target.value}))} rows={3} placeholder="Контекст, результат, примітки"/></label>
         {form.bookingId&&<p>Пов’язано із записом #{form.bookingId}. Дані пацієнта в завданні не дублюються.</p>}
+        {followUpMode&&<p role="note">Для follow-up потрібні відповідальний і строк. Початково обрані ви та сьогодні; за потреби змініть їх.</p>}
         <div className="taskCreateRow">
           <label><span>Пріоритет</span><select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}><option value="high">Високий</option><option value="normal">Звичайний</option><option value="low">Низький</option></select></label>
-          <label><span>До дати</span><input type="date" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></label>
-          <label><span>Виконавець</span><select value={form.assignedEmail} onChange={e=>setForm(f=>({...f,assignedEmail:e.target.value}))}><option value="">Без виконавця</option>{data.members.map(m=><option key={m.email} value={m.email}>{m.displayName||m.email}</option>)}</select></label>
+          <label><span>До дати{followUpMode?" *":""}</span><input type="date" required={followUpMode} value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></label>
+          <label><span>Виконавець{followUpMode?" *":""}</span><select required={followUpMode} value={form.assignedEmail||(followUpMode?data.staff.email:"")} onChange={e=>setForm(f=>({...f,assignedEmail:e.target.value}))}>{!followUpMode&&<option value="">Без виконавця</option>}{data.members.map(m=><option key={m.email} value={m.email}>{m.displayName||m.email}</option>)}</select></label>
         </div>
         <button className="taskSave" disabled={!form.title.trim()||submitting} onClick={()=>void createTask()}>{submitting?"Створення…":"Створити завдання"}</button>
       </div>}
