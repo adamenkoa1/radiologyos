@@ -327,6 +327,7 @@ export async function PATCH(request: Request) {
     verified.organizationId,
     verified.identity,
     verified.patientId || "",
+    "otp",
   );
   await audit(db, {
     organizationId: verified.organizationId,
