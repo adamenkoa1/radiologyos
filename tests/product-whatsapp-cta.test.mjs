@@ -43,3 +43,18 @@ test("audience and final CTAs invite a scoped consultation", async () => {
   assert.match(page, /Потрібна консультація\?/);
   assert.match(page, /Підтвердимо доступні модулі/);
 });
+
+test("product page does not promise a self-service trial or automatic signup payment", async () => {
+  const page = await read("app/product/page.tsx");
+  for (const claim of [
+    "безкоштовного періоду",
+    "Почати безкоштовно",
+    "14 днів безкоштовно",
+    "без картки",
+    "оплата одразу після реєстрації",
+    "скасування будь-коли",
+    "знижкою 15%",
+  ]) {
+    assert.equal(page.toLowerCase().includes(claim.toLowerCase()), false, `stale claim: ${claim}`);
+  }
+});
