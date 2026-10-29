@@ -131,7 +131,7 @@ export default function ProductPage() {
       <p className="rosSectionEyebrow">Тарифи</p>
       <h2>Тарифи та вартість</h2>
       <p className="rosLead">Публічні тарифи й ціни ще не підтверджені для клієнтського підключення. Спочатку узгодимо доступні модулі та процеси, після цього повідомимо вартість.</p>
-      <div className="rosPricing">
+      <div className="rosPricing rosPricingContact">
         <article className="rosTier rosTierContact">
           <b className="rosTierName">Індивідуальні умови</b>
           <span className="rosTierWho">Після підтвердження доступних функцій</span>
