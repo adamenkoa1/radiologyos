@@ -5,7 +5,28 @@ import { useEffect, useState } from "react";
 
 const money = new Intl.NumberFormat("uk-UA");
 const whatsappHref = (message: string) => `https://wa.me/380972808899?text=${encodeURIComponent(message)}`;
-const contactMessage = "Добрий день! Хочу обговорити можливості й умови підключення RadiologyOS для свого закладу.";
+const contactMessage = "Добрий день! Хочу обговорити роботу RadiologyOS для відділення діагностики та доступні зараз можливості.";
+
+const proofItems = [
+  "Заявка й картка пацієнта",
+  "Черга досліджень",
+  "Протокол: чернетка → підпис → видача",
+  "Рольовий доступ і журнал подій",
+];
+
+const processSteps = [
+  { number:"01", title:"Заявка", text:"Плановий запис або walk-in потрапляє в робочу систему." },
+  { number:"02", title:"Пацієнт", text:"Заявка пов’язується з карткою пацієнта без тихого злиття дублікатів." },
+  { number:"03", title:"Дослідження", text:"Реєстратура бачить стан, обладнання та призначення." },
+  { number:"04", title:"Протокол", text:"Лікар готує опис, підписує його й передає на видачу." },
+  { number:"05", title:"Результат", text:"Видача фіксується в життєвому циклі документа та аудиті." },
+];
+
+const roleCards = [
+  { title:"Реєстратура", text:"Опрацьовує заявки, картки пацієнтів і запис відповідно до своїх прав." },
+  { title:"Лікар-рентгенолог", text:"Працює з призначеними дослідженнями, створює та підписує протоколи." },
+  { title:"Адміністратор", text:"Керує налаштуваннями й доступами у межах ролі закладу." },
+];
 
 const features = [
   { icon:"◷", title:"Запис і розклад", text:"Календар заявок і досліджень із прив'язкою до дати, часу та обладнання." },
@@ -58,9 +79,9 @@ export default function ProductPage() {
     <header className="rosHeader">
       <a className="rosBrand" href="#top"><span className="rosBrandMark">✦</span> RadiologyOS</a>
       <nav className="rosNav">
-        <a href="#features">Можливості</a>
+        <a href="#features">Можливості</a>\n        <a href="#flow">Як працює</a>
         <a href="#calc">Розрахунок утрат</a>
-        <a href="#audience">Кому підходить</a>
+        <a href="#audience">Для кого</a>
         <a href="#pricing">Тарифи</a>
         <a href="#faq">Питання</a>
       </nav>
@@ -72,7 +93,7 @@ export default function ProductPage() {
 
     <section className="rosHero" id="top">
       <span className="rosEyebrow">Розумна реєстратура для клінік і лікарів</span>
-      <h1>Обговоріть RadiologyOS<br/><em>для вашого закладу</em></h1>
+      <h1>Від заявки до виданого протоколу<br/><em>в одному радіологічному процесі</em></h1>
       <p>Уточніть, які можливості вже доступні для вашого закладу, які модулі можна підключити та якими будуть умови.</p>
       <div className="rosHeroCta">
         <a className="rosBtn rosBtnLg" href={whatsappHref(contactMessage)}>Написати у WhatsApp →</a>
@@ -80,17 +101,69 @@ export default function ProductPage() {
       <p className="rosHeroNote">Залишились питання? <a href={whatsappHref(contactMessage)}>Напишіть у WhatsApp</a></p>
     </section>
 
-    <section className="rosIntegr">
-      <p className="rosIntegrCap">Статус окремих можливостей</p>
-      <div className="rosIntegrChips rosUnavailableList" aria-label="Статус можливостей RadiologyOS">
-        {featureStatus.map(item=><span className="rosChip" key={item.name}><b>{item.name}</b> <span>{item.note}</span></span>)}
+    <section className="rosIntegr" aria-label="Основні частини робочого процесу">
+      <p className="rosIntegrCap">Один маршрут дослідження</p>
+      <div className="rosIntegrChips rosProofStrip">
+        {proofItems.map(item=><span className="rosChip" key={item}>{item}</span>)}
+      </div>
+    </section>
+
+    <section className="rosSection rosComparisonSection" id="compare">
+      <p className="rosSectionEyebrow">Один контур роботи</p>
+      <h2>Від розрізнених кроків — до видимого процесу</h2>
+      <p className="rosLead">RadiologyOS з’єднує запис, дослідження та протокол. Фактичний склад вашої конфігурації уточнимо перед підключенням.</p>
+      <div className="rosComparisonWrap">
+        <table className="rosComparison">
+          <thead><tr><th>Етап</th><th>Коли дані розділені</th><th>У робочому контурі RadiologyOS</th></tr></thead>
+          <tbody>
+            <tr><th>Пацієнт і заявка</th><td>Потрібно окремо звіряти картку й запис.</td><td>Картка пов’язана із заявкою та дослідженням.</td></tr>
+            <tr><th>Черга досліджень</th><td>Стан уточнюють між кабінетом і реєстратурою.</td><td>Стан і призначення видно в реєстрі.</td></tr>
+            <tr><th>Опис і видача</th><td>Результат може бути окремо від робочої черги.</td><td>Протокол проходить чернетку, підписання та видачу.</td></tr>
+            <tr><th>Доступ</th><td>Права доводиться узгоджувати вручну.</td><td>Серверні дії перевіряють роль та організацію.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section className="rosSection" id="audience">
+      <p className="rosSectionEyebrow">Кому підходить</p>
+      <h2>Клінікам, кабінетам і приватній практиці</h2>
+      <p className="rosLead">Система масштабується під розмір бізнесу: від одного кабінету до мережі з десятками лікарів.</p>
+      <div className="rosAudienceGrid">
+        {audience.map(a=><article className={`rosAudience tint-${a.tint}`} key={a.title}>
+          <span className="rosAudienceIcon" aria-hidden="true">{a.icon}</span>
+          <h3>{a.title}</h3><p>{a.text}</p>
+          <ul>{a.points.map(p=><li key={p}>{p}</li>)}</ul>
+          <a className="rosAudienceCta" href={whatsappHref(`Добрий день! Хочу обговорити RadiologyOS для формату «${a.title}».`)}>{a.cta} →</a>
+        </article>)}
+      </div>
+    </section>
+
+    <section className="rosSection rosProcessSection" id="flow">
+      <p className="rosSectionEyebrow">Як працює</p>
+      <h2>Шлях пацієнта — від заявки до результату</h2>
+      <p className="rosLead">П’ять кроків клінічного процесу в системі. Медичне рішення й текст висновку лишаються за лікарем.</p>
+      <ol className="rosProcess">
+        {processSteps.map(step=><li key={step.number}>
+          <span className="rosProcessNumber">{step.number}</span>
+          <div><h3>{step.title}</h3><p>{step.text}</p></div>
+        </li>)}
+      </ol>
+    </section>
+
+    <section className="rosSection rosRolesSection" id="roles">
+      <p className="rosSectionEyebrow">Командна робота</p>
+      <h2>Кожній ролі — своя робоча зона</h2>
+      <p className="rosLead">Сервер перевіряє роль і доступ до закладу на кожній захищеній дії.</p>
+      <div className="rosRoleGrid">
+        {roleCards.map(role=><article className="rosRoleCard" key={role.title}><h3>{role.title}</h3><p>{role.text}</p></article>)}
       </div>
     </section>
 
     <section className="rosSection" id="features">
-      <p className="rosSectionEyebrow">Можливості</p>
-      <h2>Єдине ядро для всього закладу</h2>
-      <p className="rosLead">Нижче — робочі напрямки системи. Перед підключенням підтвердимо, які з них доступні у вашій конфігурації.</p>
+      <p className="rosSectionEyebrow">Операційна система відділення</p>
+      <h2>Кожен етап дослідження видно команді</h2>
+      <p className="rosLead">Від реєстрації пацієнта до видачі результату команда працює в спільній черзі. Доступні модулі та налаштування погоджуємо окремо.</p>
       <div className="rosFeatureGrid">
         {features.map(f=><article className="rosFeature" key={f.title}>
           <span className="rosFeatureIcon" aria-hidden="true">{f.icon}</span>
@@ -118,17 +191,12 @@ export default function ProductPage() {
       </div>
     </section>
 
-    <section className="rosSection" id="audience">
-      <p className="rosSectionEyebrow">Кому підходить</p>
-      <h2>Клінікам, кабінетам і приватній практиці</h2>
-      <p className="rosLead">Система масштабується під розмір бізнесу: від одного кабінету до мережі з десятками лікарів.</p>
-      <div className="rosAudienceGrid">
-        {audience.map(a=><article className={`rosAudience tint-${a.tint}`} key={a.title}>
-          <span className="rosAudienceIcon" aria-hidden="true">{a.icon}</span>
-          <h3>{a.title}</h3><p>{a.text}</p>
-          <ul>{a.points.map(p=><li key={p}>{p}</li>)}</ul>
-          <a className="rosAudienceCta" href={whatsappHref(`Добрий день! Хочу обговорити RadiologyOS для формату «${a.title}».`)}>{a.cta} →</a>
-        </article>)}
+    <section className="rosSection rosSectionAlt rosStatusSection" id="availability">
+      <p className="rosSectionEyebrow">Доступність модулів</p>
+      <h2>Що підтверджено зараз</h2>
+      <p className="rosLead">Розділяємо функції у внутрішній системі та послуги, доступність яких для клієнтського середовища ще треба погодити.</p>
+      <div className="rosStatusGrid">
+        {featureStatus.map(item=><article className="rosStatusCard" key={item.name}><b>{item.name}</b><p>{item.note}</p></article>)}
       </div>
     </section>
 
