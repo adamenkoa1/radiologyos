@@ -66,6 +66,27 @@ test("a proven identity with an email on file selects the email channel", async 
   });
 });
 
+test("exact booking code scopes OTP when phone and DOB match multiple bookings", async () => {
+  await withD1(async (db) => {
+    const secondCode = "RD-EMAILOTP02";
+    await seedBooking(db, { email: "patient@example.com", code: CODE });
+    await seedBooking(db, { email: "patient@example.com", code: secondCode, time: "10:30" });
+    await setEmailGateway(db, "https://mail.example.test/send");
+
+    const res = await requestOtp(db, { phone: PHONE, dob: "1990-05-05", bookingCode: CODE });
+    // The synthetic test gateway is rejected before network I/O, after the route
+    // has resolved and consumed the exact booking-scoped challenge.
+    assert.equal(res.status, 503);
+    const challenge = await db.prepare(
+      `SELECT identity_kind AS identityKind, identity_value AS identityValue, consumed_at AS consumedAt
+       FROM patient_otp_challenges WHERE phone_normalized = ? ORDER BY created_at DESC, id DESC LIMIT 1`,
+    ).bind(PHONE_N).first();
+    assert.equal(challenge.identityKind, "booking");
+    assert.equal(challenge.identityValue, CODE);
+    assert.notEqual(challenge.consumedAt, "");
+  });
+});
+
 test("a proven identity with no email on file and no SMS returns an opaque response and mints no challenge", async () => {
   await withD1(async (db) => {
     await seedBooking(db, { email: "" });
