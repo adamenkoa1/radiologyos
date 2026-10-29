@@ -119,3 +119,20 @@ test("confirmation returns an honest status when Telegram is not configured (no 
     assert.ok(data.error, "honest error explaining why nothing was sent");
   });
 });
+
+
+test("webhook does not acknowledge updates when the D1 binding is unavailable", async () => {
+  const previous = globalThis.__RADIOLOGY_DB__;
+  delete globalThis.__RADIOLOGY_DB__;
+  try {
+    const res = await callWorker(new Request("http://localhost/api/telegram/webhook", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ update_id: 6006, message: { chat: { id: 88 }, text: "хочу записатись" } }),
+    }), undefined);
+    assert.equal(res.status, 503, "Telegram must not receive a success response when the request cannot be persisted");
+  } finally {
+    if (previous === undefined) delete globalThis.__RADIOLOGY_DB__;
+    else globalThis.__RADIOLOGY_DB__ = previous;
+  }
+});
