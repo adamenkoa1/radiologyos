@@ -192,6 +192,17 @@ Telegram-кнопка реєстратора є лише trusted adapter до к
 
 Phone plus date of birth may identify a booking scope and support limited booking checks; it is not proof of control over the patient's phone or e-mail. Patient sessions therefore record their assurance level. Protocol/result access requires a session created only after a single-use OTP challenge delivered to a contact already on file. Keep booking lookup and protocol authorization separate, fail closed when the assurance field is missing, and test both paths through the API. A shared phone number does not weaken this boundary.
 
+## 27. D1 meta.changes не є кількістю змінених батьківських рядків
+
+D1 може включати в `meta.changes` записи тригерів: проєкції, історію й документи-
+реєстратори. Умова `changes === 1` після успішного одиничного UPDATE тоді повертає
+помилковий конфлікт, хоча незворотна дія вже відбулася. Для умовних переходів
+використовувати `UPDATE … RETURNING` і перевіряти повернений рядок; tenant, версія
+та дозволений початковий статус лишаються в WHERE. Фактичний registrar перевіряти
+окремо. node:sqlite statement.changes не моделює цей D1-лічильник, тому regression-
+тест має враховувати trigger-inclusive metadata, а критичний шлях — проходити
+перевірку на справжньому локальному D1 runtime.
+
 ## Рішення власника від 2026-10-29: внутрішній продукт, без sales positioning
 
 RadiologyOS зараз розвивається для роботи власного рентгенвідділення і не позиціонується для продажу. Публічну сторінку `/product` не використовувати як sales-вітрину. Із зовнішніх CRM-референсів брати лише доречні робочі принципи — зрозумілі етапи, рольові дії, швидкий перехід до наступного кроку — і застосовувати їх у захищеному `/staff` без дублювання наявних маршрутів. Публічний сайт залишається вітриною послуг відділення для пацієнтів.

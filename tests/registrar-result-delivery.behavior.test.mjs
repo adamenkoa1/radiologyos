@@ -39,6 +39,44 @@ function baseDelivery(raw,bookingId){return raw.prepare(`SELECT d.id,r.signed_by
 function addendumDelivery(raw,id){return raw.prepare(`SELECT d.id,r.signed_by AS signedBy,r.delivered_by AS deliveredBy FROM result_addendum_delivery_details r JOIN business_documents d ON d.id=r.document_id AND d.organization_id=r.organization_id WHERE r.organization_id=1 AND r.addendum_id=? LIMIT 1`).get(id);}
 function movementCount(raw,table,documentId){return Number(raw.prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE document_id=?`).get(documentId).n);}
 
+// Real D1 reports changes made by triggers as well as the matched parent row.
+// node:sqlite's statement.changes only counts the parent, so reproduce D1's
+// metadata while retaining the real schema, writes, and immutable registrars.
+function triggerInclusiveChanges(db,raw) {
+  return {...db,prepare(sql) {
+    const statement=db.prepare(sql);
+    const originalRun=statement.run;
+    statement.run=async()=>{
+      const before=Number(raw.prepare("SELECT total_changes() AS n").get().n);
+      const result=await originalRun();
+      const after=Number(raw.prepare("SELECT total_changes() AS n").get().n);
+      return {...result,meta:{...result.meta,changes:after-before}};
+    };
+    return statement;
+  }};
+}
+
+test("delivery accepts real D1 trigger-inclusive changes for protocols and addenda",async()=>{
+  await withD1(async(db,raw)=>{
+    const doctor=await seedStaffSession(db,{email:"d1-trigger-doctor@example.com",role:"radiologist"});
+    const registrar=await seedStaffSession(db,{email:"d1-trigger-registrar@example.com",role:"registrar"});
+    const bookingId=await seedBooking(db,{code:"RD-D1-TRIGGER-DELIVERY",doctor:"d1-trigger-doctor@example.com"});
+    const signed=await signProtocol(db,doctor,bookingId);
+    const d1=triggerInclusiveChanges(db,raw);
+    const issued=await deliver(d1,registrar,{kind:"protocol",bookingId,version:signed.version});
+    assert.equal(issued.status,200,await issued.text());
+    assert.equal(raw.prepare("SELECT status FROM protocols WHERE booking_id=?").get(bookingId).status,"issued");
+    assert.equal(raw.prepare("SELECT count(*) AS n FROM result_delivery_details WHERE booking_id=?").get(bookingId).n,1);
+    const addendum=await createSignedAddendum(db,doctor,bookingId);
+    const addendumIssued=await deliver(d1,registrar,{kind:"addendum",addendumId:addendum.id,version:addendum.version});
+    assert.equal(addendumIssued.status,200,await addendumIssued.text());
+    assert.equal(raw.prepare("SELECT status FROM protocol_addenda WHERE id=?").get(addendum.id).status,"issued");
+    assert.equal(raw.prepare("SELECT count(*) AS n FROM result_addendum_delivery_details WHERE addendum_id=?").get(addendum.id).n,1);
+    assert.equal((await deliver(d1,registrar,{kind:"protocol",bookingId,version:signed.version})).status,409);
+    assert.equal((await deliver(d1,registrar,{kind:"addendum",addendumId:addendum.id,version:addendum.version})).status,409);
+  });
+});
+
 test("registrar lists metadata-only signed result and delivers it without clinical protocol access",async()=>{
   await withD1(async(db,raw)=>{
     const doctorEmail="delivery-doctor@example.com";
