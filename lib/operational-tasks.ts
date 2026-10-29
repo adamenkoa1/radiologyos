@@ -78,15 +78,6 @@ async function activeAssignee(db:D1Database,organizationId:number,email:string) 
   return row?.ok?email:"";
 }
 
-async function activeRegistrar(db:D1Database,organizationId:number) {
-  const row=await db.prepare(`SELECT m.member_email AS email FROM memberships m
-    JOIN staff_members s ON s.email=m.member_email AND s.active=1
-    WHERE m.organization_id=? AND m.role='registrar' AND m.active=1
-    ORDER BY m.member_email LIMIT 1`)
-    .bind(organizationId).first<{email:string}>();
-  return row?.email||"";
-}
-
 async function candidatesForOrg(db:D1Database,organizationId:number,today:string):Promise<Candidate[]> {
   const [inventory,maintenance,bookings]=await Promise.all([
     db.prepare(`SELECT i.id,i.name,i.unit,i.min_stock AS minStock,
@@ -153,7 +144,7 @@ async function candidatesForOrg(db:D1Database,organizationId:number,today:string
         title:"Зв'язатися щодо повторного запису",
         details:"Запис позначено як неявка. Уточніть, чи потрібне перенесення.",
         priority:"normal",dueDate:today,bookingId:booking.id,
-        assignedEmail:await activeRegistrar(db,organizationId),
+        assignedEmail:"",
         sourceEntityType:"booking_followup",sourceEntityId:String(booking.id),
       });
       continue;
