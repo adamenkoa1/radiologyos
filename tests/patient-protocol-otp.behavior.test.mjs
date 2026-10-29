@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { callWorker, jsonRequest, seedPatientSession, withD1 } from "./helpers/d1.mjs";
+import { readFile } from "node:fs/promises";
+import { createPatientOtpChallenge } from "../lib/patient-auth.ts";
+import { callWorker, jsonRequest, withD1 } from "./helpers/d1.mjs";
 
 const PHONE = "380501112233";
 const DOB = "1980-01-10";
@@ -51,7 +53,17 @@ test("phone+DOB session lists bookings but cannot read an issued protocol before
     assert.equal(blockedBody.requiresOtp, true);
     assert.doesNotMatch(JSON.stringify(blockedBody), /Клінічний опис|Клінічний висновок/);
 
-    const otpCookie = await seedPatientSession(db, PHONE, 1, { kind: "dob", value: DOB }, "", "otp");
+    // Exercise the actual OTP verification route without sending a real message:
+    // the challenge is minted in synthetic D1 and its code is posted directly.
+    const challenge = await createPatientOtpChallenge(db, PHONE, 1, { kind: "dob", value: DOB });
+    const verified = await callWorker(jsonRequest("/api/patient-otp", {
+      phone: "+380501112233",
+      challengeId: challenge.challengeId,
+      code: challenge.code,
+    }, { method: "PATCH" }), db);
+    assert.equal(verified.status, 200);
+    const otpCookie = (verified.headers.get("set-cookie") || "").split(";")[0];
+    assert.match(otpCookie, /^rid_patient=/);
     const allowed = await callWorker(jsonRequest("/api/my-protocol", { code: CODE }, { headers: { cookie: otpCookie } }), db);
     assert.equal(allowed.status, 200);
     const allowedBody = await allowed.json();
@@ -60,4 +72,12 @@ test("phone+DOB session lists bookings but cannot read an issued protocol before
     const otpList = await callWorker(jsonRequest("/api/my-bookings", {}, { headers: { cookie: otpCookie } }), db);
     assert.equal((await otpList.json()).protocolRequiresOtp, false);
   });
+});
+
+
+test("cabinet prompts for OTP before requesting a patient protocol", async () => {
+  const html = await readFile(new URL("../public/site/cabinet.html", import.meta.url), "utf8");
+  assert.match(html, /protocolRequiresOtp\?'Підтвердити номер для протоколу':'Переглянути протокол'/);
+  assert.match(html, /protocolRequiresOtp\?requestProtocolOtp\(\):toggleProtocol/);
+  assert.match(html, /async function requestProtocolOtp\(\)[\s\S]*?await requestEmailOtp\(\)/);
 });
