@@ -154,7 +154,7 @@ staging не налаштований/увімкнений. Відсутніст
 
 | Група | К-сть | Статус | Нотатки |
 |---|---|---|---|
-| Публічні (`/availability`, `/catalog`, `/site-*`, `/patient-*`, `/my-*`, `/liqpay-callback`, `/pay-link`, `/tariffs`) | не перераховано | перевірено частково | Patient login/OTP/protocol scope і payment initiation переглянуті читанням. LiqPay persistence failures: retryable 503 у поточному PR; зовнішню retry-гарантію LiqPay не підтверджено. Решта public API не аудійована. |
+| Публічні (`/availability`, `/catalog`, `/site-*`, `/patient-*`, `/my-*`, `/liqpay-callback`, `/pay-link`, `/tariffs`) | не перераховано | перевірено частково | Patient login/OTP/protocol scope і payment initiation переглянуті читанням. LiqPay persistence failures: retryable 503 у PR #714; зовнішню retry-гарантію LiqPay не підтверджено; CI ще очікується. Решта public API не аудійована. |
 | `/staff/*` операційні (`bookings`, `dashboard`, `studies`, `protocols*`, `result-deliveries`, `critical-findings`, `imaging*`) | не перераховано | не перевірено | Покриті behavior-тестами; аудит читанням |
 | `/staff/*` BAS (`finance`, `business-documents`, `inventory*`, `reports*`, `cash-accounts`, `counterparties`, `supplier-payables`, `service-deliveries*`) | не перераховано | не перевірено | Immutable-реєстри; широке тестове покриття |
 | `/staff/*` персонал/радіація (`personnel*`, `radiation-*`) | не перераховано | не перевірено | Append-only; захищені тригерами |
@@ -177,7 +177,7 @@ staging не налаштований/увімкнений. Відсутніст
 |---|---|---|---|
 | 2026-10-29 | Telegram webhook | Відсутній D1 більше не отримує HTTP 200: повертається 503, щоб Telegram міг повторити доставку; додано behavior-тест. Дублювання при конкурентних доставках лишається окремим schema follow-up | #706 |
 | 2026-10-29 | WhatsApp webhook | Read-only огляд: tenant/secret, D1 failure і dedupe перевірені; власник прийняв вузьку видачу найближчих послуг/дати/часу за WhatsApp-номером; live Green API не перевірявся | #707,#708 |
-| 2026-10-29 | LiqPay/patient access API | Read-only огляд identity scope та payment callback; retryable 503 для помилок збереження в межах поточного PR. Політика повторної доставки LiqPay та live callback не підтверджені | поточний PR |
+| 2026-10-29 | LiqPay/patient access API | Read-only огляд identity scope та payment callback; retryable 503 для помилок збереження в PR #714. Політика повторної доставки LiqPay та live callback не підтверджені | PR #714 |
 | 2026-10-29 | clinical workflow / patient attributes | Telegram intake UI (#686), фільтри черги (#687), стать пацієнта (#688), ділянки/контраст (#689), dashboard shortcuts/audit label (#690) | #686–#690 |
 | 2026-10-29 | protocol/task completion | Автозбереження чернетки (#701) і no-show follow-up (#703) | #701,#703 |
 | 2026-10-12 | tasks | WAI-ARIA таби, resilience | #633 |
