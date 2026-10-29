@@ -61,12 +61,15 @@ export default function TasksPage() {
 
   // Patient-card shortcut: open a booking-linked follow-up task without copying patient PII into the task.
   useEffect(()=>{
-    const params=new URLSearchParams(window.location.search);
-    if(params.get("followUp")!=="1") return;
-    const bookingId=Number(params.get("bookingId"));
-    if(!Number.isInteger(bookingId)||bookingId<1) return;
-    setForm({title:"Повторно зв’язатися щодо запису",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId});
-    setCreating(true);
+    const timer=window.setTimeout(()=>{
+      const params=new URLSearchParams(window.location.search);
+      if(params.get("followUp")!=="1") return;
+      const bookingId=Number(params.get("bookingId"));
+      if(!Number.isInteger(bookingId)||bookingId<1) return;
+      setForm({title:"Повторно зв’язатися щодо запису",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId});
+      setCreating(true);
+    },0);
+    return()=>window.clearTimeout(timer);
   },[]);
 
   // Не оновлюємо у фоні під час мутації чи створення завдання.
