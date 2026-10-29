@@ -1,4 +1,4 @@
-/* ================= Комерційний лендинг RadiologyOS (стиль Doctime) ================= */
+/* ================= Product landing page — RadiologyOS ================= */
 .rosLanding{--ros-bg:#f4f7f5;--ros-bg2:#e9f1ec;--ros-ink:#182a24;--ros-muted:#5e7068;--ros-teal:#0c6b50;--ros-teal-deep:#084d3b;--ros-orange:#d88752;--ros-card:#fff;--ros-line:#d5e2da;--ros-footer:#10231d;background:var(--ros-bg);color:var(--ros-ink);font-family:var(--font-sans);line-height:1.5;letter-spacing:-.005em}
 .rosLanding *{box-sizing:border-box}
 .rosLanding h1,.rosLanding h2,.rosLanding h3{font-family:var(--font-serif);font-weight:600;letter-spacing:-.02em;margin:0;text-wrap:balance}
