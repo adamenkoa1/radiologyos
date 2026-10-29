@@ -58,3 +58,26 @@ test("product page does not promise a self-service trial or automatic signup pay
     assert.equal(page.toLowerCase().includes(claim.toLowerCase()), false, `stale claim: ${claim}`);
   }
 });
+
+test("product page follows a workflow-first section order without reference branding", async () => {
+  const page = await read("app/product/page.tsx");
+  const order = [
+    'id="top"',
+    'className="rosIntegr"',
+    'id="compare"',
+    'id="audience"',
+    'id="flow"',
+    'id="roles"',
+    'id="features"',
+    'id="calc"',
+    'id="safety"',
+    'id="availability"',
+    'id="pricing"',
+    'id="faq"',
+  ];
+  const positions = order.map((marker) => page.indexOf(marker));
+  assert.ok(positions.every((position) => position >= 0), "all landing sections are present");
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b), "sections follow the agreed flow");
+  assert.match(page, /Схематичний інтерфейс · без даних пацієнтів/);
+  assert.equal(page.toLowerCase().includes("95sales"), false, "reference brand is not copied into RadiologyOS");
+});
