@@ -10,7 +10,7 @@ import { dbBinding } from "../../../../lib/db";
 
 export async function POST(request: Request) {
   const db = dbBinding();
-  if (!db) return new Response("ok");
+  if (!db) return new Response("service unavailable", { status: 503 });
   const provided = request.headers.get("x-telegram-bot-api-secret-token") || "";
   const organizationId = await resolveOrganizationByIntegrationSecret(db, "telegram_webhook_secret", provided);
   if (!organizationId) return new Response("forbidden", { status: 401 });
