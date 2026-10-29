@@ -31,7 +31,7 @@ test("product page does not promise unavailable customer features or unverified 
 
 test("calculator is labeled as an estimate, not a promise of reminder outcomes", async () => {
   const page = await read("app/product/page.tsx");
-  assert.match(page, /не є виміряною статистикою чи прогнозом ефекту від нагадувань/);
+  assert.match(page, /математична модель, а не виміряна статистика чи прогноз ефекту від нагадувань/);
   assert.match(page, /не є обіцянкою економії чи повернення коштів/);
 });
 
