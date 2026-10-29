@@ -412,3 +412,53 @@
   .rosProcess li,.rosProcess li:last-child{grid-column:auto;min-height:unset}
   .rosComparison th,.rosComparison td{padding:14px}
 }
+
+
+/* Reference-inspired product hero polish: original RadiologyOS branding and copy */
+.rosLanding h1,.rosLanding h2,.rosLanding h3{font-family:var(--font-sans);font-weight:700;letter-spacing:-.04em}
+.rosHeader{width:min(1220px,calc(100% - 40px));height:58px;margin:14px auto 0;padding:0 20px;position:sticky;top:10px;gap:0;border:0;border-radius:999px;background:#191919;color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.1)}
+.rosBrand{position:absolute;left:50%;transform:translateX(-50%);color:#fff;white-space:nowrap}
+.rosNav{flex:1;justify-content:flex-start;gap:clamp(10px,1.45vw,20px);margin:0;font-size:13px;color:#ddd;white-space:nowrap}
+.rosNav a{white-space:nowrap}
+.rosNav a:hover{color:#fff}
+.rosHeaderActions{margin-left:auto;gap:18px}
+.rosLogin{color:#fff}
+.rosHeader .rosBtn{background:#fff;color:#171717;border-radius:999px;padding:10px 18px}
+.rosHeader .rosBtn:hover{background:#e9f1ec}
+.rosHeroCopy h1{font-family:var(--font-sans);font-size:clamp(38px,4.2vw,54px);line-height:1.04;letter-spacing:-.045em;max-width:650px}
+.rosHeroCopy h1 em{color:var(--ros-teal);font-style:normal}
+.rosHeroCta{display:flex;align-items:center;flex-wrap:wrap;gap:12px}
+.rosHeroPreview{background:linear-gradient(150deg,#fff,#f7faf8);color:var(--ros-ink);border:1px solid #d9e4dd;border-radius:20px;box-shadow:0 20px 55px rgba(16,35,29,.12)}
+.rosPreviewTop{color:#66776e}
+.rosPreviewTitle span,.rosPreviewFoot{color:#6f7d75}
+.rosPreviewRows>div{background:#fff;border-color:#e0e8e2;color:var(--ros-ink);box-shadow:0 3px 10px rgba(16,35,29,.035)}
+.rosPreviewRows>div span{color:#77857d}
+.rosIntegr{max-width:1220px;margin:0 auto;border:0;border-radius:20px;background:#191919;color:#f4f4f2;padding-top:20px;padding-bottom:20px}
+.rosIntegrCap{color:#aaa;margin-bottom:8px}
+.rosProofStrip{gap:0;justify-content:stretch}
+.rosProofStrip .rosChip{flex:1 1 0;justify-content:center;border:0;border-right:1px solid rgba(255,255,255,.16);border-radius:0;background:transparent;color:#e4e4e1;padding:12px 14px;font-size:13px}
+.rosProofStrip .rosChip:last-child{border-right:0}
+.rosSectionEyebrow{letter-spacing:.12em}
+@media(max-width:1180px) and (min-width:961px){
+  .rosHeader{padding:0 16px}
+  .rosNav{gap:10px;font-size:12px}
+  .rosHeaderActions{gap:10px}
+  .rosHeader .rosBtn{padding:9px 12px}
+}
+@media(max-width:960px){
+  .rosHeader{width:calc(100% - 28px);height:58px;margin:10px auto 0;padding:0 16px}
+  .rosBrand{position:static;transform:none}
+  .rosHeaderActions{margin-left:auto}
+}
+@media(max-width:760px){
+  .rosIntegr{width:calc(100% - 28px);border-radius:16px}
+  .rosProofStrip{display:grid;grid-template-columns:1fr 1fr}
+  .rosProofStrip .rosChip{border-right:0;border-bottom:1px solid rgba(255,255,255,.16);justify-content:flex-start}
+  .rosProofStrip .rosChip:nth-last-child(-n+2){border-bottom:0}
+}
+@media(max-width:560px){
+  .rosHeroCopy h1{font-size:clamp(36px,10vw,46px)}
+  .rosHeroCta{align-items:stretch}
+  .rosHeroCta .rosBtn{justify-content:center;width:100%}
+  .rosHeader .rosBtn{padding:9px 12px;font-size:12px}
+}
