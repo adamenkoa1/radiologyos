@@ -41,6 +41,7 @@ import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-
 import { SERVICES } from "../../../lib/catalog";
 import { EQUIPMENT_LABELS } from "../../../lib/labels";
 import { ANATOMICAL_REGIONS, CONTRAST_METHODS, regionLabels, contrastLabel, sanitizeContrast } from "../../../lib/study-attributes";
+import { AUTOSAVE_DELAY_MS, shouldAutosave, remainsDirtyAfterSave, isVersionConflict, autosaveLabel, type AutosaveState } from "../../../lib/protocol-autosave";
 import type { ProtocolDraft } from "../../../lib/ai";
 
 type StaffRole = "admin" | "registrar" | "radiologist" | "radiographer";
@@ -132,6 +133,13 @@ export default function ProtocolsPage() {
   const [filtersOpen,setFiltersOpen] = useState(false);
   const [bookingLoading,setBookingLoading] = useState(false);
   const [dirty,setDirty] = useState(false);
+  // Автозбереження чернетки: стан індикатора, прапор конфлікту версій, та refs
+  // для синхронного захисту від дублю запиту й лічильника правок (щоб не губити
+  // текст, уведений під час збереження).
+  const [autosaveState,setAutosaveState] = useState<AutosaveState>("idle");
+  const [conflict,setConflict] = useState(false);
+  const saveInFlight = useRef(false);
+  const editSeq = useRef(0);
   // Жива панель прев'ю (Этап D2, §3): показ рендера протоколу в реальному часі.
   const [showPreview,setShowPreview] = useState(false);
   // Швидке (walk-in) створення дослідження прямо з робочого місця.
@@ -220,10 +228,18 @@ export default function ProtocolsPage() {
     return out;
   }
 
+  // Позначка реальної правки: інкремент лічильника (для коректного автозбереження
+  // без втрати тексту) + «є незбережені зміни». Викликається лише з фактичних
+  // змін вмісту, не при завантаженні/гідрації.
+  function markDirty() {
+    editSeq.current += 1;
+    setDirty(true);
+  }
+
   // Єдиний патч документа + позначка «є незбережені зміни».
   function patchDoc(partial:Partial<EditorDoc>) {
     setDoc((current) => current && ({ ...current, ...partial }));
-    setDirty(true);
+    markDirty();
   }
 
   // background:true — тихе автооновлення черги: не показує екран помилки через
@@ -375,6 +391,8 @@ export default function ProtocolsPage() {
     setActionError(""); setActionSuccess(""); setSelectedId(id); setBooking(null); setDoc(null); setAiDraft(null); setRevisions([]);
     setPriorStudies([]); setCompareId(null); setCompareText(""); setComparePriorStructured([]); setComparePriorRegion(""); setAutoDelta(null);
     setBookingLoading(true); setDirty(false); resetComposer();
+    // Нове дослідження — скидаємо стан автозбереження попереднього.
+    setConflict(false); setAutosaveState("idle"); editSeq.current = 0; saveInFlight.current = false;
     try {
       const response = await fetch(`/api/staff/protocols?bookingId=${id}`, { cache:"no-store" });
       const data = await response.json() as {
@@ -494,7 +512,7 @@ export default function ProtocolsPage() {
       ...current,
       sections:{ ...current.sections, [sectionKey]:{ ...(current.sections[sectionKey] || {}), [fieldKey]:value } },
     }));
-    setDirty(true);
+    markDirty();
   }
 
   function changeTemplate(templateKey:string) {
@@ -508,7 +526,7 @@ export default function ProtocolsPage() {
         methodRef:current.methodRef.trim() ? current.methodRef : (template.methodRef || defaultMethodRef(template.equipmentId)),
       };
     });
-    setDirty(true);
+    markDirty();
   }
 
   function fillNorms() {
@@ -528,13 +546,19 @@ export default function ProtocolsPage() {
         sections,
       };
     });
-    setDirty(true);
+    markDirty();
     setActionSuccess("Поля заповнено типовими формулюваннями норми. Відредагуйте виявлені зміни.");
   }
 
-  async function save(status:ProtocolLifecycleStatus) {
+  async function save(status:ProtocolLifecycleStatus, { auto = false }:{ auto?:boolean } = {}) {
     if (!doc || !booking) return;
-    setActionError(""); setActionSuccess("");
+    // Синхронний захист від дубля запиту: і автозбереження, і явна кнопка йдуть
+    // одним шляхом; поки запит у польоті — другий не стартує.
+    if (saveInFlight.current) return;
+    // Автозбереження лише для редагованої чернетки з реальними змінами; ніколи не
+    // чіпає signed/issued і не послаблює серверні гейти.
+    if (auto && !shouldAutosave({ status:doc.status, dirty, saving:saveInFlight.current, conflict })) return;
+    if (!auto) { setActionError(""); setActionSuccess(""); }
     if ((status === "ready" || status === "signed" || status === "issued") && !doc.number.trim()) {
       setActionError("Для готового, підписаного або виданого протоколу вкажіть його номер."); return;
     }
@@ -542,23 +566,50 @@ export default function ProtocolsPage() {
       setActionError("Готовий протокол повинен містити висновок."); return;
     }
     // Підтвердження незворотних дій: підпис фіксує клінічний зміст назавжди,
-    // видача передає результат пацієнту.
+    // видача передає результат пацієнту. (Автозбереження сюди не доходить — лише draft.)
     if (status === "signed" && !window.confirm("Підписати протокол? Після підпису клінічний зміст стане незмінним.")) return;
     if (status === "issued" && !window.confirm("Видати протокол пацієнту? Дію не можна скасувати.")) return;
+    const seqAtSend = editSeq.current;
+    saveInFlight.current = true;
     setSaving(true);
-    const response = await fetch("/api/staff/protocols", {
-      method:"PUT", headers:{"content-type":"application/json"},
-      body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status, findingsStructured:composed }),
-    });
-    const data = await response.json() as {
+    if (auto) setAutosaveState("saving");
+    let response:Response;
+    let data:{
       ok?:boolean; version?:number; protocolStatus?:string; protocolNumber?:string;
       documentStatus?:ProtocolLifecycleStatus; signedBy?:string; signedAt?:string; signedVersion?:number;
       protocolReadyAt?:string; protocolIssuedAt?:string; error?:string;
     };
+    try {
+      response = await fetch("/api/staff/protocols", {
+        method:"PUT", headers:{"content-type":"application/json"},
+        body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status, findingsStructured:composed }),
+      });
+      data = await response.json();
+    } catch {
+      saveInFlight.current = false; setSaving(false);
+      if (auto) setAutosaveState("error"); else setActionError("Помилка мережі — спробуйте ще раз.");
+      return;
+    }
+    saveInFlight.current = false;
     setSaving(false);
-    if (!response.ok || !data.ok) { setActionError(data.error || "Не вдалося зберегти протокол"); return; }
+    // Конфлікт версій (optimistic lock, 409): НЕ перезаписуємо серверні дані й
+    // НЕ чіпаємо doc — уведений текст лишається у формі; показуємо відновлення.
+    if (isVersionConflict(response.status)) {
+      setConflict(true);
+      if (auto) setAutosaveState("conflict");
+      else setActionError(data.error || "Протокол змінили в іншому місці — збережіть свій текст і оновіть серверну версію.");
+      return;
+    }
+    if (!response.ok || !data.ok) {
+      if (auto) setAutosaveState("error"); else setActionError(data.error || "Не вдалося зберегти протокол");
+      return;
+    }
     const resolvedStatus = data.documentStatus || status;
-    setDirty(false);
+    // Лишаємось «dirty», лише якщо під час запиту зʼявилась новіша правка — так не
+    // губимо текст і не робимо зайвих ревізій для незміненого вмісту.
+    setDirty(remainsDirtyAfterSave(seqAtSend, editSeq.current));
+    setConflict(false);
+    setAutosaveState("saved");
     setDoc((current) => current && ({
       ...current,
       status:resolvedStatus,
@@ -592,13 +643,27 @@ export default function ProtocolsPage() {
       signedAt:data.signedAt ?? item.signedAt,
       signedVersion:data.signedVersion ?? item.signedVersion,
     } : item));
-    setActionSuccess(
+    // Явне збереження показує банер; тихе автозбереження — лише компактний
+    // індикатор «Збережено» (стан виставлено вище), без банера.
+    if (!auto) setActionSuccess(
       resolvedStatus === "issued" ? "Протокол видано пацієнту."
         : resolvedStatus === "signed" ? "Протокол підписано. Клінічний зміст тепер незмінний."
           : resolvedStatus === "ready" ? "Протокол готовий до підпису."
             : "Чернетку протоколу збережено.",
     );
   }
+
+  // Дебаунс-автозбереження чернетки: ~1с після завершення введення. Таймер
+  // перезапускається на кожну зміну `doc` (кожна правка → новий таймер), тож
+  // збереження йде лише коли ввід зупинився. Гейт `shouldAutosave` не дає
+  // зберігати при гідрації (dirty=false), під час іншого збереження, при
+  // конфлікті чи для не-draft статусів.
+  useEffect(() => {
+    if (!shouldAutosave({ status:doc?.status ?? "", dirty, saving, conflict })) return;
+    const timer = window.setTimeout(() => { void save("draft", { auto:true }); }, AUTOSAVE_DELAY_MS);
+    return () => window.clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [doc, dirty, saving, conflict]);
 
   async function copyText() {
     if (!doc) return;
@@ -795,7 +860,7 @@ export default function ProtocolsPage() {
       conclusion:String(shape.conclusion ?? ""),
       recommendations:String(shape.recommendations ?? ""),
     }));
-    setDirty(true);
+    markDirty();
     setActionSuccess("Особистий шаблон застосовано. Відредагуйте за потреби.");
   }
 
@@ -1333,7 +1398,17 @@ export default function ProtocolsPage() {
             <small>Це дорадчі сигнали — текст не змінюється автоматично. Перевірте й відредагуйте за потреби.</small>
           </section>}
 
+          {conflict && canEdit && <section className="protocolConflict" role="alert">
+            <p className="eyebrow">Конфлікт версій</p>
+            <p>Протокол змінили в іншому місці. Ваш текст лишається тут і нічого не перезаписано. Щоб не втратити його — спершу скопіюйте, потім оновіть серверну версію.</p>
+            <div className="protocolConflictActions">
+              <button type="button" onClick={()=>void copyText()}>Копіювати мій текст</button>
+              <button type="button" className="secondary" onClick={()=>void openBooking(booking.id)}>Оновити серверну версію</button>
+            </div>
+          </section>}
+
           <div className="protocolActions">
+            {canEdit && doc.status === "draft" && <span className={`protocolAutosave ${autosaveState}${dirty ? " dirty":""}`} role="status" aria-live="polite">{autosaveLabel(autosaveState, dirty)}</span>}
             {canEdit && doc.status === "draft" && <>
               <button type="button" onClick={()=>void save("draft")} disabled={saving}>Зберегти чернетку</button>
               <button type="button" className="secondary" onClick={()=>void save("ready")} disabled={saving}>Готовий до підпису</button>

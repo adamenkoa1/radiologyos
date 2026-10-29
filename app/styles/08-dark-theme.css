@@ -50,6 +50,7 @@
 .themeDark .protocolFilterReset{color:#8fd3c0!important}
 .themeDark .protocolFilterPanel{background:#0e151a!important;border-color:#22303a!important}.themeDark .protocolFilterPanel label{color:#aebeca!important}.themeDark .protocolFilterPanel select,.themeDark .protocolFilterPanel input{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolReferralBlock,.themeDark .protocolRevisions,.themeDark .protocolCompare{background:#0e151a!important;border-color:#22303a!important}
+.themeDark .protocolConflict{background:#2a1512!important;border-color:#5a2a22!important;color:#f0c7bf!important}.themeDark .protocolConflict .eyebrow{color:#ff9a86!important}.themeDark .protocolConflictActions button{background:#0b1116!important;border-color:#5a2a22!important;color:#f0c7bf!important}.themeDark .protocolConflictActions button.secondary{background:#1c5a4a!important;border-color:#1c5a4a!important;color:#eafff8!important}
 .themeDark .protocolCompareGrid pre,.themeDark .protocolCompareSelect select{background:#0b1116!important;border-color:#22303a!important;color:#cfe5de!important}
 .themeDark .protocolAutoCompare{border-top-color:#22303a!important}
 .themeDark .protocolAutoCompare>button{background:#0d1a16!important;color:#8fd3c0!important;border-color:#1c5a4a!important}
