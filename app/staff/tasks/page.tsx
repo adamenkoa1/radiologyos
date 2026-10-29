@@ -42,7 +42,7 @@ export default function TasksPage() {
   const [busy,setBusy] = useState<number|null>(null);
   const [creating,setCreating] = useState(false);
   const [submitting,setSubmitting] = useState(false);
-  const [form,setForm] = useState({ title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"" });
+  const [form,setForm] = useState<{title:string;details:string;priority:string;dueDate:string;assignedEmail:string;bookingId:number|null}>({ title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId:null });
 
   // background:true — тихе автооновлення: не блимає спінером і не глушить список
   // через тимчасовий збій (лишає наявні завдання до наступної спроби).
@@ -58,6 +58,16 @@ export default function TasksPage() {
     }
   }
   useEffect(()=>{ const t=window.setTimeout(()=>void load(),0); return()=>window.clearTimeout(t); },[]);
+
+  // Patient-card shortcut: open a booking-linked follow-up task without copying patient PII into the task.
+  useEffect(()=>{
+    const params=new URLSearchParams(window.location.search);
+    if(params.get("followUp")!=="1") return;
+    const bookingId=Number(params.get("bookingId"));
+    if(!Number.isInteger(bookingId)||bookingId<1) return;
+    setForm({title:"Повторно зв’язатися щодо запису",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId});
+    setCreating(true);
+  },[]);
 
   // Не оновлюємо у фоні під час мутації чи створення завдання.
   const pauseRef = useRef(false);
@@ -99,7 +109,7 @@ export default function TasksPage() {
       const res=await fetch("/api/staff/tasks",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(form)});
       const payload=await res.json().catch(()=>({})) as {error?:string};
       if(!res.ok){setError(payload.error||"Не вдалося створити завдання");return;}
-      setCreating(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:""});await load();
+      setCreating(false);setForm({title:"",details:"",priority:"normal",dueDate:"",assignedEmail:"",bookingId:null});await load();
     } catch {
       // Мережевий збій створення — показуємо помилку, а не мовчазний no-op.
       setError("Не вдалося створити завдання. Перевірте зʼєднання та спробуйте ще раз.");
@@ -136,6 +146,7 @@ export default function TasksPage() {
       {creating && <div className="taskCreate">
         <label><span>Назва</span><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} maxLength={180} placeholder="Що потрібно зробити"/></label>
         <label><span>Деталі</span><textarea value={form.details} onChange={e=>setForm(f=>({...f,details:e.target.value}))} rows={3} placeholder="Контекст, результат, примітки"/></label>
+        {form.bookingId&&<p>Пов’язано із записом #{form.bookingId}. Дані пацієнта в завданні не дублюються.</p>}
         <div className="taskCreateRow">
           <label><span>Пріоритет</span><select value={form.priority} onChange={e=>setForm(f=>({...f,priority:e.target.value}))}><option value="high">Високий</option><option value="normal">Звичайний</option><option value="low">Низький</option></select></label>
           <label><span>До дати</span><input type="date" value={form.dueDate} onChange={e=>setForm(f=>({...f,dueDate:e.target.value}))}/></label>
