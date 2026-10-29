@@ -19,6 +19,10 @@ const retryableFailure = () => new Response("temporarily unavailable", {
   status: 503,
   headers: { "cache-control": "no-store", "retry-after": "5" },
 });
+const retryableFailure = () => new Response("temporarily unavailable", {
+  status: 503,
+  headers: { "cache-control": "no-store", "retry-after": "5" },
+});
 
 export async function POST(request: Request) {
   const db = dbBinding();
