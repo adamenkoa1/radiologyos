@@ -184,6 +184,7 @@ export async function createPatientSession(
     identity.kind,
     identity.value,
     patientId,
+    authMethod,
     `+${PATIENT_SESSION_TTL_SECONDS} seconds`,
   ).run();
   await db.prepare("DELETE FROM patient_sessions WHERE expires_at <= CURRENT_TIMESTAMP").run();
