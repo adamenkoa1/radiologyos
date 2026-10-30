@@ -121,3 +121,8 @@
 .workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}
 @media(max-width:820px){.workspaceSubList,.workspaceSubToggle{display:none}.workspaceCollapsed .workspaceSubList,.workspaceCollapsed .workspaceSubToggle{display:none}}
 
+
+/* Швидкі дії відвідування в темній темі. */
+.themeDark .apptInlineAction{background:#192520;border-color:#3a5144;color:#dce8df}
+.themeDark .apptInlineAction.arrived{background:#153622;border-color:#285d39;color:#b8edc6}
+.themeDark .apptInlineAction.noShow{background:#38231f;border-color:#694137;color:#ffc8b8}
