@@ -1149,3 +1149,10 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .apptWeekTaskState.error{background:#fff1ef;color:#a43528}
 .apptWeekTaskState button{margin-left:8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
 @media(max-width:600px){.apptWeekTasks{padding:12px}.apptWeekTasksHead{flex-wrap:wrap;gap:10px}.apptWeekTasksHead>div{flex:1 1 100%}.apptWeekTasksHead label{margin-right:auto}}
+
+/* Role descriptions shown beside staff account management. */
+.workspaceShell .staffRoleGuide{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:14px 0 18px}
+.workspaceShell .staffRoleGuideItem{min-width:0;padding:10px 12px;border:1px solid #dce4e3;border-radius:8px;background:rgba(255,255,255,.58)}
+.workspaceShell .staffRoleGuideItem b{display:block;margin-bottom:3px;font-size:13px}
+.workspaceShell .staffRoleGuideItem span{display:block;color:#5f6f75;font-size:12px;line-height:1.45}
+@media(max-width:620px){.workspaceShell .staffRoleGuide{grid-template-columns:1fr}}
