@@ -119,6 +119,7 @@ export default function StaffAppointmentsPage() {
             bookings={items} options={options} schedule={schedule} blocks={blocks}
             initialView={initialView} initialDate={initialDate} busyId={busyId}
             onConfirm={canManage ? (id) => void patchBooking({ id, confirm: true }) : undefined}
+            onStatusChange={canManage ? (id, status) => void patchBooking({ id, status }) : undefined}
             onReschedule={canManage ? (id, date, time) => void patchBooking({ id, desiredDate: date, desiredTime: time }) : undefined}
           />
         </>;

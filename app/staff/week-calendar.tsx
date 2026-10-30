@@ -109,7 +109,7 @@ function nowMinutesKyiv(): number {
 
 export default function WeekCalendar({
   bookings, options = [], schedule = SCHEDULE_DEFAULTS, blocks = [], initialView = "day", initialDate,
-  onConfirm, onReschedule, busyId = null,
+  onConfirm, onStatusChange, onReschedule, busyId = null,
 }: {
   bookings: CalBooking[];
   options?: CalStaffOption[];
@@ -118,6 +118,7 @@ export default function WeekCalendar({
   initialView?: CalView;
   initialDate?: string;
   onConfirm?: (id: number) => void;
+  onStatusChange?: (id: number, status: "arrived" | "no_show") => void;
   onReschedule?: (id: number, date: string, time: string) => void;
   busyId?: number | null;
 }) {
@@ -328,6 +329,8 @@ export default function WeekCalendar({
         onOpen={setOpenId}
         onConfirm={onConfirm}
         confirming={busyId===openBooking.id}
+        onStatusChange={onStatusChange}
+        statusChanging={busyId===openBooking.id}
         onReschedule={onReschedule}
         rescheduling={busyId===openBooking.id}
       />}
