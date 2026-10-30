@@ -16,7 +16,7 @@ test("filter state and reset helper exist", async () => {
   assert.match(page, /const \[fPerformer,setFPerformer\] = useState\("all"\)/);
   assert.match(page, /const \[fDateFrom,setFDateFrom\] = useState\(""\)/);
   assert.match(page, /const \[fDateTo,setFDateTo\] = useState\(""\)/);
-  assert.match(page, /function resetFilters\(\) \{ setOlderOnly\(false\); setFModality\("all"\); setFPerformer\("all"\); setFDateFrom\(""); setFDateTo\(""); \}/);
+  assert.match(page, /function resetFilters\(\) \{ setOlderOnly\(false\); setFModality\("all"\); setFPerformer\("all"\); setFDateFrom\(""\); setFDateTo\(""\); \}/);
 });
 
 test("filter options are derived from the (already scoped) queue, not a global source", async () => {
