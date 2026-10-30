@@ -7,7 +7,7 @@
 
 import { useCallback, useMemo, useState } from "react";
 import BookingDrawer from "./booking-drawer";
-import { stateLabel } from "../../lib/study-state";
+import { canTransition, stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
 import { EQUIPMENT_LABELS as EQUIP } from "../../lib/labels";
 
@@ -179,6 +179,18 @@ export default function WeekCalendar({
   const modClass = (equipmentId: string) => `mod-${equipmentId || "other"}`;
   const isContrast = (b: CalBooking) => /контраст|ангіограф/i.test(b.service || "");
 
+  function attendanceActions(b: CalBooking) {
+    if (!onStatusChange) return null;
+    const arrived = canTransition(b.status, "arrived");
+    const noShow = canTransition(b.status, "no_show");
+    if (!arrived && !noShow) return null;
+    const busy = busyId === b.id;
+    return <div className="apptInlineActions" aria-label={`Відмітка відвідування: ${b.name || "запис"}`}>
+      {arrived && <button type="button" className="apptInlineAction arrived" disabled={busy} onClick={() => onStatusChange(b.id, "arrived")}>{busy ? "…" : "✓ Прийшов"}</button>}
+      {noShow && <button type="button" className="apptInlineAction noShow" disabled={busy} onClick={() => onStatusChange(b.id, "no_show")}>{busy ? "…" : "Не прийшов"}</button>}
+    </div>;
+  }
+
   function eventBlock(b: CalBooking, compact: boolean, pos?: { lane: number; lanes: number }) {
     const mins = minutesOf(b.desiredTime);
     if (mins === null) return null;
@@ -301,23 +313,26 @@ export default function WeekCalendar({
           : dayItems.length === 0
             ? <div className="apptEmpty"><span aria-hidden="true">🗓</span><p>Записів на цей день немає</p></div>
             : <div className="apptListWrap">{dayItems.map(b => (
-                <button type="button" className={`apptCardRow ${modClass(b.equipmentId)}`} key={b.id} onClick={()=>setOpenId(b.id)}>
-                  <span className="apptCardTime">{b.desiredTime || "—"}<small>{b.desiredDate}</small></span>
-                  <div className="apptCardBody">
-                    <b className="apptCardName">{b.name || "Без імені"}</b>
-                    <span className="apptCardMeta">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · 👨‍⚕️ ${doctorOf(b)}` : ""}</span>
-                  </div>
-                  <div className="apptCardTags">
-                    {isContrast(b) && <span className="apptTag contrast">Контраст</span>}
-                    {b.patientCategory==="military"
-                      ? <span className="apptTag mil">Військовий</span>
-                      : b.paymentStatus==="paid"
-                        ? <span className="apptTag paid">Оплачено</span>
-                        : <span className="apptTag pay">Перевірити оплату</span>}
-                  </div>
-                  <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span>
-                  <span className="apptOpenRecord" aria-hidden="true">Відкрити</span>
-                </button>
+                <div className={`apptCardRow ${modClass(b.equipmentId)}`} key={b.id}>
+                  <button type="button" className="apptCardOpen" onClick={()=>setOpenId(b.id)} aria-label={`Відкрити запис: ${b.name || "без імені"}`}>
+                    <span className="apptCardTime">{b.desiredTime || "—"}<small>{b.desiredDate}</small></span>
+                    <div className="apptCardBody">
+                      <b className="apptCardName">{b.name || "Без імені"}</b>
+                      <span className="apptCardMeta">{b.service}{b.equipmentId ? ` · ${EQUIP[b.equipmentId] || b.equipmentId}` : ""}{doctorOf(b) ? ` · 👨‍⚕️ ${doctorOf(b)}` : ""}</span>
+                    </div>
+                    <div className="apptCardTags">
+                      {isContrast(b) && <span className="apptTag contrast">Контраст</span>}
+                      {b.patientCategory==="military"
+                        ? <span className="apptTag mil">Військовий</span>
+                        : b.paymentStatus==="paid"
+                          ? <span className="apptTag paid">Оплачено</span>
+                          : <span className="apptTag pay">Перевірити оплату</span>}
+                    </div>
+                    <span className={`apptBadge grp-${groupOf(b.status)}`}>{stateLabel(b.status)}</span>
+                    <span className="apptOpenRecord" aria-hidden="true">Відкрити</span>
+                  </button>
+                  {attendanceActions(b)}
+                </div>
               ))}</div>}
 
       {openBooking && <BookingDrawer
