@@ -495,6 +495,12 @@ export default function StaffPage() {
           <p className="eyebrow">Доступ персоналу</p>
           <h2>Працівники та ролі</h2>
           <p>Створіть картку працівника. Повне ім’я складається автоматично з окремих полів і далі доступне у графіку кабінетів.</p>
+        <div className="staffRoleGuide" aria-label="Можливості ролей">
+          <div className="staffRoleGuideItem"><b>Адміністратор</b><span>Повний операційний доступ і керування персоналом. Клінічний протокол підписує рентгенолог.</span></div>
+          <div className="staffRoleGuideItem"><b>Реєстратор</b><span>Запис, картка пацієнта, оплата й видача підписаного результату; без редагування та підпису опису.</span></div>
+          <div className="staffRoleGuideItem"><b>Лікар-рентгенолог</b><span>Працює з призначеними дослідженнями, редагує та підписує протоколи.</span></div>
+          <div className="staffRoleGuideItem"><b>Рентгенлаборант</b><span>Працює зі своїми призначеними дослідженнями й обладнанням; не підписує протоколи.</span></div>
+        </div>
         </div>
         <details className="staffCreate">
           <summary><span>＋</span> Додати працівника</summary>
