@@ -148,31 +148,31 @@ export default function WeekCalendar({
   [bookings, date, tab, q, matchesExtra]);
 
   const week = useMemo(() => weekDates(date), [date]);
-  const [plannerTasks, setPlannerTasks] = useState<CalTask[]>([]);
-  const [plannerLoading, setPlannerLoading] = useState(false);
-  const [plannerError, setPlannerError] = useState("");
+  const weekStart = week[0];
+  const [plannerResult, setPlannerResult] = useState<{ key: string; tasks: CalTask[]; error: string } | null>(null);
   const [mineTasks, setMineTasks] = useState(false);
   const [plannerReload, setPlannerReload] = useState(0);
+  const plannerQueryKey = `${weekStart}|${mineTasks ? "mine" : "all"}|${plannerReload}`;
+  const plannerLoading = view === "week" && plannerResult?.key !== plannerQueryKey;
+  const plannerError = plannerResult?.key === plannerQueryKey ? plannerResult.error : "";
+  const plannerTasks = plannerResult?.key === plannerQueryKey ? plannerResult.tasks : [];
 
   // The existing tasks API applies the same tenant and role scope as /staff/tasks.
   useEffect(() => {
     if (view !== "week") return;
     const controller = new AbortController();
     let active = true;
-    setPlannerLoading(true);
-    setPlannerError("");
     fetch(`/api/staff/tasks?status=open${mineTasks ? "&mine=1" : ""}`, { cache: "no-store", signal: controller.signal })
       .then(async res => {
         const data = await res.json().catch(() => ({})) as { tasks?: CalTask[]; error?: string };
         if (!res.ok) throw new Error(data.error || "Не вдалося завантажити завдання");
-        if (active) setPlannerTasks(Array.isArray(data.tasks) ? data.tasks : []);
+        if (active) setPlannerResult({ key: plannerQueryKey, tasks: Array.isArray(data.tasks) ? data.tasks : [], error: "" });
       })
       .catch(error => {
-        if (active && !controller.signal.aborted) setPlannerError(error instanceof Error ? error.message : "Не вдалося завантажити завдання");
-      })
-      .finally(() => { if (active) setPlannerLoading(false); });
+        if (active && !controller.signal.aborted) setPlannerResult({ key: plannerQueryKey, tasks: [], error: error instanceof Error ? error.message : "Не вдалося завантажити завдання" });
+      });
     return () => { active = false; controller.abort(); };
-  }, [view, week[0], mineTasks, plannerReload]);
+  }, [view, plannerQueryKey, mineTasks]);
 
   const weekTasks = useMemo(
     () => plannerTasks.filter(task => !!task.dueDate && week.includes(task.dueDate)),
