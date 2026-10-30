@@ -48,6 +48,8 @@ function statusGroup(s:string) {
 // Ознаки запису, потрібні лікарю «з першого погляду» — без окремих полів у БД.
 const isContrast = (b:CalBooking) => /контраст|ангіограф/i.test(b.service || "");
 const needsPay = (b:CalBooking) => b.patientCategory === "civilian" && b.paymentStatus !== "paid";
+const needsAttention = (b:CalBooking) => !["cancelled", "no_show"].includes(b.status)
+  && (["new", "confirmed", "rescheduled"].includes(b.status) || needsPay(b));
 // Дослідження вже зроблено, але висновку ще немає — черга опису.
 const NEEDS_REPORT = new Set(["performed", "images_ready", "reporting"]);
 const needsReport = (b:CalBooking) => NEEDS_REPORT.has(b.status);
@@ -84,9 +86,10 @@ function whenLabel(delta:number|null) {
 }
 
 // Швидкі фільтри агенди — кожен відповідає реальній ознаці запису.
-type AgendaFilter = "all" | "contrast" | "pay" | "ct" | "xray";
+type AgendaFilter = "all" | "attention" | "contrast" | "pay" | "ct" | "xray";
 const AGENDA_FILTERS: Array<{ id:AgendaFilter; label:string }> = [
   { id:"all", label:"Усі" },
+  { id:"attention", label:"Потребують уваги" },
   { id:"contrast", label:"Контраст" },
   { id:"pay", label:"Перевірити оплату" },
   { id:"ct", label:"КТ" },
@@ -94,6 +97,7 @@ const AGENDA_FILTERS: Array<{ id:AgendaFilter; label:string }> = [
 ];
 function matchFilter(b:CalBooking, f:AgendaFilter) {
   if (f === "all") return true;
+  if (f === "attention") return needsAttention(b);
   if (f === "contrast") return isContrast(b);
   if (f === "pay") return needsPay(b);
   if (f === "ct") return b.equipmentId === "ct";
@@ -359,6 +363,7 @@ export default function DashboardPage() {
     () => todayAgenda.filter(b => matchFilter(b, agendaFilter)),
     [todayAgenda, agendaFilter],
   );
+  const attentionCount = useMemo(() => todayAgenda.filter(needsAttention).length, [todayAgenda]);
 
   return <StaffWorkspaceShell
     active="dashboard"
@@ -372,6 +377,11 @@ export default function DashboardPage() {
     !staff ? <p className="dashLoading" role="status" aria-live="polite">Завантаження зведення…</p> :
     <>
       {toast && <p className={`dashToast${toast.startsWith("⚠") ? " warn" : ""}`} role="status" onClick={()=>setToast("")}>{toast}</p>}
+
+      {canManage && attentionCount > 0 && <a className="dashAttentionBanner" href="#dash-agenda" onClick={()=>setAgendaFilter("attention")}>
+        <span><b>Записи потребують уваги</b><small>Перевірте явку та оплату в розкладі на сьогодні.</small></span>
+        <strong>{attentionCount}</strong><span className="dashAttentionArrow" aria-hidden="true">→</span>
+      </a>}
 
       {/* Прямі входи робочого процесу опису: створення → черга → перевірка →
           видача → заявки. Самі маршрути вже є (права доступу — на боці сторінок);
@@ -489,7 +499,7 @@ export default function DashboardPage() {
           </div>
         </div>
         <div className="dashChips" role="group" aria-label="Фільтр розкладу">
-          {AGENDA_FILTERS.map(f => {
+          {AGENDA_FILTERS.filter(f => f.id !== "attention" || canManage).map(f => {
             const n = f.id === "all" ? todayAgenda.length : todayAgenda.filter(b => matchFilter(b, f.id)).length;
             return <button key={f.id} type="button" aria-pressed={agendaFilter===f.id}
               className={`dashChip${agendaFilter===f.id?" on":""}`} onClick={()=>setAgendaFilter(f.id)}>

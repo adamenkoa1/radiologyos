@@ -126,3 +126,8 @@
 .themeDark .apptInlineAction{background:#192520;border-color:#3a5144;color:#dce8df}
 .themeDark .apptInlineAction.arrived{background:#153622;border-color:#285d39;color:#b8edc6}
 .themeDark .apptInlineAction.noShow{background:#38231f;border-color:#694137;color:#ffc8b8}
+
+.themeDark .dashAttentionBanner{background:#2b211b;border-color:#67452e;border-left-color:#d4854e;color:#f1e5da}
+.themeDark .dashAttentionBanner small{color:#c2aa96}
+.themeDark .dashAttentionBanner strong{background:#994521;color:#fff}
+.themeDark .dashAttentionArrow{color:#e2a579}
