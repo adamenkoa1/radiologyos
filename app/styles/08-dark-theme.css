@@ -35,6 +35,8 @@
   background:#0e151a!important;border-color:#22303a!important}
 .themeDark .protocolContradictions{background:#1c160c!important;border-color:#3b2f17!important}
 .themeDark .protocolModeHint{background:#0d1a16!important;color:#8fd3c0!important}
+.themeDark .protocolQueueAging{background:#251e13!important;border-color:#5a4724!important;color:#f0cc80!important}
+.themeDark .protocolQueueAging.active{background:#382b15!important;border-color:#8b6b2e!important}
 .themeDark .libraryImport{border-top-color:#22303a!important}
 .themeDark .protocolInlineLink,.themeDark .protocolQueueLink{color:#8fd3c0!important}
 .themeDark .intakePanel{background:#0e151a!important;border-color:#22303a!important}
