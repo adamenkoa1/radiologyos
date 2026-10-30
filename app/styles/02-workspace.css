@@ -1103,3 +1103,13 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
   outline: 2px solid var(--ws-accent);
   outline-offset: 2px;
 }
+
+/* Швидкі відмітки явки в календарному списку. */
+.apptCardOpen{display:flex;align-items:center;gap:16px;flex:1;min-width:0;padding:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.apptInlineActions{display:flex;align-items:center;gap:6px;flex:0 0 auto}
+.apptInlineAction{min-height:34px;padding:0 10px;border:1px solid #cbd8d2;border-radius:8px;background:#fff;color:#35463e;font:inherit;font-size:11.5px;font-weight:800;white-space:nowrap;cursor:pointer}
+.apptInlineAction.arrived{border-color:#b7dfc4;background:#eaf7ee;color:#176b35}
+.apptInlineAction.noShow{border-color:#edd0c8;background:#fff4f1;color:#a33b2b}
+.apptInlineAction:disabled{opacity:.55;cursor:progress}
+.apptCardOpen:focus-visible,.apptInlineAction:focus-visible{outline:2px solid var(--ws-accent);outline-offset:2px}
+@media(max-width:760px){.apptCardRow{flex-wrap:wrap;gap:8px}.apptCardOpen{flex:1 1 100%;gap:10px}.apptCardTags{max-width:none;justify-content:flex-start}.apptInlineActions{width:100%;justify-content:flex-end}}
