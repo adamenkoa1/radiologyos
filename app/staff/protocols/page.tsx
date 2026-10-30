@@ -39,6 +39,7 @@ import { renderLibraryFinding, activeParameters } from "../../../lib/clinical-li
 import type { PathologyFinding } from "../../../lib/clinical-library";
 import libraryFindingsRaw from "../../../clinical-library/radiologyos-pathology-findings.json";
 import { SERVICES } from "../../../lib/catalog";
+import { todayInKyiv } from "../../../lib/booking-rules";
 import { EQUIPMENT_LABELS } from "../../../lib/labels";
 import { ANATOMICAL_REGIONS, CONTRAST_METHODS, regionLabels, contrastLabel, sanitizeContrast } from "../../../lib/study-attributes";
 import { AUTOSAVE_DELAY_MS, shouldAutosave, remainsDirtyAfterSave, isVersionConflict, autosaveLabel, type AutosaveState } from "../../../lib/protocol-autosave";
@@ -91,6 +92,12 @@ function formatDateTime(value:string) {
   return Number.isNaN(parsed.getTime()) ? value : parsed.toLocaleString("uk-UA");
 }
 
+function isAwaitingFromPreviousDays(item:QueueItem,today:string) {
+  return !["ready","signed","issued"].includes(item.documentStatus)
+    && Boolean(item.performedAt)
+    && item.performedAt.slice(0,10) < today;
+}
+
 function emptyDoc(serviceCode:string):EditorDoc {
   return {
     ...normalDocument(suggestTemplateKey(serviceCode)),
@@ -123,6 +130,7 @@ export default function ProtocolsPage() {
   const [aiDraft,setAiDraft] = useState<ProtocolDraft | null>(null);
   const [aiLoading,setAiLoading] = useState(false);
   const [filter,setFilter] = useState<"awaiting"|"ready"|"signed"|"issued"|"all">("awaiting");
+  const [olderOnly,setOlderOnly] = useState(false);
   const [query,setQuery] = useState("");
   // Додаткові фільтри черги: модальність, виконавець, діапазон дат (клієнтський
   // шар над уже tenant/роль-скоупованою серверною чергою — не розширює доступ).
@@ -926,6 +934,7 @@ export default function ProtocolsPage() {
 
   // Опції фільтрів беремо лише з наявної (вже скоупованої) черги — лікарю ніколи
   // не пропонуємо модальність/виконавця поза його доступом.
+  const today = todayInKyiv();
   const modalityOptions = useMemo(
     () => Array.from(new Set(queue.map((i) => i.equipmentId).filter(Boolean))).sort(),
     [queue]);
@@ -934,8 +943,9 @@ export default function ProtocolsPage() {
     [queue]);
   // Дата дослідження: виконане → performedAt, інакше заплановане → desiredDate.
   const itemDate = (item:QueueItem) => (item.performedAt || item.desiredDate || "").slice(0, 10);
-  const filtersActive = fModality !== "all" || fPerformer !== "all" || Boolean(fDateFrom) || Boolean(fDateTo);
-  function resetFilters() { setFModality("all"); setFPerformer("all"); setFDateFrom(""); setFDateTo(""); }
+  const filtersActive = olderOnly || fModality !== "all" || fPerformer !== "all" || Boolean(fDateFrom) || Boolean(fDateTo);
+  function resetFilters() { setOlderOnly(false); setFModality("all"); setFPerformer("all"); setFDateFrom(""); setFDateTo(""); }
+  function selectQueueFilter(next:typeof filter) { setFilter(next); setOlderOnly(false); }
 
   const visible = useMemo(() => queue
     .filter((item) => {
@@ -945,19 +955,21 @@ export default function ProtocolsPage() {
       if (filter === "issued") return item.documentStatus === "issued";
       return true;
     })
+    .filter((item) => !olderOnly || isAwaitingFromPreviousDays(item,today))
     .filter((item) => !query.trim() || `${item.code} ${item.name} ${item.serviceTitle} ${item.serviceCode}`.toLowerCase().includes(query.trim().toLowerCase()))
     .filter((item) => fModality === "all" || item.equipmentId === fModality)
     .filter((item) => fPerformer === "all" || item.assignedRadiologistEmail === fPerformer)
     .filter((item) => { const d = itemDate(item); return !fDateFrom || (Boolean(d) && d >= fDateFrom); })
     .filter((item) => { const d = itemDate(item); return !fDateTo || (Boolean(d) && d <= fDateTo); }),
-  [queue,filter,query,fModality,fPerformer,fDateFrom,fDateTo]);
+  [queue,filter,olderOnly,today,query,fModality,fPerformer,fDateFrom,fDateTo]);
 
   const counts = useMemo(() => ({
     awaiting:queue.filter((item) => !["ready","signed","issued"].includes(item.documentStatus)).length,
+    awaitingPreviousDays:queue.filter((item) => isAwaitingFromPreviousDays(item,today)).length,
     ready:queue.filter((item) => item.documentStatus === "ready").length,
     signed:queue.filter((item) => item.documentStatus === "signed").length,
     issued:queue.filter((item) => item.documentStatus === "issued").length,
-  }), [queue]);
+  }), [queue,today]);
 
   // Заповненість структурованих полів — для змісту й підказки готовності.
   const completeness = useMemo(() => {
@@ -984,12 +996,15 @@ export default function ProtocolsPage() {
       <aside className="protocolQueue" aria-label="Черга протоколів">
         <div className="protocolQueueTools">
           <div className="protocolFilterTabs" role="group" aria-label="Фільтр черги протоколів">
-            <button aria-pressed={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>setFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
-            <button aria-pressed={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>setFilter("ready")}>До підпису <b>{counts.ready}</b></button>
-            <button aria-pressed={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>setFilter("signed")}>Підписані <b>{counts.signed}</b></button>
-            <button aria-pressed={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>setFilter("issued")}>Видані <b>{counts.issued}</b></button>
-            <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>setFilter("all")}>Усі</button>
+            <button aria-pressed={filter==="awaiting"} className={filter==="awaiting"?"active":""} onClick={()=>selectQueueFilter("awaiting")}>Очікують <b>{counts.awaiting}</b></button>
+            <button aria-pressed={filter==="ready"} className={filter==="ready"?"active":""} onClick={()=>selectQueueFilter("ready")}>До підпису <b>{counts.ready}</b></button>
+            <button aria-pressed={filter==="signed"} className={filter==="signed"?"active":""} onClick={()=>selectQueueFilter("signed")}>Підписані <b>{counts.signed}</b></button>
+            <button aria-pressed={filter==="issued"} className={filter==="issued"?"active":""} onClick={()=>selectQueueFilter("issued")}>Видані <b>{counts.issued}</b></button>
+            <button aria-pressed={filter==="all"} className={filter==="all"?"active":""} onClick={()=>selectQueueFilter("all")}>Усі</button>
           </div>
+          {counts.awaitingPreviousDays > 0 && <button type="button" className={`protocolQueueAging${olderOnly?" active":""}`} aria-pressed={olderOnly} onClick={()=>{ setFilter("awaiting"); setOlderOnly((value)=>!value); }}>
+            <span>Виконані з попередніх днів, очікують опису</span><b>{counts.awaitingPreviousDays}</b>
+          </button>}
           <input type="search" value={query} onChange={(e)=>setQuery(e.target.value)} aria-label="Пошук у черзі протоколів за кодом, ПІБ або дослідженням" placeholder="Код, ПІБ, дослідження"/>
           <div className="protocolQueueFilters">
             <button type="button" className="protocolFilterToggle" aria-expanded={filtersOpen} onClick={()=>setFiltersOpen((v)=>!v)}>
