@@ -11,7 +11,7 @@ const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 
 test("filter state and reset helper exist", async () => {
   const page = await read("app/staff/protocols/page.tsx");
-  assert.match(page, /const \[fModality,setFModality\] = useState\("all"\)/);
+  assert.match(page, /const \[olderOnly,setOlderOnly\] = useState\(false\)/);\n  assert.match(page, /const \[fModality,setFModality\] = useState\("all"\)/);
   assert.match(page, /const \[fPerformer,setFPerformer\] = useState\("all"\)/);
   assert.match(page, /const \[fDateFrom,setFDateFrom\] = useState\(""\)/);
   assert.match(page, /const \[fDateTo,setFDateTo\] = useState\(""\)/);
@@ -32,12 +32,12 @@ test("visible list applies all three filters in addition to tab + search", async
   assert.match(vis, /filter === "awaiting"/);
   assert.match(vis, /\.toLowerCase\(\)\.includes\(query\.trim\(\)\.toLowerCase\(\)\)/);
   // три нові фільтри
-  assert.match(vis, /fModality === "all" \|\| item\.equipmentId === fModality/);
+  assert.match(vis, /!olderOnly \|\| isAwaitingFromPreviousDays\(item,today\)/);\n  assert.match(vis, /fModality === "all" \|\| item\.equipmentId === fModality/);
   assert.match(vis, /fPerformer === "all" \|\| item\.assignedRadiologistEmail === fPerformer/);
   assert.match(vis, /!fDateFrom \|\| \(Boolean\(d\) && d >= fDateFrom\)/);
   assert.match(vis, /!fDateTo \|\| \(Boolean\(d\) && d <= fDateTo\)/);
   // усі фільтри в залежностях useMemo
-  assert.match(vis, /\[queue,filter,query,fModality,fPerformer,fDateFrom,fDateTo\]/);
+  assert.match(vis, /\[queue,filter,olderOnly,today,query,fModality,fPerformer,fDateFrom,fDateTo\]/);
 });
 
 test("date basis is performed date, falling back to desired date (10-char ISO)", async () => {
@@ -61,7 +61,7 @@ test("filter UI: modality + performer selects, two date inputs, labelled for a11
 
 test("reset button appears only when a filter is active", async () => {
   const page = await read("app/staff/protocols/page.tsx");
-  assert.match(page, /const filtersActive = fModality !== "all" \|\| fPerformer !== "all" \|\| Boolean\(fDateFrom\) \|\| Boolean\(fDateTo\)/);
+  assert.match(page, /const filtersActive = olderOnly \|\| fModality !== "all" \|\| fPerformer !== "all" \|\| Boolean\(fDateFrom\) \|\| Boolean\(fDateTo\)/);
   assert.match(page, /\{filtersActive && <button type="button" className="protocolFilterReset" onClick=\{resetFilters\}>Скинути фільтри<\/button>\}/);
 });
 
