@@ -141,3 +141,6 @@
 .themeDark .apptTaskPriority.normal{background:#263748;color:#bfd7f2}
 .themeDark .apptTaskPriority.low{background:#263a2a;color:#c3e6bd}
 .themeDark .apptTaskOverdue{background:#472d20;color:#f2c2a0}
+
+.themeDark .workspaceShell .staffRoleGuideItem{background:rgba(255,255,255,.035);border-color:#34434b}
+.themeDark .workspaceShell .staffRoleGuideItem span{color:#b5c2c8}
