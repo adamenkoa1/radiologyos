@@ -11,11 +11,12 @@ const read = (p) => readFile(new URL(`../${p}`, import.meta.url), "utf8");
 
 test("filter state and reset helper exist", async () => {
   const page = await read("app/staff/protocols/page.tsx");
-  assert.match(page, /const \[olderOnly,setOlderOnly\] = useState\(false\)/);\n  assert.match(page, /const \[fModality,setFModality\] = useState\("all"\)/);
+  assert.match(page, /const \[olderOnly,setOlderOnly\] = useState\(false\)/);
+  assert.match(page, /const \[fModality,setFModality\] = useState\("all"\)/);
   assert.match(page, /const \[fPerformer,setFPerformer\] = useState\("all"\)/);
   assert.match(page, /const \[fDateFrom,setFDateFrom\] = useState\(""\)/);
   assert.match(page, /const \[fDateTo,setFDateTo\] = useState\(""\)/);
-  assert.match(page, /function resetFilters\(\) \{ setFModality\("all"\); setFPerformer\("all"\); setFDateFrom\(""\); setFDateTo\(""\); \}/);
+  assert.match(page, /function resetFilters\(\) \{ setOlderOnly\(false\); setFModality\("all"\); setFPerformer\("all"\); setFDateFrom\(""); setFDateTo\(""); \}/);
 });
 
 test("filter options are derived from the (already scoped) queue, not a global source", async () => {
@@ -32,7 +33,8 @@ test("visible list applies all three filters in addition to tab + search", async
   assert.match(vis, /filter === "awaiting"/);
   assert.match(vis, /\.toLowerCase\(\)\.includes\(query\.trim\(\)\.toLowerCase\(\)\)/);
   // три нові фільтри
-  assert.match(vis, /!olderOnly \|\| isAwaitingFromPreviousDays\(item,today\)/);\n  assert.match(vis, /fModality === "all" \|\| item\.equipmentId === fModality/);
+  assert.match(vis, /!olderOnly \|\| isAwaitingFromPreviousDays\(item,today\)/);
+  assert.match(vis, /fModality === "all" \|\| item\.equipmentId === fModality/);
   assert.match(vis, /fPerformer === "all" \|\| item\.assignedRadiologistEmail === fPerformer/);
   assert.match(vis, /!fDateFrom \|\| \(Boolean\(d\) && d >= fDateFrom\)/);
   assert.match(vis, /!fDateTo \|\| \(Boolean\(d\) && d <= fDateTo\)/);
