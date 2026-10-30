@@ -1123,3 +1123,29 @@ button.apptEvent{border-top:0;border-right:0;border-bottom:0}
 .dashAttentionArrow{font-size:20px;font-weight:800;color:#a45124}
 .dashAttentionBanner:hover{border-color:#d99a6e;box-shadow:0 6px 18px rgba(70,43,21,.1)}
 @media(max-width:600px){.dashAttentionBanner{margin:8px 0;padding:11px 12px;gap:9px}.dashAttentionBanner small{font-size:11px}}
+
+/* Тижневі завдання, обмежені тим самим доступом, що й робочий список. */
+.apptWeekTasks{margin-top:16px;padding:16px;border:1px solid #dce4e3;border-radius:14px;background:#fff}
+.apptWeekTasksHead{display:flex;align-items:center;gap:14px;margin-bottom:12px}
+.apptWeekTasksHead>div{flex:1;min-width:0}
+.apptWeekTasksHead h3{margin:0;font-size:16px}
+.apptWeekTasksHead p{margin:4px 0 0;color:#778783;font-size:12px}
+.apptWeekTasksHead label{display:flex;align-items:center;gap:6px;white-space:nowrap;font-size:12px;font-weight:700}
+.apptWeekTasksHead a{font-size:12px;font-weight:800;color:var(--ws-accent);white-space:nowrap}
+.apptWeekTaskDays{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px}
+.apptWeekTaskDay{min-width:0;padding:10px;border:1px solid #e5ebe8;border-radius:10px;background:#f9fbfa}
+.apptWeekTaskDay h4{display:flex;justify-content:space-between;gap:8px;margin:0 0 8px;text-transform:capitalize;font-size:12px}
+.apptWeekTaskDay h4 span{color:#75827e}
+.apptWeekTaskDay ul{display:grid;gap:7px;margin:0;padding:0;list-style:none}
+.apptWeekTaskDay li{display:grid;grid-template-columns:auto 1fr;align-items:start;gap:4px 7px;min-width:0}
+.apptWeekTaskDay li>b{overflow-wrap:anywhere;font-size:12px}
+.apptWeekTaskDay li>small{grid-column:2;color:#7b8985;font-size:10px}
+.apptTaskPriority,.apptTaskOverdue{width:max-content;padding:2px 6px;border-radius:10px;font-size:9px;font-weight:800}
+.apptTaskPriority.high{background:#fde8e5;color:#a43528}
+.apptTaskPriority.normal{background:#e8eef5;color:#465e7b}
+.apptTaskPriority.low{background:#eaf3e9;color:#437140}
+.apptTaskOverdue{background:#fff0e6;color:#a24c1f}
+.apptWeekTaskState{margin:0;padding:12px;border-radius:9px;background:#f5f8f7;color:#697a75;font-size:12px}
+.apptWeekTaskState.error{background:#fff1ef;color:#a43528}
+.apptWeekTaskState button{margin-left:8px;border:0;background:transparent;color:inherit;font:inherit;font-weight:800;text-decoration:underline;cursor:pointer}
+@media(max-width:600px){.apptWeekTasks{padding:12px}.apptWeekTasksHead{flex-wrap:wrap;gap:10px}.apptWeekTasksHead>div{flex:1 1 100%}.apptWeekTasksHead label{margin-right:auto}}

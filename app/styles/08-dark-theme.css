@@ -131,3 +131,13 @@
 .themeDark .dashAttentionBanner small{color:#c2aa96}
 .themeDark .dashAttentionBanner strong{background:#994521;color:#fff}
 .themeDark .dashAttentionArrow{color:#e2a579}
+
+.themeDark .apptWeekTasks{background:#171f25;border-color:#303d45}
+.themeDark .apptWeekTasksHead p,.themeDark .apptWeekTaskDay h4 span,.themeDark .apptWeekTaskDay li>small{color:#99a8ad}
+.themeDark .apptWeekTaskDay{background:#1d282e;border-color:#34434a}
+.themeDark .apptWeekTaskState{background:#1d282e;color:#b3c0c4}
+.themeDark .apptWeekTaskState.error{background:#392622;color:#ffd0c5}
+.themeDark .apptTaskPriority.high{background:#4a2725;color:#ffc0b8}
+.themeDark .apptTaskPriority.normal{background:#263748;color:#bfd7f2}
+.themeDark .apptTaskPriority.low{background:#263a2a;color:#c3e6bd}
+.themeDark .apptTaskOverdue{background:#472d20;color:#f2c2a0}

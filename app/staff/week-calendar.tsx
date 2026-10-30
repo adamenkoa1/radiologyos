@@ -2,10 +2,10 @@
 
 // Спільний тижневий календар записів. Використовується і на окремій сторінці
 // «Календар записів», і в пульті відділення (об'єднаний перегляд). Компонент
-// презентаційний: дані (bookings, staffOptions) приходять пропсами, а стан
-// вигляду/дати/фільтра — локальний.
+// Дані записів і розкладу приходять пропсами; тижневі завдання підтягуються
+// з наявного API, який застосовує tenant/role scope.
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import BookingDrawer from "./booking-drawer";
 import { canTransition, stateLabel } from "../../lib/study-state";
 import { candidateTimesFor, EQUIP_KEYS, EQUIP_LABELS, isEquipmentDayOpen, SCHEDULE_DEFAULTS, type ScheduleConfig } from "../../lib/schedule";
@@ -18,6 +18,7 @@ export type CalBooking = {
   assignedRadiologistEmail?: string; assignedRadiographerEmail?: string;
 };
 export type CalStaffOption = { email: string; displayName: string; role: string };
+export type CalTask = { id: number; title: string; dueDate: string; priority: "low" | "normal" | "high"; assignedEmail: string };
 export type CalEquipmentBlock = { id:number; equipmentId:string; blockedDate:string; startTime:string; endTime:string; reason:string };
 export type CalView = "list" | "day" | "week";
 
@@ -147,6 +148,40 @@ export default function WeekCalendar({
   [bookings, date, tab, q, matchesExtra]);
 
   const week = useMemo(() => weekDates(date), [date]);
+  const weekStart = week[0];
+  const [plannerResult, setPlannerResult] = useState<{ key: string; tasks: CalTask[]; error: string } | null>(null);
+  const [mineTasks, setMineTasks] = useState(false);
+  const [plannerReload, setPlannerReload] = useState(0);
+  const plannerQueryKey = `${weekStart}|${mineTasks ? "mine" : "all"}|${plannerReload}`;
+  const plannerLoading = view === "week" && plannerResult?.key !== plannerQueryKey;
+  const plannerError = plannerResult?.key === plannerQueryKey ? plannerResult.error : "";
+  const plannerTasks = plannerResult?.key === plannerQueryKey ? plannerResult.tasks : [];
+
+  // The existing tasks API applies the same tenant and role scope as /staff/tasks.
+  useEffect(() => {
+    if (view !== "week") return;
+    const controller = new AbortController();
+    let active = true;
+    fetch(`/api/staff/tasks?status=open${mineTasks ? "&mine=1" : ""}`, { cache: "no-store", signal: controller.signal })
+      .then(async res => {
+        const data = await res.json().catch(() => ({})) as { tasks?: CalTask[]; error?: string };
+        if (!res.ok) throw new Error(data.error || "Не вдалося завантажити завдання");
+        if (active) setPlannerResult({ key: plannerQueryKey, tasks: Array.isArray(data.tasks) ? data.tasks : [], error: "" });
+      })
+      .catch(error => {
+        if (active && !controller.signal.aborted) setPlannerResult({ key: plannerQueryKey, tasks: [], error: error instanceof Error ? error.message : "Не вдалося завантажити завдання" });
+      });
+    return () => { active = false; controller.abort(); };
+  }, [view, plannerQueryKey, mineTasks]);
+
+  const weekTasks = useMemo(
+    () => plannerTasks.filter(task => !!task.dueDate && week.includes(task.dueDate)),
+    [plannerTasks, week],
+  );
+  const overdueTaskCount = useMemo(
+    () => plannerTasks.filter(task => !!task.dueDate && task.dueDate < todayKyiv()).length,
+    [plannerTasks],
+  );
   const weekItems = useMemo(() => bookings.filter(b => week.includes(b.desiredDate) && matchesExtra(b)
     && ((tab === "all" || GROUPS[tab]?.includes(b.status)) && (!q || b.name.toLowerCase().includes(q) || (b.phone || "").includes(q)))),
   [bookings, week, tab, q, matchesExtra]);
@@ -335,6 +370,35 @@ export default function WeekCalendar({
                 </div>
               ))}</div>}
 
+
+      {view === "week" && <section className="apptWeekTasks" aria-label="Завдання відділення на тиждень">
+        <div className="apptWeekTasksHead">
+          <div><h3>Завдання на цей тиждень</h3><p>{weekTasks.length} у вибраному тижні · {overdueTaskCount} прострочено</p></div>
+          <label><input type="checkbox" checked={mineTasks} onChange={event => setMineTasks(event.target.checked)} />Мої</label>
+          <a href="/staff/tasks">Усі завдання →</a>
+        </div>
+        {plannerLoading ? <p className="apptWeekTaskState" role="status">Завантаження завдань…</p>
+          : plannerError ? <p className="apptWeekTaskState error" role="alert">{plannerError} <button type="button" onClick={() => setPlannerReload(value => value + 1)}>Повторити</button></p>
+          : weekTasks.length === 0 ? <p className="apptWeekTaskState">Завдань із терміном у вибраному тижні немає.</p>
+          : <div className="apptWeekTaskDays">
+              {week.filter(day => weekTasks.some(task => task.dueDate === day)).map(day => {
+                const dayTasks = weekTasks.filter(task => task.dueDate === day).sort((a, b) => {
+                  const rank = { high: 0, normal: 1, low: 2 };
+                  return rank[a.priority] - rank[b.priority] || a.title.localeCompare(b.title, "uk");
+                });
+                const label = new Intl.DateTimeFormat("uk-UA", { timeZone: "Europe/Kyiv", weekday: "long", day: "numeric", month: "long" }).format(new Date(`${day}T12:00:00Z`));
+                return <section className="apptWeekTaskDay" key={day}>
+                  <h4>{label}<span>{dayTasks.length}</span></h4>
+                  <ul>{dayTasks.map(task => <li key={task.id}>
+                    <span className={`apptTaskPriority ${task.priority}`}>{task.priority === "high" ? "Високий" : task.priority === "low" ? "Низький" : "Звичайний"}</span>
+                    <b>{task.title}</b>
+                    {task.dueDate < todayKyiv() && <small className="apptTaskOverdue">Прострочено</small>}
+                    <small>{nameByEmail[task.assignedEmail] || (task.assignedEmail ? task.assignedEmail : "Без виконавця")}</small>
+                  </li>)}</ul>
+                </section>;
+              })}
+            </div>}
+      </section>}
       {openBooking && <BookingDrawer
         key={openBooking.id}
         booking={openBooking}
