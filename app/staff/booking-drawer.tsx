@@ -6,7 +6,7 @@
 
 import { useEffect, useState } from "react";
 import { type CalBooking } from "./week-calendar";
-import { stateLabel } from "../../lib/study-state";
+import { canTransition, stateLabel } from "../../lib/study-state";
 import { EQUIPMENT_LABELS as EQUIP } from "../../lib/labels";
 
 const GROUPS: Record<string, string[]> = {
@@ -24,6 +24,7 @@ const digits = (p: string) => (p || "").replace(/[^\d]/g, "");
 
 export default function BookingDrawer({
   booking, all, doctorName = "", onClose, onOpen, onConfirm, confirming = false,
+  onStatusChange, statusChanging = false,
   onReschedule, rescheduling = false, patientHref = "", historyScoped = false,
 }: {
   booking: CalBooking;
@@ -33,6 +34,8 @@ export default function BookingDrawer({
   onOpen: (id: number) => void;
   onConfirm?: (id: number) => void;
   confirming?: boolean;
+  onStatusChange?: (id: number, status: "arrived" | "no_show") => void;
+  statusChanging?: boolean;
   onReschedule?: (id: number, date: string, time: string) => void;
   rescheduling?: boolean;
   // Only an already-resolved CRM identity may supply these. General calendar
@@ -47,6 +50,8 @@ export default function BookingDrawer({
         .sort((a, c) => (c.desiredDate + c.desiredTime).localeCompare(a.desiredDate + a.desiredTime))
     : [];
   const canConfirm = !!onConfirm && (b.status === "new" || b.status === "rescheduled");
+  const canMarkArrived = !!onStatusChange && canTransition(b.status, "arrived");
+  const canMarkNoShow = !!onStatusChange && canTransition(b.status, "no_show");
   const canReschedule = !!onReschedule && b.status !== "cancelled" && b.status !== "completed" && b.status !== "issued";
 
   const [reschedOpen, setReschedOpen] = useState(false);
@@ -175,6 +180,8 @@ export default function BookingDrawer({
 
       <div className="apptDrawerActions">
         {canConfirm && <button type="button" className="apptDrawerBtn confirm" disabled={confirming} onClick={() => onConfirm!(b.id)}>{confirming ? "…" : "✓ Підтвердити"}</button>}
+        {canMarkArrived && <button type="button" className="apptDrawerBtn confirm" disabled={statusChanging} onClick={() => onStatusChange!(b.id, "arrived")}>{statusChanging ? "…" : "✓ Прийшов"}</button>}
+        {canMarkNoShow && <button type="button" className="apptDrawerBtn" disabled={statusChanging} onClick={() => onStatusChange!(b.id, "no_show")}>{statusChanging ? "…" : "Не прийшов"}</button>}
         {canReschedule && !reschedOpen && <button type="button" className="apptDrawerBtn" onClick={()=>setReschedOpen(true)}>↻ Перенести</button>}
         {ph && <button type="button" className="apptDrawerBtn" onClick={()=>setNotifyOpen(v=>!v)}>✉ Повідомити</button>}
         {patientHref && <a className="apptDrawerBtn" href={patientHref}>Картка пацієнта →</a>}
