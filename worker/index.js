@@ -65,9 +65,19 @@ export default {
       if (!env.ORIGIN) return json(503, { error: 'offline', message: 'Live booking is not connected.' });
       try {
         const target = new URL(p + url.search, env.ORIGIN);
-        const r = await fetch(new Request(target.toString(), request));
+        // The server checks that a write comes from its own address: a request from this site gets the server's
+        // origin instead (only when the browser said it came from here); the patient's address for rate limits.
+        const headers = new Headers();
+        for (const h of ['content-type', 'accept', 'accept-language', 'user-agent', 'referer']) if (request.headers.has(h)) headers.set(h, request.headers.get(h));
+        const from = request.headers.get('origin');
+        if (from && from !== url.origin) return json(403, { error: 'cross_site_request' });
+        if (from) headers.set('origin', target.origin);
+        headers.set('x-site-client-ip', request.headers.get('cf-connecting-ip') || '');
+        const init = { method: request.method, headers, redirect: 'manual' };
+        if (request.method !== 'GET' && request.method !== 'HEAD') init.body = await request.arrayBuffer();
+        const r = await fetch(target.toString(), init);
         if ([502, 503, 504, 521, 522, 523, 524, 530].includes(r.status)) return json(503, { error: 'offline', message: 'The department server is not reachable right now.' });
-        return secure(r);
+        const out = secure(r); out.headers.delete('set-cookie'); return out;
       } catch {
         return json(503, { error: 'offline', message: 'The department server is not reachable right now.' });
       }
@@ -75,6 +85,8 @@ export default {
     if (request.method !== 'GET' && request.method !== 'HEAD') return json(405, { error: 'method_not_allowed' });
     if (SNAPSHOT_APIS.has(p)) return (await asset(env, request, `/snapshot${p}.json`, { type: 'application/json; charset=utf-8' })) || json(404, { error: 'not_found' });
     if (REDIRECTS[p]) return secure(Response.redirect(new URL(REDIRECTS[p], url.origin).toString(), 301));
+    // Staff sign-in and the CRM: on the department's server (its address from the internet) when connected.
+    if (STAFF.test(p) && env.ORIGIN && !p.includes('cabinet')) return secure(Response.redirect(new URL(p + url.search, env.ORIGIN).toString(), 302), { cache: 'no-store' });
     if (STAFF.test(p)) return secure(new Response(STAFF_PAGE, { status: 200, headers: { 'content-type': 'text/html; charset=utf-8', 'x-robots-tag': 'noindex' } }), { cache: 'no-store' });
     if (p === '/') return (await asset(env, request, '/site/index.html', { type: 'text/html; charset=utf-8' }));
     if (p.startsWith('/snapshot/')) return json(404, { error: 'not_found' });
