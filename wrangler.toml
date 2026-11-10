@@ -18,8 +18,8 @@ run_worker_first = true
 html_handling = "none"
 not_found_handling = "none"
 
-# Live parts (free hours, saving a request in the CRM, visit statistics) need the department's server reachable
-# from the internet. Not set up (owner's choice, 10.11.2026): the site answers «offline» and the booking form sends the
-# request by messenger. To turn them on later: a public address of the server's gate (edge/gate.mjs), e.g.
-# [vars]
-# ORIGIN = "https://origin.radiologyos.tech"
+# Live booking parts (free hours, saving a request in the CRM, visit statistics) and the staff cabinet go to the
+# department server through its Cloudflare Tunnel (radiologyos-crm, /opt/ai-project/cloudflared in the VM).
+# Without ORIGIN the site still works: booking by messenger, the cabinet only inside the network.
+[vars]
+ORIGIN = "https://crm.radiologyos.tech"
