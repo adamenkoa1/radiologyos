@@ -1,1 +1,0 @@
-ALTER TABLE `protocols` ADD `method_ref` text DEFAULT '' NOT NULL;

@@ -4,6 +4,8 @@
    Дані зберігаються в localStorage під ключем 'radiologyCart'. */
 
 const PHONE = '380972808899';
+// Номер для повідомлень: з «Тексти сайту» (site-texts.js), інакше — вбудований.
+const sitePhoneText = () => (window.SiteTexts && window.SiteTexts.phoneText) || '+380 97 280 88 99';
 // Дзеркалить серверний MAX_SERVICES_PER_REQUEST: одна заявка — до 5 послуг.
 const MAX_SERVICES_PER_REQUEST = 5;
 
@@ -23,7 +25,7 @@ function addToCart(code, name, price) {
   _lastPickerCode = null;
   if (!cart.some(x => x.code === String(code))) {
     if (cart.length >= MAX_SERVICES_PER_REQUEST) {
-      alert(`В одну заявку можна додати до ${MAX_SERVICES_PER_REQUEST} послуг. Для більшого обсягу подайте окрему заявку або зателефонуйте в реєстратуру: +380 97 280 88 99`);
+      alert(`В одну заявку можна додати до ${MAX_SERVICES_PER_REQUEST} послуг. Для більшого обсягу подайте окрему заявку або зателефонуйте у відділення: ${sitePhoneText()}`);
       openCart();
       return;
     }
@@ -38,13 +40,22 @@ function removeFromCart(code) {
   saveCart();
 }
 
+// Порожній кошик — з «Графіка роботи» (schedule-hints.js): години запису або «жива черга, без заявки».
+const escCart = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+function emptyCartHtml() {
+  const builtIn = 'Ви ще не додали жодної послуги.';
+  const text = window.ScheduleHints ? window.ScheduleHints.emptyCart('civilian', builtIn) : builtIn;
+  return `<div class="cart-empty">${escCart(text)}</div>`;
+}
+document.addEventListener('schedule-hints', () => { if (!cart.length) renderCart(); });
+
 function renderCart() {
   document.querySelectorAll('[data-cart-count]').forEach(x => { x.textContent = cart.length; });
   const box = document.getElementById('cartItems');
   if (!box) return;
   box.innerHTML = cart.length
-    ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small>Код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
-    : '<div class="cart-empty">Ви ще не додали жодної послуги.</div>';
+    ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small style="color:#a3b0b7;font-size:11px">код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
+    : emptyCartHtml();
   const total = cart.reduce((s, x) => s + x.price, 0);
   document.getElementById('cartTotal').textContent = money(total);
   renderPayOptional(total);
@@ -75,19 +86,21 @@ async function openOnlinePayment() {
     const res = await fetch('/api/pay-link', { cache: 'no-store' });
     const data = await res.json().catch(() => ({}));
     const link = data && data.payLink;
-    if (!res.ok || !link) { alert('Онлайн-оплата зараз недоступна. Зателефонуйте в реєстратуру: +380 97 280 88 99'); return; }
+    if (!res.ok || !link) { alert('Онлайн-оплата зараз недоступна. Зателефонуйте у відділення: ' + sitePhoneText()); return; }
     // Якщо попап заблоковано (напр. in-app webview) — відкриваємо у цій вкладці,
     // щоб кнопка оплати не була мовчазним no-op.
     const opened = window.open(link, '_blank', 'noopener');
     if (!opened) location.href = link;
   } catch (e) {
-    alert('Не вдалося відкрити оплату. Перевірте зʼєднання або зателефонуйте: +380 97 280 88 99');
+    alert('Не вдалося відкрити оплату. Перевірте зʼєднання або зателефонуйте: ' + sitePhoneText());
   }
 }
 
 function renderPayOptional(total) {
   const box = document.getElementById('cartPay');
   if (!box) return;
+  // Оплата — на місці після дослідження через QR-код (рішення власника 08.11): онлайн-оплату не показуємо.
+  box.hidden = true; box.innerHTML = ''; return;
   if (!(total > 0)) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
   box.innerHTML =

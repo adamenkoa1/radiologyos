@@ -42,6 +42,7 @@ a{text-decoration:none;color:inherit}
 .book-channels-title{margin:0 0 12px;text-align:center;font-size:14px;font-weight:700;color:#5c6c78}
 .book-channels-row{display:flex;justify-content:center;gap:clamp(18px,7vw,34px)}
 .channel-btn{display:flex;flex-direction:column;align-items:center;gap:8px;padding:0;border:0;background:none;font:inherit;color:#42525c;text-decoration:none;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.channel-btn:disabled{opacity:.4;cursor:not-allowed;filter:grayscale(1)}
 .channel-ico{display:grid;place-items:center;width:60px;height:60px;border-radius:var(--r-pill);color:#fff;box-shadow:0 8px 20px rgba(18,48,58,.16);transition:transform .12s ease,box-shadow .12s ease}
 .channel-ico svg{width:30px;height:30px;fill:currentColor}
 .channel-btn.viber .channel-ico{background:#7360f2}
@@ -104,3 +105,18 @@ a{text-decoration:none;color:inherit}
 .book-call-link b{white-space:nowrap;font-size:17px}
 .book-call-link:hover{background:#e1efec}
 .book-call-link:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.channel-btn.telegram .channel-ico{background:#2588bd}
+.half-day{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.half-day .hd{display:flex;flex-direction:column;gap:2px;border:1.5px solid #dbe3e8;border-radius:12px;padding:10px 12px;cursor:pointer;background:#fff}
+.half-day .hd input{position:absolute;opacity:0;pointer-events:none}
+.half-day .hd small{color:#5c6c78;font-size:12px}
+.half-day .hd:has(input:checked){border-color:#123d3a;background:#eef7f5;box-shadow:inset 0 0 0 1px #123d3a}
+.half-day .hd:focus-within{outline:3px solid #c9a227;outline-offset:2px}
+.time-slots{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.time-slots .ts{border:1.5px dashed #b9c7cf;background:#fff;border-radius:999px;padding:8px 14px;font:inherit;font-weight:700;font-variant-numeric:tabular-nums;color:#123d3a;cursor:pointer;min-width:72px}
+.time-slots .ts:hover{border-style:solid;border-color:#123d3a}
+.time-slots .ts.on{background:#123d3a;border:1.5px solid #123d3a;color:#fff}
+.time-slots .ts:disabled{border:1.5px solid #e6ecef;background:#f3f6f7;color:#a9b6bd;text-decoration:line-through;cursor:not-allowed}
+.time-slots .ts-sep{flex-basis:100%;height:2px}
+.time-slots .ts-hint{font-size:13px;color:#5c6c78}
+.time-slots .ts:focus-visible{outline:3px solid #c9a227;outline-offset:2px}

@@ -11,7 +11,7 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <link rel="canonical" href="https://radiologyos.tech/site/price.html"/>
 <meta name="theme-color" content="#123d3a"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23123d3a'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23d8b55e'/%3E%3C/svg%3E"/>
+<link rel="icon" href="/site/assets/icon.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="/site/assets/site.css">
 <style>
 
@@ -116,6 +116,8 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
 .civ-benefit{background:#fff;border:1px solid #dbe3e8;border-radius:var(--r-lg);padding:14px 16px;box-shadow:0 8px 24px rgba(18,40,30,.06)}
 .civ-benefit b{display:block;font-size:15px;color:#18302f;margin-bottom:4px}
 .civ-benefit span{font-size:13px;color:#5c6c78;line-height:1.4}
+.civ-hours{display:block;margin-top:6px;font-size:13px;font-weight:700;color:#0f6b6f}
+.price-summary{margin:-8px 0 18px;padding:12px 16px;border-radius:var(--r-lg);background:#fff8dc;color:#5d4700;font-size:14px;font-weight:600;line-height:1.5}
 @media(max-width:900px){.civ-benefits{grid-template-columns:1fr 1fr}}
 @media(max-width:520px){.civ-benefits{grid-template-columns:1fr}}
 
@@ -176,6 +178,17 @@ body{background:#f3f6f8}
 .civilian-heading-card{background:linear-gradient(135deg,#eef7f8,#d9eef0);border:1px solid #bfe0e4}
 .civilian-heading-card p{color:#5c6c78}
 .price-page{background:#f3f6f8}
+.barium-card{margin-top:16px;padding:18px;border:1px solid #c9e4e7;border-radius:var(--r-xl);background:#f1fafb;scroll-margin-top:90px}
+.barium-card h3{margin:0 0 10px;color:#0d302e;font-size:19px}
+.barium-links{display:grid;gap:8px}
+.barium-links details{border:1px solid #d6e8ea;border-radius:12px;background:#fff;overflow:hidden}
+.barium-links summary{display:flex;justify-content:space-between;gap:10px;padding:12px 14px;color:#0d302e;font-size:14.5px;font-weight:800;cursor:pointer;list-style:none}
+.barium-links summary::-webkit-details-marker{display:none}
+.barium-links summary::after{content:"+";font-size:20px}
+.barium-links details[open] summary::after{content:"−"}
+.barium-detail{padding:0 14px 13px;color:#405d65;font-size:13.5px;line-height:1.5}
+.barium-detail p{margin:7px 0}.barium-detail strong{color:#163941}
+.barium-card:target{box-shadow:0 0 0 3px #d8b55e}
 .price-intro{background:#eef7f8;border-color:#bfe0e4;color:#18302f}
 .price-group{background:#fff;border-color:#dbe3e8;box-shadow:0 8px 24px rgba(18,40,30,.06)}
 .price-group h2{background:linear-gradient(135deg,#123d3a,#0d302e);color:#fff;border-bottom:1px solid #0d302e}
@@ -187,6 +200,11 @@ body{background:#f3f6f8}
 .service-help,.code{color:#5c6c78}
 .row-add,.add-cart,.send-request{background:#123d3a;color:#fff}
 .row-add:hover,.add-cart:hover,.send-request:hover{background:#0d302e}
+/* Група з живою чергою (з «Графіка роботи»): замість кнопки — мітка, під групою — години */
+.row-queue{display:inline-block;padding:7px 12px;border-radius:999px;background:#dfeeea;color:#123d3a;font-size:12.5px;font-weight:800;white-space:nowrap}
+.queue-row td{padding:10px 16px!important;background:#eef6f5;color:#2f4650;font-size:13.5px;line-height:1.5;white-space:normal!important;text-align:left!important}
+.queue-row strong{color:#12303a}
+@media(max-width:700px){.queue-row td{grid-column:1/-1}}
 .note,.offline-note{background:#eef7f8;border-color:#bfe0e4;color:#3a4a52}
 .request-form,.success-panel,.cart-item{background:#fff;border-color:#dbe3e8}
 .cart-drawer{background:#f7fafb}
@@ -200,24 +218,25 @@ body{background:#f3f6f8}
 .fixed a:first-child{background:#123d3a;color:#fff}
 .fixed a:last-child{background:#eef7f8;color:#18302f}
 
-</style></head><body>
-<header><div class="wrap header-row"><a class="brand" href="/"><div class="hospital-brand-text"><div class="hospital-brand-title">Чернігівський військовий госпіталь</div><div class="hospital-brand-subtitle">Відділення променевої діагностики</div></div></a><nav><a href="/">Головна</a><button class="cart-button" onclick="openCart()" type="button"><span class="cart-label">Моя заявка</span><span class="cart-count" data-cart-count="">0</span></button></nav></div></header>
+</style><link rel="stylesheet" href="/site/assets/price-flat.css">
+</head><body>
+<header><div class="wrap header-row"><a class="brand" href="/"><div class="hospital-brand-text"><div class="hospital-brand-title" data-ct="site.brand.title">Чернігівський військовий госпіталь</div><div class="hospital-brand-subtitle" data-ct="site.brand.subtitle">Відділення променевої діагностики</div></div></a><nav><a href="/">Головна</a><button class="cart-button" onclick="openCart()" type="button"><span class="cart-label">Моя заявка</span><span class="cart-count" data-cart-count="">0</span></button></nav></div></header>
 <main class="price-page">
 <section class="civilian-heading"><div class="wrap">
 <div class="civilian-heading-card">
-<div><div class="eyebrow" style="color:var(--brand)">Цивільним особам</div>
-<h1 id="scPriceTitle">Платні дослідження</h1>
-<p id="scPriceSub">Вартість указана відповідно до чинних тарифів.</p></div>
-<a class="btn" href="#priceGroups">Обрати дослідження →</a>
+<div><div class="eyebrow" style="color:var(--brand)" data-ct="price.kicker">Цивільним особам</div>
+<h1 data-ct="price.title">Платні дослідження</h1>
+<p data-ct="price.sub">Вартість указана відповідно до чинних тарифів.</p></div>
+<a class="btn" href="#priceGroups" data-ct="price.cta">Обрати дослідження →</a>
 </div>
 <div class="civ-benefits">
-  <div class="civ-benefit"><b>🩻 Сучасне цифрове обладнання</b><span>КТ, цифрова рентгенографія та флюорографія — низька доза й висока якість зображення.</span></div>
-  <div class="civ-benefit"><b>🗓️ Онлайн-запис без черг</b><span>Оберіть дослідження й зручний вільний час прямо на сайті.</span></div>
+  <div class="civ-benefit"><b data-ct="price.benefit.1.title">🩻 Сучасне цифрове обладнання</b><span data-ct="price.benefit.1.text">КТ, цифрова рентгенографія та флюорографія — низька доза й висока якість зображення.</span></div>
+  <div class="civ-benefit" id="priceBookingBenefit"><b data-ct="price.benefit.2.title">🗓️ Онлайн-запис без черг</b><span data-ct="price.benefit.2.text">Оберіть дослідження й зручний вільний час прямо на сайті.</span><small class="civ-hours" id="priceHours" data-ct-auto="з «Графіка роботи»">Години запису: пн–пт 10:00–16:30.</small></div>
 </div>
 </div></section>
-<div class="wrap"><div class="price-intro" id="scPriceIntro"><strong>Цивільним особам — платні послуги.</strong> Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані. Після надсилання в особистому кабінеті з’являться номер заявки, обраний час і статус підтвердження.</div><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)">Офіційний перелік</div><h2 style="color:var(--ink);margin:10px 0" id="scPriceListTitle">Тарифи на платні медичні послуги</h2><p class="lead" id="scPriceLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
+<div class="wrap"><div class="price-intro" id="priceIntroBooking" data-ct="price.intro" data-ct-rich data-ct-alt="Показується, коли в «Графіку роботи» для цивільних є запис:"><strong>Цивільним особам — платні послуги.</strong> Оберіть потрібне дослідження, натисніть «Записатися» та введіть свої дані. Після опрацювання заявки з вами зв’яжуться і повідомлять дату та час проведення дослідження.</div><div class="price-intro" id="priceIntroQueue" data-ct="price.intro.queue" data-ct-rich data-ct-alt="Показується, коли в «Графіку роботи» для цивільних лише жива черга:" style="display:none"><strong>Цивільним особам — платні послуги.</strong> Запис зараз не ведеться — дослідження проводяться в порядку живої черги. Оберіть потрібне дослідження в переліку й приходьте в години прийому з документом, що посвідчує особу.</div><p class="price-summary" id="priceSummary" data-ct-auto="з «Графіка роботи»">За записом: флюорографія, рентгенографія, рентгенографія з контрастом — пн–пт 10:00–16:30; КТ — пн–пт 10:00–16:00; КТ з контрастом — пн–пт 14:00–16:00.</p><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)" data-ct="price.list.kicker">Офіційний перелік</div><h2 style="color:var(--ink);margin:10px 0" data-ct="price.list.title">Тарифи на платні медичні послуги</h2><p class="lead" data-ct="price.list.lead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
 <nav class="service-links" aria-label="Докладніше про дослідження">
-  <p class="service-links-title">Докладніше про дослідження</p>
+  <p class="service-links-title" data-ct="price.links.title">Докладніше про дослідження</p>
   <div class="service-links-row">
     <a class="service-link" href="/ct">КТ у Чернігові</a>
     <a class="service-link" href="/ct/contrast">КТ з контрастуванням</a>
@@ -437,96 +456,169 @@ body{background:#f3f6f8}
       </table>
     </section>
 </div>
-<div class="note"><strong>Важливо.</strong> У вартість дослідження входять проведення, стандартна обробка та реконструкції, архівування, оцінка лікарем-рентгенологом і письмовий висновок. Для КТ у тариф входить запис повного дослідження на CD. Військовослужбовцям та іншим категоріям осіб, яким медична допомога надається безоплатно згідно із законодавством України, послуги надаються без оплати.</div>
+<div class="note" data-ct="price.note" data-ct-rich><strong>Важливо.</strong> У вартість дослідження входять проведення, стандартна обробка та реконструкції, архівування, оцінка лікарем-рентгенологом і письмовий висновок. Для КТ у тариф входить запис повного дослідження на CD. Військовослужбовцям та іншим категоріям осіб, яким медична допомога надається безоплатно згідно із законодавством України, послуги надаються без оплати.</div>
+<section class="barium-card" id="barium">
+  <h3 data-ct="price.barium.title">Як підготуватися до рентгенографії з барієм</h3>
+  <div class="barium-links">
+            <details><summary><span data-ct="price.barium.1.title">Стравохід, шлунок і дванадцятипала кишка</span></summary><div class="barium-detail"><p><strong data-ct="price.barium.1.1.label">Для чого:</strong> <span data-ct="price.barium.1.1.text">Дослідження призначають для оцінювання стравоходу, шлунка та дванадцятипалої кишки, зокрема при підозрі на грижу стравохідного отвору діафрагми або виразкові зміни. При виразці шлунка чи дванадцятипалої кишки через 1 годину може виконуватися контрольний знімок для оцінки евакуації контрасту зі шлунка та дванадцятипалої кишки.</span></p><p><strong data-ct="price.barium.1.2.label">Підготовка:</strong> <span data-ct="price.barium.1.2.text">Дослідження проводиться натще: щонайменше за 6 годин не їжте, не пийте та не жуйте гумку. Необхідні ліки, діабет і можливу вагітність обговоріть під час запису. Наявність барію та порядок його надання підтвердить відділення.</span></p><p><strong data-ct="price.barium.1.3.label">Як проходить:</strong> <span data-ct="price.barium.1.3.text">Пацієнт випиває суспензію барію, а лікар-рентгенолог у режимі рентгеноскопії спостерігає за її проходженням.</span></p></div></details>
+            <details><summary><span data-ct="price.barium.2.title">Проходження барію тонкою кишкою (погодинне)</span></summary><div class="barium-detail"><p><strong data-ct="price.barium.2.1.label">Погодинне дослідження:</strong> <span data-ct="price.barium.2.1.text">Після приймання барію контрольні знімки зазвичай виконують через 1 і 2 години, а далі — приблизно кожні 3 години за вказівкою лікаря-рентгенолога. Дослідження може тривати до 24 годин, тому необхідно підходити на повторні знімки у визначений час.</span></p></div></details>
+  </div>
+</section>
 </div></main>
 <div class="fixed"><a href="tel:+380972808899">Записатися</a><a href="https://wa.me/380972808899">WhatsApp</a></div>
 
-<div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><p class="cart-total-note">Орієнтовна вартість. Остаточну суму підтвердить реєстратура; оплата — після проведення дослідження.</p><div class="cart-pay" id="cartPay" hidden></div><form class="request-form" id="requestForm" novalidate>
+<div aria-hidden="true" class="cart-overlay" id="cartOverlay"><aside aria-label="Моя заявка" aria-modal="true" class="cart-drawer" role="dialog"><div class="cart-head"><div><div class="eyebrow" style="color:var(--brand)">Попередній вибір</div><h2 style="margin:5px 0">Моя заявка</h2></div><button class="cart-close" onclick="closeCart()" type="button">×</button></div><div id="cartItems"></div><div class="cart-total"><span>Орієнтовна сума</span><span id="cartTotal">0 грн</span></div><p class="cart-total-note">Орієнтовна вартість. Оплата — на місці після дослідження, через QR-код.</p><div class="cart-pay" id="cartPay" hidden></div><form class="request-form" id="requestForm" novalidate>
       <div class="field">
         <label for="patientName">Прізвище, ім’я та по батькові <span class="req">*</span></label>
         <input autocomplete="name" id="patientName" required placeholder="Іваненко Іван Іванович"/>
         <span class="field-error">Вкажіть прізвище, ім’я та по батькові</span>
       </div>
       <div class="field">
-        <label>Оберіть зручний час</label>
-        <div id="slotPicker" class="slot-picker"><div class="sp-loading">Оберіть дослідження — і тут з’явиться вільний час</div></div>
-        <span class="cart-note">Оберіть зручний час — дата й час заповняться самі.</span>
+        <label for="desiredDate">Бажана дата <span class="req">*</span></label>
+        <input id="desiredDate" type="date" required/>
+        <span class="field-error">Оберіть бажану дату</span>
       </div>
-      <details class="manual-time">
-        <summary>Не знайшли зручний час? Вказати вручну</summary>
-        <div class="field">
-          <label for="desiredDate">Бажана дата <span class="req">*</span></label>
-          <input id="desiredDate" type="date" required/>
-          <span class="field-error">Оберіть бажану дату</span>
-        </div>
-        <div class="field">
-          <label for="desiredTime">Бажаний час <span class="req">*</span></label>
-          <input id="desiredTime" type="time" required/>
-          <span class="field-error">Оберіть бажаний час</span>
-        </div>
-      </details>
-      <p class="cart-note">Попередня оплата не потрібна. Оплата — після проведення дослідження.</p>
+      <div class="field">
+        <label>Зручний час <span class="req">*</span></label>
+        <div class="time-slots" role="group" aria-label="Зручний час"><span class="ts-hint">Оберіть дослідження та дату — тут з’являться вільні години. Запис: пн–пт 10:00–16:30.</span></div>
+        <input id="desiredTime" type="hidden" value=""/>
+        <span class="field-error">Оберіть зручний час</span>
+      </div>
+      <p class="cart-note"><span class="cart-mode">Прийом — у вибрану годину, за записом.</span> Оплата — на місці після дослідження, через QR-код.</p>
       <div class="book-channels">
-        <h3 class="book-channels-title">Записатися через</h3>
+        <h3 class="book-channels-title" data-ct="form.title">Записатися через</h3>
         <div class="book-channels-row">
           <button type="button" class="channel-btn viber" data-book="viber" aria-label="Записатися через Viber">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M11.398.002C9.473.028 5.331.344 3.014 2.467 1.294 4.177.693 6.698.623 9.82c-.06 3.11-.13 8.95 5.5 10.541v2.42s-.038.97.602 1.17c.79.25 1.24-.499 2-1.299l1.4-1.58c3.85.32 6.8-.419 7.14-.529.78-.25 5.181-.811 5.901-6.652.74-6.021-.36-9.822-2.34-11.531l-.01-.002c-.6-.55-3-2.3-8.37-2.32 0 0-.396-.025-1.048-.008zm.076 1.7c.554-.004.892.017.892.017 4.54.019 6.71 1.389 7.22 1.849 1.67 1.429 2.528 4.856 1.9 9.892v.002c-.6 4.88-4.17 5.19-4.83 5.4-.28.09-2.882.729-6.152.519 0 0-2.44 2.939-3.2 3.709-.12.12-.26.169-.35.149-.13-.03-.16-.18-.16-.4l.02-4.019c-4.771-1.32-4.491-6.302-4.441-8.899.06-2.6.548-4.733 2-6.163 1.96-1.769 5.474-2.052 7.11-2.062zm.428 2.767c-.09 0-.164.075-.164.164 0 .09.074.163.164.163 1.47.011 2.61.47 3.601 1.35.99.88 1.47 2.06 1.53 3.43.001.09.075.163.164.163.09 0 .163-.075.163-.165-.06-1.47-.58-2.75-1.64-3.7-1.06-.95-2.29-1.454-3.842-1.465zm-3.51.702a.826.826 0 00-.523.176l-.006.002c-.396.235-.75.525-1.05.895-.001 0-.005.004-.009.008a1.74 1.74 0 00-.31.62v.004c-.06.196-.06.4.006.626a4.57 4.57 0 00.164.43c.25.61.64 1.276 1.212 2.06.417.573.916 1.153 1.526 1.753.6.596 1.19 1.09 1.763 1.505.79.573 1.454.958 2.06 1.207.005.001.032.014.048.02a4.57 4.57 0 00.43.163c.226.066.43.066.626.006h.004c.22-.06.427-.16.62-.31.004-.004.008-.008.008-.009.37-.3.66-.654.895-1.05l.002-.006a.826.826 0 00.176-.523c-.006-.23-.096-.375-.225-.477h-.002c-.31-.243-.63-.474-.96-.694-.223-.148-.45-.15-.68.002l-.484.61c-.2.244-.567.212-.567.212l-.014.008c-2.66-.68-3.37-3.374-3.37-3.374s-.032-.367.213-.567l.61-.483c.152-.23.15-.457.002-.68a13.4 13.4 0 00-.694-.96c-.102-.13-.247-.22-.477-.226zm3.279.622a.163.163 0 00-.01.326c1.06.055 1.57.577 1.63 1.68a.163.163 0 00.326-.018c-.07-1.27-.76-1.945-1.94-2.006a.163.163 0 00-.006 0zm.24 1.146a.163.163 0 00-.05.318c.36.13.53.31.62.68a.163.163 0 00.318-.076c-.11-.46-.37-.74-.83-.91a.163.163 0 00-.058-.012z"/></svg></span>
-            <span class="channel-cap">Viber</span>
+            <span class="channel-cap" data-ct="form.channel.viber">Viber</span>
           </button>
           <button type="button" class="channel-btn whatsapp" data-book="whatsapp" aria-label="Записатися через WhatsApp">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span>
-            <span class="channel-cap">WhatsApp</span>
+            <span class="channel-cap" data-ct="form.channel.whatsapp">WhatsApp</span>
+          </button>
+          <button type="button" class="channel-btn telegram" data-book="telegram" aria-label="Записатися через Telegram">
+            <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M9.04 15.6l-.38 5.34c.54 0 .78-.23 1.06-.51l2.55-2.44 5.28 3.87c.97.53 1.65.25 1.91-.89l3.46-16.22c.31-1.43-.52-1.99-1.46-1.64L1.14 9.27c-1.39.54-1.37 1.32-.24 1.67l5.2 1.62L18.2 5c.57-.38 1.09-.17.66.21z"/></svg></span>
+            <span class="channel-cap" data-ct="form.channel.telegram">Telegram</span>
           </button>
           <a class="channel-btn call" href="tel:+380972808899" aria-label="Зателефонувати">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></span>
-            <span class="channel-cap">Дзвінок</span>
+            <span class="channel-cap" data-ct="form.channel.call">Дзвінок</span>
           </a>
         </div>
-        <a class="book-call-link" href="tel:+380972808899">Не користуєтесь месенджерами? Просто зателефонуйте в реєстратуру: <b>+380&nbsp;97&nbsp;280&nbsp;88&nbsp;99</b></a>
+        <a class="book-call-link" href="tel:+380972808899"><span data-ct="form.call.text">Не користуєтесь месенджерами? Просто зателефонуйте у відділення:</span> <b>+380&nbsp;97&nbsp;280&nbsp;88&nbsp;99</b></a>
       </div>
-      <a class="cabinet-link" href="/site/cabinet.html">Створити особистий кабінет</a>
-      <p class="cabinet-note">Необов'язково — можна просто подзвонити. У кабінеті лише статус заявки та готовий висновок після дослідження.</p>
     </form></aside></div><button class="floating-cart" onclick="openCart()" type="button">Моя заявка <span class="cart-count" data-cart-count="">0</span></button>
 <script src="/site/assets/department.js"></script>
-<script>
-(function(){
-  try{
-    if(!localStorage.getItem(SITECONTENT_STORE)) return;
-    const c=getSiteContent();
-    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.textContent=v};
-    set('scPriceTitle',c.pricePageTitle); set('scPriceSub',c.pricePageSub);
-    set('scPriceIntro',c.priceIntro); set('scPriceListTitle',c.priceListTitle); set('scPriceLead',c.priceLead);
-    /* шапка спільна */
-    document.querySelectorAll('.hospital-brand-title').forEach(el=>{if(c.brandTitle)el.textContent=c.brandTitle});
-    document.querySelectorAll('.hospital-brand-subtitle').forEach(el=>{if(c.brandSubtitle)el.textContent=c.brandSubtitle});
-  }catch(e){}
-})();
-</script>
+<script src="/site/assets/site-texts.js"></script>
 <script src="/site/assets/pricelist.js"></script>
 <script>
 /* Стандартний прайс уже в HTML (для пошуковиків і роботи без JS).
-   Якщо персонал змінив прайс у панелі — перерендерюємо зі збережених даних. */
+   Актуальний прайс — з CRM (сторінка «Прайс»): /api/public-services. Якщо сервер
+   недоступний, лишається вбудований у HTML прайс. */
 (function () {
-  const saved = (() => { try { return JSON.parse(localStorage.getItem(PRICELIST_STORE) || 'null'); } catch (e) { return null; } })();
-  if (Array.isArray(saved) && saved.length) {
-    const esc = t => String(t ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#2f5aa0;'}[m]));
-    const money = n => new Intl.NumberFormat('uk-UA').format(n);
-    document.getElementById('priceGroups').innerHTML = saved.map((g, gi) => `
-      <section class="price-group${gi < 2 ? ' open' : ''}">
-        <h2>${esc(g.group)}</h2>
-        <table>
-          <thead><tr><th>Код</th><th>Дослідження та що входить</th><th>Вартість</th><th></th></tr></thead>
-          <tbody>${g.items.map(it => `<tr>
-            <td class="code">${esc(it.code)}</td>
-            <td><div class="service-title">${esc(it.title)}</div>${it.help ? `<div class="service-help">${esc(it.help)}</div>` : ''}</td>
-            <td>${money(it.price)} грн</td>
-            <td><button class="row-add" type="button" onclick="addToCart('${esc(it.code)}','${esc(it.title).replace(/'/g, "\\'")}',${it.price})">Записатися</button></td>
-          </tr>`).join('')}</tbody>
-        </table>
-      </section>`).join('');
+  const container = document.getElementById('priceGroups');
+  const bindToggles = () => container.querySelectorAll('.price-group h2').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  const money = n => new Intl.NumberFormat('uk-UA').format(n);
+  // «Графік роботи» (/api/public-hours): група, де в цивільних є лише жива черга (без годин запису), — без кнопок
+  // «Записатися», з рядком годин. Правило папки замінює загальне правило виду дослідження. Так само рахує сервер (site-render.mjs).
+  const kindOfGroup = (g) => (/КТ/.test(g) ? (/з внутрішньовенним|контраст|ангіо/i.test(g) ? 'ctc' : 'ct') : 'xray');
+  function queueOf(hours, group) {
+    if (!hours) return null;
+    const civ = hours.filter(h => h.category === 'civilian' && h.mode !== 'urgent');
+    const own = civ.filter(h => h.group === group);
+    const list = own.length ? own : civ.filter(h => !h.group && h.kind === kindOfGroup(group));
+    const queue = list.filter(h => h.mode === 'queue');
+    return queue.length && !list.some(h => h.mode === 'booking') ? queue : null;
   }
-  document.querySelectorAll('.price-group h2').forEach(h => h.addEventListener('click', () => h.parentElement.classList.toggle('open')));
+  const queueText = (q) => 'Жива черга: ' + q.map(h => h.days + ' ' + h.text).join(', ') + '.' + q.filter(h => h.note).map(h => ' ' + h.note).join('');
+  function render(data, hours) {
+    const avail = Object.fromEntries((data.services || []).map(s => [s.code, s.availableToCivilian !== false]));
+    // Один загальний перелік без поділу на групи (рішення власника 08.11):
+    // порядок — як у CRM (група, потім позиція в групі).
+    // Групи позначені кольором (смуга, відтінок, мітка над першою позицією); код не показуємо.
+    const items = data.pricelist.flatMap((g, gi) => g.items.map((it, ii) => ({ ...it, gi, first: ii === 0, group: g.group })));
+    const frag = document.createDocumentFragment();
+    {
+      const section = el('section', 'price-group open price-flat');
+      section.appendChild(el('h2', null, 'Перелік досліджень'));
+      const table = el('table');
+      table.innerHTML = '<thead><tr><th>Дослідження та що входить</th><th>Вартість</th><th></th></tr></thead>';
+      const tbody = el('tbody');
+      items.forEach((it, idx) => {
+        const tr = el('tr', 'g g' + (it.gi % 6) + (it.first ? ' g-first' : ''));
+        tr.dataset.code = it.code;
+        // Якорі для посилань з головної: /site/price.html#fluorography, #xray, #xray-contrast, #ct, #ct-contrast, #ct-angio.
+        if (it.first) {
+          const g = it.group;
+          const anchor = /ангіо/i.test(g) ? 'ct-angio' : /КТ з|з внутрішньовенним/i.test(g) ? 'ct-contrast' : /КТ/.test(g) ? 'ct'
+            : /флюорограф/i.test(g) ? 'fluorography' : /контраст/i.test(g) ? 'xray-contrast' : 'xray';
+          if (!document.getElementById(anchor)) tr.id = anchor;
+        }
+        const td = el('td');
+        if (it.first) td.appendChild(el('div', 'gtag', it.group.replace(/^\d+\.\s*/, '')));
+        td.appendChild(el('div', 'service-title', it.title));
+        const helpEl = el('div', 'service-help', it.help || ''); helpEl.appendChild(el('span', 'code-hint', 'код ' + it.code)); td.appendChild(helpEl);
+        tr.appendChild(td);
+        tr.appendChild(el('td', 'price-cell', money(it.price) + ' грн'));
+        const tdb = el('td');
+        const queue = queueOf(hours, it.group);
+        if (queue) tdb.appendChild(el('span', 'row-queue', 'Жива черга'));
+        else {
+          const btn = el('button', 'row-add', 'Записатися'); btn.type = 'button';
+          if (avail[it.code] === false) { btn.disabled = true; btn.textContent = 'Тимчасово недоступно'; btn.title = 'Послугу вимкнено адміністратором'; }
+          else btn.addEventListener('click', () => addToCart(it.code, it.title, it.price));
+          tdb.appendChild(btn);
+        }
+        tr.appendChild(tdb); tbody.appendChild(tr);
+        // Після останньої позиції групи з живою чергою — рядок з годинами.
+        if (queue && (items[idx + 1] || {}).group !== it.group) {
+          const qr = el('tr', 'queue-row g g' + (it.gi % 6)); const qd = el('td'); qd.colSpan = 3;
+          qd.appendChild(document.createTextNode('👥 ')); qd.appendChild(el('strong', null, 'Запису не потрібно.'));
+          qd.appendChild(document.createTextNode(' ' + queueText(queue)));
+          qr.appendChild(qd); tbody.appendChild(qr);
+        }
+      });
+      table.appendChild(tbody); section.appendChild(table); frag.appendChild(section);
+    }
+    container.replaceChildren(frag);
+    bindToggles();
+    // Перехід за якорем (#ct тощо): прокрутити до групи й коротко підсвітити її першу позицію.
+    const target = location.hash && document.getElementById(location.hash.slice(1));
+    if (target) {
+      target.scrollIntoView({ block: 'center' });
+      target.style.transition = 'outline-color .6s';
+      target.style.outline = '3px solid #c9a227';
+      setTimeout(() => { target.style.outlineColor = 'transparent'; }, 1800);
+    }
+  }
+  bindToggles();
+  const get = (u) => fetch(u, { cache: 'no-store' }).then(r => (r.ok ? r.json() : null)).catch(() => null);
+  Promise.all([get('/api/public-services'), get('/api/public-hours')]).then(([d, h]) => {
+    // «Моя заявка» — лише коли в цивільних є години запису (так само рахує сервер).
+    const civ = h && Array.isArray(h.hours) ? h.hours.filter(x => x.category === 'civilian' && x.mode !== 'urgent') : [];
+    if (civ.length) document.querySelectorAll('.floating-cart, .cart-button').forEach(b => { b.style.display = civ.some(x => x.mode === 'booking') ? '' : 'none'; });
+    if (d && Array.isArray(d.pricelist) && d.pricelist.length) render(d, h && Array.isArray(h.hours) && h.hours.length ? h.hours : null);
+  });
 })();
+</script>
+<script src="/site/assets/schedule-hints.js" defer></script>
+<script>
+/* Перевага «Онлайн-запис»: години запису з «Графіка роботи»; лише жива черга — перевагу сховано (так само рахує сервер). */
+document.addEventListener('schedule-hints', function () {
+  var box = document.getElementById('priceBookingBenefit'), hours = document.getElementById('priceHours'), H = window.ScheduleHints;
+  if (!box || !hours || !H || !H.hours) return;
+  var plan = H.hours.filter(function (h) { return h.category === 'civilian' && h.mode !== 'urgent' && h.start && h.end; });
+  if (!plan.length) return;
+  var booking = plan.filter(function (h) { return h.mode === 'booking'; });
+  box.style.display = booking.length ? '' : 'none';
+  if (booking.length) hours.textContent = 'Години запису: ' + H.spanText(booking) + '.';
+  // Вступ: варіант «є запис» або «лише жива черга» (обидва — у «Тексти сайту»); під ним — підсумок прийому з графіка.
+  var ib = document.getElementById('priceIntroBooking'), iq = document.getElementById('priceIntroQueue'), sum = document.getElementById('priceSummary');
+  if (ib && iq) { ib.style.display = booking.length ? '' : 'none'; iq.style.display = booking.length ? 'none' : ''; }
+  var t = sum && H.civilianSummaryText(H.hours);
+  if (t) sum.textContent = t;
+});
 </script>
 <script src="/site/assets/slots.js" defer></script>
 <script src="/site/assets/cart.js" defer></script>

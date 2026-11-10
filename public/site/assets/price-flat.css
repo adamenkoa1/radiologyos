@@ -1,0 +1,23 @@
+/* RadiologyOS — прайс одним списком (сторінки «Ціни» і «Військовим»).
+   Групи не заголовками, а кольором: смуга зліва, легкий відтінок рядків і мітка над першою позицією групи. */
+.price-flat .g0{--gt:#123d3a;--gt-bg:#dfeeea;--gt-row:#f5faf8}
+.price-flat .g1{--gt:#2d6f9e;--gt-bg:#e0ecf6;--gt-row:#f6f9fc}
+.price-flat .g2{--gt:#b0861f;--gt-bg:#f6ecd2;--gt-row:#fcf9f1}
+.price-flat .g3{--gt:#3f8a5c;--gt-bg:#e1f1e6;--gt-row:#f6fbf7}
+.price-flat .g4{--gt:#7a5aa8;--gt-bg:#ece5f6;--gt-row:#faf8fd}
+.price-flat .g5{--gt:#b45c3c;--gt-bg:#f6e3dc;--gt-row:#fdf8f6}
+.price-flat tbody tr.g{background:var(--gt-row)!important;box-shadow:inset 4px 0 0 var(--gt)}
+.price-flat tbody tr.g-first td{border-top:2px solid var(--gt-bg)}
+.price-flat .gtag{display:inline-block;font-size:11px;font-weight:700;letter-spacing:.02em;line-height:1.5;border-radius:999px;padding:1px 9px;margin:0 0 6px;background:var(--gt-bg);color:var(--gt)}
+.price-flat td.price-cell{white-space:nowrap;font-weight:700}
+.price-flat .shared-schedule{border-left:0}
+@media(max-width:700px){
+  .price-flat tr{grid-template-columns:1fr auto!important}
+  .price-flat tr td:first-child{padding-left:14px}
+  .price-flat .row-add{grid-column:1/-1;margin:0 8px 10px;width:calc(100% - 16px)}
+  .price-flat .military-book-cell{grid-column:1/-1}
+  .price-flat.military tr{grid-template-columns:1fr!important}
+}
+/* Код послуги — є, але ледь помітний: дрібно, світло-сірим, у кінці опису. */
+.price-flat .code-hint{font-size:11px;font-weight:500;color:#a3b0b7;letter-spacing:.02em;white-space:nowrap;margin-left:6px}
+.price-flat .service-help .code-hint{margin-left:8px}

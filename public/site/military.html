@@ -11,7 +11,7 @@
 <meta name="twitter:card" content="summary_large_image"/>
 <link rel="canonical" href="https://radiologyos.tech/site/military.html"/>
 <meta name="theme-color" content="#123d3a"/>
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23123d3a'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23d8b55e'/%3E%3C/svg%3E"/>
+<link rel="icon" href="/site/assets/icon.svg" type="image/svg+xml"/>
 <link rel="stylesheet" href="/site/assets/site.css">
 <style>
 
@@ -96,6 +96,7 @@ td:last-child,th:last-child{text-align:right;white-space:nowrap;font-weight:700}
 .price-group table{display:none}
 .price-group.open table{display:table}
 .price-intro{background:#fff;border:1px solid var(--line);border-radius:var(--r-lg);padding:16px 18px;margin-bottom:18px;color:var(--muted)}
+.mil-summary{margin:-8px 0 18px;padding:12px 16px;border-radius:var(--r-lg);background:#e9f5ee;color:#174b34;font-size:14px;font-weight:600;line-height:1.5}
 @media(max-width:700px){
   .price-group.open table{display:table}
   .price-group h2{font-size:19px}
@@ -259,8 +260,9 @@ header .brand{flex:1;min-width:0}
 .btn.secondary{background:#eef2f5;color:#0e454c}
 @media(max-width:520px){.field-row{grid-template-columns:1fr}}
 
-</style></head><body>
-<header><div class="wrap header-row"><a class="brand" href="/"><div class="hospital-brand-text"><div class="hospital-brand-title">Чернігівський військовий госпіталь</div><div class="hospital-brand-subtitle">Відділення променевої діагностики</div></div></a><nav><a href="/">Головна</a><button class="cart-button" onclick="openMilitaryCart()" type="button">
+</style><link rel="stylesheet" href="/site/assets/price-flat.css">
+</head><body>
+<header><div class="wrap header-row"><a class="brand" href="/"><div class="hospital-brand-text"><div class="hospital-brand-title" data-ct="site.brand.title">Чернігівський військовий госпіталь</div><div class="hospital-brand-subtitle" data-ct="site.brand.subtitle">Відділення променевої діагностики</div></div></a><nav><a href="/">Головна</a><button class="cart-button" onclick="openMilitaryCart()" type="button">
 <span class="cart-label">Моя заявка</span>
 <span class="cart-count" data-military-cart-count="">0</span>
 </button></nav></div></header>
@@ -268,15 +270,15 @@ header .brand{flex:1;min-width:0}
 <div class="wrap">
 <div class="military-notice-card">
 <div>
-<div class="eyebrow">Військовослужбовцям</div>
-<h1 id="scMilPageTitle">Дослідження для військовослужбовців</h1>
-<p id="scMilPageSub">За направленням лікаря та відповідно до чинного законодавства України.</p>
+<div class="eyebrow" data-ct="milpage.kicker">Військовослужбовцям</div>
+<h1 data-ct="milpage.title">Дослідження для військовослужбовців</h1>
+<p data-ct="milpage.sub">За направленням лікаря та відповідно до чинного законодавства України.</p>
 </div>
 </div>
 </div>
-</section><div class="wrap"><div class="price-intro" id="scMilNotice"><strong>Оберіть потрібний розділ.</strong> Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.</div><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)">Офіційний перелік досліджень</div><p class="lead" style="margin-top:8px" id="scMilLead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
+</section><div class="wrap"><div class="price-intro" data-ct="milpage.intro" data-ct-rich><strong>Оберіть потрібний розділ.</strong> Для військовослужбовців дослідження виконуються безоплатно за направленням та відповідно до законодавства України.</div><p class="mil-summary" id="milSummary" data-ct-auto="з «Графіка роботи»">Без запису, у живій черзі: флюорографія — пн–пт 08:00–12:00; рентгенографія — пн–пт 13:00–17:00. За попереднім записом: рентгенографія з контрастом, КТ, КТ з контрастом — пн–пт 10:00–16:00. Екстрено — цілодобово.</p><div class="section-head"><div><div class="eyebrow" style="color:var(--brand)" data-ct="milpage.list.kicker">Офіційний перелік досліджень</div><p class="lead" style="margin-top:8px" data-ct="milpage.list.lead">Відділення променевої діагностики Чернігівського військового госпіталю військової частини А3120.</p></div></div>
 <nav class="service-links" aria-label="Докладніше про дослідження">
-  <p class="service-links-title">Докладніше про дослідження</p>
+  <p class="service-links-title" data-ct="milpage.links.title">Докладніше про дослідження</p>
   <div class="service-links-row">
     <a class="service-link" href="/ct">КТ у Чернігові</a>
     <a class="service-link" href="/ct/contrast">КТ з контрастуванням</a>
@@ -294,7 +296,7 @@ header .brand{flex:1;min-width:0}
 <td colspan="2">
 <div class="shared-schedule">
 <div><span class="schedule-icon">👥</span><strong>Запису не потрібно.</strong> Дослідження проводиться в порядку живої черги.</div>
-<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> у робочі дні з 08:00 до 12:00.</div>
+<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> пн–пт 08:00–12:00.</div>
 <div><span class="schedule-icon">🕒</span><strong>Ургентно:</strong> цілодобово.</div>
 <div><span class="schedule-icon">🏢</span><strong>Місце проведення:</strong> 2-й поверх.</div>
 </div>
@@ -333,13 +335,13 @@ header .brand{flex:1;min-width:0}
 <td colspan="2">
 <div class="shared-schedule">
 <div><span class="schedule-icon">👥</span><strong>Для досліджень 201–205 запису не потрібно.</strong> Прийом проводиться в порядку живої черги.</div>
-<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> у робочі дні з 13:00 до 17:00.</div>
+<div><span class="schedule-icon">🗓</span><strong>Планово:</strong> пн–пт 13:00–17:00.</div>
 <div><span class="schedule-icon">🕒</span><strong>Ургентно:</strong> цілодобово.</div>
 <div><span class="schedule-icon">🏢</span><strong>Місце проведення:</strong> 2-й поверх.</div>
 </div>
 </td>
 </tr></tbody></table></section><section class="price-group open"><h2>3. Контрастні рентгенологічні дослідження</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">301</td><td><div class="service-title">Рентгеноскопія стравоходу, шлунка та дванадцятипалої кишки</div><div class="service-help">Дослідження верхніх відділів травного тракту з барієвою суспензією.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('301','Рентгеноскопія стравоходу, шлунка та дванадцятипалої кишки')" type="button">Записатися</button></td></tr><tr><td class="code">302</td><td><div class="service-title">Дослідження пасажу барієвої суспензії по тонкій кишці</div><div class="service-help">Серія знімків для оцінки проходження контрасту тонкою кишкою.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('302','Дослідження пасажу барієвої суспензії по тонкій кишці')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>4. КТ без внутрішньовенного контрастування</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">401</td><td><div class="service-title">КТ головного мозку</div><div class="service-help">Головний мозок і кістки черепа без контрастування.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('401','КТ головного мозку')" type="button">Записатися</button></td></tr><tr><td class="code">402</td><td><div class="service-title">КТ придаткових пазух носа</div><div class="service-help">Пазухи та клітини решітчастого лабіринту.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('402','КТ придаткових пазух носа')" type="button">Записатися</button></td></tr><tr><td class="code">403</td><td><div class="service-title">КТ лицевого скелета</div><div class="service-help">Кістки обличчя, орбіти та щелепи.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('403','КТ лицевого скелета')" type="button">Записатися</button></td></tr><tr><td class="code">404</td><td><div class="service-title">КТ м’яких тканин шиї</div><div class="service-help">М’які тканини, глотка, гортань і лімфатичні вузли шиї.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('404','КТ м’яких тканин шиї')" type="button">Записатися</button></td></tr><tr><td class="code">405</td><td><div class="service-title">КТ одного відділу хребта</div><div class="service-help">Шийний, грудний або попереково-крижовий відділ.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('405','КТ одного відділу хребта')" type="button">Записатися</button></td></tr><tr><td class="code">406</td><td><div class="service-title">КТ двох відділів хребта</div><div class="service-help">Два відділи хребта в межах одного обстеження.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('406','КТ двох відділів хребта')" type="button">Записатися</button></td></tr><tr><td class="code">407</td><td><div class="service-title">КТ органів грудної клітки</div><div class="service-help">Легені, плевра, середостіння та грудна стінка.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('407','КТ органів грудної клітки')" type="button">Записатися</button></td></tr><tr><td class="code">408</td><td><div class="service-title">КТ органів черевної порожнини</div><div class="service-help">Органи живота, нирки та заочеревинний простір.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('408','КТ органів черевної порожнини')" type="button">Записатися</button></td></tr><tr><td class="code">409</td><td><div class="service-title">КТ одного суглоба</div><div class="service-help">Детальна оцінка одного суглоба та прилеглих кісток.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('409','КТ одного суглоба')" type="button">Записатися</button></td></tr><tr><td class="code">410</td><td><div class="service-title">КТ кісток таза та кульшових суглобів</div><div class="service-help">Кістки таза, крижово-клубові та кульшові суглоби.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('410','КТ кісток таза та кульшових суглобів')" type="button">Записатися</button></td></tr><tr><td class="code">411</td><td><div class="service-title">КТ верхньої або нижньої кінцівки</div><div class="service-help">Вибрана ділянка руки або ноги.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('411','КТ верхньої або нижньої кінцівки')" type="button">Записатися</button></td></tr><tr><td class="code">412</td><td><div class="service-title">КТ кисті або стопи</div><div class="service-help">Дрібні кістки та суглоби кисті чи стопи.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('412','КТ кисті або стопи')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>5. КТ з внутрішньовенним контрастуванням</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">501</td><td><div class="service-title">КТ головного мозку з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження головного мозку.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('501','КТ головного мозку з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">502</td><td><div class="service-title">КТ м’яких тканин шиї з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження шиї та лімфатичних вузлів.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('502','КТ м’яких тканин шиї з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">503</td><td><div class="service-title">КТ органів грудної клітки з внутрішньовенним контрастуванням</div><div class="service-help">Контрастне дослідження легень, середостіння та грудної стінки.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('503','КТ органів грудної клітки з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr><tr><td class="code">504</td><td><div class="service-title">КТ органів черевної порожнини з внутрішньовенним контрастуванням</div><div class="service-help">Контрастна оцінка органів живота, нирок і заочеревинного простору.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('504','КТ органів черевної порожнини з внутрішньовенним контрастуванням')" type="button">Записатися</button></td></tr></tbody></table></section><section class="price-group open"><h2>6. КТ-ангіографія</h2><table><thead><tr><th>Код</th><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead><tbody><tr><td class="code">601</td><td><div class="service-title">КТ-ангіографія однієї анатомічної ділянки</div><div class="service-help">Контрастне дослідження судин однієї ділянки.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('601','КТ-ангіографія однієї анатомічної ділянки')" type="button">Записатися</button></td></tr><tr><td class="code">602</td><td><div class="service-title">КТ-ангіографія двох анатомічних ділянок</div><div class="service-help">Контрастне дослідження судин двох ділянок.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('602','КТ-ангіографія двох анатомічних ділянок')" type="button">Записатися</button></td></tr><tr><td class="code">603</td><td><div class="service-title">КТ-ангіопульмонографія</div><div class="service-help">Контрастне дослідження легеневих артерій.</div></td><td class="military-book-cell"><button class="military-book-btn" onclick="addMilitaryItem('603','КТ-ангіопульмонографія')" type="button">Записатися</button></td></tr></tbody></table></section>
-<div class="note"><strong>Для військовослужбовців.</strong> Дослідження проводяться безоплатно за направленням лікаря та відповідно до медичних показань. Остаточний вид і обсяг дослідження визначає лікар.</div>
+<div class="note" data-ct="milpage.note" data-ct-rich><strong>Для військовослужбовців.</strong> Дослідження проводяться безоплатно за направленням лікаря та відповідно до медичних показань. Остаточний вид і обсяг дослідження визначає лікар.</div>
 </div></main>
 <script>
 document.querySelectorAll('.price-group h2').forEach((heading)=>{
@@ -367,44 +369,39 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
         <span class="field-error">Вкажіть прізвище, ім’я та по батькові</span>
       </div>
       <div class="field">
-        <label>Оберіть зручний час</label>
-        <div id="militarySlotPicker" class="slot-picker"><div class="sp-loading">Оберіть дослідження — і тут з’явиться вільний час</div></div>
-        <span class="cart-note">Оберіть зручний час — дата й час заповняться самі.</span>
+        <label for="militaryDesiredDate">Бажана дата <span class="req">*</span></label>
+        <input id="militaryDesiredDate" type="date" required/>
+        <span class="field-error">Оберіть бажану дату</span>
       </div>
-      <details class="manual-time">
-        <summary>Не знайшли зручний час? Вказати вручну</summary>
-        <div class="field">
-          <label for="militaryDesiredDate">Бажана дата <span class="req">*</span></label>
-          <input id="militaryDesiredDate" type="date" required/>
-          <span class="field-error">Оберіть бажану дату</span>
-        </div>
-        <div class="field">
-          <label for="militaryDesiredTime">Бажаний час <span class="req">*</span></label>
-          <input id="militaryDesiredTime" type="time" required/>
-          <span class="field-error">Оберіть бажаний час</span>
-        </div>
-      </details>
-      <p class="cart-note">Візьміть направлення та документ, що посвідчує особу. Оплата не потрібна.</p>
+      <div class="field">
+        <label>Зручний час <span class="req">*</span></label>
+        <div class="time-slots" role="group" aria-label="Зручний час"><span class="ts-hint">Оберіть дослідження та дату — тут з’являться вільні години. Запис: пн–пт 10:00–16:00.</span></div>
+        <input id="militaryDesiredTime" type="hidden" value=""/>
+        <span class="field-error">Оберіть зручний час</span>
+      </div>
+      <p class="cart-note"><span class="cart-mode">Прийом — у вибрану годину, за записом.</span> Візьміть направлення та документ, що посвідчує особу. Оплата не потрібна.</p>
       <div class="book-channels">
-        <h3 class="book-channels-title">Записатися через</h3>
+        <h3 class="book-channels-title" data-ct="form.title">Записатися через</h3>
         <div class="book-channels-row">
           <button type="button" class="channel-btn viber" data-book="viber" aria-label="Записатися через Viber">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M11.398.002C9.473.028 5.331.344 3.014 2.467 1.294 4.177.693 6.698.623 9.82c-.06 3.11-.13 8.95 5.5 10.541v2.42s-.038.97.602 1.17c.79.25 1.24-.499 2-1.299l1.4-1.58c3.85.32 6.8-.419 7.14-.529.78-.25 5.181-.811 5.901-6.652.74-6.021-.36-9.822-2.34-11.531l-.01-.002c-.6-.55-3-2.3-8.37-2.32 0 0-.396-.025-1.048-.008zm.076 1.7c.554-.004.892.017.892.017 4.54.019 6.71 1.389 7.22 1.849 1.67 1.429 2.528 4.856 1.9 9.892v.002c-.6 4.88-4.17 5.19-4.83 5.4-.28.09-2.882.729-6.152.519 0 0-2.44 2.939-3.2 3.709-.12.12-.26.169-.35.149-.13-.03-.16-.18-.16-.4l.02-4.019c-4.771-1.32-4.491-6.302-4.441-8.899.06-2.6.548-4.733 2-6.163 1.96-1.769 5.474-2.052 7.11-2.062zm.428 2.767c-.09 0-.164.075-.164.164 0 .09.074.163.164.163 1.47.011 2.61.47 3.601 1.35.99.88 1.47 2.06 1.53 3.43.001.09.075.163.164.163.09 0 .163-.075.163-.165-.06-1.47-.58-2.75-1.64-3.7-1.06-.95-2.29-1.454-3.842-1.465zm-3.51.702a.826.826 0 00-.523.176l-.006.002c-.396.235-.75.525-1.05.895-.001 0-.005.004-.009.008a1.74 1.74 0 00-.31.62v.004c-.06.196-.06.4.006.626a4.57 4.57 0 00.164.43c.25.61.64 1.276 1.212 2.06.417.573.916 1.153 1.526 1.753.6.596 1.19 1.09 1.763 1.505.79.573 1.454.958 2.06 1.207.005.001.032.014.048.02a4.57 4.57 0 00.43.163c.226.066.43.066.626.006h.004c.22-.06.427-.16.62-.31.004-.004.008-.008.008-.009.37-.3.66-.654.895-1.05l.002-.006a.826.826 0 00.176-.523c-.006-.23-.096-.375-.225-.477h-.002c-.31-.243-.63-.474-.96-.694-.223-.148-.45-.15-.68.002l-.484.61c-.2.244-.567.212-.567.212l-.014.008c-2.66-.68-3.37-3.374-3.37-3.374s-.032-.367.213-.567l.61-.483c.152-.23.15-.457.002-.68a13.4 13.4 0 00-.694-.96c-.102-.13-.247-.22-.477-.226zm3.279.622a.163.163 0 00-.01.326c1.06.055 1.57.577 1.63 1.68a.163.163 0 00.326-.018c-.07-1.27-.76-1.945-1.94-2.006a.163.163 0 00-.006 0zm.24 1.146a.163.163 0 00-.05.318c.36.13.53.31.62.68a.163.163 0 00.318-.076c-.11-.46-.37-.74-.83-.91a.163.163 0 00-.058-.012z"/></svg></span>
-            <span class="channel-cap">Viber</span>
+            <span class="channel-cap" data-ct="form.channel.viber">Viber</span>
           </button>
           <button type="button" class="channel-btn whatsapp" data-book="whatsapp" aria-label="Записатися через WhatsApp">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg></span>
-            <span class="channel-cap">WhatsApp</span>
+            <span class="channel-cap" data-ct="form.channel.whatsapp">WhatsApp</span>
+          </button>
+          <button type="button" class="channel-btn telegram" data-book="telegram" aria-label="Записатися через Telegram">
+            <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M9.04 15.6l-.38 5.34c.54 0 .78-.23 1.06-.51l2.55-2.44 5.28 3.87c.97.53 1.65.25 1.91-.89l3.46-16.22c.31-1.43-.52-1.99-1.46-1.64L1.14 9.27c-1.39.54-1.37 1.32-.24 1.67l5.2 1.62L18.2 5c.57-.38 1.09-.17.66.21z"/></svg></span>
+            <span class="channel-cap" data-ct="form.channel.telegram">Telegram</span>
           </button>
           <a class="channel-btn call" href="tel:+380972808899" aria-label="Зателефонувати">
             <span class="channel-ico" aria-hidden="true"><svg viewBox="0 0 24 24" role="img"><path d="M6.62 10.79c1.44 2.83 3.76 5.14 6.59 6.59l2.2-2.2c.27-.27.67-.36 1.02-.24 1.12.37 2.33.57 3.57.57.55 0 1 .45 1 1V20c0 .55-.45 1-1 1-9.39 0-17-7.61-17-17 0-.55.45-1 1-1h3.5c.55 0 1 .45 1 1 0 1.25.2 2.45.57 3.57.11.35.03.74-.25 1.02l-2.2 2.2z"/></svg></span>
-            <span class="channel-cap">Дзвінок</span>
+            <span class="channel-cap" data-ct="form.channel.call">Дзвінок</span>
           </a>
         </div>
-        <a class="book-call-link" href="tel:+380972808899">Не користуєтесь месенджерами? Просто зателефонуйте в реєстратуру: <b>+380&nbsp;97&nbsp;280&nbsp;88&nbsp;99</b></a>
+        <a class="book-call-link" href="tel:+380972808899"><span data-ct="form.call.text">Не користуєтесь месенджерами? Просто зателефонуйте у відділення:</span> <b>+380&nbsp;97&nbsp;280&nbsp;88&nbsp;99</b></a>
       </div>
-      <a class="cabinet-link" href="/site/cabinet.html">Створити особистий кабінет</a>
-      <p class="cabinet-note">Необов'язково — можна просто подзвонити. У кабінеті лише статус заявки та готовий висновок після дослідження.</p>
     </form>
 </aside>
 </div>
@@ -431,7 +428,7 @@ function addMilitaryItem(code, name) {
   code = String(code);
   if (!militaryCart.some(item => item.code === code)) {
     if (militaryCart.length >= 5) {
-      alert('В одну заявку можна додати до 5 досліджень. Для більшого обсягу подайте окрему заявку або зателефонуйте в реєстратуру: +380 97 280 88 99');
+      alert('В одну заявку можна додати до 5 досліджень. Для більшого обсягу подайте окрему заявку або зателефонуйте у відділення: ' + ((window.SiteTexts && window.SiteTexts.phoneText) || '+380 97 280 88 99'));
       openMilitaryCart();
       return;
     }
@@ -455,7 +452,11 @@ function renderMilitaryCart() {
   if (!container) return;
 
   if (!militaryCart.length) {
-    container.innerHTML = '<div class="cart-empty">Дослідження ще не вибрані.</div>';
+    // Порожній кошик — з «Графіка роботи» (schedule-hints.js); textContent, без HTML.
+    const empty = document.createElement('div');
+    empty.className = 'cart-empty';
+    empty.textContent = window.ScheduleHints ? window.ScheduleHints.emptyCart('military', 'Дослідження ще не вибрані.') : 'Дослідження ще не вибрані.';
+    container.replaceChildren(empty);
   } else {
     container.innerHTML = militaryCart.map(item => `
       <div class="military-cart-item">
@@ -563,22 +564,13 @@ function addBariumGuides() {
 addBariumGuides();
 renderMilitaryCart();
 </script><script src="/site/assets/department.js"></script>
-<script>
-(function(){
-  try{
-    if(!localStorage.getItem(SITECONTENT_STORE)) return;
-    const c=getSiteContent();
-    const set=(id,v)=>{const el=document.getElementById(id);if(el&&v)el.textContent=v};
-    set('scMilPageTitle',c.milPageTitle); set('scMilPageSub',c.milPageSub);
-    set('scMilNotice',c.milNotice); set('scMilLead',c.milLead);
-    /* шапка спільна */
-    document.querySelectorAll('.hospital-brand-title').forEach(el=>{if(c.brandTitle)el.textContent=c.brandTitle});
-    document.querySelectorAll('.hospital-brand-subtitle').forEach(el=>{if(c.brandSubtitle)el.textContent=c.brandSubtitle});
-  }catch(e){}
-})();
-</script>
+<script src="/site/assets/site-texts.js"></script>
+<script src="/site/assets/schedule-hints.js" defer></script>
+<script>document.addEventListener('schedule-hints', () => { if (typeof militaryCart !== 'undefined' && !militaryCart.length) renderMilitaryCart(); });</script>
+<script>/* Підсумок прийому під вступом — з «Графіка роботи» (так само рахує сервер). */document.addEventListener('schedule-hints', () => { const p = document.getElementById('milSummary'), H = window.ScheduleHints; const t = p && H && H.hours ? H.militarySummaryText(H.hours) : ''; if (t) p.textContent = t; });</script>
 <script src="/site/assets/slots.js" defer></script>
 <script src="/site/assets/site-analytics.js" defer></script>
+<script src="/site/assets/live-military.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>
 <script src="/site/assets/name-suggest.js" defer></script>
 </body></html>

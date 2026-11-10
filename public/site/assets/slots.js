@@ -57,7 +57,7 @@ async function initSlotPicker({ container, serviceCode, onPick }) {
     days.push({ iso, label: dayNames[d.getDay()] + ' ' + pad(d.getDate()) + '.' + pad(d.getMonth() + 1) });
   }
   if (!days.length) {
-    container.innerHTML = '<div class="sp-empty">Найближчим часом вільних днів немає. Залиште бажану дату — реєстратура запропонує варіанти.</div>';
+    container.innerHTML = '<div class="sp-empty">Найближчим часом вільних днів немає. Залиште бажану дату — відділення запропонує варіанти.</div>';
     if (onPick) onPick({ date: '', time: '' });
     return;
   }
