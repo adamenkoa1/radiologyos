@@ -86,7 +86,9 @@ async function checkDevice(d) {
       if (!(await page.locator('.time-slots:visible').count())) {
         await page.locator('button:visible, a:visible').filter({ hasText: 'Моя заявка' }).first().click({ timeout: 10000 });
       }
-      await page.waitForTimeout(3000);
+      // Free hours come from the server — wait for them (or the «реєстратура» note) up to 10 s, as a patient would.
+      await page.waitForFunction(() => [...document.querySelectorAll('.time-slots')].some((b) => b.offsetParent && b.querySelector('button.ts'))
+        || [...document.querySelectorAll('.avail-note')].some((n) => n.offsetParent && /реєстратура/.test(n.textContent)), null, { timeout: 10000 }).catch(() => {});
       const times = await page.locator('.time-slots:visible button.ts').count();
       const free = await page.locator('.time-slots:visible button.ts:not([disabled])').count();
       const note = (await page.locator('.avail-note:visible').first().textContent({ timeout: 3000 }).catch(() => '')) || '';
