@@ -26,8 +26,8 @@ const OFFLINE_STATUS = [502, 503, 504, 521, 522, 523, 524, 530];
 const SECURITY = {
   'content-security-policy': [
     "default-src 'self'", "base-uri 'self'", "form-action 'self'", "frame-ancestors 'self'", "object-src 'none'",
-    "script-src 'self' 'unsafe-inline'", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "img-src 'self' data: https:", "connect-src 'self'", "font-src 'self' data: https://fonts.gstatic.com"
+    "script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com", "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "img-src 'self' data: https:", "connect-src 'self' https://cloudflareinsights.com", "font-src 'self' data: https://fonts.gstatic.com"
   ].join('; '),
   'referrer-policy': 'strict-origin-when-cross-origin',
   'strict-transport-security': 'max-age=31536000',
