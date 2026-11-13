@@ -58,7 +58,9 @@ async function asset(env, request, pathname, { type, cache = 'no-cache' } = {}) 
 // Pass a request on to the department's server. The server checks that a write comes from its own address: a
 // request from this site gets the server's origin instead (only when the browser said it came from here).
 // The visitor's address goes along for the server's rate limits. null — the server is not reachable.
-async function toServer(request, env, url, { cookies }) {
+// timeoutMs: how long to wait for the server — a stuck server must not keep the patient's form «checking» for minutes;
+// after it the site falls back (booking by messenger / «кабінет недоступний»).
+async function toServer(request, env, url, { cookies, timeoutMs = 8000 }) {
   const target = new URL(url.pathname + url.search, env.ORIGIN);
   const headers = new Headers();
   for (const h of ['content-type', 'accept', 'accept-language', 'user-agent', 'referer', ...(cookies ? ['cookie'] : [])]) if (request.headers.has(h)) headers.set(h, request.headers.get(h));
@@ -66,7 +68,7 @@ async function toServer(request, env, url, { cookies }) {
   if (from && from !== url.origin) return 'cross-site';
   if (from) headers.set('origin', target.origin);
   headers.set('x-site-client-ip', request.headers.get('cf-connecting-ip') || '');
-  const init = { method: request.method, headers, redirect: 'manual' };
+  const init = { method: request.method, headers, redirect: 'manual', signal: AbortSignal.timeout(timeoutMs) };
   if (request.method !== 'GET' && request.method !== 'HEAD') init.body = await request.arrayBuffer();
   try {
     const r = await fetch(target.toString(), init);
@@ -100,7 +102,7 @@ export default {
       return r ? secure(r) : json(503, { error: 'offline', message: 'The department server is not reachable right now.' });
     }
     if (env.ORIGIN && (STAFF_PROXY.test(p) || (url.searchParams.has('edit') && request.method === 'GET'))) {
-      const r = await toServer(request, env, url, { cookies: true });
+      const r = await toServer(request, env, url, { cookies: true, timeoutMs: 25000 });
       if (r === 'cross-site') return json(403, { error: 'cross_site_request' });
       if (r) return r;
       return p.startsWith('/api/') ? json(503, { error: 'offline', message: 'Сервер відділення зараз недоступний.' })
