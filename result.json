@@ -1,0 +1,152 @@
+[
+  {
+    "device": "iPhone 15 (Safari)",
+    "page": "Головна",
+    "ok": false,
+    "loadMs": 18921,
+    "problems": [
+      "повільно: 19 с"
+    ],
+    "screenshot": "iphone-home.png"
+  },
+  {
+    "device": "iPhone 15 (Safari)",
+    "page": "Ціни",
+    "ok": true,
+    "loadMs": 475,
+    "problems": [],
+    "screenshot": "iphone-price.png"
+  },
+  {
+    "device": "iPhone 15 (Safari)",
+    "page": "Військовим",
+    "ok": true,
+    "loadMs": 377,
+    "problems": [],
+    "screenshot": "iphone-military.png"
+  },
+  {
+    "device": "iPhone 15 (Safari)",
+    "page": "Запис (Ціни)",
+    "ok": false,
+    "problems": [
+      "немає годин і підказки"
+    ],
+    "screenshot": "iphone-booking.png",
+    "hours": {
+      "shown": 0,
+      "free": 0
+    }
+  },
+  {
+    "device": "Android, Pixel 7 (Chrome)",
+    "page": "Головна",
+    "ok": true,
+    "loadMs": 212,
+    "problems": [],
+    "screenshot": "android-home.png"
+  },
+  {
+    "device": "Android, Pixel 7 (Chrome)",
+    "page": "Ціни",
+    "ok": true,
+    "loadMs": 166,
+    "problems": [],
+    "screenshot": "android-price.png"
+  },
+  {
+    "device": "Android, Pixel 7 (Chrome)",
+    "page": "Військовим",
+    "ok": true,
+    "loadMs": 109,
+    "problems": [],
+    "screenshot": "android-military.png"
+  },
+  {
+    "device": "Android, Pixel 7 (Chrome)",
+    "page": "Запис (Ціни)",
+    "ok": false,
+    "problems": [
+      "немає годин і підказки"
+    ],
+    "screenshot": "android-booking.png",
+    "hours": {
+      "shown": 0,
+      "free": 0
+    }
+  },
+  {
+    "device": "iPad (Safari)",
+    "page": "Головна",
+    "ok": true,
+    "loadMs": 609,
+    "problems": [],
+    "screenshot": "ipad-home.png"
+  },
+  {
+    "device": "iPad (Safari)",
+    "page": "Ціни",
+    "ok": true,
+    "loadMs": 372,
+    "problems": [],
+    "screenshot": "ipad-price.png"
+  },
+  {
+    "device": "iPad (Safari)",
+    "page": "Військовим",
+    "ok": true,
+    "loadMs": 563,
+    "problems": [],
+    "screenshot": "ipad-military.png"
+  },
+  {
+    "device": "iPad (Safari)",
+    "page": "Запис (Ціни)",
+    "ok": false,
+    "problems": [
+      "немає годин і підказки"
+    ],
+    "screenshot": "ipad-booking.png",
+    "hours": {
+      "shown": 0,
+      "free": 0
+    }
+  },
+  {
+    "device": "Маленький Android, Galaxy S9+ (Chrome)",
+    "page": "Головна",
+    "ok": true,
+    "loadMs": 233,
+    "problems": [],
+    "screenshot": "galaxy-small-home.png"
+  },
+  {
+    "device": "Маленький Android, Galaxy S9+ (Chrome)",
+    "page": "Ціни",
+    "ok": true,
+    "loadMs": 113,
+    "problems": [],
+    "screenshot": "galaxy-small-price.png"
+  },
+  {
+    "device": "Маленький Android, Galaxy S9+ (Chrome)",
+    "page": "Військовим",
+    "ok": true,
+    "loadMs": 113,
+    "problems": [],
+    "screenshot": "galaxy-small-military.png"
+  },
+  {
+    "device": "Маленький Android, Galaxy S9+ (Chrome)",
+    "page": "Запис (Ціни)",
+    "ok": false,
+    "problems": [
+      "немає годин і підказки"
+    ],
+    "screenshot": "galaxy-small-booking.png",
+    "hours": {
+      "shown": 0,
+      "free": 0
+    }
+  }
+]
