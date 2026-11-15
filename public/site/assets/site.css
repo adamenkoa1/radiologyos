@@ -182,3 +182,9 @@ a{text-decoration:none;color:inherit}
 .cart-warn{margin:10px 0;padding:10px 12px;border-radius:12px;background:#fff6e0;border:1px solid #f0d79a;color:#5a4300;font-size:13.5px;line-height:1.45}
 .study-key{margin:0 0 14px;padding:10px 14px;border-radius:12px;background:#e7f3ef;border:1px solid #c3e2d8;font-weight:700;color:#18302f}
 .study-footer small{display:block;margin-top:6px;font-size:12.5px;color:#5c6c78}
+/* «Як пройти до відділення» (власник 16.11.2026): головна (контакти) і прайс */
+.visit-card{margin:16px 0 0;padding:14px 16px;border:1px solid #dbe3e8;border-radius:16px;background:#fff}
+.visit-title{margin:0 0 6px;font-size:17px;color:#12303a}
+.visit-intro{margin:0 0 8px;color:#33505a}
+.visit-steps{margin:0;padding-left:20px;color:#18302f}
+.visit-steps li{margin:4px 0;line-height:1.45}
