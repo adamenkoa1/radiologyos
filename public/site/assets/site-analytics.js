@@ -104,8 +104,11 @@
         }
         var add = t.closest('button.row-add');
         if (add) {
+          // Прайс із CRM: код у data-code рядка; статичний прайс: у onclick="addToCart('101',…)".
+          var row = add.closest('tr[data-code]');
           var m = /addToCart\('([0-9A-Za-z._-]{1,16})'/.exec(add.getAttribute('onclick') || '');
-          window.rosTrack('add_service', { serviceCode: m ? m[1] : '' });
+          var svc = String((row && row.getAttribute('data-code')) || (m && m[1]) || '');
+          window.rosTrack('add_service', { serviceCode: /^[0-9A-Za-z._-]{1,16}$/.test(svc) ? svc : '' });
         }
       } catch (err) { /* аналітика не критична */ }
     }, true);
