@@ -62,7 +62,26 @@ a{text-decoration:none;color:inherit}
 .hero-cta{display:block;max-width:440px;margin:18px auto 0;text-align:center;padding:17px 22px;border-radius:16px;background:var(--brand,#12303a);color:#fff;font-size:17px;font-weight:850;text-decoration:none;box-shadow:0 14px 34px rgba(18,48,58,.22)}
 .hero-cta:active{transform:translateY(1px)}
 .hero-cta:focus-visible{outline:3px solid var(--gold,#c9a227);outline-offset:3px}
-.hero-lead-hours{margin:14px auto 0;text-align:center;color:#5c6c78;font-size:13px}
+.hero-cost{margin:14px auto 0;max-width:640px;text-align:center;color:#33505a;font-size:15px;line-height:1.45}
+.hero-cost a{color:#18302f;font-weight:750;text-decoration:none;border-bottom:1px dashed rgba(18,48,58,.35)}
+.hero-cost a:hover{border-bottom-style:solid}
+.hero-cost>span{white-space:nowrap}
+.hero-lead-hours{margin:10px auto 0;text-align:center;color:#5c6c78;font-size:13px}
+/* «Моя заявка» без жодної послуги не показується (cart.js ставить is-empty) */
+.floating-cart.is-empty{display:none}
+/* Блок довіри (каркас; секція прихована, доки немає матеріалів від власника) */
+.trust[hidden]{display:none}
+.trust{padding:8px 0 28px}
+.trust-card{background:#fff;border:1px solid #dbe3e8;border-radius:22px;padding:22px}
+.trust-heading{margin:0 0 14px;font-size:22px}
+.trust-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.trust-photos:empty,.trust-doctors:empty,.trust-license:empty{display:none}
+.trust-photos img{width:100%;height:auto;border-radius:14px;display:block}
+.trust-photos figcaption{font-size:13px;color:#5c6c78;margin-top:6px}
+.trust-doctors{list-style:none;margin:14px 0 0;padding:0;display:grid;gap:10px}
+.trust-doctors li{display:flex;flex-direction:column}
+.trust-doctors span{font-size:14px;color:#5c6c78}
+.trust-license{margin:14px 0 0;font-size:14px;color:#33505a}
 .hero-lead-hours a{color:var(--brand,#12303a);font-weight:700}
 .faq-heading{margin:0 0 14px;text-align:center;color:#12303a;font-size:clamp(20px,3vw,26px);font-weight:800}
 .faq-q{font-size:clamp(16px,2vw,19px)!important}

@@ -51,6 +51,7 @@ document.addEventListener('schedule-hints', () => { if (!cart.length) renderCart
 
 function renderCart() {
   document.querySelectorAll('[data-cart-count]').forEach(x => { x.textContent = cart.length; });
+  document.querySelectorAll('.floating-cart').forEach(x => { x.classList.toggle('is-empty', !cart.length); });
   const box = document.getElementById('cartItems');
   if (!box) return;
   box.innerHTML = cart.length

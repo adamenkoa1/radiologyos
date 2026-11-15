@@ -422,6 +422,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     <div class="wrap">
       <h1 class="hero-lead-sub" data-ct="hero.lead">Флюорографія, рентгенографія та КТ у Чернігові. Екстрені дослідження військовослужбовцям — цілодобово.</h1>
       <a class="hero-cta" href="/site/price.html">Записатися на дослідження</a>
+      <p class="hero-cost"><a href="/site/price.html"><span data-ct="hero.cost.label">Цивільним:</span> <span id="heroCost" data-ct-auto="з «Прайсу» CRM">флюорографія 300 грн · рентген від 500 грн · КТ від 1 500 грн</span></a> · <span data-ct="hero.cost.result">результат за 30–60 хв</span></p>
       <p class="hero-lead-hours"><span data-ct="hero.hours.label">Планові дослідження</span> <span id="heroHours" data-ct-auto="з «Графіка роботи»">пн–пт 08:00–17:00</span> · <span data-ct="hero.hours.phone">Телефон відділення</span> <a href="tel:+380972808899">+380 97 280 88 99</a></p>
     </div>
   </section>
@@ -453,8 +454,8 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
     <div class="wrap">
       <h2 class="how-heading" data-ct="how.heading">Як записатися</h2>
       <div class="how-tabs" role="tablist" aria-label="Для кого" hidden>
-        <button type="button" role="tab" data-tab="military" aria-selected="true"><span class="t-long">Військовослужбовцям</span><span class="t-short">Військовим</span></button>
-        <button type="button" role="tab" data-tab="civilian" aria-selected="false">Цивільним</button>
+        <button type="button" role="tab" data-tab="military" aria-selected="false"><span class="t-long">Військовослужбовцям</span><span class="t-short">Військовим</span></button>
+        <button type="button" role="tab" data-tab="civilian" aria-selected="true">Цивільним</button>
       </div>
       <div class="how-card military-how" id="how-military" role="tabpanel">
         <p class="how-kicker" data-ct="mil.kicker">Військовослужбовцям · безоплатно</p>
@@ -570,6 +571,21 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           <div class="experience-stat"><strong id="statCt" data-ct="about.stat.4.value">2 800</strong><span data-ct="about.stat.4.label">комп’ютерних томографій</span></div>
         </div>
         <p class="experience-audience" data-ct="about.audience" data-ct-rich>У середньому — понад <b>80 досліджень щодня</b>.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Блок довіри (маркетинговий аудит 15.11.2026) — поки лише каркас, прихований (hidden).
+       Показати, коли власник надішле: 2–3 фото кабінетів і апаратів (→ site/assets/photos/, стиснути, alt-тексти),
+       лікарів-рентгенологів (ім’я, категорія, стаж — лише за їхньою згодою), номер ліцензії МОЗ.
+       Дані не вигадувати; порожні частини не показувати. -->
+  <section class="trust" id="trust" aria-label="Хто проводить дослідження" hidden>
+    <div class="wrap">
+      <div class="trust-card">
+        <h2 class="trust-heading">Хто проводить дослідження</h2>
+        <div class="trust-photos"><!-- <figure><img src="/site/assets/photos/…" alt="…" loading="lazy" width="…" height="…"><figcaption>…</figcaption></figure> --></div>
+        <ul class="trust-doctors"><!-- <li><strong>Ім’я Прізвище</strong><span>Лікар-рентгенолог, категорія, стаж</span></li> --></ul>
+        <p class="trust-license"><!-- Ліцензія МОЗ України № … від … --></p>
       </div>
     </div>
   </section>

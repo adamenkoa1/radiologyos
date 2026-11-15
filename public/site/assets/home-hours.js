@@ -16,7 +16,8 @@
     }
     section.classList.add('tabbed'); bar.hidden = false;
     var fromHash = /^#how-(military|civilian)$/.exec(location.hash);
-    show(fromHash ? fromHash[1] : 'military');
+    // За замовчуванням — цивільним (платні дослідження, пацієнти з пошуку); військові — у першій картці та вкладці.
+    show(fromHash ? fromHash[1] : 'civilian');
     bar.addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) show(b.dataset.tab); });
     Array.prototype.forEach.call(document.querySelectorAll('a[data-tab]'), function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); show(a.dataset.tab); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.replaceState(null, '', '#how-' + a.dataset.tab); });
