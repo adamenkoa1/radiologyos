@@ -24,6 +24,9 @@
     var p = location.pathname || '';
     if (/military/i.test(p)) return 'military';
     if (/price/i.test(p)) return 'price';
+    // Сторінки досліджень (/ct, /ct/contrast, /xray, /fluorography).
+    var study = document.body && document.body.getAttribute('data-study');
+    if (study) return 'study-' + study;
     return 'home';
   }
 

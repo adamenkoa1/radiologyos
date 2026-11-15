@@ -57,6 +57,8 @@ function renderCart() {
   box.innerHTML = cart.length
     ? cart.map(x => `<div class="cart-item"><div><strong>${x.name}</strong><small style="color:#a3b0b7;font-size:11px">код ${x.code}</small></div><div style="text-align:right"><strong>${money(x.price)}</strong><br><button class="remove-item" onclick="removeFromCart('${x.code}')">Видалити</button></div></div>`).join('')
     : emptyCartHtml();
+  // КТ з контрастом / КТ-ангіографія (коди 5xx, 6xx): нагадування про креатинін одразу під час запису.
+  if (cart.some(x => /^[56]\d\d$/.test(String(x.code)))) box.insertAdjacentHTML('beforeend', '<div class="cart-warn">Для КТ з контрастом потрібен результат аналізу крові на креатинін — візьміть його з собою.</div>');
   const total = cart.reduce((s, x) => s + x.price, 0);
   document.getElementById('cartTotal').textContent = money(total);
   renderPayOptional(total);

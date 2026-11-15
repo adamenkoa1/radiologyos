@@ -1,0 +1,11 @@
+{
+  "name": "Відділення променевої діагностики — Чернігівський військовий госпіталь",
+  "short_name": "Променева діагностика",
+  "lang": "uk",
+  "start_url": "/",
+  "scope": "/",
+  "display": "browser",
+  "background_color": "#f3f6f8",
+  "theme_color": "#123d3a",
+  "icons": [{ "src": "/site/assets/icon.svg", "type": "image/svg+xml", "sizes": "any" }]
+}

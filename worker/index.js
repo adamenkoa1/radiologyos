@@ -15,10 +15,12 @@ const SNAPSHOT_APIS = new Set(['/api/public-services', '/api/public-hours', '/ap
 // Old addresses of the site.
 const REDIRECTS = {
   '/index.html': '/', '/site': '/', '/site/': '/', '/site/index.html': '/',
-  '/fluorography': '/site/price.html#fluorography', '/xray': '/site/price.html#xray',
-  '/ct': '/site/price.html#ct', '/ct/contrast': '/site/price.html#ct-contrast',
+  '/fluorography/': '/fluorography', '/xray/': '/xray', '/ct/': '/ct', '/ct/contrast/': '/ct/contrast',
+  '/site/fluorography.html': '/fluorography', '/site/xray.html': '/xray', '/site/ct.html': '/ct', '/site/ct-contrast.html': '/ct/contrast',
   '/favicon.ico': '/site/assets/icon.svg', '/price': '/site/price.html', '/military': '/site/military.html'
 };
+// Pages of the studies (made by the server, study-pages.mjs; files of the snapshot under site/).
+const STUDY = { '/fluorography': '/site/fluorography.html', '/xray': '/site/xray.html', '/ct': '/site/ct.html', '/ct/contrast': '/site/ct-contrast.html' };
 // Old application's staff and patient-cabinet addresses (not part of the new site).
 const STAFF = /^\/(admin|app|login|cabinet)(\/|$)|^\/site\/cabinet\.html$/;
 const OFFLINE_STATUS = [502, 503, 504, 521, 522, 523, 524, 530];
@@ -111,6 +113,7 @@ export default {
     if (request.method !== 'GET' && request.method !== 'HEAD') return json(405, { error: 'method_not_allowed' });
     if (SNAPSHOT_APIS.has(p)) return (await asset(env, request, `/snapshot${p}.json`, { type: 'application/json; charset=utf-8' })) || json(404, { error: 'not_found' });
     if (REDIRECTS[p]) return secure(Response.redirect(new URL(REDIRECTS[p], url.origin).toString(), 301));
+    if (STUDY[p]) return (await asset(env, request, STUDY[p], { type: 'text/html; charset=utf-8' })) || html(404, 'Сторінку не знайдено. <a href="/">На головну</a>');
     if (STAFF.test(p)) return html(200, STAFF_PAGE('Робочий кабінет відділення (розклад, заявки, прайс) доступний лише з комп’ютерів у мережі відділення.'));
     if (p === '/') return (await asset(env, request, '/site/index.html', { type: 'text/html; charset=utf-8' }));
     if (p.startsWith('/snapshot/')) return json(404, { error: 'not_found' });
