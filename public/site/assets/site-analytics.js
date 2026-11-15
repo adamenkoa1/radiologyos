@@ -47,7 +47,10 @@
     if (eventName !== 'page_view') {
       try {
         if (window.umami && typeof window.umami.track === 'function') {
-          window.umami.track(eventName, { service: fields.serviceCode || '', category: fields.patientCategory || category() });
+          var data = { service: fields.serviceCode || '', category: fields.patientCategory || category(), page: fields.pageKey || pageKey() };
+          if (fields.channel) data.channel = fields.channel;
+          if (fields.place) data.place = fields.place;
+          window.umami.track(eventName, data);
         }
       } catch (e) { /* аналітика не критична */ }
     }
@@ -71,4 +74,40 @@
 
   // Перегляд сторінки вітрини.
   window.rosTrack('page_view', {});
+
+  // Натискання, що ведуть до запису (маркетинговий аудит 15.11.2026): дзвінок, месенджер, маршрут, e-mail,
+  // «Записатися» біля послуги. Лише назва дії, канал, місце на сторінці й код послуги — без телефонів, імен, текстів.
+  // Кнопки месенджерів у «Моя заявка» — <button>, їх рахує booking_started (d1-bridge.js), тут не дублюємо.
+  function place(el) {
+    var box = el.closest('#cartOverlay, section[id], header, footer');
+    return box ? (box.id || box.tagName.toLowerCase()).slice(0, 32) : '';
+  }
+  function linkEvent(href) {
+    if (/^tel:/i.test(href)) return ['call_click', 'phone'];
+    if (/^mailto:/i.test(href)) return ['email_click', 'email'];
+    if (/^viber:/i.test(href)) return ['messenger_click', 'viber'];
+    if (/^https?:\/\/(wa\.me|api\.whatsapp\.com)\//i.test(href)) return ['messenger_click', 'whatsapp'];
+    if (/^https?:\/\/t\.me\//i.test(href)) return ['messenger_click', 'telegram'];
+    if (/^https?:\/\/(www\.)?google\.[a-z.]+\/maps/i.test(href)) return ['route_click', 'google_maps'];
+    return null;
+  }
+  try {
+    document.addEventListener('click', function (e) {
+      try {
+        var t = e.target;
+        if (!t || typeof t.closest !== 'function') return;
+        var a = t.closest('a[href]');
+        if (a) {
+          var ev = linkEvent(a.getAttribute('href') || '');
+          if (ev) window.rosTrack(ev[0], { channel: ev[1], place: place(a) });
+          return;
+        }
+        var add = t.closest('button.row-add');
+        if (add) {
+          var m = /addToCart\('([0-9A-Za-z._-]{1,16})'/.exec(add.getAttribute('onclick') || '');
+          window.rosTrack('add_service', { serviceCode: m ? m[1] : '' });
+        }
+      } catch (err) { /* аналітика не критична */ }
+    }, true);
+  } catch (e) { /* аналітика не критична */ }
 })();
