@@ -6,7 +6,8 @@ name: Mobile check
 
 on:
   schedule:
-    - cron: '30 5 * * 1'   # Monday 05:30 UTC = 07:30/08:30 Kyiv (before the report)
+    - cron: '17 17 * * 0'  # Sunday 17:17 UTC = 19:17/20:17 Kyiv: GitHub may start a scheduled run hours late
+                           # (16.11.2026: 8 h), so the results are ready long before the Monday report
   push:                    # and right after the check itself changes
     branches: [main]
     paths: ['checks/**', '.github/workflows/mobile-check.yml']
