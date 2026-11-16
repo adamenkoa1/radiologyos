@@ -1,21 +1,27 @@
 /* RadiologyOS — підказки з «Графіка роботи» (/api/public-hours) для кошика «Моя заявка».
-   Порожній кошик: є години запису — «… Години запису: пн–пт 10:00–16:30.»; лише жива черга — «Запису немає —
+   Порожній кошик: є години запису — «… Години запису: пн–пт 10:00–11:30, 13:00–16:30.»; лише жива черга — «Запису немає —
    жива черга: …. Приходьте без заявки.». Без сервера — вбудований текст. Коли графік завантажено, сторінка
    отримує подію «schedule-hints» і перемальовує кошик. */
 (function () {
   'use strict';
   var toMin = function (t) { var p = String(t).split(':'); return Number(p[0]) * 60 + Number(p[1]); };
-  // «пн–пт 10:00–16:30, сб 09:00–12:00»: для кожного набору днів — від найранішого початку до найпізнішого кінця.
+  // «пн–пт 10:00–11:30, 13:00–16:30, сб 09:00–12:00»: для кожного набору днів — його вікна за часом;
+  // вікна, що перекриваються або стикуються, зливаються, перерва лишається перервою (як spanOf у site-render.mjs).
   function spanText(list) {
     var by = {}, order = [];
     list.forEach(function (h) {
-      var g = by[h.days];
-      if (!g) { g = by[h.days] = { from: h.start, to: h.end }; order.push(h.days); }
-      if (toMin(h.start) < toMin(g.from)) g.from = h.start;
-      if (toMin(h.end) > toMin(g.to)) g.to = h.end;
+      if (!by[h.days]) { by[h.days] = []; order.push(h.days); }
+      by[h.days].push([toMin(h.start), toMin(h.end), h.start, h.end]);
     });
     order.sort(function (a, b) { return (b === 'пн–пт') - (a === 'пн–пт'); });
-    return order.map(function (d) { return d + ' ' + by[d].from + '–' + by[d].to; }).join(', ');
+    return order.map(function (d) {
+      var out = [];
+      by[d].sort(function (a, b) { return a[0] - b[0]; }).forEach(function (x) {
+        var last = out[out.length - 1];
+        if (last && x[0] <= last[1]) { if (x[1] > last[1]) { last[1] = x[1]; last[3] = x[3]; } } else out.push(x.slice());
+      });
+      return d + ' ' + out.map(function (x) { return x[2] + '–' + x[3]; }).join(', ');
+    }).join(', ');
   }
   // Текст порожнього кошика для категорії; null — правил немає (лишається вбудований).
   function emptyCartText(hours, category, builtIn) {
