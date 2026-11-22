@@ -18,6 +18,29 @@
   .price-flat .military-book-cell{grid-column:1/-1}
   .price-flat.military tr{grid-template-columns:1fr!important}
 }
+/* «Військовим»: заголовок групи — окремий рядок на всю ширину (назва + як потрапити), межу групи видно без кольору. */
+.price-flat.military tbody tr.g-head td{padding:18px 20px 10px!important;border-top:2px solid var(--gt-bg);background:#fff}
+.price-flat.military tbody tr.g-head:first-child td{border-top:0}
+.price-flat.military .g-name{font-size:17px;font-weight:800;color:var(--gt);margin-right:10px;vertical-align:middle}
+.price-flat.military .g-mode{display:inline-block;vertical-align:middle;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.price-flat.military .g-mode.is-queue{background:#e1f1e6;color:#1f5b36}
+.price-flat.military .g-mode.is-booking{background:#e0ecf6;color:#1f4f75}
+.price-flat.military .g-jump{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line,#e3e9ec)}
+.price-flat.military .g-jump-title{font-size:13px;font-weight:700;color:#5c6c78;margin-right:4px}
+.price-flat.military .g-jump-link{font-size:13px;font-weight:650;text-decoration:none;color:var(--gt);background:var(--gt-bg);border-radius:999px;padding:5px 12px}
+.price-flat.military .g-jump-link:hover{filter:brightness(.96)}
+.price-flat.military tr.g-head{scroll-margin-top:130px}
+.price-flat.military .military-book-btn{background:#fff;border:1.5px solid #9fd0d6;color:#0f4a52;padding:9px 14px;font-size:14px}
+.price-flat.military .military-book-btn:hover{background:#eef8f9}
+.price-flat.military .military-book-btn.is-picked{background:#0f6f76;border-color:#0f6f76;color:#fff}
+@media(max-width:700px){
+  .price-flat.military tbody tr.g-head td{padding:16px 14px 8px!important}
+  .price-flat.military .g-name{display:block;margin:0 0 6px;font-size:16px}
+  .price-flat.military .g-jump{padding:12px 14px}
+  .price-flat.military tr.g-head{scroll-margin-top:90px}
+}
+/* Порожня заявка: у шапці лише «Моя заявка», без «0». */
+.cart-button.is-empty .cart-count{display:none}
 /* Код послуги — є, але ледь помітний: дрібно, світло-сірим, у кінці опису. */
 .price-flat .code-hint{font-size:11px;font-weight:500;color:#a3b0b7;letter-spacing:.02em;white-space:nowrap;margin-left:6px}
 .price-flat .service-help .code-hint{margin-left:8px}

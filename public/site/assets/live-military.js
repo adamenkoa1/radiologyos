@@ -1,6 +1,6 @@
 /* RadiologyOS — сторінка «Військовим»: один список з прайсу CRM (/api/public-services).
    Для військовослужбовців дослідження безкоштовні — ціни не показуються, код теж.
-   Групи позначені кольором. Для груп «без запису, жива черга» (у вбудованому HTML
+   Кожна група починається рядком-заголовком (назва + «Без запису» / «За попереднім записом»). Для груп «без запису, жива черга» (у вбудованому HTML
    немає кнопки запису) під їхніми позиціями лишається блок з графіком прийому.
    Якщо сервер недоступний — лишається вбудований у HTML список. */
 (function () {
@@ -66,23 +66,39 @@
 
     const section = el('section', 'price-group open price-flat military');
     section.appendChild(el('h2', null, 'Перелік досліджень'));
+    // Перехід до розділу — якорі на заголовки груп у цьому ж списку.
+    const jump = el('nav', 'g-jump'); jump.setAttribute('aria-label', 'Розділи переліку');
+    jump.appendChild(el('span', 'g-jump-title', 'Перейти до розділу:'));
     const table = el('table');
     table.innerHTML = '<thead><tr><th>Дослідження та що входить</th><th class="military-book-head"></th></tr></thead>';
     const tbody = el('tbody');
     order.forEach((group, gi) => {
       const info = groupsInfo[group] || { queue: false, schedule: null };
       const cls = 'g g' + (gi % 6);
-      byGroup[group].forEach((svc, i) => {
-        const tr = el('tr', cls + (i === 0 ? ' g-first' : ''));
+      const name = group.replace(/^\d+\.\s*/, '');
+      // Заголовок групи — окремий рядок на всю ширину: назва і як потрапити (без запису / за записом).
+      // Так межу між групами видно і без кольору, а «Запису не потрібно» — до списку, а не після нього.
+      const head = el('tr', cls + ' g-head');
+      const htd = el('td'); htd.colSpan = 2;
+      htd.appendChild(el('span', 'g-name', name));
+      htd.appendChild(el('span', 'g-mode ' + (info.queue ? 'is-queue' : 'is-booking'), info.queue ? 'Без запису · жива черга' : 'За попереднім записом'));
+      head.appendChild(htd);
+      // Якорі для стовпчиків на головній: #fluorography, #xray, #xray-contrast, #ct, #ct-contrast, #ct-angio.
+      const anchor = /ангіо/i.test(group) ? 'ct-angio' : /КТ з|з внутрішньовенним/i.test(group) ? 'ct-contrast' : /КТ/.test(group) ? 'ct'
+        : /флюорограф/i.test(group) ? 'fluorography' : /контраст/i.test(group) ? 'xray-contrast' : 'xray';
+      if (!document.getElementById(anchor)) head.id = anchor;
+      tbody.appendChild(head);
+      if (head.id) { const a = el('a', 'g-jump-link ' + cls, name); a.href = '#' + head.id; jump.appendChild(a); }
+      if (info.queue && info.schedule) {
+        const row = info.schedule;
+        row.className = 'schedule-row ' + cls;
+        row.querySelectorAll('strong').forEach((s) => { s.textContent = s.textContent.replace(/^Для досліджень [\d–-]+ /, 'Для цих досліджень '); });
+        tbody.appendChild(row);
+      }
+      byGroup[group].forEach((svc) => {
+        const tr = el('tr', cls);
         tr.dataset.code = svc.code;
-        // Якорі для стовпчиків на головній: #fluorography, #xray, #xray-contrast, #ct, #ct-contrast, #ct-angio.
-        if (i === 0) {
-          const anchor = /ангіо/i.test(group) ? 'ct-angio' : /КТ з|з внутрішньовенним/i.test(group) ? 'ct-contrast' : /КТ/.test(group) ? 'ct'
-            : /флюорограф/i.test(group) ? 'fluorography' : /контраст/i.test(group) ? 'xray-contrast' : 'xray';
-          if (!document.getElementById(anchor)) tr.id = anchor;
-        }
         const td = el('td');
-        if (i === 0) td.appendChild(el('div', 'gtag', group.replace(/^\d+\.\s*/, '')));
         td.appendChild(el('div', 'service-title', svc.title));
         const helpEl = el('div', 'service-help', svc.help || ''); helpEl.appendChild(el('span', 'code-hint', 'код ' + svc.code)); td.appendChild(helpEl);
         tr.appendChild(td);
@@ -91,15 +107,11 @@
         tr.appendChild(cell);
         tbody.appendChild(tr);
       });
-      if (info.queue && info.schedule) {
-        const row = info.schedule;
-        row.className = 'schedule-row ' + cls;
-        row.querySelectorAll('strong').forEach((s) => { s.textContent = s.textContent.replace(/^Для досліджень [\d–-]+ /, 'Для цих досліджень '); });
-        tbody.appendChild(row);
-      }
     });
     table.appendChild(tbody);
+    if (jump.querySelector('a')) section.appendChild(jump);
     section.appendChild(table);
+    if (typeof renderMilitaryCart === 'function') renderMilitaryCart(); // відмітити «✓ У заявці» на щойно збудованих кнопках
     sections[0].parentNode.insertBefore(section, sections[0]);
     sections.forEach((s) => s.remove());
     section.querySelector('h2').addEventListener('click', () => section.classList.toggle('open'));
