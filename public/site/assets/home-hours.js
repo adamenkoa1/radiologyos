@@ -13,12 +13,18 @@
       if (!cards[tab]) return;
       Object.keys(cards).forEach(function (k) { if (cards[k]) cards[k].classList.toggle('active', k === tab); });
       Array.prototype.forEach.call(bar.querySelectorAll('button'), function (b) { b.setAttribute('aria-selected', String(b.dataset.tab === tab)); });
+      // Один режим сторінки (редакція 23.11.2026): великі картки вгорі показують ту саму вибрану категорію.
+      Array.prototype.forEach.call(document.querySelectorAll('.promo-card[data-tab]'), function (c) {
+        var on = c.dataset.tab === tab;
+        c.classList.toggle('is-current', on);
+        if (on) c.setAttribute('aria-current', 'true'); else c.removeAttribute('aria-current');
+      });
     }
     section.classList.add('tabbed'); bar.hidden = false;
     var fromHash = /^#how-(military|civilian)$/.exec(location.hash);
     // За замовчуванням — цивільним (платні дослідження, пацієнти з пошуку); військові — у першій картці та вкладці.
     show(fromHash ? fromHash[1] : 'civilian');
-    bar.addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) show(b.dataset.tab); });
+    bar.addEventListener('click', function (e) { var b = e.target.closest('button[data-tab]'); if (b) { show(b.dataset.tab); history.replaceState(null, '', '#how-' + b.dataset.tab); } });
     Array.prototype.forEach.call(document.querySelectorAll('a[data-tab]'), function (a) {
       a.addEventListener('click', function (e) { e.preventDefault(); show(a.dataset.tab); section.scrollIntoView({ behavior: 'smooth', block: 'start' }); history.replaceState(null, '', '#how-' + a.dataset.tab); });
     });

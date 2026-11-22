@@ -387,6 +387,32 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   .ht-table td.num::before{content:attr(data-label)": ";color:var(--muted);font-weight:600}
   .ht-book{width:100%;margin-top:6px}
 }
+
+/* ===== Редакція 23.11.2026: один режим сторінки, ціни в картках, кроки проходу, FAQ, месенджери ===== */
+.promo-card.is-current{outline:3px solid #0f6b6f;outline-offset:3px}
+.promo-military.is-current{outline-color:#26734d}.promo-civil.is-current{outline-color:#c99a00}
+.how-switch{display:flex;flex-wrap:wrap;align-items:center;gap:6px 12px;margin:0 0 14px}
+.how-switch .how-tabs{margin:0}
+.how-switch-label{color:#3f5257;font-size:14.5px;font-weight:700}
+.how-section:not(.tabbed) .how-switch-label{display:none}
+.sc-price{align-self:flex-start;padding:3px 10px;border-radius:999px;background:#fff3c5;color:#5d4700;font-size:14px;font-weight:850;font-variant-numeric:tabular-nums;white-space:nowrap}
+.study-col:hover .sc-price,.study-col:focus-visible .sc-price{background:#ffe9a0}
+.faq-fold+.faq-fold{margin-top:10px}
+.faq-fold>summary::after{content:"Розгорнути ▾";width:auto;height:32px;flex:0 0 auto;padding:0 13px;border-radius:999px;font-size:13px;font-weight:800;white-space:nowrap}
+.faq-fold[open]>summary::after{content:"Згорнути ▴"}
+@media(max-width:520px){.faq-fold>summary::after{content:"▾";width:32px;padding:0;font-size:16px}.faq-fold[open]>summary::after{content:"▴"}}
+.contact-sub{margin:-6px 0 12px;color:#3f5257;font-size:14.5px}
+.cc-text{display:flex;flex-direction:column;line-height:1.15}
+.cc-text small{color:#5c6c78;font-size:11.5px;font-weight:600}
+.visit-flow{list-style:none;padding:0;margin:10px 0 0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;counter-reset:vf}
+.visit-flow li{position:relative;display:flex;flex-direction:column;gap:8px;margin:0;padding:13px 14px;border:1px solid #dbe3e8;border-radius:14px;background:#f6fafb;font-size:13.5px;line-height:1.45;color:#33505a;counter-increment:vf}
+.visit-flow li:not(:last-child)::after{content:"→";position:absolute;right:-10px;top:24px;z-index:1;display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#fff;color:#0f6b6f;font-size:13px;font-weight:900;box-shadow:0 1px 4px rgba(18,40,30,.18)}
+.vf-ico{display:grid;place-items:center;width:38px;height:38px;border-radius:50%;background:#e1f0f1;font-size:19px}
+.vf-head{display:block;margin-bottom:3px;color:#12303a;font-size:14.5px;line-height:1.3}
+.vf-head::before{content:counter(vf) ". ";color:#0f6b6f}
+@media(max-width:860px){.visit-flow{grid-template-columns:1fr 1fr}.visit-flow li:nth-child(2)::after{display:none}}
+@media(max-width:520px){.visit-flow{grid-template-columns:1fr}.visit-flow li{flex-direction:row;align-items:flex-start}.visit-flow li:not(:last-child)::after{content:"↓";right:auto;left:22px;top:auto;bottom:-14px}.visit-flow li:nth-child(2)::after{display:grid}.vf-ico{flex:0 0 38px}}
+.staff-link{margin:8px 0 0;font-size:12.5px}.staff-link a{color:#5c6c78;text-decoration:underline}
 </style>
 </head>
 <body>
@@ -400,20 +426,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
         <div class="hospital-brand-slogan" id="scSlogan" style="display:none"></div>
       </div>
     </a>
-    <nav>
-      <div class="login-menu-wrap">
-        <button class="header-login-button" id="headerLoginButton" type="button" aria-expanded="false" aria-controls="loginMenu">
-          <span class="header-login-icon" aria-hidden="true">◌</span><span>Вхід</span>
-        </button>
-        <div class="login-menu" id="loginMenu" role="menu">
-          <a class="login-choice" href="/admin/schedule" role="menuitem">
-            <span class="login-choice-icon" aria-hidden="true">🔐</span>
-            <span><strong>Персонал</strong><small>Заявки, черга та розклад</small></span>
-            <span class="login-choice-arrow" aria-hidden="true">›</span>
-          </a>
-        </div>
-      </div>
-    </nav>
   </div>
 </header>
 
@@ -423,7 +435,6 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
       <h1 class="hero-lead-sub" data-ct="hero.lead">Рентген, флюорографія та КТ у Чернігові — висновок того ж дня</h1>
       <p class="hero-lead-promise" data-ct="hero.sub">Платні дослідження: письмовий висновок — через 30–60 хвилин після дослідження. Записатися можна самостійно або за направленням лікаря, оплата — після дослідження. За 2025 рік — 29 700 досліджень (дані відділення).</p>
       <a class="hero-cta" href="/site/price.html">Записатися на дослідження</a>
-      <p class="hero-cost"><a href="/site/price.html"><span data-ct="hero.cost.label">Вартість:</span> <span id="heroCost" data-ct-auto="з «Прайсу» CRM">флюорографія 300 грн · рентген від 500 грн · КТ від 1 500 грн</span></a></p>
       <p class="hero-lead-hours"><span data-ct="hero.hours.label">Відділення працює</span> <span id="heroHours" data-ct-auto="з «Графіка роботи»">пн–пт 08:00–17:00</span> · <span data-ct="hero.hours.phone">Телефон відділення</span> <a href="tel:+380972808899">+380 97 280 88 99</a></p>
     </div>
   </section>
@@ -431,7 +442,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   <section class="hero" aria-label="Кому підходить">
     <div class="wrap">
       <div class="photo-audience">
-        <a class="promo-card promo-military" id="scMilCard" href="/site/military.html">
+        <a class="promo-card promo-military" id="scMilCard" href="/site/military.html" data-tab="military" aria-controls="how-military">
           <span class="promo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M12 3l7 3v5c0 4.6-3 8.6-7 10-4-1.4-7-5.4-7-10V6l7-3z"/></svg></span>
           <span class="promo-text">
             <strong id="scMilTitle" data-ct="card.mil.title">Військовослужбовцям</strong>
@@ -439,7 +450,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
           </span>
           <span class="promo-arrow" aria-hidden="true">›</span>
         </a>
-        <a class="promo-card promo-civil" href="/site/price.html">
+        <a class="promo-card promo-civil" href="/site/price.html" data-tab="civilian" aria-controls="how-civilian">
           <span class="promo-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M9.5 4h5v5.5H20v5h-5.5V20h-5v-5.5H4v-5h5.5V4z"/></svg></span>
           <span class="promo-text">
             <strong id="scCivTitle" data-ct="card.civ.title">Платні дослідження</strong>
@@ -454,9 +465,12 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   <section class="how-section" id="how" aria-label="Як записатися">
     <div class="wrap">
       <h2 class="how-heading" data-ct="how.heading">Як записатися</h2>
-      <div class="how-tabs" role="tablist" aria-label="Для кого" hidden>
-        <button type="button" role="tab" data-tab="military" aria-selected="false"><span class="t-long">Військовослужбовцям</span><span class="t-short">Військовим</span></button>
-        <button type="button" role="tab" data-tab="civilian" aria-selected="true">Платно</button>
+      <div class="how-switch">
+        <span class="how-switch-label" id="howSwitchLabel" data-ct="how.switch.label">Оберіть категорію:</span>
+        <div class="how-tabs" role="tablist" aria-labelledby="howSwitchLabel" hidden>
+          <button type="button" role="tab" data-tab="military" aria-selected="false"><span class="t-long">Військовослужбовцям</span><span class="t-short">Військовим</span></button>
+          <button type="button" role="tab" data-tab="civilian" aria-selected="true">Платно</button>
+        </div>
       </div>
       <div class="how-card military-how" id="how-military" role="tabpanel">
         <p class="how-kicker" data-ct="mil.kicker">Військовослужбовцям · безоплатно</p>
@@ -505,7 +519,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
         </div>
         <div class="how-urgent"><span aria-hidden="true">🚨</span><div><strong data-ct="mil.urgent.title">Екстрено — цілодобово, 24/7</strong><span data-ct="mil.urgent.text">Рентген і КТ за екстреними показаннями — без запису, опис надається одразу.</span></div></div>
         <div class="how-note"><span aria-hidden="true">📄</span><div><strong data-ct="mil.result.title">Результат — наступного дня</strong><span data-ct="mil.result.text">Опис разом із рентгенівськими зображеннями вноситься в медичну інформаційну систему — його бачить ваш лікар. Паперовий опис — там, де проходили дослідження.</span></div></div>
-        <p class="how-links"><a href="/site/military.html">Перелік досліджень для військовослужбовців →</a><a href="/site/price.html#barium">Як підготуватися до рентгенографії з барієм →</a></p>
+        <p class="how-links"><a href="/site/military.html">Перелік досліджень для військовослужбовців →</a><a href="#visit">Як пройти через КПП →</a><a href="/site/price.html#barium">Як підготуватися до рентгенографії з барієм →</a></p>
       </div>
       <div class="how-card civilian-how" id="how-civilian" role="tabpanel">
         <p class="how-kicker" data-ct="civ.kicker">Платно · запис онлайн</p>
@@ -516,37 +530,37 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
         </ul>
         <p class="how-summary civ" id="homeCivSummary" data-ct-auto="з «Графіка роботи»">За записом: флюорографія, рентгенографія, рентгенографія з контрастом — пн–пт 10:00–11:30, 13:00–16:30; КТ — пн–пт 10:00–11:30, 14:00–16:00; КТ з контрастом — пн–пт 14:00–16:00.</p>
         <div class="study-cols" id="civSteps">
-          <a class="study-col c1" href="/site/price.html#fluorography" data-row="Флюорографія">
+          <a class="study-col c1" href="/site/price.html#fluorography" data-row="Флюорографія" data-kind="fluoro">
             <span class="sc-num">1</span><strong data-ct="civ.col.1.name">Флюорографія</strong>
-            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.1.floor">2-й поверх</span></span>
+            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.1.floor">2-й поверх</span></span><span class="sc-price" data-price-kind="fluoro">300 грн</span>
             <span class="sc-short" data-ct="civ.col.1.short">Скринінг органів грудної клітки: профогляд, медогляд, ГРЗ.</span>
             <span class="sc-more" data-ct="civ.col.1.more">Скринінгове дослідження органів грудної клітки: щорічний профілактичний огляд, медичні огляди (зокрема ВЛК), а також при гострих респіраторних захворюваннях — щоб виключити пневмонію та інші зміни в легенях.</span>
             <span class="sc-go">Ціни і запис →</span>
           </a>
-          <a class="study-col c2" href="/site/price.html#xray" data-row="Рентгенографія">
+          <a class="study-col c2" href="/site/price.html#xray" data-row="Рентгенографія" data-kind="xray">
             <span class="sc-num">2</span><strong data-ct="civ.col.2.name">Рентгенографія</strong>
-            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.2.floor">2-й поверх</span></span>
+            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.2.floor">2-й поверх</span></span><span class="sc-price" data-price-kind="xray">від 500 грн</span>
             <span class="sc-short" data-ct="civ.col.2.short">Переломи, вивихи, травми, контроль зрощення, артроз.</span>
             <span class="sc-more" data-ct="civ.col.2.more">Основний метод діагностики ушкоджень кісток і суглобів: переломів, вивихів і травм, а також для виявлення металевих сторонніх тіл. Контрольні знімки показують положення уламків і перебіг зрощення — формування кісткової мозолі (консолідацію). Також — для визначення ступеня артрозу.</span>
             <span class="sc-go">Ціни і запис →</span>
           </a>
-          <a class="study-col c3" href="/site/price.html#xray-contrast" data-row="Рентгенографія з контрастом">
+          <a class="study-col c3" href="/site/price.html#xray-contrast" data-row="Рентгенографія з контрастом" data-kind="xrc">
             <span class="sc-num">3</span><strong data-ct="civ.col.3.name">Рентгенографія з контрастом</strong>
-            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.3.floor">2-й поверх</span></span>
+            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.3.floor">2-й поверх</span></span><span class="sc-price" data-price-kind="xrc">від 1 200 грн</span>
             <span class="sc-short" data-ct="civ.col.3.short">Стравохід, шлунок, кишківник — з барієм, натще.</span>
             <span class="sc-more" data-ct="civ.col.3.more">Дослідження стравоходу, шлунка та кишківника з барієвою суспензією: оцінюються прохідність, контури, рельєф слизової та рухова функція. Проводиться натще.</span>
             <span class="sc-go">Ціни і запис →</span>
           </a>
-          <a class="study-col c4" href="/site/price.html#ct" data-row="КТ">
+          <a class="study-col c4" href="/site/price.html#ct" data-row="КТ" data-kind="ct">
             <span class="sc-num">4</span><strong data-ct="civ.col.4.name">КТ</strong>
-            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.4.floor">1-й поверх</span></span>
+            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.4.floor">1-й поверх</span></span><span class="sc-price" data-price-kind="ct">від 1 500 грн</span>
             <span class="sc-short" data-ct="civ.col.4.short">Наступний етап: складні переломи, хребет, череп, легені.</span>
             <span class="sc-more" data-ct="civ.col.4.more">Наступний етап діагностики, коли рентгенографії чи флюорографії недостатньо. Пошарові зображення дають змогу детально оцінити складні переломи, ушкодження хребта, черепа та внутрішніх органів. У легенях КТ виявляє пневмонію та інші зміни, які на рентгенограмі не видно або вони сумнівні, уточнює ускладнення (деструкцію легеневої тканини, абсцес, плевральний випіт) і вогнищеві утворення.</span>
             <span class="sc-go">Ціни і запис →</span>
           </a>
-          <a class="study-col c5" href="/site/price.html#ct-contrast" data-row="КТ з контрастом">
+          <a class="study-col c5" href="/site/price.html#ct-contrast" data-row="КТ з контрастом" data-kind="ctc">
             <span class="sc-num">5</span><strong data-ct="civ.col.5.name">КТ з контрастом</strong>
-            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.5.floor">1-й поверх</span></span>
+            <span class="how-tag b">Запис на сайті</span><span class="sc-floor">🏢 <span data-ct="civ.col.5.floor">1-й поверх</span></span><span class="sc-price" data-price-kind="ctc">від 3 500 грн</span>
             <span class="sc-short" data-ct="civ.col.5.short">Судини, вогнищеві утворення, м’які тканини. Потрібен аналіз на креатинін.</span>
             <span class="sc-more" data-ct="civ.col.5.more">Внутрішньовенне контрастування підвищує точність при дослідженні судин, вогнищевих утворень і м’яких тканин. Контраст — йодовмісний препарат Томогексол (йогексол), тому дослідження проводиться за умови нормального рівня креатиніну в крові (результат аналізу візьміть із собою) і відсутності алергії на йодовмісні препарати.</span>
             <span class="sc-go">Ціни і запис →</span>
@@ -555,7 +569,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
         <div class="how-note"><span aria-hidden="true">✅</span><div><strong data-ct="civ.booking.title">Запис і підтвердження</strong><span data-ct="civ.booking.text">Оберіть дослідження в прайсі та вільну годину — адміністратор підтвердить запис у WhatsApp, Viber або Telegram.</span></div></div>
         <div class="how-note"><span aria-hidden="true">💳</span><div><strong data-ct="civ.payment.title">Оплата — після дослідження</strong><span data-ct="civ.payment.text">Попередня оплата не потрібна.</span></div></div>
         <div class="how-note"><span aria-hidden="true">📄</span><div><strong data-ct="civ.result.title">Результат — протягом 30–60 хвилин</strong><span data-ct="civ.result.text">Там, де проходили дослідження.</span></div></div>
-        <p class="how-links"><a href="/site/price.html">Прайс і запис →</a><a href="/site/price.html#barium">Як підготуватися до рентгенографії з барієм →</a></p>
+        <p class="how-links"><a href="/site/price.html">Повний прайс і запис →</a><a href="#visit">Як пройти через КПП →</a><a href="/site/price.html#barium">Як підготуватися до рентгенографії з барієм →</a></p>
       </div>
     </div>
   </section>
@@ -594,25 +608,26 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
   <section class="experience" id="faq" aria-label="Часті запитання">
     <div class="wrap">
       <h2 class="faq-heading" data-ct="faq.heading">Часті запитання</h2>
-      <details name="faq" class="experience-card experience-fold"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.1.q">Як записатися на дослідження?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.1.a" data-ct-rich><b>Платно:</b> оберіть дослідження в <a href="/site/price.html">прайсі</a>, виберіть вільну годину й надішліть заявку — адміністратор підтвердить запис у WhatsApp, Viber або Telegram. Або зателефонуйте: <a href="tel:+380972808899">+380 97 280 88 99</a>.<br><b>Військовослужбовцям:</b> флюорографія й рентгенографія — без запису, у живій черзі; КТ і контрастні дослідження — за попереднім записом.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.2.q">Чи потрібне направлення?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.2.a" data-ct-rich>Військовослужбовцям дослідження виконуються безоплатно за направленням. На платне дослідження можна записатися самостійно або за направленням лікаря.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.3.q">Скільки коштує КТ і чи є контрастування?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.3.a" data-ct-rich>Вартість КТ залежить від анатомічної ділянки та наявності контрастування. Доступне КТ з внутрішньовенним контрастуванням за медичними показаннями. Актуальні ціни та онлайн-заявка — на <a href="/site/price.html">сторінці тарифів</a>.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.4.q">Що взяти з собою?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.4.a" data-ct-rich>Документ, що посвідчує особу: вхід на територію госпіталю — після ідентифікації. Військовослужбовцям — також направлення та військовий квиток або посвідчення.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.5.q">Коли буде результат?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.5.a" data-ct-rich><b>Платні дослідження</b> — висновок протягом 30–60 хвилин після дослідження, там, де його проходили.<br><b>Військовослужбовцям</b> — наступного дня: опис разом із рентгенівськими зображеннями вноситься в медичну інформаційну систему, тож паперовий примірник забирати не обов’язково. За потреби паперовий опис — там, де проходили дослідження.<br>Після екстрених досліджень опис надається одразу.<br>Рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.6.q">Як оплатити дослідження?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.6.a" data-ct-rich>Попередня оплата не потрібна — оплата у відділенні після проведення дослідження. Військовослужбовцям — безоплатно.</p></div></details>
-      <details name="faq" class="experience-card experience-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.7.q">Де знаходиться відділення?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.7.a" data-ct-rich>м. Чернігів, вул. Гетьмана Полуботка, 40 — Чернігівський військовий госпіталь, відділення променевої діагностики. Рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" open><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.1.q">Як записатися на дослідження?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.1.a" data-ct-rich><b>Платно:</b> оберіть дослідження в <a href="/site/price.html">прайсі</a>, виберіть вільну годину й надішліть заявку — адміністратор підтвердить запис у WhatsApp, Viber або Telegram. Або зателефонуйте: <a href="tel:+380972808899">+380 97 280 88 99</a>.<br><b>Військовослужбовцям:</b> флюорографія й рентгенографія — без запису, у живій черзі; КТ і контрастні дослідження — за попереднім записом.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px" open><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.2.q">Чи потрібне направлення?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.2.a" data-ct-rich>Військовослужбовцям дослідження виконуються безоплатно за направленням. На платне дослідження можна записатися самостійно або за направленням лікаря.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px" open><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.3.q">Скільки коштує КТ і чи є контрастування?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.3.a" data-ct-rich>Вартість КТ залежить від анатомічної ділянки та наявності контрастування. Доступне КТ з внутрішньовенним контрастуванням за медичними показаннями. Актуальні ціни та онлайн-заявка — на <a href="/site/price.html">сторінці тарифів</a>.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.4.q">Що взяти з собою?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.4.a" data-ct-rich>Документ, що посвідчує особу: вхід на територію госпіталю — після ідентифікації. Військовослужбовцям — також направлення та військовий квиток або посвідчення.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.5.q">Коли буде результат?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.5.a" data-ct-rich><b>Платні дослідження</b> — висновок протягом 30–60 хвилин після дослідження, там, де його проходили.<br><b>Військовослужбовцям</b> — наступного дня: опис разом із рентгенівськими зображеннями вноситься в медичну інформаційну систему, тож паперовий примірник забирати не обов’язково. За потреби паперовий опис — там, де проходили дослідження.<br>Після екстрених досліджень опис надається одразу.<br>Рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.6.q">Як оплатити дослідження?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.6.a" data-ct-rich>Попередня оплата не потрібна — оплата у відділенні після проведення дослідження. Військовослужбовцям — безоплатно.</p></div></details>
+      <details class="experience-card experience-fold faq-fold" style="margin-top:10px"><summary><span><strong class="experience-summary-title faq-q" data-ct="faq.7.q">Де знаходиться відділення?</strong></span></summary><div class="experience-body"><p class="experience-answer" data-ct="faq.7.a" data-ct-rich>м. Чернігів, вул. Гетьмана Полуботка, 40 — Чернігівський військовий госпіталь, відділення променевої діагностики. Рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</p></div></details>
     </div>
   </section>
 
   <section class="contact" id="contacts">
     <div class="wrap">
       <h2 class="contact-heading" data-ct="contact.heading">Зв’язатися з нами</h2>
+      <p class="contact-sub" data-ct="contact.sub">Напишіть нам у месенджер або зателефонуйте — натисніть потрібну кнопку.</p>
       <div class="contact-channels" aria-label="Канали зв’язку">
-        <a class="contact-channel telegram" href="https://t.me/+380972808899" target="_blank" rel="noopener" aria-label="Написати в Telegram"><span class="contact-channel-icon" aria-hidden="true">T</span><span data-ct="contact.channel.telegram">Telegram</span></a>
-        <a class="contact-channel viber" href="viber://chat?number=%2B380972808899" aria-label="Написати у Viber"><span class="contact-channel-icon" aria-hidden="true">V</span><span data-ct="contact.channel.viber">Viber</span></a>
-        <a class="contact-channel whatsapp" href="https://wa.me/380972808899" target="_blank" rel="noopener" aria-label="Написати у WhatsApp"><span class="contact-channel-icon" aria-hidden="true">W</span><span data-ct="contact.channel.whatsapp">WhatsApp</span></a>
-        <a class="contact-channel" href="tel:+380972808899" aria-label="Зателефонувати"><span class="contact-channel-icon" aria-hidden="true">☎</span><span data-ct="contact.channel.phone">Телефон</span></a>
-        <a class="contact-channel email" href="mailto:Adamenko1974@gmail.com" aria-label="Написати електронною поштою"><span class="contact-channel-icon" aria-hidden="true">@</span><span data-ct="contact.channel.email">Email</span><span class="ct-email" data-ct="contact.email" data-ct-email>Adamenko1974@gmail.com</span></a>
+        <a class="contact-channel telegram" href="https://t.me/+380972808899" target="_blank" rel="noopener" aria-label="Написати в Telegram"><span class="contact-channel-icon" aria-hidden="true">T</span><span class="cc-text"><small aria-hidden="true">Написати в</small><span data-ct="contact.channel.telegram">Telegram</span></span></a>
+        <a class="contact-channel viber" href="viber://chat?number=%2B380972808899" aria-label="Написати у Viber"><span class="contact-channel-icon" aria-hidden="true">V</span><span class="cc-text"><small aria-hidden="true">Написати у</small><span data-ct="contact.channel.viber">Viber</span></span></a>
+        <a class="contact-channel whatsapp" href="https://wa.me/380972808899" target="_blank" rel="noopener" aria-label="Написати у WhatsApp"><span class="contact-channel-icon" aria-hidden="true">W</span><span class="cc-text"><small aria-hidden="true">Написати у</small><span data-ct="contact.channel.whatsapp">WhatsApp</span></span></a>
+        <a class="contact-channel" href="tel:+380972808899" aria-label="Зателефонувати"><span class="contact-channel-icon" aria-hidden="true">☎</span><span class="cc-text"><small aria-hidden="true">Подзвонити</small><span data-ct="contact.channel.phone">Телефон</span></span></a>
+        <a class="contact-channel email" href="mailto:Adamenko1974@gmail.com" aria-label="Написати електронною поштою"><span class="contact-channel-icon" aria-hidden="true">@</span><span class="cc-text"><small aria-hidden="true">Написати на</small><span data-ct="contact.channel.email">Email</span></span><span class="ct-email" data-ct="contact.email" data-ct-email>Adamenko1974@gmail.com</span></a>
       </div>
       <a class="contact-card address-row" href="tel:+380972808899" id="scPhoneLink" aria-label="Зателефонувати у відділення" style="margin-bottom:10px">
         <span class="address-label" data-ct="contact.phone.label">Телефон</span>
@@ -632,14 +647,15 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
       <div class="visit-card" id="visit">
         <h3 class="visit-title" data-ct="visit.title">Порядок проходу до відділення</h3>
         <p class="visit-intro" data-ct="visit.intro">Чернігівський військовий госпіталь, вул. Гетьмана Полуботка, 40. Вхід — через КПП.</p>
-        <ol class="visit-steps">
-          <li data-ct="visit.1">На КПП пред’явіть паспорт або інший документ із фото (військовослужбовцям — військовий квиток) і назвіть мету візиту: дослідження у відділенні променевої діагностики — КТ, рентген чи флюорографія.</li>
-          <li data-ct="visit.2">Реєстрація. Черговий внесе вас до журналу відвідувачів.</li>
-          <li data-ct="visit.3">Рух до відділення променевої діагностики: рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</li>
-          <li data-ct="visit.4">Вихід. Повідомте на КПП про вихід і за потреби пред’явіть документ.</li>
+        <ol class="visit-steps visit-flow">
+          <li><span class="vf-ico" aria-hidden="true">🪪</span><div><strong class="vf-head" data-ct="visit.1.head">Паспорт або військовий квиток — на КПП</strong><span data-ct="visit.1">На КПП пред’явіть паспорт або інший документ із фото (військовослужбовцям — військовий квиток) і назвіть мету візиту: дослідження у відділенні променевої діагностики — КТ, рентген чи флюорографія.</span></div></li>
+          <li><span class="vf-ico" aria-hidden="true">📋</span><div><strong class="vf-head" data-ct="visit.2.head">Реєстрація в журналі відвідувачів</strong><span data-ct="visit.2">Реєстрація. Черговий внесе вас до журналу відвідувачів.</span></div></li>
+          <li><span class="vf-ico" aria-hidden="true">🏢</span><div><strong class="vf-head" data-ct="visit.3.head">КТ — 1-й поверх, рентген і флюорографія — 2-й</strong><span data-ct="visit.3">Рух до відділення променевої діагностики: рентген і флюорографія — 2-й поверх, КТ — 1-й поверх.</span></div></li>
+          <li><span class="vf-ico" aria-hidden="true">🚪</span><div><strong class="vf-head" data-ct="visit.4.head">Вихід — через КПП</strong><span data-ct="visit.4">Вихід. Повідомте на КПП про вихід і за потреби пред’явіть документ.</span></div></li>
         </ol>
       </div>
       <p class="licence-line" data-ct="contact.licence">Ліцензія МОЗ на медичну практику серія АГ № 602665 від 21.07.2011. Ліцензія Держатомрегулювання на використання джерел іонізуючого випромінювання № ОВ 011260, діє до 08.11.2027.</p>
+      <p class="staff-link"><a href="/admin/schedule" rel="nofollow">Вхід для персоналу</a></p>
     </div>
   </section>
 </main>
