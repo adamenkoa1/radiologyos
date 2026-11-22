@@ -15,6 +15,8 @@ const SNAPSHOT_APIS = new Set(['/api/public-services', '/api/public-hours', '/ap
 // Old addresses of the site.
 const REDIRECTS = {
   '/index.html': '/', '/site': '/', '/site/': '/', '/site/index.html': '/',
+  // The old demo CRM (/app) and the old cabinet are gone (22.11.2026): staff go to the working CRM, behind sign-in.
+  '/app': '/admin/ct-journal', '/app/': '/admin/ct-journal', '/cabinet': '/admin/ct-journal', '/cabinet/': '/admin/ct-journal', '/site/cabinet.html': '/admin/ct-journal',
   '/fluorography/': '/fluorography', '/xray/': '/xray', '/ct/': '/ct', '/ct/contrast/': '/ct/contrast',
   '/site/fluorography.html': '/fluorography', '/site/xray.html': '/xray', '/site/ct.html': '/ct', '/site/ct-contrast.html': '/ct/contrast',
   '/favicon.ico': '/site/assets/icon.svg', '/price': '/site/price.html', '/military': '/site/military.html'
