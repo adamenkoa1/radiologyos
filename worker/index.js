@@ -9,7 +9,7 @@
 // Live booking paths → the server.
 const LIVE = /^\/(api\/(availability|site-requests|analytics)$|stats\/)/;
 // Staff cabinet → the server (with cookies).
-const STAFF_PROXY = /^\/(admin(\/.*)?|login(\.html)?|api\/(auth|admin)\/.+|brand\/.+|_external\/.+)$/;
+const STAFF_PROXY = /^\/(admin(\/.*)?|login(\.html)?|api\/(auth|admin)\/.+|api\/clinical(\/.+)?|brand\/.+|_external\/.+)$/;
 // Read-only public APIs → snapshot files.
 const SNAPSHOT_APIS = new Set(['/api/public-services', '/api/public-hours', '/api/public-content', '/api/site-content', '/api/department-profile', '/api/tariffs']);
 // Old addresses of the site.
