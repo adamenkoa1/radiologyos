@@ -102,7 +102,7 @@ async function openOnlinePayment() {
 function renderPayOptional(total) {
   const box = document.getElementById('cartPay');
   if (!box) return;
-  // Оплата — на місці після дослідження через QR-код (рішення власника 08.11): онлайн-оплату не показуємо.
+  // Оплата — на місці після дослідження, лише через QR-код (власник 08.11, підтверджено 23.11): онлайн-оплату не показуємо.
   box.hidden = true; box.innerHTML = ''; return;
   if (!(total > 0)) { box.hidden = true; box.innerHTML = ''; return; }
   box.hidden = false;
