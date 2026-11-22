@@ -189,3 +189,6 @@ a{text-decoration:none;color:inherit}
 .visit-intro{margin:0 0 8px;color:#33505a}
 .visit-steps{margin:0;padding-left:20px;color:#18302f}
 .visit-steps li{margin:4px 0;line-height:1.45}
+
+/* Phone tap targets (23.11.2026): the «Прайс і запис →» links under «Як записатися» get a finger-sized area. */
+@media(max-width:700px){.how-links a{display:inline-block;padding:10px 0;min-height:44px;box-sizing:border-box}}

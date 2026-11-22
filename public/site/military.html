@@ -453,6 +453,8 @@ function renderMilitaryCart() {
   document.querySelectorAll('[data-military-cart-count]').forEach(el => {
     el.textContent = militaryCart.length;
   });
+  // Empty selection: no floating «Моя заявка 0» over the page (as on the price list).
+  document.querySelectorAll('.floating-cart').forEach(x => { x.classList.toggle('is-empty', !militaryCart.length); });
 
   const container = document.getElementById('militaryCartItems');
   if (!container) return;
