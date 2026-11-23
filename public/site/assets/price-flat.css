@@ -39,8 +39,30 @@
   .price-flat.military .g-jump{padding:12px 14px}
   .price-flat.military tr.g-head{scroll-margin-top:90px}
 }
+/* «Ціни» (власник 23.11.2026): ті самі заголовки груп і «Перейти до розділу», що на «Військовим». */
+.price-flat.grouped tbody tr.g-head td{padding:18px 20px 10px!important;border-top:2px solid var(--gt-bg);background:#fff}
+.price-flat.grouped tbody tr.g-head:first-child td{border-top:0}
+.price-flat.grouped .g-name{font-size:17px;font-weight:800;color:var(--gt);margin-right:10px;vertical-align:middle}
+.price-flat.grouped .g-mode{display:inline-block;vertical-align:middle;font-size:12px;font-weight:700;border-radius:999px;padding:3px 10px;white-space:nowrap}
+.price-flat.grouped .g-mode.is-queue{background:#e1f1e6;color:#1f5b36}
+.price-flat.grouped .g-mode.is-booking{background:#e0ecf6;color:#1f4f75}
+.price-flat.grouped .g-jump{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 20px;background:#fff;border-bottom:1px solid var(--line,#e3e9ec)}
+.price-flat.grouped .g-jump-title{font-size:13px;font-weight:700;color:#5c6c78;margin-right:4px}
+.price-flat.grouped .g-jump-link{font-size:13px;font-weight:650;text-decoration:none;color:var(--gt);background:var(--gt-bg);border-radius:999px;padding:5px 12px}
+.price-flat.grouped tr.g-head{scroll-margin-top:130px}
+@media(max-width:700px){
+  .price-flat.grouped tbody tr.g-head td{padding:16px 14px 8px!important}
+  .price-flat.grouped .g-name{display:block;margin:0 0 6px;font-size:16px}
+  .price-flat.grouped .g-jump{padding:12px 14px}
+  .price-flat.grouped tr.g-head{scroll-margin-top:90px}
+}
 /* Порожня заявка: у шапці лише «Моя заявка», без «0». */
 .cart-button.is-empty .cart-count{display:none}
 /* Код послуги — є, але ледь помітний: дрібно, світло-сірим, у кінці опису. */
 .price-flat .code-hint{font-size:11px;font-weight:500;color:#a3b0b7;letter-spacing:.02em;white-space:nowrap;margin-left:6px}
 .price-flat .service-help .code-hint{margin-left:8px}
+/* Заголовок групи й рядок живої черги — на всю ширину, текст зліва (загальне td:last-child вирівнює вправо);
+   посилання «Перейти до розділу» видимі на телефоні (мобільна шапка ховає nav a:not(.call)). */
+.price-flat tbody tr.g-head,.price-flat tbody tr.queue-row{grid-template-columns:1fr!important}
+.price-flat tbody tr.g-head td,.price-flat tbody tr.queue-row td{text-align:left!important;white-space:normal!important;font-weight:inherit}
+.price-flat .g-jump .g-jump-link{display:inline-block}

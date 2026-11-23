@@ -556,48 +556,57 @@ body{background:#f3f6f8}
     // Один загальний перелік без поділу на групи (рішення власника 08.11):
     // порядок — як у CRM (група, потім позиція в групі).
     // Групи позначені кольором (смуга, відтінок, мітка над першою позицією); код не показуємо.
-    const items = data.pricelist.flatMap((g, gi) => g.items.map((it, ii) => ({ ...it, gi, first: ii === 0, group: g.group })));
+    // Групи (власник 23.11.2026 — як на «Військовим»): кожна група починається рядком-заголовком на всю ширину
+    // (назва + «Без запису · жива черга» / «За попереднім записом»); години живої черги — одразу під заголовком,
+    // над списком «Перейти до розділу:». Порядок — як у CRM (група, потім позиція в групі); код ледь помітний.
     const frag = document.createDocumentFragment();
     {
-      const section = el('section', 'price-group open price-flat');
+      const section = el('section', 'price-group open price-flat grouped');
       section.appendChild(el('h2', null, 'Перелік досліджень'));
+      const jump = el('nav', 'g-jump'); jump.setAttribute('aria-label', 'Розділи прайсу');
+      jump.appendChild(el('span', 'g-jump-title', 'Перейти до розділу:'));
       const table = el('table');
       table.innerHTML = '<thead><tr><th>Дослідження та що входить</th><th>Вартість</th><th></th></tr></thead>';
       const tbody = el('tbody');
-      items.forEach((it, idx) => {
-        const tr = el('tr', 'g g' + (it.gi % 6) + (it.first ? ' g-first' : ''));
-        tr.dataset.code = it.code;
+      data.pricelist.forEach((g, gi) => {
+        if (!g.items || !g.items.length) return;
+        const cls = 'g g' + (gi % 6), name = g.group.replace(/^\d+\.\s*/, '');
+        const queue = queueOf(hours, g.group);
+        const head = el('tr', cls + ' g-head'); const htd = el('td'); htd.colSpan = 3;
+        htd.appendChild(el('span', 'g-name', name));
+        htd.appendChild(el('span', 'g-mode ' + (queue ? 'is-queue' : 'is-booking'), queue ? 'Без запису · жива черга' : 'За попереднім записом'));
+        head.appendChild(htd);
         // Якорі для посилань з головної: /site/price.html#fluorography, #xray, #xray-contrast, #ct, #ct-contrast, #ct-angio.
-        if (it.first) {
-          const g = it.group;
-          const anchor = /ангіо/i.test(g) ? 'ct-angio' : /КТ з|з внутрішньовенним/i.test(g) ? 'ct-contrast' : /КТ/.test(g) ? 'ct'
-            : /флюорограф/i.test(g) ? 'fluorography' : /контраст/i.test(g) ? 'xray-contrast' : 'xray';
-          if (!document.getElementById(anchor)) tr.id = anchor;
-        }
-        const td = el('td');
-        if (it.first) td.appendChild(el('div', 'gtag', it.group.replace(/^\d+\.\s*/, '')));
-        td.appendChild(el('div', 'service-title', it.title));
-        const helpEl = el('div', 'service-help', it.help || ''); helpEl.appendChild(el('span', 'code-hint', 'код ' + it.code)); td.appendChild(helpEl);
-        tr.appendChild(td);
-        tr.appendChild(el('td', 'price-cell', money(it.price) + ' грн'));
-        const tdb = el('td');
-        const queue = queueOf(hours, it.group);
-        if (queue) tdb.appendChild(el('span', 'row-queue', 'Жива черга'));
-        else {
-          const btn = el('button', 'row-add', 'Записатися'); btn.type = 'button';
-          if (avail[it.code] === false) { btn.disabled = true; btn.textContent = 'Тимчасово недоступно'; btn.title = 'Послугу вимкнено адміністратором'; }
-          else btn.addEventListener('click', () => addToCart(it.code, it.title, it.price));
-          tdb.appendChild(btn);
-        }
-        tr.appendChild(tdb); tbody.appendChild(tr);
-        // Після останньої позиції групи з живою чергою — рядок з годинами.
-        if (queue && (items[idx + 1] || {}).group !== it.group) {
-          const qr = el('tr', 'queue-row g g' + (it.gi % 6)); const qd = el('td'); qd.colSpan = 3;
+        const anchor = /ангіо/i.test(g.group) ? 'ct-angio' : /КТ з|з внутрішньовенним/i.test(g.group) ? 'ct-contrast' : /КТ/.test(g.group) ? 'ct'
+          : /флюорограф/i.test(g.group) ? 'fluorography' : /контраст/i.test(g.group) ? 'xray-contrast' : 'xray';
+        if (!document.getElementById(anchor) && !tbody.querySelector('#' + anchor)) head.id = anchor;
+        tbody.appendChild(head);
+        if (head.id) { const a = el('a', 'g-jump-link ' + cls, name); a.href = '#' + head.id; jump.appendChild(a); }
+        if (queue) {
+          const qr = el('tr', 'queue-row ' + cls); const qd = el('td'); qd.colSpan = 3;
           qd.appendChild(document.createTextNode('👥 ')); qd.appendChild(el('strong', null, 'Запису не потрібно.'));
           qd.appendChild(document.createTextNode(' ' + queueText(queue)));
           qr.appendChild(qd); tbody.appendChild(qr);
         }
+        g.items.forEach((it) => {
+          const tr = el('tr', cls); tr.dataset.code = it.code;
+          const td = el('td');
+          td.appendChild(el('div', 'service-title', it.title));
+          const helpEl = el('div', 'service-help', it.help || ''); helpEl.appendChild(el('span', 'code-hint', 'код ' + it.code)); td.appendChild(helpEl);
+          tr.appendChild(td);
+          tr.appendChild(el('td', 'price-cell', money(it.price) + ' грн'));
+          const tdb = el('td');
+          if (queue) tdb.appendChild(el('span', 'row-queue', 'Жива черга'));
+          else {
+            const btn = el('button', 'row-add', 'Записатися'); btn.type = 'button';
+            if (avail[it.code] === false) { btn.disabled = true; btn.textContent = 'Тимчасово недоступно'; btn.title = 'Послугу вимкнено адміністратором'; }
+            else btn.addEventListener('click', () => addToCart(it.code, it.title, it.price));
+            tdb.appendChild(btn);
+          }
+          tr.appendChild(tdb); tbody.appendChild(tr);
+        });
       });
+      if (jump.querySelector('a')) section.appendChild(jump);
       table.appendChild(tbody); section.appendChild(table); frag.appendChild(section);
     }
     container.replaceChildren(frag);
