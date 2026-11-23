@@ -83,7 +83,7 @@
       tag.textContent = queueMode ? 'Жива черга, без запису' : 'За попереднім записом';
       // Посилання внизу стовпчика: «… і запис →» лише там, де є години запису (так само рахує сервер).
       var go = card.querySelector('.sc-go');
-      if (go) go.textContent = queueMode ? 'Перелік досліджень →' : 'Перелік і запис →';
+      if (go) go.textContent = queueMode ? 'Перелік досліджень' : 'Перелік і запис';
     });
     // «Про відділення»: планові години = від найранішого до найпізнішого вікна військових (без ургентних).
     var ah = document.getElementById('aboutHours');
@@ -125,7 +125,7 @@
       tag.className = 'how-tag ' + (mode === 'queue' ? 'q' : 'b');
       tag.textContent = mode === 'queue' ? 'Жива черга, без запису' : 'Запис на сайті';
       var go = card.querySelector('.sc-go');
-      if (go) go.textContent = mode === 'queue' ? 'Ціни →' : 'Ціни і запис →';
+      if (go) go.textContent = mode === 'queue' ? 'Ціни' : 'Ціни і запис';
     });
   }
 
