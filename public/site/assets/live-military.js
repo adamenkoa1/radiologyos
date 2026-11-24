@@ -24,8 +24,10 @@
   function bookButton(svc) {
     const btn = el('button', 'military-book-btn', 'Записатися');
     btn.type = 'button';
+    // Для програм читання з екрана: кнопок «Записатися» на сторінці багато — у назві кнопки дослідження.
+    if (svc.title) btn.setAttribute('aria-label', 'Записатися: ' + svc.title);
     if (svc.availableToMilitary === false) {
-      btn.disabled = true; btn.textContent = 'Тимчасово недоступно'; btn.title = 'Послугу вимкнено адміністратором';
+      btn.disabled = true; btn.textContent = 'Тимчасово недоступно'; btn.title = 'Послугу вимкнено адміністратором'; btn.removeAttribute('aria-label');
     } else {
       btn.addEventListener('click', () => { if (typeof addMilitaryItem === 'function') addMilitaryItem(svc.code, svc.title); });
     }

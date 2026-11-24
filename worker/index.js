@@ -97,7 +97,9 @@ export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const p = url.pathname;
-    if (url.hostname.startsWith('www.')) { url.hostname = url.hostname.slice(4); return Response.redirect(url.toString(), 301); }
+    if (url.hostname.startsWith('www.')) { url.hostname = url.hostname.slice(4); url.protocol = 'https:'; return Response.redirect(url.toString(), 301); }
+    // 24.11.2026: http:// вело на ту саму сторінку без переходу на https — тепер постійна переадресація (локальну розробку не чіпаємо).
+    if (url.protocol === 'http:' && !/^(localhost|127\.0\.0\.1|\[::1\])$/.test(url.hostname)) { url.protocol = 'https:'; return Response.redirect(url.toString(), 301); }
 
     if (LIVE.test(p)) {
       if (!env.ORIGIN) return json(503, { error: 'offline', message: 'Live booking is not connected.' });
