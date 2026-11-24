@@ -207,7 +207,9 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 .how-links a{color:#0f6b6f;font-weight:800;font-size:14px;text-decoration:none}.how-links a:hover{text-decoration:underline}
 .explain-more{margin-top:auto;color:#0f6b6f;font-size:13px;font-weight:800}
 .how-tabs .t-short{display:none}
-@media(max-width:460px){.how-tabs{display:flex}.how-tabs button{flex:1;min-width:0;padding:10px 8px;font-size:13.5px}.how-tabs .t-long{display:none}.how-tabs .t-short{display:inline}}
+@media(max-width:460px){.how-tabs{display:flex}.how-tabs button{flex:1;min-width:0;padding:10px 8px;font-size:13.5px;white-space:nowrap}.how-tabs .t-long{display:none}.how-tabs .t-short{display:inline}}
+/* 24.11.2026: на телефоні перемикач займає весь рядок під підписом — інакше «Військовим» обрізалось (90 px тексту в кнопці 82 px на ширині 360). */
+@media(max-width:460px){.how-switch .how-tabs{flex:1 1 100%}}
 .bring{list-style:none;margin:2px 0 16px;padding:0;display:flex;flex-wrap:wrap;gap:8px}
 .bring li{display:flex;align-items:center;gap:8px;padding:8px 13px;border-radius:999px;background:#eef6f5;color:#173f44;font-size:13.5px;font-weight:700}
 .bring li>span[aria-hidden]{font-size:16px}
@@ -747,6 +749,7 @@ nav{margin-left:auto;display:flex;align-items:center;gap:12px;flex-shrink:0;font
 <script src="/site/assets/schedule-hints.js" defer></script>
 <script>/* Підсумок прийому у вкладках «Як записатися» — з «Графіка роботи» (так само рахує сервер). */document.addEventListener('schedule-hints', function () { var H = window.ScheduleHints; if (!H || !H.hours) return; [['homeMilSummary', H.militarySummaryText], ['homeCivSummary', H.civilianSummaryText]].forEach(function (p) { var el = document.getElementById(p[0]), t = el && p[1](H.hours); if (t) el.textContent = t; }); });</script>
 <script src="/site/assets/slots.js" defer></script>
+<script src="/site/assets/modal-a11y.js" defer></script>
 <script src="/site/assets/cart.js" defer></script>
 <script src="/site/assets/site-analytics.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>

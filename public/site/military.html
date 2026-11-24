@@ -365,7 +365,7 @@ document.querySelectorAll('.price-group h2').forEach((heading)=>{
 <div class="eyebrow" style="color:var(--brand)">Попередній вибір</div>
 <h2 style="margin:5px 0">Моя заявка</h2>
 </div>
-<button class="cart-close" onclick="closeMilitaryCart()" type="button">×</button>
+<button class="cart-close" onclick="closeMilitaryCart()" type="button" aria-label="Закрити">×</button>
 </div>
 <div id="militaryCartItems"></div>
 <form class="request-form" id="militaryRequestForm" novalidate>
@@ -532,6 +532,7 @@ function openMilitaryCart() {
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
   document.body.style.overflow = 'hidden';
+  window.rnModal?.open(overlay, closeMilitaryCart);
   renderMilitaryCart();
 }
 
@@ -541,6 +542,7 @@ function closeMilitaryCart() {
   overlay.classList.remove('open');
   overlay.setAttribute('aria-hidden', 'true');
   document.body.style.overflow = '';
+  window.rnModal?.close(overlay);
 }
 
 document.getElementById('militaryCartOverlay')?.addEventListener('click', event => {
@@ -586,6 +588,7 @@ renderMilitaryCart();
 <script>document.addEventListener('schedule-hints', () => { if (typeof militaryCart !== 'undefined' && !militaryCart.length) renderMilitaryCart(); });</script>
 <script>/* Підсумок прийому під вступом — з «Графіка роботи» (так само рахує сервер). */document.addEventListener('schedule-hints', () => { const p = document.getElementById('milSummary'), H = window.ScheduleHints; const t = p && H && H.hours ? H.militarySummaryText(H.hours) : ''; if (t) p.textContent = t; });</script>
 <script src="/site/assets/slots.js" defer></script>
+<script src="/site/assets/modal-a11y.js" defer></script>
 <script src="/site/assets/site-analytics.js" defer></script>
 <script src="/site/assets/live-military.js" defer></script>
 <script src="/site/assets/d1-bridge.js" defer></script>

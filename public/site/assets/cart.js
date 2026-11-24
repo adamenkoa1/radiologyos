@@ -153,11 +153,13 @@ function openCart() {
   document.getElementById('cartOverlay').classList.add('open');
   document.body.style.overflow = 'hidden';
   renderCart();
+  window.rnModal?.open(document.getElementById('cartOverlay'), closeCart);
 }
 
 function closeCart() {
   document.getElementById('cartOverlay').classList.remove('open');
   document.body.style.overflow = '';
+  window.rnModal?.close(document.getElementById('cartOverlay'));
 }
 
 /* --- Меню «Вхід» у шапці (є лише на головній; код безпечний для інших сторінок) --- */
