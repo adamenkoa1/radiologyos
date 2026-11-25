@@ -13,6 +13,7 @@
   function open(overlay, onClose) {
     if (!overlay) return;
     overlay.setAttribute('aria-hidden', 'false');
+    overlay.inert = false;
     const opener = active && active.overlay === overlay ? active.opener : document.activeElement;
     active = { overlay, opener, onClose };
     const dialog = overlay.querySelector('[role="dialog"]') || overlay;
@@ -26,7 +27,7 @@
   }
 
   function close(overlay) {
-    if (overlay) overlay.setAttribute('aria-hidden', 'true');
+    if (overlay) { overlay.setAttribute('aria-hidden', 'true'); overlay.inert = true; }
     if (!active || (overlay && active.overlay !== overlay)) return;
     const opener = active.opener;
     active = null;
@@ -48,6 +49,10 @@
     else if (e.shiftKey && (current === first || !list.includes(current))) { e.preventDefault(); last.focus(); }
     else if (!e.shiftKey && current === last) { e.preventDefault(); first.focus(); }
   });
+
+  // Закрите вікно невидиме, але лежить у розмітці: inert не пускає туди Tab і дотики.
+  const sealClosed = () => document.querySelectorAll('.cart-overlay[aria-hidden="true"]').forEach(o => { o.inert = true; });
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', sealClosed); else sealClosed();
 
   window.rnModal = { open, close };
 })();
