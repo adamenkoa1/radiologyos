@@ -1,14 +1,12 @@
 name: Deploy to Cloudflare
 
 on:
-  # Автозапуск і автоматичний викат на злиття в main — без ручної паузи.
-  # Раніше job був прив'язаний до GitHub-environment "production" з правилом
-  # Required reviewers, тож деплой зупинявся й чекав на схвалення людини.
-  # Прив'язку прибрано на прохання власника продукту, тому кожне злиття в main
-  # виконує міграції D1 і викат у прод автоматично. Ручний запуск через
-  # workflow_dispatch усе ще потребує явного вибору DEPLOY.
-  push:
-    branches: [main]
+  # УВАГА: цей деплой застосунку (legacy-app) викочує Worker `radiologyos` на той
+  # самий домен radiologyos.tech, що й ПУБЛІЧНИЙ СТАТИЧНИЙ САЙТ (radiology-next,
+  # гілка main). legacy-app — лише законсервований cold-standby/fallback. Тому
+  # автозапуск на push ПРИБРАНО: деплой можливий ЛИШЕ вручну (workflow_dispatch з
+  # явним вибором DEPLOY), щоб жоден push у legacy-app випадково не перезаписав
+  # живий сайт на main. Відновлення fallback — свідома ручна дія.
   workflow_dispatch:
     inputs:
       confirmation:
@@ -30,7 +28,7 @@ concurrency:
 jobs:
   deploy:
     name: Build and deploy
-    if: ${{ github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY') }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.confirmation == 'DEPLOY' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:

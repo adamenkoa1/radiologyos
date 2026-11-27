@@ -41,8 +41,10 @@ test("ci.yml applies all D1 migrations to a local synthetic DB on PRs and upload
 test("staging workflow runs post-merge + manual, is gated, and never uses the production config", async () => {
   const s = await read(".github/workflows/staging.yml");
   const doc = yaml.load(s);
-  // Тригери: push у main і ручний; НЕ на pull_request і НЕ деплой у прод.
-  assert.match(s, /on:\s[\s\S]*push:\s[\s\S]*branches:\s*\[main\]/);
+  // Тригери: push у legacy-app (не main — main тепер публічний статичний сайт
+  // radiology-next) і ручний; НЕ на pull_request і НЕ деплой у прод.
+  assert.match(s, /on:\s[\s\S]*push:\s[\s\S]*branches:\s*\[legacy-app\]/);
+  assert.doesNotMatch(s, /branches:\s*\[main\]/);
   assert.match(s, /workflow_dispatch:/);
   assert.doesNotMatch(s, /pull_request:/);
   // Гейт увімкнення.

@@ -216,6 +216,11 @@ export async function PUT(request: Request) {
   const parsed = sanitizeLifecycleDocument(body);
   if (!parsed.ok) return Response.json({ error: parsed.error }, { status: 400 });
   const { document } = parsed;
+  // Автоматичне debounce-збереження чернетки (клієнт шле auto:true). Воно НЕ
+  // пише в журнал аудиту, а якщо вміст не змінився — взагалі нічого не пише в
+  // D1 (без приросту версії та без зайвої незмінної ревізії). Явні збереження
+  // й будь-які переходи статусу лишаються повноцінними.
+  const isAuto = body.auto === true && document.status === "draft";
 
   if (!(await canAccessBooking(db, member, bookingId, ctx.organizationId))) {
     return Response.json({ error: "Заявку не знайдено або її не призначено вам" }, { status: 404 });
@@ -326,6 +331,33 @@ export async function PUT(request: Request) {
     if (duplicate) return Response.json({ error: "Такий номер протоколу вже використано" }, { status: 409 });
   }
 
+  // Debounce-автозбереження без фактичних змін не створює нову версію та
+  // незмінну ревізію: якщо чернетка клінічно тотожна збереженій і статус той
+  // самий — повертаємо поточний стан, нічого не пишучи в D1. Append-only
+  // ревізії є похідною проєкцією версій протоколу й керуються тригерами БД
+  // (snapshot_initial/_next + append_only + *_snapshot_guard), тож коалесценція
+  // ревізій на рівні БД неможлива — натомість уникаємо зайвого запису взагалі.
+  if (isAuto && existing && existing.status === document.status && sameClinicalDocument(existing, document)) {
+    const noopState = await db.prepare(
+      `SELECT b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
+        p.signed_by AS signedBy, p.signed_at AS signedAt, p.signed_version AS signedVersion
+       FROM bookings b JOIN protocols p ON p.booking_id = b.id AND p.organization_id = b.organization_id
+       WHERE b.id = ? AND b.organization_id = ? LIMIT 1`
+    ).bind(bookingId, ctx.organizationId).first<Record<string, unknown>>();
+    return Response.json({
+      ok: true,
+      version: Number(existing.version),
+      protocolStatus: bookingProtocolLifecycleStatus(document.status),
+      protocolNumber: existing.number,
+      documentStatus: existing.status,
+      signedBy: String(noopState?.signedBy || ""),
+      signedAt: String(noopState?.signedAt || ""),
+      signedVersion: Number(noopState?.signedVersion || 0),
+      protocolReadyAt: String(noopState?.protocolReadyAt || ""),
+      protocolIssuedAt: String(noopState?.protocolIssuedAt || ""),
+    });
+  }
+
   const version = existing ? Number(existing.version) + 1 : 1;
   const authorEmail = existing?.authorEmail || member.email;
   const sectionsJson = JSON.stringify(document.sections);
@@ -382,14 +414,18 @@ export async function PUT(request: Request) {
     return Response.json({ error: "Конфлікт версій або стану протоколу. Оновіть сторінку." }, { status: 409 });
   }
 
-  await audit(db, {
-    organizationId: ctx.organizationId,
-    actorEmail: member.email,
-    action: document.status === "signed" ? "protocol_signed" : "protocol_saved",
-    resource: "protocol",
-    targetId: bookingId,
-    details: { version, status: document.status },
-  });
+  // Автозбереження чернетки НЕ засмічує журнал аудиту: пишемо лише явні
+  // збереження та переходи статусу (підпис/видача/готовність тощо).
+  if (!isAuto) {
+    await audit(db, {
+      organizationId: ctx.organizationId,
+      actorEmail: member.email,
+      action: document.status === "signed" ? "protocol_signed" : "protocol_saved",
+      resource: "protocol",
+      targetId: bookingId,
+      details: { version, status: document.status },
+    });
+  }
 
   const state = await db.prepare(
     `SELECT b.protocol_ready_at AS protocolReadyAt, b.protocol_issued_at AS protocolIssuedAt,
