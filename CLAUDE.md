@@ -10,6 +10,9 @@
   найвищий пріоритет.
 - **`docs/ui-ux-audit.md`** — playbook професійного UI/UX-аудиту сторінки
   (ролі, напрями аудиту, межі автономності, перевірка, оцінювання, звіт).
+- **`docs/project-status.md`** — підсумкова довідка про стан проєкту: читати
+  ПЕРШОЮ для швидкого відновлення контексту без переграшу історії (економія
+  токенів). Канонічні деталі змін лишаються в `docs/changelog.md`.
 - Довідка: `docs/design-system.md`, `docs/styles.md`, `docs/components.md`,
   `docs/pages.md`, `docs/business-core.md`, `docs/domain-model.md`,
   `docs/roles-permissions.md`, `docs/workflows.md`, `docs/lessons.md`.
