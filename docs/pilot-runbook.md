@@ -15,6 +15,15 @@
 реєстр застосованих міграцій — таблиця `d1_migrations`. Мультитенантність — за
 `organization_id` із серверної сесії (`requireOrgContext`).
 
+> **Топологія (важливо).** Цей runbook стосується **гілки `legacy-app`** —
+> застосунку Cloudflare (D1/R2), який є **холодним резервом (Cold Standby /
+> Fallback)**. Основний клінічний бекенд — **on-prem** (`crm.radiologyos.tech`,
+> `radiology-next`). Гілка `main` — **публічний статичний сайт** radiology-next
+> (edge-proxy на on-prem), без застосунку; у `main` код застосунку не зливають.
+> Застереження щодо даних: незбережена чернетка опису тримається лише **в памʼяті
+> вкладки** (без localStorage/IndexedDB) — закриття вкладки до збереження втрачає
+> її, зате PII/клінічний текст не осідають у браузері.
+
 ---
 
 ## 0. Передумови staging (одноразово)
@@ -54,14 +63,17 @@
 
 ## 0b. Автоматизація через GitHub Actions
 
-Staging автоматизовано окремими workflow-ами (production workflow `deploy.yml`
-**не змінювався** й не запускається ними):
+Staging автоматизовано окремими workflow-ами. Під час фіналізації cold-standby
+`deploy.yml` зроблено **суто ручним** (`workflow_dispatch` з підтвердженням
+`DEPLOY`, без автозапуску на push) — щоб push у `legacy-app` не перезаписав живий
+статичний сайт на `main` у спільному Worker `radiologyos`; staging-workflow його
+не запускає:
 
-- **`ci.yml`** (тригер: кожен PR і push у `main`) — наявні перевірки (lint, tsc,
+- **`ci.yml`** (тригер: кожен PR і push у `legacy-app`) — наявні перевірки (lint, tsc,
   build, тести, production-gate) **плюс** застосування **всіх** D1-міграцій до
   свіжої локальної синтетичної бази (`scripts/apply-d1-migrations-local.mjs`);
   SHA релізу й звіт міграцій зберігаються як summary + артефакт.
-- **`staging.yml`** (тригер: push у `main` після злиття, а також `workflow_dispatch`)
+- **`staging.yml`** (тригер: push у `legacy-app` після злиття, а також `workflow_dispatch`)
   — **preflight** (`scripts/staging-preflight.mjs`) до будь-якого звернення до
   Cloudflare доводить, що staging D1 id / R2 bucket / hostname **не** збігаються з
   production (значення production читаються з `wrangler.cloudflare.toml`, не
@@ -124,8 +136,9 @@ Cloudflare-ресурси (створює команда): staging-D1 `radiology
 
 ## 1. Версія та застосовані міграції
 
-**Версія коду (SHA):** реліз розгортається з `main`; збережіть SHA з логів
-Actions. Список розгорнутих версій Worker:
+**Версія коду (SHA):** cold-standby реліз розгортається з `legacy-app` (вручну
+через `deploy.yml` → `workflow_dispatch`); збережіть SHA з логів Actions. Список
+розгорнутих версій Worker:
 
 ```bash
 npx wrangler deployments list --config wrangler.staging.toml
