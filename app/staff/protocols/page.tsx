@@ -504,15 +504,36 @@ export default function ProtocolsPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [queue]);
 
-  // Захист незбережених змін при виході зі сторінки (закриття вкладки, «назад»,
-  // перехід за лінком навігації). Перемикання між записами вже прикрите
-  // window.confirm у selectBooking; тут покриваємо саме залишення сторінки, щоб
-  // напівнаписаний протокол не губився тихо.
+  // Захист незбережених змін при залишенні редактора. Покриваємо два окремі шляхи:
+  // (1) повне вивантаження вкладки (закриття, перезавантаження, зовнішнє посилання)
+  //     — через `beforeunload`;
+  // (2) клієнтську навігацію Next `<Link>` у межах кабінету — на неї `beforeunload`
+  //     НЕ спрацьовує, тож перехоплюємо клік по внутрішньому посиланню у
+  //     capture-фазі (до обробника Next) і підтверджуємо через `confirm`.
+  // Перемикання між заявками вже прикрите `window.confirm` у selectBooking.
   useEffect(() => {
     if (!dirty) return;
-    const handler = (event:BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
-    window.addEventListener("beforeunload", handler);
-    return () => window.removeEventListener("beforeunload", handler);
+    const onBeforeUnload = (event:BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    const onClickCapture = (event:MouseEvent) => {
+      if (event.defaultPrevented || event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+      const anchor = (event.target as HTMLElement | null)?.closest?.("a");
+      if (!anchor) return;
+      const href = anchor.getAttribute("href");
+      if (!href || href.startsWith("#") || anchor.target === "_blank" || anchor.hasAttribute("download")) return;
+      let url:URL;
+      try { url = new URL(href, window.location.href); } catch { return; }
+      if (url.origin !== window.location.origin || url.pathname === window.location.pathname) return;
+      if (!window.confirm("Є незбережені зміни у протоколі. Залишити сторінку без збереження?")) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    document.addEventListener("click", onClickCapture, true);
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      document.removeEventListener("click", onClickCapture, true);
+    };
   }, [dirty]);
 
   function setSectionField(sectionKey:string,fieldKey:string,value:string) {
