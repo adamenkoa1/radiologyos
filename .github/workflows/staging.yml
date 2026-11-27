@@ -1,6 +1,6 @@
 name: Staging
 
-# Автоматизація staging (НЕ production). Запускається після злиття в main.
+# Автоматизація staging (НЕ production). Запускається після злиття в legacy-app.
 # Інертний, доки команда не ввімкне його змінною STAGING_ENABLED=true в
 # GitHub Environment `staging` і не задасть потрібні vars/secrets (див. нижче).
 #
@@ -9,8 +9,12 @@ name: Staging
 # Реальні id/секрети не комітяться — вони живуть у GitHub Environment `staging`.
 
 on:
+  # legacy-app — законсервований cold-standby застосунок. staging деплоїться на
+  # ОКРЕМИЙ staging-домен (wrangler.staging.toml) і job усе одно інертний, доки
+  # STAGING_ENABLED != 'true'. Тригер переведено з main (тепер публічний
+  # статичний сайт radiology-next) на legacy-app, щоб не торкатися main.
   push:
-    branches: [main]
+    branches: [legacy-app]
   workflow_dispatch:
 
 permissions:

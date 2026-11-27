@@ -590,7 +590,7 @@ export default function ProtocolsPage() {
     try {
       response = await fetch("/api/staff/protocols", {
         method:"PUT", headers:{"content-type":"application/json"},
-        body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status, findingsStructured:composed }),
+        body:JSON.stringify({ bookingId:booking.id, baseVersion:doc.version || 0, ...doc, status, findingsStructured:composed, auto }),
       });
       data = await response.json();
     } catch {
